@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `manga_uploads` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `userId` int NOT NULL,\n  `fileName` varchar(255) NOT NULL,\n  `fileKey` varchar(512) NOT NULL,\n  `fileUrl` text NOT NULL,\n  `fileSizeBytes` int,\n  `mimeType` varchar(100),\n  `pageCount` int,\n  `status` enum('uploaded','queued','processing','completed','failed') NOT NULL DEFAULT 'uploaded',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `manga_uploads_id` PRIMARY KEY(`id`),\n  CONSTRAINT `manga_uploads_projectId_fk` FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE CASCADE,\n  CONSTRAINT `manga_uploads_userId_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 24SvJuQr6QY484E.8a2f6c781bb3 --database 4V9sAd2k2m2djZEsU8bXCJ --execute CREATE TABLE IF NOT EXISTS `manga_uploads` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `userId` int NOT NULL,\n  `fileName` varchar(255) NOT NULL,\n  `fileKey` varchar(512) NOT NULL,\n  `fileUrl` text NOT NULL,\n  `fileSizeBytes` int,\n  `mimeType` varchar(100),\n  `pageCount` int,\n  `status` enum('uploaded','queued','processing','completed','failed') NOT NULL DEFAULT 'uploaded',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `manga_uploads_id` PRIMARY KEY(`id`),\n  CONSTRAINT `manga_uploads_projectId_fk` FOREIGN KEY (`projectId`) REFERENCES `projects`(`id`) ON DELETE CASCADE,\n  CONSTRAINT `manga_uploads_userId_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 315
+}

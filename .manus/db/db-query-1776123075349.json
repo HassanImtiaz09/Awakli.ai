@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `projects` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` text,\n  `genre` varchar(100),\n  `coverImageUrl` text,\n  `status` enum('draft','active','archived') NOT NULL DEFAULT 'draft',\n  `visibility` enum('private','unlisted','public') NOT NULL DEFAULT 'private',\n  `animeStyle` enum('shonen','seinen','shoujo','mecha','default') NOT NULL DEFAULT 'default',\n  `settings` json,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `projects_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 24SvJuQr6QY484E.8a2f6c781bb3 --database 4V9sAd2k2m2djZEsU8bXCJ --execute CREATE TABLE IF NOT EXISTS `projects` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `description` text,\n  `genre` varchar(100),\n  `coverImageUrl` text,\n  `status` enum('draft','active','archived') NOT NULL DEFAULT 'draft',\n  `visibility` enum('private','unlisted','public') NOT NULL DEFAULT 'private',\n  `animeStyle` enum('shonen','seinen','shoujo','mecha','default') NOT NULL DEFAULT 'default',\n  `settings` json,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `projects_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2020
+}
