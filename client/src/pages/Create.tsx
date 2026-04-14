@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,16 +29,28 @@ const STEP_TITLES = [
   { title: "Ready to Create", subtitle: "Review your settings and generate!" },
 ];
 
+// SessionStorage keys for persisting state across OAuth redirects
+const STORAGE_KEY_PROMPT = "awakli_create_prompt";
+const STORAGE_KEY_GENRE = "awakli_create_genre";
+const STORAGE_KEY_PENDING = "awakli_create_pending";
+
 export default function Create() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const hasAutoTriggered = useRef(false);
 
-  // Prompt state
+  // Prompt state — restore from sessionStorage if available
   const [prompt, setPrompt] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("prompt") || "";
+    const urlPrompt = params.get("prompt");
+    if (urlPrompt) return urlPrompt;
+    const saved = sessionStorage.getItem(STORAGE_KEY_PROMPT);
+    return saved || "";
   });
-  const [genre, setGenre] = useState("Fantasy");
+  const [genre, setGenre] = useState(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEY_GENRE);
+    return saved || "Fantasy";
+  });
 
   // Flow mode
   const [flowMode, setFlowMode] = useState<FlowMode>("prompt");
@@ -57,12 +69,25 @@ export default function Create() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Persist prompt and genre to sessionStorage whenever they change
+  useEffect(() => {
+    if (prompt) sessionStorage.setItem(STORAGE_KEY_PROMPT, prompt);
+  }, [prompt]);
+  useEffect(() => {
+    if (genre) sessionStorage.setItem(STORAGE_KEY_GENRE, genre);
+  }, [genre]);
+
   const quickCreate = trpc.quickCreate.start.useMutation({
     onSuccess: (data) => {
+      // Clear saved state on successful creation
+      sessionStorage.removeItem(STORAGE_KEY_PROMPT);
+      sessionStorage.removeItem(STORAGE_KEY_GENRE);
+      sessionStorage.removeItem(STORAGE_KEY_PENDING);
       navigate(`/create/${data.projectId}`);
     },
     onError: (err) => {
       setIsSubmitting(false);
+      sessionStorage.removeItem(STORAGE_KEY_PENDING);
       alert(err.message);
     },
   });
@@ -71,6 +96,8 @@ export default function Create() {
     if (!prompt.trim() || prompt.trim().length < 10) return;
 
     if (!isAuthenticated) {
+      // Save pending action so we can auto-trigger after login
+      sessionStorage.setItem(STORAGE_KEY_PENDING, useCustomization ? "customize" : "quick");
       setShowAuthModal(true);
       return;
     }
@@ -90,6 +117,26 @@ export default function Create() {
 
   const handleQuickGenerate = useCallback(() => handleGenerate(false), [handleGenerate]);
   const handleCustomGenerate = useCallback(() => handleGenerate(true), [handleGenerate]);
+
+  // Auto-trigger generation after OAuth redirect if there was a pending action
+  useEffect(() => {
+    if (authLoading || hasAutoTriggered.current) return;
+    if (!isAuthenticated) return;
+
+    const pending = sessionStorage.getItem(STORAGE_KEY_PENDING);
+    if (!pending) return;
+    if (!prompt.trim() || prompt.trim().length < 10) return;
+
+    hasAutoTriggered.current = true;
+    sessionStorage.removeItem(STORAGE_KEY_PENDING);
+
+    // Small delay to let the UI render first
+    const timer = setTimeout(() => {
+      handleGenerate(pending === "customize");
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [authLoading, isAuthenticated, prompt, handleGenerate]);
 
   const canProceed = prompt.trim().length >= 10;
 
@@ -112,6 +159,9 @@ export default function Create() {
       setCustomizeStep((s) => (s + 1) as CustomizeStep);
     }
   }, [customizeStep]);
+
+  // Build login URL that returns to /create after OAuth
+  const loginUrl = useMemo(() => getLoginUrl("/create"), []);
 
   // Progress bar
   const progress = useMemo(() => ((customizeStep + 1) / 4) * 100, [customizeStep]);
@@ -186,6 +236,20 @@ export default function Create() {
                   Describe your story and AI will create the manga panels for you.
                 </p>
               </div>
+
+              {/* Auto-generating indicator */}
+              {isSubmitting && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 px-4 py-3 rounded-xl bg-[#E94560]/10 border border-[#E94560]/20 text-center"
+                >
+                  <span className="flex items-center justify-center gap-2 text-[#E94560]">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating your manga...
+                  </span>
+                </motion.div>
+              )}
 
               {/* Prompt textarea */}
               <motion.div
@@ -465,7 +529,7 @@ export default function Create() {
                   Create a free account to generate your manga and save your stories.
                 </p>
                 <a
-                  href={getLoginUrl()}
+                  href={loginUrl}
                   className="block w-full py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all text-center"
                 >
                   <Zap className="inline w-5 h-5 mr-2" />

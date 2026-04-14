@@ -1306,3 +1306,6 @@
 - [x] Vitest: tier enforcement (Studio-only gate)
 - [x] Vitest: RVC voice model constants validation
 - [x] All tests passing with zero TypeScript errors
+
+## Bug Fixes
+- [x] Fix Create page: after signing up, 'Generate Now' does not proceed further (OAuth now redirects back to /create via returnPath query param, prompt persisted in sessionStorage, auto-triggers generation after login)
