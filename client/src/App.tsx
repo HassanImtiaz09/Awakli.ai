@@ -12,19 +12,58 @@ import Discover from "./pages/Discover";
 import StudioDashboard from "./pages/StudioDashboard";
 import MangaUpload from "./pages/MangaUpload";
 import ProjectDetail from "./pages/ProjectDetail";
+import ProjectWizard from "./pages/ProjectWizard";
+import ScriptEditor from "./pages/ScriptEditor";
+import CharacterCreator from "./pages/CharacterCreator";
+import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
   const [location] = useLocation();
   return (
     <AnimatePresence mode="wait">
       <Switch key={location}>
+        {/* Marketing / public */}
         <Route path="/" component={Home} />
         <Route path="/signin" component={SignIn} />
         <Route path="/signup" component={SignUp} />
         <Route path="/discover" component={Discover} />
+
+        {/* Studio */}
         <Route path="/studio" component={StudioDashboard} />
+        <Route path="/studio/new" component={ProjectWizard} />
         <Route path="/studio/upload" component={MangaUpload} />
         <Route path="/studio/projects/:id" component={ProjectDetail} />
+
+        {/* Studio — per-project tools (wrapped in StudioLayout) */}
+        <Route path="/studio/project/:projectId/script">
+          {(params) => (
+            <StudioLayout>
+              <ScriptEditor />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/characters">
+          {(params) => (
+            <StudioLayout>
+              <CharacterCreator />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/upload">
+          {(params) => (
+            <StudioLayout>
+              <MangaUpload />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId">
+          {(params) => (
+            <StudioLayout>
+              <ProjectDetail />
+            </StudioLayout>
+          )}
+        </Route>
+
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

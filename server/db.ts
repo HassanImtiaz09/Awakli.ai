@@ -2,7 +2,9 @@ import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   users, projects, mangaUploads, processingJobs,
+  episodes, panels, characters,
   InsertUser, InsertProject, InsertMangaUpload, InsertProcessingJob,
+  InsertEpisode, InsertPanel, InsertCharacter,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -165,4 +167,112 @@ export async function updateJob(id: number, data: Partial<InsertProcessingJob>) 
   const db = await getDb();
   if (!db) return;
   await db.update(processingJobs).set(data).where(eq(processingJobs.id, id));
+}
+
+// ─── Episodes ────────────────────────────────────────────────────────────
+
+export async function createEpisode(data: InsertEpisode) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(episodes).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getEpisodesByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(episodes)
+    .where(eq(episodes.projectId, projectId))
+    .orderBy(episodes.episodeNumber);
+}
+
+export async function getEpisodeById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(episodes).where(eq(episodes.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateEpisode(id: number, data: Partial<InsertEpisode>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(episodes).set(data).where(eq(episodes.id, id));
+}
+
+export async function deleteEpisode(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(episodes).where(eq(episodes.id, id));
+}
+
+// ─── Panels ──────────────────────────────────────────────────────────────
+
+export async function createPanel(data: InsertPanel) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(panels).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function createPanelsBulk(data: InsertPanel[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (data.length === 0) return;
+  await db.insert(panels).values(data);
+}
+
+export async function getPanelsByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(panels)
+    .where(eq(panels.episodeId, episodeId))
+    .orderBy(panels.sceneNumber, panels.panelNumber);
+}
+
+export async function updatePanel(id: number, data: Partial<InsertPanel>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(panels).set(data).where(eq(panels.id, id));
+}
+
+export async function deletePanelsByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(panels).where(eq(panels.episodeId, episodeId));
+}
+
+// ─── Characters ──────────────────────────────────────────────────────────
+
+export async function createCharacter(data: InsertCharacter) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(characters).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getCharactersByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(characters)
+    .where(eq(characters.projectId, projectId))
+    .orderBy(desc(characters.createdAt));
+}
+
+export async function getCharacterById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(characters).where(eq(characters.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateCharacter(id: number, data: Partial<InsertCharacter>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(characters).set(data).where(eq(characters.id, id));
+}
+
+export async function deleteCharacter(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(characters).where(eq(characters.id, id));
 }

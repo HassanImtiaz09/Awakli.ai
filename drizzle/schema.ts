@@ -6,6 +6,7 @@ import {
   timestamp,
   varchar,
   json,
+  bigint,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ────────────────────────────────────────────────────────────────
@@ -36,7 +37,9 @@ export const projects = mysqlTable("projects", {
   coverImageUrl: text("coverImageUrl"),
   status: mysqlEnum("status", ["draft", "active", "archived"]).default("draft").notNull(),
   visibility: mysqlEnum("visibility", ["private", "unlisted", "public"]).default("private").notNull(),
-  animeStyle: mysqlEnum("animeStyle", ["shonen", "seinen", "shoujo", "mecha", "default"]).default("default").notNull(),
+  animeStyle: mysqlEnum("animeStyle", ["shonen", "seinen", "shoujo", "chibi", "cyberpunk", "watercolor", "noir", "realistic", "mecha", "default"]).default("default").notNull(),
+  tone: varchar("tone", { length: 100 }),
+  targetAudience: mysqlEnum("targetAudience", ["kids", "teen", "adult"]).default("teen"),
   settings: json("settings"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -77,7 +80,7 @@ export const processingJobs = mysqlTable("processing_jobs", {
   inputImageUrl: text("inputImageUrl"),
   resultUrls: json("resultUrls"),   // string[] of CDN URLs for generated frames
   errorMessage: text("errorMessage"),
-  animeStyle: mysqlEnum("animeStyle", ["shonen", "seinen", "shoujo", "mecha", "default"]).default("default").notNull(),
+  animeStyle: mysqlEnum("animeStyle", ["shonen", "seinen", "shoujo", "chibi", "cyberpunk", "watercolor", "noir", "realistic", "mecha", "default"]).default("default").notNull(),
   processingStartedAt: timestamp("processingStartedAt"),
   processingCompletedAt: timestamp("processingCompletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -86,3 +89,63 @@ export const processingJobs = mysqlTable("processing_jobs", {
 
 export type ProcessingJob = typeof processingJobs.$inferSelect;
 export type InsertProcessingJob = typeof processingJobs.$inferInsert;
+
+// ─── Episodes ────────────────────────────────────────────────────────────
+
+export const episodes = mysqlTable("episodes", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  episodeNumber: int("episodeNumber").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  synopsis: text("synopsis"),
+  scriptContent: json("scriptContent"),  // Full structured JSON script
+  status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "locked"]).default("draft").notNull(),
+  wordCount: int("wordCount").default(0),
+  panelCount: int("panelCount").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Episode = typeof episodes.$inferSelect;
+export type InsertEpisode = typeof episodes.$inferInsert;
+
+// ─── Panels ──────────────────────────────────────────────────────────────
+
+export const panels = mysqlTable("panels", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sceneNumber: int("sceneNumber").notNull(),
+  panelNumber: int("panelNumber").notNull(),
+  visualDescription: text("visualDescription"),
+  cameraAngle: mysqlEnum("cameraAngle", ["wide", "medium", "close-up", "extreme-close-up", "birds-eye"]).default("medium"),
+  dialogue: json("dialogue"),  // [{character, text, emotion}]
+  sfx: varchar("sfx", { length: 255 }),
+  transition: mysqlEnum("transition", ["cut", "fade", "dissolve"]),
+  imageUrl: text("imageUrl"),
+  status: mysqlEnum("status", ["draft", "generating", "generated", "approved"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Panel = typeof panels.$inferSelect;
+export type InsertPanel = typeof panels.$inferInsert;
+
+// ─── Characters ──────────────────────────────────────────────────────────
+
+export const characters = mysqlTable("characters", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: mysqlEnum("role", ["protagonist", "antagonist", "supporting", "background"]).default("supporting").notNull(),
+  personalityTraits: json("personalityTraits"),  // string[]
+  visualTraits: json("visualTraits"),  // {hairColor, eyeColor, bodyType, clothing, distinguishingFeatures}
+  referenceImages: json("referenceImages"),  // string[] of CDN URLs
+  bio: text("bio"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Character = typeof characters.$inferSelect;
+export type InsertCharacter = typeof characters.$inferInsert;

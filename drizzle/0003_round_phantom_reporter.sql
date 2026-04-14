@@ -1,0 +1,1 @@
+ALTER TABLE `processing_jobs` MODIFY COLUMN `animeStyle` enum('shonen','seinen','shoujo','chibi','cyberpunk','watercolor','noir','realistic','mecha','default') NOT NULL DEFAULT 'default';

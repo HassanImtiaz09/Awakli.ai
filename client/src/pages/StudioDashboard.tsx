@@ -67,14 +67,15 @@ export default function StudioDashboard() {
             <h1 className="text-h2 text-[#F0F0F5]">Studio Dashboard</h1>
             <p className="text-sm text-[#9494B8] mt-1">Manage your manga-to-anime projects</p>
           </div>
-          <AwakliButton
-            variant="primary"
-            size="md"
-            icon={<Plus size={16} />}
-            onClick={() => setShowCreateModal(true)}
-          >
-            New Project
-          </AwakliButton>
+          <Link href="/studio/new">
+            <AwakliButton
+              variant="primary"
+              size="md"
+              icon={<Plus size={16} />}
+            >
+              New Project
+            </AwakliButton>
+          </Link>
         </div>
 
         {/* Stats */}
@@ -161,7 +162,7 @@ export default function StudioDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
                 >
-                  <Link href={`/studio/projects/${project.id}`}>
+                  <Link href={`/studio/project/${project.id}`}>
                     <AwakliCard variant="default" glow="pink" className="p-5 cursor-pointer group">
                       <div className="flex items-start justify-between mb-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#E94560] to-[#9B59B6] flex items-center justify-center text-white font-bold text-sm">
@@ -192,9 +193,11 @@ export default function StudioDashboard() {
               title="No projects yet"
               description="Create your first project to start converting manga panels into anime frames."
               action={
-                <AwakliButton variant="primary" size="md" icon={<Plus size={16} />} onClick={() => setShowCreateModal(true)}>
-                  Create Project
-                </AwakliButton>
+                <Link href="/studio/new">
+                  <AwakliButton variant="primary" size="md" icon={<Plus size={16} />}>
+                    Create Project
+                  </AwakliButton>
+                </Link>
               }
             />
           )}

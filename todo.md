@@ -76,4 +76,50 @@
 - [x] Vitest: projects CRUD authorization
 - [x] Vitest: jobs authorization and NOT_FOUND
 - [x] Vitest: uploads authorization and NOT_FOUND
-- [x] All 11 tests passing
+- [x] All 11 tests passing (Phase 1)
+- [x] All 31 tests passing (Phase 1 + Phase 2)
+
+## Phase 2: Script Architect & Character Creator
+
+### 2A. Project Creation Wizard (/dashboard/new)
+- [x] Full-screen wizard with 4-step indicator (dots + line, pink/cyan/muted)
+- [x] Step 1 - Name Your Story: title input, genre multi-select pills, tone dropdown, audience cards
+- [x] Step 2 - Describe Your World: textarea with char count, AI enhance button (LLM), before/after toggle
+- [x] Step 3 - Choose Your Style: 8 art style preset cards (3:4 aspect), selected glow + scale
+- [x] Step 4 - Review & Create: summary card, create button with loading, confetti on success, auto-redirect
+- [x] Framer Motion slide transitions between steps
+
+### 2B. Script Generation Engine
+- [x] tRPC procedure: episodes.generateScript (accepts episode numbers + style notes)
+- [x] LLM integration for structured JSON script output (episode_title, synopsis, scenes, panels)
+- [x] Store script in episodes.scriptContent, create panel records
+- [x] Return jobId for status polling
+
+### 2C. Script Editor UI (/studio/[projectId]/script)
+- [x] Left panel: episode list as vertical cards with status badges
+- [x] Generate New Episode button (dashed border card)
+- [x] Main editor: episode title (editable), status badge, action buttons
+- [x] Scene accordion sections (Radix Accordion) with panel cards
+- [x] Panel card: image placeholder, editable visual description, dialogue rows, camera angle selector
+- [x] Inline AI rewrite button with shimmer loading and diff highlight
+- [x] Bottom toolbar: word/panel count, Regenerate Episode, Approve Script with confirmation modal
+
+### 2D. Character Creator (/studio/[projectId]/characters)
+- [x] Character card grid with role badges and visual trait pills
+- [x] Add Character card (dashed border, + icon)
+- [x] Add Character modal: two-column layout (form + live preview)
+- [x] Name, role selector, personality tags, visual traits (hair/eyes color pickers, body type, clothing)
+- [x] Generate Reference Sheet button using AI image generation
+- [x] Loading skeleton for reference sheet generation
+- [x] Result grid with approve/reject/regenerate per image
+- [x] Upload approved images to S3 storage
+
+### 2E. Database Schema Extensions
+- [x] episodes table (id, projectId, episodeNumber, title, synopsis, scriptContent, status, timestamps)
+- [x] panels table (id, episodeId, sceneNumber, panelNumber, visualDescription, cameraAngle, dialogue, sfx, transition, imageUrl, status)
+- [x] characters table (id, projectId, name, role, personalityTraits, visualTraits, referenceImages, timestamps)
+- [x] Migration SQL generated and applied
+
+### 2F. Tests
+- [x] Vitest: episodes procedures (generate, approve, update)
+- [x] Vitest: characters procedures (create, update, delete, generate reference)

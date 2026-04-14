@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, Upload,
-  Film, Settings, Layers, Users, Zap
+  Film, Settings, Layers, Users, Zap, FileText, PlusCircle,
+  ArrowLeft, FolderOpen, Palette,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -13,15 +14,20 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const MAIN_NAV: NavItem[] = [
   { href: "/studio",          label: "Dashboard",  icon: <LayoutDashboard size={18} /> },
+  { href: "/studio/new",      label: "New Project", icon: <PlusCircle size={18} /> },
   { href: "/studio/upload",   label: "Upload",     icon: <Upload size={18} /> },
-  { href: "/studio/projects", label: "Projects",   icon: <Layers size={18} /> },
-  { href: "/studio/pipeline", label: "Pipeline",   icon: <Zap size={18} /> },
-  { href: "/studio/frames",   label: "Frames",     icon: <Film size={18} /> },
-  { href: "/studio/characters", label: "Characters", icon: <Users size={18} /> },
-  { href: "/studio/settings", label: "Settings",   icon: <Settings size={18} /> },
 ];
+
+function getProjectNav(projectId: string): NavItem[] {
+  return [
+    { href: `/studio/project/${projectId}`,            label: "Overview",   icon: <FolderOpen size={18} /> },
+    { href: `/studio/project/${projectId}/script`,     label: "Script",     icon: <FileText size={18} /> },
+    { href: `/studio/project/${projectId}/characters`, label: "Characters", icon: <Users size={18} /> },
+    { href: `/studio/project/${projectId}/upload`,     label: "Upload",     icon: <Upload size={18} /> },
+  ];
+}
 
 interface StudioSidebarProps {
   className?: string;
@@ -30,6 +36,15 @@ interface StudioSidebarProps {
 export function StudioSidebar({ className }: StudioSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [location] = useLocation();
+
+  // Detect if we're inside a project context
+  const projectMatch = location.match(/\/studio\/project\/(\d+)/);
+  const projectId = projectMatch?.[1] ?? null;
+
+  const navItems = useMemo(() => {
+    if (projectId) return getProjectNav(projectId);
+    return MAIN_NAV;
+  }, [projectId]);
 
   // Auto-collapse on smaller screens
   useEffect(() => {
@@ -79,15 +94,35 @@ export function StudioSidebar({ className }: StudioSidebarProps) {
         </AnimatePresence>
       </div>
 
+      {/* Back to studio when inside a project */}
+      {projectId && (
+        <div className="px-2 pt-3 pb-1">
+          <Link href="/studio">
+            <motion.span
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium",
+                "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]/60 cursor-pointer transition-colors"
+              )}
+              whileHover={{ x: -2 }}
+            >
+              <ArrowLeft size={14} />
+              {!collapsed && <span>All Projects</span>}
+            </motion.span>
+          </Link>
+        </div>
+      )}
+
       {/* Nav items */}
-      <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {NAV_ITEMS.map((item) => {
-          const isActive = location === item.href || (item.href !== "/studio" && location.startsWith(item.href));
+      <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
+        {navItems.map((item) => {
+          const isActive = location === item.href || (item.href !== "/studio" && location.startsWith(item.href) && location === item.href);
+          // More precise matching for project routes
+          const isExactActive = location === item.href;
           return (
             <SidebarItem
               key={item.href}
               item={item}
-              active={isActive}
+              active={isExactActive}
               collapsed={collapsed}
             />
           );
