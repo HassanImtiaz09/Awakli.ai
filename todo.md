@@ -757,3 +757,159 @@
 - [x] Vitest: premium episode procedures
 - [x] Vitest: updated billing checkout with new tiers
 - [x] All 160 tests passing across 11 test files
+
+## Phase 13: Chapter Length, Anime Sneak Peek & Download System
+
+### Part A: Chapter Length & Story Structure
+
+#### Database Changes
+- [x] Add chapter_title TEXT, panel_count INT, estimated_read_time FLOAT to episodes table
+- [x] Add chapter_end_type ENUM('cliffhanger','resolution','serialized') to episodes table
+- [x] Add next_chapter_hook TEXT to episodes table
+- [x] Add chapter_length_preset ENUM('short','standard','long') DEFAULT 'standard' to projects table
+- [x] Add pacing_style ENUM('action_heavy','dialogue_heavy','balanced') DEFAULT 'balanced' to projects table
+- [x] Add chapter_ending_style ENUM('cliffhanger','resolution','serialized') DEFAULT 'cliffhanger' to projects table
+- [x] Migration SQL generated and applied
+
+#### Backend: Claude System Prompt Update
+- [x] Update script generation system prompt with chapter structure rules (3-act structure)
+- [x] Add panel variety requirements (establishing shots, medium shots, close-ups, splash panels)
+- [x] Add dialogue distribution rules based on pacing_style
+- [x] Add chapter ending rules based on ending_style
+- [x] Add multi-chapter story arc guidance (inciting incident, midpoint twist, climax)
+- [x] Add scene-to-panel ratio rules (3-8 panels per scene, 2-5 scenes per chapter)
+
+#### Backend: Updated Script Output Schema
+- [x] Update script JSON schema with chapter-level metadata (mood_arc, chapter_end_type, next_chapter_hook, estimated_read_time)
+- [x] Include chapter_length_preset and pacing_style in generation input
+
+#### Backend: Chapter Editor Procedures (Studio)
+- [x] chapters.movePanel: move a panel between chapters
+- [x] chapters.split: split a chapter at a panel boundary
+- [x] chapters.merge: merge two adjacent chapters
+- [x] chapters.reorderScenes: drag-and-drop scene reordering within a chapter
+- [x] Auto-update panel numbering and scene flow after changes
+
+#### Frontend: Create Page Updates
+- [x] Add chapter count selector (1-12, default 3) to /create quick create page
+- [x] Chapter count passed to script generation
+
+#### Frontend: Studio Advanced Controls
+- [x] Chapter count selector (1-24) in Studio project creation
+- [x] Chapter length preset dropdown: Short / Standard / Long with descriptions
+- [x] Pacing style selector: Action-heavy / Dialogue-heavy / Balanced
+- [x] Chapter ending style selector: Cliffhanger / Resolution / Serialized
+
+#### Frontend: Chapter Editor (Studio)
+- [x] Timeline view showing chapters as horizontal blocks, panels as colored segments
+- [x] Color coding: action scenes (red), dialogue scenes (blue), establishing (green)
+- [x] Drag handles between chapters for split/merge
+- [x] Drag-and-drop panel reordering between chapters
+- [x] Auto-update panel numbering on changes
+
+### Part B: Anime Sneak Peek (5-10s Auto-Clip)
+
+#### Database Changes
+- [x] Add sneak_peek_url TEXT to projects table
+- [x] Add sneak_peek_status ENUM('none','generating','ready','failed') DEFAULT 'none' to projects table
+- [x] Add sneak_peek_scene_id INT FK to projects table
+- [x] Add sneak_peek_generated_at TIMESTAMPTZ to projects table
+
+#### Backend: Best-Scene Selection Algorithm
+- [x] Claude Haiku scene scoring: action/drama +3, character close-up +2, dialogue +2, climax/cliffhanger +3, multi-character +1, dynamic camera +1
+- [x] Select highest-scoring scene, pick 2-3 best consecutive panels
+- [x] sneakPeek.selectScene procedure
+
+#### Backend: Abbreviated Pipeline
+- [x] Upscale 2-3 selected panels (Real-ESRGAN)
+- [x] Generate 5s video per panel via Kling (shortest duration, parallel)
+- [x] Generate voice for 1-2 most dramatic dialogue lines (ElevenLabs default voice)
+- [x] Add pre-made music sting (3-5s, from 10-option library, rotate)
+- [x] FFmpeg assembly: concatenate + voice + music + fade-in/fade-out + watermark
+- [x] Store as sneak_peek_url on project, update status to 'ready'
+- [x] sneakPeek.generate procedure (async, auto-triggered after manga completion)
+
+#### Backend: Sneak Peek Status & Cost Management
+- [x] sneakPeek.getStatus procedure (poll progress)
+- [x] Lower priority queue than paid pipeline jobs
+- [x] Rate limit: max 100 sneak peeks per hour platform-wide
+- [x] Cache: never regenerate unless panels edited
+
+#### Frontend: Sneak Peek Card on Reader Page
+- [x] Gradient card with film-strip decoration and shimmer border
+- [x] Left: small 16:9 video player (muted autoplay, play button overlay)
+- [x] Right: 'Your story as anime' heading, subtext, Watch/Make Full buttons
+- [x] Loading state: 'Preparing your anime preview...' with animated progress
+
+#### Frontend: Sneak Peek Post-Play Modal
+- [x] Full-screen dark overlay modal with video player
+- [x] After video ends: overlay with 'This was just 10 seconds. Imagine 10 minutes.'
+- [x] Upgrade CTA: 'Upgrade to Creator - $19/mo' (primary, glow)
+- [x] 'Maybe Later' ghost button
+- [x] Small text: 'Or earn anime access through community votes - free'
+
+#### Frontend: Sneak Peek on Project Page & Discover
+- [x] Small 'Anime Preview' trailer above chapter list on public project page
+- [x] Film-strip icon badge on Discover cards for projects with sneak peeks
+
+### Part C: Download & Sharing System
+
+#### Database Changes
+- [x] Create exports table: id, user_id, project_id, episode_id, format, status, file_url, file_size_bytes, watermarked, resolution, expires_at, created_at
+
+#### Backend: Manga Download Procedures
+- [x] downloads.mangaPdf: generate PDF (72/150/300 DPI by tier, watermark for free)
+- [x] downloads.panelsZip: generate PNG ZIP (1024px free / 2048px creator+)
+- [x] downloads.epub: generate ePub format (Studio only)
+- [x] downloads.cbz: generate CBZ format (Studio only)
+- [x] Free tier: watermark + QR code on last page
+- [x] Creator tier: no watermark, optional credits page + character sheets
+- [x] Studio tier: 300 DPI, TIFF, layered files
+
+#### Backend: Anime Download Procedures
+- [x] downloads.mp4: generate MP4 (1080p creator / 4K studio)
+- [x] downloads.prores: generate ProRes 422 (Studio only)
+- [x] downloads.stems: generate audio stems (Studio only)
+- [x] downloads.subtitles: generate SRT files
+- [x] downloads.thumbnails: auto-generated 1920x1080 thumbnails (Studio)
+- [x] downloads.batchAll: batch download all episodes as ZIP (Studio)
+
+#### Backend: Export Status & Management
+- [x] downloads.getStatus: poll export progress
+- [x] downloads.getDownloadUrl: presigned URL with 24h expiry
+- [x] downloads.listByProject: list all exports for a project
+- [x] File size estimation before generation
+
+#### Backend: Sharing System
+- [x] sharing.getShareableLink: permanent public URL /read/{project-slug}
+- [x] sharing.generateOgTags: cover image, title, synopsis, chapter count for OG/Twitter
+- [x] sharing.getEmbedCode: iframe snippet for Creator/Studio tiers
+- [x] sharing.generatePanelImage: social-media-ready panel image with title + URL
+
+#### Frontend: Download Modal
+- [x] Modal with two tabs: 'Manga' | 'Anime'
+- [x] Manga tab: format selector (PDF/PNG/ePub/CBZ), chapter-by-chapter or all, quality indicator, file size estimates
+- [x] Anime tab: format selector (MP4/ProRes/stems/SRT), episode-by-episode or batch
+- [x] Tier-locked formats: grayed out with tier badge + upgrade prompt
+- [x] Watermark note for free tier
+- [x] Bottom: tier comparison showing current vs next tier benefits
+
+#### Frontend: Share Buttons & Panel Sharing
+- [x] Share dropdown: Copy Link, Twitter/X, Discord, Reddit, WhatsApp
+- [x] Copy Link with toast notification
+- [x] Pre-filled social media share text
+- [x] Embed button with iframe code snippet (Creator/Studio)
+- [x] Panel sharing: long-press/right-click panel -> 'Share This Panel'
+- [x] Generated panel image with project title and awakli.ai URL
+
+#### Frontend: Reader Download Button
+- [x] Floating toolbar in manga reader: Download + Share buttons
+- [x] Download icon opens download modal for current chapter
+
+### Testing
+- [x] Vitest: chapter structure procedures (movePanel, split, merge, reorderScenes)
+- [x] Vitest: sneak peek procedures (selectScene, generate, getStatus)
+- [x] Vitest: download procedures (getFormats, generate, getStatus, listByProject, estimate)
+- [x] Vitest: sharing procedures (getShareData, getEmbedCode, generatePanelImage)
+- [x] Vitest: export status and download URL procedures
+- [x] All 203 tests passing across 12 test files with zero TypeScript errors

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock } from "lucide-react";
+import { Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -35,6 +35,10 @@ export default function Create() {
   const [chapters, setChapters] = useState(3);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [chapterLength, setChapterLength] = useState<"short" | "standard" | "long">("standard");
+  const [pacingStyle, setPacingStyle] = useState<"action_heavy" | "dialogue_heavy" | "balanced">("balanced");
+  const [endingStyle, setEndingStyle] = useState<"cliffhanger" | "resolution" | "serialized">("cliffhanger");
 
   const quickCreate = trpc.quickCreate.start.useMutation({
     onSuccess: (data) => {
@@ -189,7 +193,107 @@ export default function Create() {
                 className="w-14 bg-white/5 border border-white/10 text-white text-sm rounded-lg px-2 py-1.5 text-center focus:outline-none focus:border-[#E94560]/40"
               />
             </div>
+
+            {/* Advanced toggle */}
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 text-sm hover:text-white/60 hover:bg-white/10 transition-all"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Story Settings
+              <ChevronDown className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
           </motion.div>
+
+          {/* Advanced story settings */}
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-4">
+                  {/* Chapter Length */}
+                  <div>
+                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Chapter Length</label>
+                    <div className="flex gap-2">
+                      {([
+                        { key: "short" as const, label: "Short", desc: "8-12 pages, quick reads" },
+                        { key: "standard" as const, label: "Standard", desc: "12-20 pages, weekly manga" },
+                        { key: "long" as const, label: "Long", desc: "20-32 pages, monthly manga" },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setChapterLength(opt.key)}
+                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
+                            chapterLength === opt.key
+                              ? "bg-[#E94560]/10 border-[#E94560]/40 text-white"
+                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pacing Style */}
+                  <div>
+                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Pacing Style</label>
+                    <div className="flex gap-2">
+                      {([
+                        { key: "action_heavy" as const, label: "Action-Heavy", desc: "Fast cuts, more panels" },
+                        { key: "balanced" as const, label: "Balanced", desc: "Mix of action & dialogue" },
+                        { key: "dialogue_heavy" as const, label: "Dialogue-Heavy", desc: "Character-driven" },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setPacingStyle(opt.key)}
+                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
+                            pacingStyle === opt.key
+                              ? "bg-[#6C63FF]/10 border-[#6C63FF]/40 text-white"
+                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ending Style */}
+                  <div>
+                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Chapter Endings</label>
+                    <div className="flex gap-2">
+                      {([
+                        { key: "cliffhanger" as const, label: "Cliffhanger", desc: "End on suspense" },
+                        { key: "resolution" as const, label: "Resolution", desc: "Wrap up each chapter" },
+                        { key: "serialized" as const, label: "Serialized", desc: "Continuous flow" },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setEndingStyle(opt.key)}
+                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
+                            endingStyle === opt.key
+                              ? "bg-[#00D4AA]/10 border-[#00D4AA]/40 text-white"
+                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{opt.label}</div>
+                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Generate button */}
           <motion.div

@@ -55,6 +55,13 @@ export const projects = mysqlTable("projects", {
   trailerVideoUrl: text("trailerVideoUrl"),
   previewVideoUrl: text("previewVideoUrl"),
   previewGeneratedAt: timestamp("previewGeneratedAt"),
+  sneakPeekUrl: text("sneak_peek_url"),
+  sneakPeekStatus: mysqlEnum("sneak_peek_status", ["none", "generating", "ready", "failed"]).default("none"),
+  sneakPeekSceneId: int("sneak_peek_scene_id"),
+  sneakPeekGeneratedAt: timestamp("sneak_peek_generated_at"),
+  chapterLengthPreset: mysqlEnum("chapter_length_preset", ["short", "standard", "long"]).default("standard"),
+  pacingStyle: mysqlEnum("pacing_style", ["action_heavy", "dialogue_heavy", "balanced"]).default("balanced"),
+  chapterEndingStyle: mysqlEnum("chapter_ending_style", ["cliffhanger", "resolution", "serialized"]).default("cliffhanger"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -128,6 +135,10 @@ export const episodes = mysqlTable("episodes", {
   estimatedCostCents: int("estimatedCostCents"),
   isPremium: mysqlEnum("isPremium", ["free", "premium", "pay_per_view"]).default("free"),
   ppvPriceCents: int("ppvPriceCents"),
+  chapterEndType: mysqlEnum("chapter_end_type", ["cliffhanger", "resolution", "serialized"]),
+  nextChapterHook: text("next_chapter_hook"),
+  estimatedReadTime: int("estimated_read_time"),  // in seconds
+  moodArc: json("mood_arc"),  // string[] e.g. ["tense", "calm", "building", "climax", "cliffhanger"]
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -468,3 +479,26 @@ export const tierLimits = mysqlTable("tier_limits", {
 
 export type TierLimit = typeof tierLimits.$inferSelect;
 export type InsertTierLimit = typeof tierLimits.$inferInsert;
+
+// ─── Exports (download tracking) ────────────────────────────────────
+
+export const exports = mysqlTable("exports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: int("projectId").references(() => projects.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").references(() => episodes.id, { onDelete: "cascade" }),
+  format: mysqlEnum("format", ["pdf", "png_zip", "epub", "cbz", "mp4_1080", "mp4_4k", "prores", "stems", "srt", "tiff_zip", "thumbnail"]).notNull(),
+  status: mysqlEnum("status", ["generating", "ready", "expired", "failed"]).default("generating").notNull(),
+  fileUrl: text("fileUrl"),
+  fileKey: text("fileKey"),
+  fileSizeBytes: bigint("fileSizeBytes", { mode: "number" }),
+  watermarked: int("watermarked").default(0),
+  resolution: varchar("resolution", { length: 20 }),
+  dpi: int("dpi"),
+  chapterNumber: int("chapterNumber"),  // null = all chapters
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Export = typeof exports.$inferSelect;
+export type InsertExport = typeof exports.$inferInsert;

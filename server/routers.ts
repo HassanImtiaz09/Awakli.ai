@@ -48,6 +48,9 @@ import {
   qualityRouter, upscaleRouter, sceneRouter, sfxRouter,
   narratorRouter, videoPromptRouter, moderationRouter, costRouter,
 } from "./routers-pipeline";
+import {
+  chapterEditorRouter, sneakPeekRouter, downloadsRouter, sharingRouter,
+} from "./routers-phase13";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1854,6 +1857,12 @@ export const appRouter = router({
   animePreview: animePreviewRouter,
   export: exportRouter,
   premium: premiumRouter,
+
+  // Phase 13: Chapter Structure, Sneak Peek, Downloads, Sharing
+  chapterEditor: chapterEditorRouter,
+  sneakPeek: sneakPeekRouter,
+  downloads: downloadsRouter,
+  sharing: sharingRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -11,6 +11,10 @@ import {
   ArrowLeft, Calendar, Sparkles, Trophy, Flame
 } from "lucide-react";
 import { VoteProgressBar, EnhancedVoteButton } from "@/components/awakli/VoteProgressBar";
+import SneakPeekCard from "@/components/awakli/SneakPeekCard";
+import DownloadModal from "@/components/awakli/DownloadModal";
+import ShareSheet from "@/components/awakli/ShareSheet";
+import { Download } from "lucide-react";
 
 function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -39,6 +43,9 @@ export default function WatchProject() {
   const removeFromWatchlist = trpc.watchlist.remove.useMutation({
     onSuccess: () => { watchlistStatus.refetch(); toast.success("Removed from watchlist"); },
   });
+
+  const [showDownload, setShowDownload] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   const p = project.data;
 
@@ -84,13 +91,8 @@ export default function WatchProject() {
     }
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard!");
-    } catch {
-      toast.error("Failed to copy link");
-    }
+  const handleShare = () => {
+    setShowShareSheet(true);
   };
 
   return (
@@ -277,8 +279,19 @@ export default function WatchProject() {
                 </ScrollReveal>
               )}
 
+              {/* Sneak Peek */}
+              {p.id && (
+                <ScrollReveal delay={0.2}>
+                  <SneakPeekCard
+                    projectId={p.id}
+                    projectTitle={p.title}
+                    coverUrl={p.coverImageUrl}
+                  />
+                </ScrollReveal>
+              )}
+
               {/* Quick actions */}
-              <ScrollReveal delay={0.2}>
+              <ScrollReveal delay={0.25}>
                 <div className="rounded-xl border border-white/5 bg-surface-1/50 p-6">
                   <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                   <div className="space-y-2">
@@ -304,6 +317,15 @@ export default function WatchProject() {
                       <Share2 className="w-4 h-4" />
                       Share Project
                     </button>
+                    {isAuthenticated && (
+                      <button
+                        onClick={() => setShowDownload(true)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 transition-colors text-sm font-medium"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </button>
+                    )}
                   </div>
                 </div>
               </ScrollReveal>
@@ -311,6 +333,26 @@ export default function WatchProject() {
           </div>
         </div>
       </div>
+      {/* Download Modal */}
+      {p.id && (
+        <DownloadModal
+          isOpen={showDownload}
+          onClose={() => setShowDownload(false)}
+          projectId={p.id}
+          projectTitle={p.title}
+          hasAnime={episodes.some((e: any) => e.videoUrl)}
+        />
+      )}
+
+      {/* Share Sheet */}
+      {p.id && (
+        <ShareSheet
+          isOpen={showShareSheet}
+          onClose={() => setShowShareSheet(false)}
+          projectId={p.id}
+          projectTitle={p.title}
+        />
+      )}
     </div>
   );
 }
