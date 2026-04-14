@@ -1,0 +1,5 @@
+hero-anime-1: https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-1-XN9AD8awyDsfJqHWbpYC62.webp
+hero-anime-2: https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-2-QdURdQe7Jt7HAmkqTwkZPR.webp
+hero-anime-3: https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-3-hNUTRdmkipoQoDb6xCjikH.webp
+showcase-manga: https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/showcase-manga-panel-2MQngyo53ERNqBY8jmTBxR.webp
+showcase-anime: https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/showcase-anime-result-bEJ68nzw6DFXDMX3bEHsFD.webp

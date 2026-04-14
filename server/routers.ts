@@ -35,6 +35,7 @@ import {
   getPipelineAssetsByRun, getPipelineAssetsByEpisode,
   updateCharacterVoice, getCharactersWithVoice,
 } from "./db";
+import { billingRouter, usageRouter, marketplaceRouter, adminRouter, reportRouter } from "./routers-phase6";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1808,6 +1809,13 @@ export const appRouter = router({
   // Phase 5: Production Pipeline
   pipeline: pipelineRouter,
   voice: voiceRouter,
+
+  // Phase 6: Commerce & Admin
+  billing: billingRouter,
+  usage: usageRouter,
+  marketplace: marketplaceRouter,
+  admin: adminRouter,
+  report: reportRouter,
 });
 
 export type AppRouter = typeof appRouter;

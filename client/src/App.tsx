@@ -25,6 +25,11 @@ import UserProfile from "./pages/UserProfile";
 import PipelineDashboard from "./pages/PipelineDashboard";
 import QAReview from "./pages/QAReview";
 import VoiceCloning from "./pages/VoiceCloning";
+import Pricing from "./pages/Pricing";
+import UsageDashboard from "./pages/UsageDashboard";
+import CreatorEarnings from "./pages/CreatorEarnings";
+import AdminDashboard from "./pages/AdminDashboard";
+import Onboarding from "./pages/Onboarding";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -39,6 +44,8 @@ function Router() {
         <Route path="/discover" component={Discover} />
         <Route path="/explore" component={Explore} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/onboarding" component={Onboarding} />
 
         {/* Watch / community */}
         <Route path="/watch/:slug" component={WatchProject} />
@@ -46,6 +53,13 @@ function Router() {
 
         {/* User profiles */}
         <Route path="/profile/:userId" component={UserProfile} />
+
+        {/* Account / billing */}
+        <Route path="/usage" component={UsageDashboard} />
+        <Route path="/earnings" component={CreatorEarnings} />
+
+        {/* Admin */}
+        <Route path="/admin" component={AdminDashboard} />
 
         {/* Studio */}
         <Route path="/studio" component={StudioDashboard} />

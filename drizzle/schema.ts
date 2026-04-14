@@ -285,3 +285,74 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─── Subscriptions ─────────────────────────────────────────────────────
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tier: mysqlEnum("tier", ["free", "pro", "studio"]).default("free").notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  status: mysqlEnum("status", ["active", "past_due", "canceled", "trialing", "incomplete"]).default("active").notNull(),
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: int("cancelAtPeriodEnd").default(0),
+  billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).default("monthly"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ─── Usage Records ─────────────────────────────────────────────────────
+
+export const usageRecords = mysqlTable("usage_records", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actionType: mysqlEnum("actionType", ["script", "panel", "video", "voice", "lora_train"]).notNull(),
+  creditsUsed: int("creditsUsed").notNull(),
+  projectId: int("projectId"),
+  episodeId: int("episodeId"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UsageRecord = typeof usageRecords.$inferSelect;
+export type InsertUsageRecord = typeof usageRecords.$inferInsert;
+
+// ─── Tips ──────────────────────────────────────────────────────────────
+
+export const tips = mysqlTable("tips", {
+  id: int("id").autoincrement().primaryKey(),
+  fromUserId: int("fromUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  toUserId: int("toUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  amountCents: int("amountCents").notNull(),
+  creatorShareCents: int("creatorShareCents").notNull(),
+  platformShareCents: int("platformShareCents").notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  status: mysqlEnum("status", ["pending", "completed", "failed", "refunded"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Tip = typeof tips.$inferSelect;
+export type InsertTip = typeof tips.$inferInsert;
+
+// ─── Moderation Queue ──────────────────────────────────────────────────
+
+export const moderationQueue = mysqlTable("moderation_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  contentType: mysqlEnum("contentType", ["project", "episode", "comment", "panel"]).notNull(),
+  contentId: int("contentId").notNull(),
+  reportedBy: int("reportedBy").references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason"),
+  status: mysqlEnum("status", ["pending", "approved", "removed", "dismissed"]).default("pending").notNull(),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ModerationItem = typeof moderationQueue.$inferSelect;
+export type InsertModerationItem = typeof moderationQueue.$inferInsert;

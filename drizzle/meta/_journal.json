@@ -50,6 +50,13 @@
       "when": 1776130100110,
       "tag": "0006_worthless_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1776131648522,
+      "tag": "0007_cheerful_argent",
+      "breakpoints": true
     }
   ]
 }

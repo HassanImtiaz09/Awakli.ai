@@ -325,3 +325,62 @@
 - [x] Vitest: pipeline approve/reject/publish procedures
 - [x] Vitest: voice cloning and test voice procedures
 - [x] Vitest: pipeline list runs procedure (covered in pipeline.listByProject auth test)
+
+## Phase 6: Commerce, Landing Page & Launch Polish
+
+### 6A. Stripe Subscription System
+- [x] Set up Stripe integration via webdev_add_feature
+- [x] Three tiers: Free ($0), Pro ($29/mo), Studio ($99/mo)
+- [x] Stripe Checkout Sessions for subscription creation
+- [x] Webhook handler for subscription events
+- [x] Tier-based feature gating middleware
+- [x] Billing portal for subscription management
+
+### 6B. Usage Tracking & Credits
+- [x] usage_records table tracking all AI generation actions
+- [x] Credits per action: script=10, panel=2, video=20, voice=1, lora_train=50
+- [x] Monthly allocation: Free=100, Pro=2000, Studio=10000
+- [x] Overage handling: $0.05/credit for Pro/Studio
+- [x] Usage dashboard UI: animated circular progress ring
+- [x] Segmented arcs by action type, history table below
+
+### 6C. Creator Marketplace Foundation
+- [x] Premium episodes (require Pro viewer subscription)
+- [x] Tip jar via Stripe (80/20 split)
+- [x] Creator earnings dashboard with payout chart
+
+### 6D. Admin Dashboard (/admin)
+- [x] Dark-themed analytics dashboard
+- [x] Metric cards: total users, creators, projects, revenue (with trend arrows)
+- [x] Subscription distribution chart
+- [x] Content moderation queue
+- [x] User management table with pagination
+
+### 6E. Landing Page (MOST IMPORTANT - must be stunning)
+- [x] Section 1 - Hero (100vh): Ken Burns zoom on anime image, floating particles, AWAKLI wordmark with glow, sequential word fade-in tagline, dual CTAs, social proof count-up, scroll indicator
+- [x] Section 2 - Showcase Reel: dual-row auto-scrolling marquee (opposite directions), film strip tilt, overlaid text fade-in
+- [x] Section 3 - How It Works: 3 large cards (Write/Generate/Watch) with animated icons, connected by SVG dotted line with flowing dots, stagger reveal
+- [x] Section 4 - Before/After: interactive comparison slider (text vs anime), 3 cycling examples, draggable divider
+- [x] Section 5 - Feature Grid: 2x3 cards with icon glow, scroll-reveal stagger
+- [x] Section 6 - Pricing Table: 3 cards, Pro highlighted with gradient border, Monthly/Annual toggle, 20% discount badge
+- [x] Section 7 - Testimonials: horizontal auto-scrolling carousel, pause on hover, placeholder testimonials
+- [x] Section 8 - Final CTA: gradient background, large text, glow pulse button
+- [x] Footer: 4-column grid, wordmark, social icons
+- [x] Global animations: Intersection Observer + Framer Motion scroll reveal, stagger, parallax, prefers-reduced-motion respect
+
+### 6F. Onboarding Flow
+- [x] Step 1: Welcome with feature overview
+- [x] Step 2: Choose Your Style (6 anime style options)
+- [x] Step 3: Your First Project (Upload/AI Script/Explore)
+
+### 6G. SEO & Performance
+- [x] robots.txt and sitemap.xml
+- [x] OG tags and Twitter Card meta
+- [x] Security headers (Stripe webhook raw body, CORS)
+
+### 6H. Testing
+- [x] Vitest: billing/subscription procedures (getTiers, getSubscription)
+- [x] Vitest: usage tracking procedures (getSummary, getHistory)
+- [x] Vitest: admin procedures (getMetrics, getUsers, getModerationQueue, getSubscriptions)
+- [x] Vitest: creator marketplace procedures (getEarnings, getTips)
+- [x] All 115 tests passing across 7 test files
