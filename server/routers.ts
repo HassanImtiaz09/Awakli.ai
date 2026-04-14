@@ -52,6 +52,10 @@ import {
 import {
   chapterEditorRouter, sneakPeekRouter, downloadsRouter, sharingRouter,
 } from "./routers-phase13";
+import {
+  preProductionRouter, characterGalleryRouter, voiceCastingRouter,
+  animationStyleRouter, environmentsRouter, productionConfigRouter, reviewRouter,
+} from "./routers-preproduction";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1867,6 +1871,15 @@ export const appRouter = router({
 
   // Phase 14: Smart Creation Flow
   smartCreate: smartCreateRouter,
+
+  // Phase 15: Pre-Production Suite
+  preProduction: preProductionRouter,
+  characterGallery: characterGalleryRouter,
+  voiceCasting: voiceCastingRouter,
+  animationStyle: animationStyleRouter,
+  environments: environmentsRouter,
+  productionConfig: productionConfigRouter,
+  review: reviewRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -31,6 +31,7 @@ import CreatorEarnings from "./pages/CreatorEarnings";
 import AdminDashboard from "./pages/AdminDashboard";
 import Onboarding from "./pages/Onboarding";
 import Create from "./pages/Create";
+import PreProduction from "./pages/PreProduction";
 import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
 import { StudioLayout } from "./components/awakli/Layouts";
@@ -139,6 +140,7 @@ function Router() {
             </StudioLayout>
           )}
         </Route>
+        <Route path="/studio/:projectId/pre-production" component={PreProduction} />
 
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

@@ -998,3 +998,141 @@
 - [x] Vitest: chapter preferences validation
 - [x] Vitest: user preferences schema validation
 - [x] All 226 tests passing across 13 test files with zero TypeScript errors
+
+## Phase 15: Pro/Studio Pre-Production Suite
+
+### Database Changes
+- [x] Create pre_production_configs table (id, project_id UNIQUE, status ENUM in_progress/locked/archived, current_stage INT 1-6, character_approvals JSON, voice_assignments JSON, animation_style TEXT, style_mixing JSON, color_grading TEXT, atmospheric_effects JSON, aspect_ratio TEXT, opening_style TEXT, ending_style TEXT, pacing TEXT, subtitle_config JSON, audio_config JSON, environment_approvals JSON, estimated_cost_credits INT, locked_at, created_at, updated_at)
+- [x] Create character_versions table (id, character_id FK, version_number INT, images JSON with 5 view URLs, description_used TEXT, quality_scores JSON, is_approved BOOLEAN, created_at)
+- [x] Create voice_auditions table (id, character_id FK, voice_id TEXT, voice_name TEXT, dialogue_text TEXT, audio_url TEXT, is_selected BOOLEAN, created_at)
+- [x] Migration SQL generated and applied
+
+### Backend: Pre-Production Core
+- [x] preProduction.start: initialize config for project (Creator/Studio only)
+- [x] preProduction.getStatus: return current stage + all config data
+- [x] preProduction.updateConfig: partial update production config fields
+- [x] preProduction.advanceStage: move to next stage (with validation)
+
+### Backend: Stage 1 - Character Gallery
+- [x] characters.generateSheet: generate 5-view character sheet via FLUX (portrait, full body, 3/4, action, expressions)
+- [x] characters.regenerateView: regenerate specific view with updated description
+- [x] characters.approve: approve character design (lock with green border)
+- [x] characters.getVersions: version history for a character
+- [x] characters.revertVersion: revert to previous version
+- [x] characters.updateStyle: per-character art style override
+- [x] characters.trainLoRA: queue LoRA training from approved sheets (Studio only)
+
+### Backend: Stage 2 - Voice Casting
+- [x] voices.browseLibrary: browse ElevenLabs voice library with filters (gender, age, tone, accent)
+- [x] voices.auditionWithScript: generate audition clip using character's first dialogue line (10 per character limit)
+- [x] voices.castVoice: confirm voice selection for character
+- [x] voices.uploadClone: upload audio for voice cloning (Creator: 2 clones, Studio: unlimited)
+- [x] voices.testClone: test clone with script line
+- [x] voices.autoAssign: auto-pick best matching voice based on character traits
+- [x] voices.setNarrator: set narrator voice toggle and selection
+- [x] voices.setDirectionNotes: save voice direction notes per character
+
+### Backend: Stage 3 - Animation Style
+- [x] animationStyle.getOptions: return 5 animation styles with descriptions and cost multipliers
+- [x] animationStyle.generatePreview: generate 3-5s preview clip for a style using best scene
+- [x] animationStyle.select: select animation style
+- [x] animationStyle.setMixing: per-scene style assignment (Studio only)
+
+### Backend: Stage 4 - Environments
+- [x] environments.extractLocations: Claude Haiku parses script for unique locations
+- [x] environments.generateConceptArt: generate 16:9 concept art per location
+- [x] environments.generateTimeVariant: generate day/night/dawn/dusk variant
+- [x] environments.approve: approve location design
+- [x] environments.setColorGrading: select color grading preset (warm/cool/vivid/muted/neon/pastel)
+- [x] environments.setAtmosphericEffects: assign weather effects per scene
+
+### Backend: Stage 5 - Production Config
+- [x] productionConfig.setAspectRatio: 16:9, 9:16, 4:3, 2.35:1 (Studio)
+- [x] productionConfig.setOpeningStyle: classic_anime_op, title_card, cold_open, custom (Studio)
+- [x] productionConfig.setEndingStyle: credits_roll, still_frame, next_preview, none
+- [x] productionConfig.setPacing: cinematic_slow, standard_tv, fast_dynamic
+- [x] productionConfig.setSubtitles: languages, style, font_size, burned_in
+- [x] productionConfig.setAudio: music_volume, sfx_volume, ducking_intensity
+
+### Backend: Stage 6 - Final Review
+- [x] review.getSummary: aggregate all config into review dashboard data
+- [x] review.estimateCost: detailed cost breakdown with style multiplier
+- [x] review.lock: lock config, save production_config JSON on project, redirect to pipeline
+
+### Frontend: Pre-Production Stepper Layout
+- [x] /studio/[projectId]/pre-production route with vertical stepper on left
+- [x] Active step: accent-pink icon + bold text
+- [x] Completed step: accent-cyan checkmark + regular text
+- [x] Upcoming step: text-muted + lock icon
+- [x] Click completed steps to go back and edit
+- [x] Auto-save progress on every change
+- [x] Mobile: stepper collapses to horizontal progress bar
+
+### Frontend: Stage 1 - Character Gallery
+- [x] Auto-generate character sheets on stage open
+- [x] Full-width character sections with name (editable), role badge, Regenerate All button
+- [x] 5-image grid per character (portrait, full body, 3/4, action, expressions)
+- [x] Per-image: Approve, Regenerate, Edit Description buttons
+- [x] Edit Description inline form with physical description + specific changes
+- [x] Compare Versions toggle with side-by-side slider
+- [x] Revert to Version X button
+- [x] Per-character art style override (Change Style button)
+- [x] Auto-LoRA training prompt after all views approved (Studio)
+- [x] Approve All button per character (green border + lock icon when approved)
+- [x] All characters must be approved to proceed
+
+### Frontend: Stage 2 - Voice Casting
+- [x] Voice casting card per character with portrait thumbnail + role badge
+- [x] Tab 1: AI Voice Library with filter bar (gender, age, tone, accent) + voice sample cards
+- [x] Audition with Script button (plays character dialogue in selected voice, 10 per character limit)
+- [x] Cast This Voice button to confirm
+- [x] Tab 2: Clone My Voice with drag-drop upload (Creator: 2, Studio: unlimited)
+- [x] Tab 3: Skip Voice with auto-assignment display
+- [x] Narrator voice section at bottom with toggle
+- [x] Voice direction notes textarea per character
+- [x] Voice Cast Summary table with Play Sample and Change buttons
+- [x] Approve Voice Cast button to lock and proceed
+
+### Frontend: Stage 3 - Animation Style
+- [x] 5 animation style cards (Limited, Sakuga, Cel-Shaded 3D, Rotoscoping, Motion Comic)
+- [x] Each card: name, description, mini video player (auto-loop), reference examples, cost indicator ($-$$$)
+- [x] Only recommended style auto-generates preview, others show Generate Preview button
+- [x] Selected card: accent-pink border + glow + Selected badge
+- [x] Style Mixing toggle (Studio only) with scene-by-scene style assignment
+
+### Frontend: Stage 4 - Environments
+- [x] Location cards with generated concept art (16:9)
+- [x] Time-of-day variant buttons: Day, Night, Dawn, Dusk
+- [x] Edit Description textarea + Approve/Regenerate buttons
+- [x] Color grading preset selector (6 options) with applied preview on actual manga panel
+- [x] Atmospheric effects assignment per scene (rain, snow, fog, dust, sakura, fireflies)
+
+### Frontend: Stage 5 - Production Config
+- [x] Aspect ratio cards with visual preview (16:9, 9:16, 4:3, 2.35:1)
+- [x] Opening style options with visual examples
+- [x] Ending style options
+- [x] Pacing cards with example clip descriptions
+- [x] Subtitle config: language dropdown, style selector, font size, burned-in toggle
+- [x] Audio preferences: music/SFX volume sliders, ducking intensity
+
+### Frontend: Stage 6 - Final Review
+- [x] Production summary dashboard with all decisions displayed
+- [x] Characters grid with portraits, voice, Play Voice button, Edit link
+- [x] Animation section with style preview + scene breakdown
+- [x] Visual style section with art style, color grading, effects
+- [x] Production section with compact key-value pairs
+- [x] Cost estimation card with itemized breakdown and credit usage
+- [x] Checkbox: 'I have reviewed all settings' (required)
+- [x] Start Anime Production button (accent-gold, glow)
+- [x] Confirmation modal with cost, time estimate, Start/Go Back
+
+### Testing
+- [x] Vitest: pre-production init and status procedures
+- [x] Vitest: character sheet generation and approval flow
+- [x] Vitest: character version history and revert
+- [x] Vitest: voice library browsing and audition procedures
+- [x] Vitest: animation style options and selection
+- [x] Vitest: environment extraction and concept art generation
+- [x] Vitest: production config update procedures
+- [x] Vitest: cost estimation and lock procedures
+- [x] All 277 tests passing across 14 test files with zero TypeScript errors

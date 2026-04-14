@@ -503,3 +503,64 @@ export const exports = mysqlTable("exports", {
 
 export type Export = typeof exports.$inferSelect;
 export type InsertExport = typeof exports.$inferInsert;
+
+// ─── Pre-Production Configs ────────────────────────────────────────────
+
+export const preProductionConfigs = mysqlTable("pre_production_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["in_progress", "locked", "archived"]).default("in_progress").notNull(),
+  currentStage: int("currentStage").default(1).notNull(),  // 1-6
+  characterApprovals: json("characterApprovals"),  // {characterId: {approved, versionId, lockedAt}}
+  voiceAssignments: json("voiceAssignments"),  // {characterId: {voiceId, cloneId, directionNotes, source}}
+  animationStyle: varchar("animationStyle", { length: 50 }),  // limited/sakuga/cel_shaded/rotoscope/motion_comic
+  styleMixing: json("styleMixing"),  // {sceneId: animationStyle}
+  colorGrading: varchar("colorGrading", { length: 50 }),  // warm/cool/vivid/muted/neon/pastel
+  atmosphericEffects: json("atmosphericEffects"),  // {sceneId: [effects]}
+  aspectRatio: varchar("aspectRatio", { length: 20 }).default("16:9"),
+  openingStyle: varchar("openingStyle", { length: 50 }).default("title_card"),
+  endingStyle: varchar("endingStyle", { length: 50 }).default("credits_roll"),
+  pacing: varchar("pacing", { length: 50 }).default("standard_tv"),
+  subtitleConfig: json("subtitleConfig"),  // {primaryLang, additionalLangs[], style, fontSize, burnedIn}
+  audioConfig: json("audioConfig"),  // {musicVolume, sfxVolume, duckingIntensity}
+  environmentApprovals: json("environmentApprovals"),  // {locationId: {approvedUrl, timeVariants}}
+  estimatedCostCredits: int("estimatedCostCredits"),
+  lockedAt: timestamp("lockedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PreProductionConfig = typeof preProductionConfigs.$inferSelect;
+export type InsertPreProductionConfig = typeof preProductionConfigs.$inferInsert;
+
+// ─── Character Versions ────────────────────────────────────────────────
+
+export const characterVersions = mysqlTable("character_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  versionNumber: int("versionNumber").notNull(),
+  images: json("images"),  // {portrait, fullBody, threeQuarter, action, expressions} URLs
+  descriptionUsed: text("descriptionUsed"),
+  qualityScores: json("qualityScores"),  // per-image quality scores
+  isApproved: int("isApproved").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CharacterVersion = typeof characterVersions.$inferSelect;
+export type InsertCharacterVersion = typeof characterVersions.$inferInsert;
+
+// ─── Voice Auditions ───────────────────────────────────────────────────
+
+export const voiceAuditions = mysqlTable("voice_auditions", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  voiceId: varchar("voiceId", { length: 255 }).notNull(),
+  voiceName: varchar("voiceName", { length: 255 }),
+  dialogueText: text("dialogueText"),
+  audioUrl: text("audioUrl"),
+  isSelected: int("isSelected").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VoiceAudition = typeof voiceAuditions.$inferSelect;
+export type InsertVoiceAudition = typeof voiceAuditions.$inferInsert;
