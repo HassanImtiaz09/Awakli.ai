@@ -33,6 +33,7 @@ import Onboarding from "./pages/Onboarding";
 import Create from "./pages/Create";
 import PreProduction from "./pages/PreProduction";
 import MusicStudio from "./pages/MusicStudio";
+import VocalRecordingStudio from "./pages/VocalRecordingStudio";
 import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
 import { StudioLayout } from "./components/awakli/Layouts";
@@ -143,6 +144,7 @@ function Router() {
         </Route>
         <Route path="/studio/:projectId/pre-production" component={PreProduction} />
         <Route path="/studio/:projectId/music" component={MusicStudio} />
+        <Route path="/studio/:projectId/vocal-recording" component={VocalRecordingStudio} />
 
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

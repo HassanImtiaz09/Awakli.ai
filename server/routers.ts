@@ -59,6 +59,9 @@ import {
 import {
   musicConceptRouter, musicGenerationRouter, musicOstRouter, musicTrackRouter,
 } from "./routers-music";
+import {
+  performanceGuideRouter, singingVoiceRouter, vocalRecordingRouter, voiceConversionRouter,
+} from "./routers-vocalrecording";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1889,6 +1892,10 @@ export const appRouter = router({
   musicGeneration: musicGenerationRouter,
   musicOst: musicOstRouter,
   musicTrack: musicTrackRouter,
+  performanceGuide: performanceGuideRouter,
+  singingVoice: singingVoiceRouter,
+  vocalRecording: vocalRecordingRouter,
+  voiceConversion: voiceConversionRouter,
 });
 
 export type AppRouter = typeof appRouter;

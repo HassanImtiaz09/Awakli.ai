@@ -605,3 +605,43 @@ export const musicVersions = mysqlTable("music_versions", {
 
 export type MusicVersion = typeof musicVersions.$inferSelect;
 export type InsertMusicVersion = typeof musicVersions.$inferInsert;
+
+// ─── Vocal Recordings (Phase 17) ─────────────────────────────────────
+
+export const vocalRecordings = mysqlTable("vocal_recordings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  trackType: mysqlEnum("trackType", ["opening", "ending"]).notNull(),
+  rawRecordingUrl: text("rawRecordingUrl"),
+  isolatedVocalUrl: text("isolatedVocalUrl"),
+  convertedVocalUrl: text("convertedVocalUrl"),
+  finalMixUrl: text("finalMixUrl"),
+  targetVoiceModel: varchar("targetVoiceModel", { length: 255 }),
+  conversionSettings: json("conversionSettings"),
+  recordingMode: mysqlEnum("recordingMode", ["full_take", "section_by_section"]).default("full_take").notNull(),
+  sectionRecordings: json("sectionRecordings"),
+  status: mysqlEnum("status", ["recording", "processing", "ready", "approved"]).default("recording").notNull(),
+  conversionCount: int("conversionCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VocalRecording = typeof vocalRecordings.$inferSelect;
+export type InsertVocalRecording = typeof vocalRecordings.$inferInsert;
+
+// ─── RVC Voice Models (Phase 17) ─────────────────────────────────────
+
+export const rvcVoiceModels = mysqlTable("rvc_voice_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  gender: varchar("gender", { length: 50 }).notNull(),
+  vocalRange: varchar("vocalRange", { length: 50 }).notNull(),
+  styleTags: text("styleTags"),  // comma-separated: "rock,pop,ballad"
+  modelUrl: text("modelUrl"),
+  indexUrl: text("indexUrl"),
+  sampleAudioUrl: text("sampleAudioUrl"),
+  isActive: int("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RvcVoiceModel = typeof rvcVoiceModels.$inferSelect;
+export type InsertRvcVoiceModel = typeof rvcVoiceModels.$inferInsert;

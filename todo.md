@@ -1216,3 +1216,93 @@
 - [x] Vitest: upload procedures with size validation
 - [x] Vitest: music config save/load
 - [x] All tests passing with zero TypeScript errors
+
+## Phase 17: Human-Reference Singing Voice Conversion
+
+### Database Changes
+- [x] Create vocal_recordings table: id, project_id FK, track_type ENUM('opening','ending'), raw_recording_url, isolated_vocal_url, converted_vocal_url, final_mix_url, target_voice_model, conversion_settings JSON, recording_mode ENUM('full_take','section_by_section'), section_recordings JSON, status ENUM('recording','processing','ready','approved'), created_at
+- [x] Create rvc_voice_models table: id, name, gender, vocal_range, style_tags TEXT, model_url, index_url, sample_audio_url, is_active BOOLEAN DEFAULT true, created_at
+- [x] Migration SQL generated and applied
+
+### Backend: Performance Guide
+- [x] vocalRecording.generatePerformanceGuide: Claude Haiku annotates lyrics with volume/emotion/technique markers per line and section
+- [x] Performance annotations: volume (whisper/soft/medium/loud/belt), emotion (hopeful/angry/sad/joyful/desperate/triumphant), technique (hold note/quick notes/vibrato/breath before), energy curve per section
+
+### Backend: Singing Voice Models
+- [x] vocalRecording.listSingingVoices: browse 10-12 pre-trained RVC voice models with gender/range/style filters
+- [x] vocalRecording.getVoicePreview: return sample audio URL for a voice model
+- [x] Seed 10-12 diverse voice models (5 male, 5 female, 2 androgynous) with metadata
+
+### Backend: Vocal Recording Procedures
+- [x] vocalRecording.uploadRecording: receive user WAV, store on S3, create vocal_recordings row
+- [x] vocalRecording.getRecordingStatus: poll processing status
+- [x] vocalRecording.getBackingTrack: return instrumental-only version of the generated theme
+
+### Backend: Voice Conversion Pipeline
+- [x] vocalRecording.convertPerformance: Demucs separation -> RVC V2 conversion -> FFmpeg mixing pipeline
+- [x] Demucs V4 vocal isolation (separate vocal from backing track bleed)
+- [x] RVC V2 conversion (source vocal + target voice model, pitch_shift auto-detect, index_rate 0.75, f0_method rmvpe)
+- [x] FFmpeg + SoX mastering (reverb, compression, de-ess, EQ, normalize to -14 LUFS)
+- [x] Upload final mix to S3
+
+### Backend: Section Re-recording & Mix Adjustment
+- [x] vocalRecording.reRecordSection: replace one section, stitch, re-convert only that section
+- [x] vocalRecording.adjustMix: vocal volume, reverb amount, backing track volume sliders (Studio only)
+- [x] vocalRecording.approveVocal: mark vocal recording as approved, set as OP/ED track
+- [x] 3 voice conversions per theme limit (try different AI voices)
+
+### Backend: Tier Enforcement
+- [x] Studio-only gate on all vocal recording/conversion procedures
+- [x] Creator tier: Options A (AI generates) + B (clone) only
+- [x] Free tier: no access to voice features
+
+### Frontend: Vocal Option C Card
+- [x] Third option card in Music Studio vocal selection: 'Record Your Performance'
+- [x] Studio Exclusive badge (accent-gold)
+- [x] Description: 'You sing with emotions, AI transforms your voice'
+- [x] Lock icon + upgrade prompt for non-Studio users
+
+### Frontend: Performance Guide Lyrics Sheet
+- [x] Karaoke-style lyrics display with section labels and colored energy bars
+- [x] Inline annotation badges: [soft], [belt], [hopeful], [hold note], etc.
+- [x] Emotion icons in right margin for quick scanning
+- [x] Energy curve visualization per section
+- [x] Download as PDF button
+
+### Frontend: Recording Studio UI
+- [x] Full-width dark recording interface with studio feel
+- [x] Scrolling lyrics display (karaoke style, current line highlighted in accent-pink)
+- [x] Real-time waveform visualization of user's voice (Web Audio API)
+- [x] Record/Play/Re-record/Re-record Section controls
+- [x] Full Take vs Section-by-Section recording mode toggle
+- [x] Metronome toggle, input device selector, monitor toggle
+- [x] Tips overlay before first recording (headphones, quiet room, etc.)
+- [x] Volume meter (VU meter style)
+
+### Frontend: AI Voice Selection Grid
+- [x] 10-12 singing voice cards with name, gender, vocal range, style tags
+- [x] Preview button per card (plays 10s sample)
+- [x] Selected card: accent-gold border + glow
+- [x] 'Convert My Performance' button after selection
+
+### Frontend: Conversion Processing & Comparison
+- [x] Processing state with pipeline step indicators (Isolating -> Converting -> Mixing)
+- [x] Three-way comparison player: Your Recording / AI-Only / Your Performance + AI Voice
+- [x] Highlighted 'Your emotion, AI voice' label on hybrid version
+- [x] Actions: Use This Version, Try Different Voice, Re-record, Adjust Mix
+- [x] Advanced mix sliders (vocal volume, reverb, backing track volume) - Studio only
+
+### Frontend: Section Re-recording
+- [x] Waveform with section markers (Intro, Verse 1, Chorus, etc.)
+- [x] Click section to highlight and re-record just that section
+- [x] Selective conversion on re-recorded section only
+
+### Testing
+- [x] Vitest: performance guide generation procedure
+- [x] Vitest: singing voice models list and preview
+- [x] Vitest: vocal recording upload and status procedures
+- [x] Vitest: voice conversion pipeline procedures
+- [x] Vitest: section re-recording and mix adjustment
+- [x] Vitest: tier enforcement (Studio-only gate)
+- [x] Vitest: RVC voice model constants validation
+- [x] All tests passing with zero TypeScript errors
