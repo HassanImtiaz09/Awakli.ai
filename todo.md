@@ -417,3 +417,66 @@
 - [x] MangaUpload: updated header and sign-in copy
 - [x] PipelineDashboard: updated subtitle
 - [x] Server LLM prompts: updated to remove manga-to-anime references
+
+## Public Text-to-Manga Creation Flow
+
+### Database Changes
+- [x] Add original_prompt TEXT column to projects table
+- [x] Add creation_mode ENUM('quick_create', 'studio', 'upload') DEFAULT 'quick_create' to projects
+- [x] Add anime_eligible BOOLEAN DEFAULT false to projects
+- [x] Migration SQL generated and applied
+
+### Backend: Quick-Create API
+- [x] quick-create tRPC procedure: accepts { prompt, genre, style, chapters }, auto-creates project, starts script generation, returns { projectId }
+- [x] Auto-generate project title from prompt using LLM
+- [x] SSE streaming endpoint GET /api/v1/projects/{id}/generation-stream
+- [x] Stream script text line-by-line as LLM generates it
+- [x] Stream panel generation status updates (pending → generating → generated)
+- [x] Auto-generate panels after script is complete
+
+### Frontend: /create Prompt Page
+- [x] Clean, focused, immersive single-screen design (no wizard)
+- [x] Large textarea with story prompt placeholder
+- [x] Inline options: Genre pill selector, Style dropdown, Chapters number input (1-12, default 3)
+- [x] 'Generate My Manga' CTA button (full-width, glow effect)
+- [x] Auth gate: if not logged in, show auth modal on Generate click
+- [x] Tier gate: if over free tier limit, show upgrade prompt
+
+### Frontend: /create/[id] Live Generation View
+- [x] Full-screen generation experience
+- [x] Top: auto-generated story title + overall progress indicator
+- [x] Left side (1/3): script generation feed with typewriter/terminal style, streaming text
+- [x] Right side (2/3): panel generation grid with skeleton → shimmer → fade-in reveal
+- [x] Panels appear in order (Scene 1 Panel 1, etc.)
+- [x] Click any panel to zoom in (lightbox)
+- [x] Bottom: overall progress bar + 'Chapter X of Y: Z% complete'
+- [x] Auto-transition to reader when generation complete
+
+### Frontend: /create/[id]/read Manga Reader
+- [x] Full manga reader (dark bg, panel-by-panel navigation)
+- [x] Keyboard navigation (arrow keys, spacebar)
+- [x] Panel thumbnail strip at bottom
+- [x] Dialogue overlays on panels
+- [x] Fullscreen mode toggle
+- [x] Publish modal with success state
+- [x] Publish makes manga visible on Discover page
+
+### Navigation Update
+- [x] Top nav 'Create' button styled as accent-pink pill with Wand2 icon
+- [x] Mobile: floating action button (bottom-right, accent-pink, circular, + icon) hidden on /create pages
+- [x] Mobile drawer: Create Manga link with Wand2 icon at top
+- [x] Dropdown: Create Manga link with PenTool icon
+
+### Discover Page Update
+- [x] Add 'Just Created' content row with real tRPC data from quickCreate.justCreated
+- [x] Empty state with CTA to create manga
+- [x] Loading skeleton state
+
+### Testing
+- [x] Vitest: quickCreate.justCreated (public, returns array, respects limit)
+- [x] Vitest: quickCreate.status (throws NOT_FOUND for non-existent)
+- [x] Vitest: quickCreate.getScript (throws NOT_FOUND for non-existent)
+- [x] Vitest: quickCreate.getPanels (returns empty array for non-existent)
+- [x] Vitest: quickCreate.start (requires auth, validates prompt length)
+- [x] Vitest: quickCreate.publish (requires auth, throws NOT_FOUND)
+- [x] All 124 tests passing across 8 test files

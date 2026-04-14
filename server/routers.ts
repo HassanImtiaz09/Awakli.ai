@@ -36,6 +36,7 @@ import {
   updateCharacterVoice, getCharactersWithVoice,
 } from "./db";
 import { billingRouter, usageRouter, marketplaceRouter, adminRouter, reportRouter } from "./routers-phase6";
+import { quickCreateRouter } from "./routers-create";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1816,6 +1817,9 @@ export const appRouter = router({
   marketplace: marketplaceRouter,
   admin: adminRouter,
   report: reportRouter,
+
+  // Quick Create (public creation flow)
+  quickCreate: quickCreateRouter,
 });
 
 export type AppRouter = typeof appRouter;

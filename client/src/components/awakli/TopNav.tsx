@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Search, X, LogOut, User, Settings, LayoutDashboard, Upload, Trophy, PenTool, Compass } from "lucide-react";
+import { Menu, Search, X, LogOut, User, LayoutDashboard, Trophy, PenTool, Plus, Wand2 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -11,7 +11,6 @@ import SearchOverlay from "./SearchOverlay";
 import { NotificationBell } from "./NotificationCenter";
 
 const NAV_LINKS = [
-  { href: "/studio/new", label: "Create" },
   { href: "/discover", label: "Discover" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/studio", label: "Studio" },
@@ -59,6 +58,9 @@ export function TopNav() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Hide FAB on /create pages
+  const isCreatePage = location.startsWith("/create");
+
   return (
     <>
       <motion.header
@@ -87,6 +89,23 @@ export function TopNav() {
 
           {/* Desktop nav links */}
           <nav className="hidden md:flex items-center gap-1">
+            {/* Accent Create pill */}
+            <Link href="/create">
+              <motion.span
+                className={cn(
+                  "relative px-4 py-2 rounded-full text-sm font-semibold cursor-pointer flex items-center gap-1.5 transition-all",
+                  location.startsWith("/create")
+                    ? "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white shadow-lg shadow-[#E94560]/25"
+                    : "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white shadow-md shadow-[#E94560]/15 hover:shadow-lg hover:shadow-[#E94560]/25"
+                )}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Wand2 size={14} />
+                Create
+              </motion.span>
+            </Link>
+
             {NAV_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} active={location.startsWith(link.href)}>
                 {link.label}
@@ -143,7 +162,7 @@ export function TopNav() {
                         <div className="p-1.5 space-y-0.5">
                           <DropdownItem href={`/profile/${user?.id}`} icon={<User size={15} />}>My Profile</DropdownItem>
                           <DropdownItem href="/studio" icon={<LayoutDashboard size={15} />}>Studio</DropdownItem>
-                          <DropdownItem href="/studio/new" icon={<PenTool size={15} />}>Create Manga</DropdownItem>
+                          <DropdownItem href="/create" icon={<PenTool size={15} />}>Create Manga</DropdownItem>
                           <DropdownItem href="/leaderboard" icon={<Trophy size={15} />}>Leaderboard</DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <button
@@ -213,6 +232,18 @@ export function TopNav() {
                 </button>
               </div>
               <nav className="flex-1 p-4 space-y-1">
+                {/* Create link in drawer */}
+                <Link href="/create">
+                  <span className={cn(
+                    "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors font-semibold",
+                    location.startsWith("/create")
+                      ? "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white"
+                      : "text-[#E94560] hover:bg-[#E94560]/10"
+                  )}>
+                    <Wand2 size={16} />
+                    Create Manga
+                  </span>
+                </Link>
                 {NAV_LINKS.map((link) => (
                   <Link key={link.href} href={link.href}>
                     <span className={cn(
@@ -250,6 +281,22 @@ export function TopNav() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Mobile floating Create button (FAB) */}
+      {!isCreatePage && (
+        <Link href="/create">
+          <motion.div
+            className="md:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#E94560] to-[#FF6B81] shadow-xl shadow-[#E94560]/30 flex items-center justify-center cursor-pointer"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", delay: 0.5 }}
+          >
+            <Plus size={24} className="text-white" />
+          </motion.div>
+        </Link>
+      )}
     </>
   );
 }

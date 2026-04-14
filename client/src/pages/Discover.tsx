@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
-import { Sparkles, TrendingUp, Clock, Star } from "lucide-react";
+import { Sparkles, TrendingUp, Clock, Star, Wand2, ArrowRight } from "lucide-react";
 import React, { useRef } from "react";
 import { useInView } from "framer-motion";
+import { Link } from "wouter";
 import { AwakliCard } from "@/components/awakli/AwakliCard";
 import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import { AwakliPosterSkeleton } from "@/components/awakli/AwakliSkeleton";
 import { PlatformLayout } from "@/components/awakli/Layouts";
+import { trpc } from "@/lib/trpc";
 
 // Mock featured content
 const FEATURED = [
@@ -34,6 +36,103 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
     >
       {children}
     </motion.div>
+  );
+}
+
+function JustCreatedRow() {
+  const { data: justCreated, isLoading } = trpc.quickCreate.justCreated.useQuery({ limit: 8 });
+
+  if (isLoading) {
+    return (
+      <section>
+        <ScrollReveal>
+          <div className="flex items-center gap-2 mb-6">
+            <Wand2 size={20} className="text-[#E94560]" />
+            <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
+          </div>
+        </ScrollReveal>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="aspect-[3/4] rounded-xl bg-white/[0.03] border border-white/5 animate-pulse" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (!justCreated || justCreated.length === 0) {
+    return (
+      <section>
+        <ScrollReveal>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Wand2 size={20} className="text-[#E94560]" />
+              <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
+            </div>
+            <Link href="/create">
+              <span className="text-sm text-[#E94560] hover:underline cursor-pointer flex items-center gap-1">
+                Create yours <ArrowRight size={14} />
+              </span>
+            </Link>
+          </div>
+        </ScrollReveal>
+        <div className="text-center py-12 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+          <Wand2 size={32} className="text-white/20 mx-auto mb-3" />
+          <p className="text-white/40 mb-4">No manga created yet. Be the first!</p>
+          <Link href="/create">
+            <span className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-medium cursor-pointer">
+              <Wand2 size={16} /> Create Manga
+            </span>
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <ScrollReveal>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Wand2 size={20} className="text-[#E94560]" />
+            <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
+            <AwakliiBadge variant="pink" size="sm">AI Generated</AwakliiBadge>
+          </div>
+          <Link href="/create">
+            <span className="text-sm text-[#E94560] hover:underline cursor-pointer flex items-center gap-1">
+              Create yours <ArrowRight size={14} />
+            </span>
+          </Link>
+        </div>
+      </ScrollReveal>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {justCreated.map((item, i) => (
+          <ScrollReveal key={item.id} delay={i * 0.06}>
+            <Link href={`/watch/${item.slug}`}>
+              <AwakliCard
+                variant="poster"
+                glow="pink"
+                imageUrl={item.coverImageUrl || `https://picsum.photos/seed/${item.id}/300/450`}
+                imageAlt={item.title}
+                className="cursor-pointer"
+                style={{ aspectRatio: "2/3" }}
+              >
+                <h3 className="text-sm font-semibold text-[#F0F0F5] truncate">{item.title}</h3>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <AwakliiBadge variant={(item.genre?.toLowerCase() || "fantasy") as any} size="sm">
+                    {item.genre || "Fantasy"}
+                  </AwakliiBadge>
+                  <span className="text-xs text-[#5C5C7A]">{item.animeStyle || "AI"}</span>
+                </div>
+                {item.userName && (
+                  <p className="text-[10px] text-[#5C5C7A] mt-1 truncate">by {item.userName}</p>
+                )}
+              </AwakliCard>
+            </Link>
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -95,6 +194,9 @@ export default function Discover() {
             ))}
           </div>
         </section>
+
+        {/* Just Created — real data from quick create */}
+        <JustCreatedRow />
 
         {/* Recently Added */}
         <section>
