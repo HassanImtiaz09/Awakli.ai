@@ -384,3 +384,36 @@
 - [x] Vitest: admin procedures (getMetrics, getUsers, getModerationQueue, getSubscriptions)
 - [x] Vitest: creator marketplace procedures (getEarnings, getTips)
 - [x] All 115 tests passing across 7 test files
+
+## Corrective Update: Platform Identity & Messaging
+
+### Copy & Branding
+- [x] Landing page hero: headline → 'Turn Your Ideas Into Anime', subheadline → 'Write a story. AI creates the manga. The community decides what becomes anime.'
+- [x] Landing page hero: CTA → 'Start Writing — Free' + 'Explore Manga'
+- [x] How It Works: change from 3 steps to 4 (Write → Generate → Share & Vote → Animate)
+- [x] Feature grid: update descriptions to emphasize text-to-manga as primary path
+- [x] Testimonials: update to reflect manga creation, not manga-to-anime conversion
+- [x] Final CTA section: update copy to reflect broader platform identity
+- [x] Footer tagline: 'Where stories become manga, and manga becomes anime.'
+
+### Navigation
+- [x] Add 'Create' as top-level nav item
+- [x] Restructure nav: Create | Discover | Leaderboard | Studio
+
+### Meta & SEO
+- [x] Page title: 'Awakli — Turn Your Ideas Into Anime'
+- [x] OG tags: update og:description to 'Create manga from your story ideas. The best get voted into anime.'
+- [x] Twitter card: update description
+- [x] Meta description: update to reflect broader identity
+
+### Onboarding
+- [x] Step 1 choice: 'Create a Manga' (primary) | 'Watch & Discover' (secondary)
+- [x] Remove references to 'anime production' as primary activity
+
+### Secondary Pages
+- [x] Discover page: verified clean (no old identity references)
+- [x] Pricing page: updated descriptions to emphasize text-to-manga + community voting
+- [x] StudioDashboard: updated empty states and subtitles
+- [x] MangaUpload: updated header and sign-in copy
+- [x] PipelineDashboard: updated subtitle
+- [x] Server LLM prompts: updated to remove manga-to-anime references

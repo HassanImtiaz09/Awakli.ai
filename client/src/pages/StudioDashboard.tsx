@@ -46,7 +46,7 @@ export default function StudioDashboard() {
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
           <Sparkles size={48} className="text-[#E94560] mb-4" />
           <h2 className="text-h2 text-[#F0F0F5] mb-2">Sign in to access Studio</h2>
-          <p className="text-[#9494B8] mb-6">Create and manage your manga-to-anime projects.</p>
+          <p className="text-[#9494B8] mb-6">Create manga from your stories and bring them to life.</p>
           <a href={getLoginUrl()}>
             <AwakliButton variant="primary" size="lg">Sign In</AwakliButton>
           </a>
@@ -65,7 +65,7 @@ export default function StudioDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-h2 text-[#F0F0F5]">Studio Dashboard</h1>
-            <p className="text-sm text-[#9494B8] mt-1">Manage your manga-to-anime projects</p>
+            <p className="text-sm text-[#9494B8] mt-1">Create, manage, and animate your stories</p>
           </div>
           <Link href="/studio/new">
             <AwakliButton
@@ -191,7 +191,7 @@ export default function StudioDashboard() {
             <EmptyState
               icon={<FolderOpen size={40} />}
               title="No projects yet"
-              description="Create your first project to start converting manga panels into anime frames."
+              description="Write your first story and let AI create a manga from it."
               action={
                 <Link href="/studio/new">
                   <AwakliButton variant="primary" size="md" icon={<Plus size={16} />}>

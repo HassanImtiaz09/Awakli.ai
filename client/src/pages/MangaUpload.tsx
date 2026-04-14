@@ -150,7 +150,7 @@ export default function MangaUpload() {
       <StudioLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
           <Upload size={48} className="text-[#E94560] mb-4" />
-          <h2 className="text-h2 text-[#F0F0F5] mb-2">Sign in to upload manga</h2>
+          <h2 className="text-h2 text-[#F0F0F5] mb-2">Sign in to upload artwork</h2>
           <a href={getLoginUrl()}>
             <AwakliButton variant="primary" size="lg">Sign In</AwakliButton>
           </a>
@@ -167,8 +167,8 @@ export default function MangaUpload() {
       <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-h2 text-[#F0F0F5]">Upload Manga Panels</h1>
-          <p className="text-sm text-[#9494B8] mt-1">Upload manga images to convert them into anime-style frames</p>
+          <h1 className="text-h2 text-[#F0F0F5]">Upload Your Artwork</h1>
+          <p className="text-sm text-[#9494B8] mt-1">Upload existing manga or artwork for the anime pipeline (Pro/Studio)</p>
         </div>
 
         {/* Project selector */}

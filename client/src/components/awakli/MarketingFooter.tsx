@@ -5,15 +5,15 @@ import { Link } from "wouter";
 
 const FOOTER_LINKS = {
   Product: [
+    { label: "Create Manga", href: "/studio/new" },
     { label: "Discover", href: "/discover" },
-    { label: "Browse", href: "/browse" },
+    { label: "Leaderboard", href: "/leaderboard" },
+    { label: "Pricing", href: "/pricing" },
     { label: "Studio", href: "/studio" },
-    { label: "Pricing", href: "/#pricing" },
-    { label: "Changelog", href: "/changelog" },
   ],
   Creators: [
     { label: "Creator Studio", href: "/studio" },
-    { label: "Upload Manga", href: "/studio/upload" },
+    { label: "Start Writing", href: "/studio/new" },
     { label: "AI Pipeline", href: "/studio/pipeline" },
     { label: "Documentation", href: "/docs" },
     { label: "Creator Program", href: "/creators" },
@@ -68,10 +68,13 @@ export function MarketingFooter() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
             <span className="font-display text-lg font-bold text-gradient-pink">AWAKLI</span>
+            <span className="text-[#5C5C7A] text-sm hidden sm:inline">·</span>
+            <span className="text-[#9494B8] text-sm italic">Where stories become manga, and manga becomes anime.</span>
+            <span className="text-[#5C5C7A] text-sm hidden sm:inline">·</span>
             <span className="text-[#5C5C7A] text-sm">
-              © {new Date().getFullYear()} Awakli. All rights reserved.
+              © {new Date().getFullYear()} Awakli
             </span>
           </div>
 

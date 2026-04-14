@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Search, X, LogOut, User, Settings, LayoutDashboard, Upload, Trophy } from "lucide-react";
+import { Menu, Search, X, LogOut, User, Settings, LayoutDashboard, Upload, Trophy, PenTool, Compass } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -11,7 +11,8 @@ import SearchOverlay from "./SearchOverlay";
 import { NotificationBell } from "./NotificationCenter";
 
 const NAV_LINKS = [
-  { href: "/explore", label: "Explore" },
+  { href: "/studio/new", label: "Create" },
+  { href: "/discover", label: "Discover" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/studio", label: "Studio" },
 ];
@@ -142,7 +143,7 @@ export function TopNav() {
                         <div className="p-1.5 space-y-0.5">
                           <DropdownItem href={`/profile/${user?.id}`} icon={<User size={15} />}>My Profile</DropdownItem>
                           <DropdownItem href="/studio" icon={<LayoutDashboard size={15} />}>Studio</DropdownItem>
-                          <DropdownItem href="/studio/upload" icon={<Upload size={15} />}>Upload Manga</DropdownItem>
+                          <DropdownItem href="/studio/new" icon={<PenTool size={15} />}>Create Manga</DropdownItem>
                           <DropdownItem href="/leaderboard" icon={<Trophy size={15} />}>Leaderboard</DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <button

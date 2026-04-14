@@ -648,7 +648,7 @@ async function generateScriptForEpisode(
   styleNotes?: string | null,
 ) {
   try {
-    const systemPrompt = `You are a manga/anime screenwriter. You create detailed episode scripts for manga-to-anime adaptations.
+    const systemPrompt = `You are a manga/anime screenwriter. You create detailed episode scripts for manga and anime stories.
 Output ONLY valid JSON matching the required schema. No markdown, no explanation.
 
 Project: "${project.title}"
@@ -1172,7 +1172,7 @@ const aiRouter = router({
         messages: [
           {
             role: "system",
-            content: "You are a creative writing assistant specializing in anime/manga storytelling. Expand short ideas into rich, vivid premises suitable for a manga-to-anime adaptation. Keep the enhanced version between 200-500 words. Maintain the original tone and intent while adding depth, world-building details, and narrative hooks.",
+            content: "You are a creative writing assistant specializing in anime/manga storytelling. Expand short ideas into rich, vivid premises suitable for a manga series. Keep the enhanced version between 200-500 words. Maintain the original tone and intent while adding depth, world-building details, and narrative hooks.",
           },
           {
             role: "user",

@@ -111,16 +111,16 @@ function HeroSection() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-pink/30 bg-accent-pink/10 backdrop-blur-sm mb-8"
           >
             <Sparkles className="w-4 h-4 text-accent-pink" />
-            <span className="text-sm text-accent-pink font-medium">AI-Powered Manga to Anime Pipeline</span>
+            <span className="text-sm text-accent-pink font-medium">From Your Idea to Anime — Powered by AI</span>
           </motion.div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-bold leading-[1.02] mb-8">
-            <span className="block text-white">Your Manga.</span>
-            <span className="block text-gradient-pink">Animated.</span>
+            <span className="block text-white">Turn Your Ideas</span>
+            <span className="block text-gradient-pink">Into Anime.</span>
           </h1>
 
           <p className="text-lg md:text-xl text-gray-300 max-w-xl mb-10 leading-relaxed">
-            Upload your manga panels and watch AI transform them into stunning anime-style frames, complete with scripts, voice acting, and cinematic effects.
+            Write a story. AI creates the manga. The community decides what becomes anime. No artistic skill needed — just your imagination.
           </p>
 
           <div className="flex flex-wrap gap-4 mb-12">
@@ -130,7 +130,7 @@ function HeroSection() {
                 whileTap={{ scale: 0.97 }}
                 className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-accent-pink/25 transition-all"
               >
-                Start Creating Free
+                Start Writing — Free
                 <ArrowRight className="inline-block ml-2 w-5 h-5" />
               </motion.button>
             </Link>
@@ -140,8 +140,8 @@ function HeroSection() {
                 whileTap={{ scale: 0.97 }}
                 className="px-8 py-4 rounded-xl border border-white/15 text-white font-semibold text-lg backdrop-blur-sm transition-all"
               >
-                <Play className="inline-block mr-2 w-5 h-5" />
-                Watch Demos
+                <BookOpen className="inline-block mr-2 w-5 h-5" />
+                Explore Manga
               </motion.button>
             </Link>
           </div>
@@ -158,7 +158,7 @@ function HeroSection() {
                 <div key={i} className="w-8 h-8 rounded-full border-2 border-[#08080F] bg-gradient-to-br from-accent-pink/60 to-accent-cyan/60" />
               ))}
             </div>
-            <span>Join <strong className="text-white">2,000+</strong> creators already using Awakli</span>
+            <span>Join <strong className="text-white">2,000+</strong> storytellers already creating on Awakli</span>
           </motion.div>
         </motion.div>
 
@@ -223,10 +223,10 @@ function BeforeAfterSlider() {
             <span className="text-sm text-accent-cyan font-medium">See the Magic</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-            Manga to Anime in <span className="text-gradient-pink">Seconds</span>
+            From Text to <span className="text-gradient-pink">Manga</span> in Seconds
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            Drag the slider to see how our AI transforms black-and-white manga panels into vibrant, cinematic anime frames.
+            Describe your story and watch AI generate beautiful manga panels — then see the community vote them into anime.
           </p>
         </ScrollReveal>
 
@@ -278,10 +278,10 @@ function BeforeAfterSlider() {
 
 // ─── 3. How It Works ───────────────────────────────────────────────────────
 const STEPS = [
-  { icon: Upload, title: "Upload Manga", desc: "Drop your manga pages or create from scratch with our AI script generator.", color: "from-[#E94560] to-[#FF6B81]" },
-  { icon: Wand2, title: "AI Processes", desc: "Our pipeline detects panels, generates scripts, and creates anime-style frames.", color: "from-[#8B5CF6] to-[#A78BFA]" },
-  { icon: Palette, title: "Customize Style", desc: "Choose from 10+ art styles — Shonen, Cyberpunk, Watercolor, Noir, and more.", color: "from-[#00D4FF] to-[#33DFFF]" },
-  { icon: Download, title: "Export & Share", desc: "Download your anime episodes, share on the platform, and grow your audience.", color: "from-[#2ECC71] to-[#27AE60]" },
+  { icon: BookOpen, title: "Write", desc: "Describe your story idea in plain text — a premise, characters, and a world. No art skills needed.", color: "from-[#E94560] to-[#FF6B81]" },
+  { icon: Wand2, title: "Generate", desc: "AI turns your words into a full manga with panels, dialogue, and art in your chosen style.", color: "from-[#8B5CF6] to-[#A78BFA]" },
+  { icon: Users, title: "Share & Vote", desc: "Publish your manga, get community votes, and climb the leaderboard with your story.", color: "from-[#00D4FF] to-[#33DFFF]" },
+  { icon: Film, title: "Animate", desc: "Top-voted manga get converted into full anime episodes with voice acting and cinematic effects.", color: "from-[#2ECC71] to-[#27AE60]" },
 ];
 
 function HowItWorks() {
@@ -293,7 +293,7 @@ function HowItWorks() {
           <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
             How It <span className="text-gradient-cyan">Works</span>
           </h2>
-          <p className="text-gray-400 max-w-xl mx-auto text-lg">Four simple steps from manga to anime.</p>
+          <p className="text-gray-400 max-w-xl mx-auto text-lg">From idea to anime in four steps — no artistic skill required.</p>
         </ScrollReveal>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -333,15 +333,15 @@ function HowItWorks() {
 
 // ─── 4. Feature Grid ───────────────────────────────────────────────────────
 const FEATURES = [
-  { icon: Sparkles, title: "AI Script Generation", desc: "Generate complete episode scripts with scenes, panels, and dialogue using advanced LLM technology.", accent: "#E94560" },
+  { icon: Sparkles, title: "Text-to-Manga", desc: "Describe your story in plain text and AI generates a complete manga with panels, dialogue, and art.", accent: "#E94560" },
   { icon: Palette, title: "10+ Art Styles", desc: "Shonen, Seinen, Cyberpunk, Watercolor, Noir — each with unique visual characteristics and mood.", accent: "#8B5CF6" },
-  { icon: Film, title: "Panel Generation", desc: "AI generates anime-style frames from your script descriptions with FLUX-powered image generation.", accent: "#00D4FF" },
+  { icon: TrendingUp, title: "Community Voting", desc: "Publish your manga, earn votes from readers, and watch top stories get promoted to anime.", accent: "#00D4FF" },
   { icon: Users, title: "Character Design", desc: "Create character reference sheets with AI, train LoRA models for consistent character appearance.", accent: "#FFB800" },
   { icon: Mic, title: "Voice Cloning", desc: "Clone voices for your characters and generate dialogue audio for immersive anime episodes.", accent: "#2ECC71" },
-  { icon: Clapperboard, title: "Video Pipeline", desc: "Automated video rendering with transitions, camera movements, and cinematic effects.", accent: "#FF6B81" },
+  { icon: Clapperboard, title: "Anime Pipeline", desc: "Top-voted manga get animated with voice acting, music, and cinematic effects — fully automated.", accent: "#FF6B81" },
   { icon: Layers, title: "Storyboard Export", desc: "Preview episodes in manga reader format and export as PDF for sharing or printing.", accent: "#A78BFA" },
-  { icon: TrendingUp, title: "Community & Voting", desc: "Share creations, get votes from the community, and climb the leaderboard.", accent: "#33DFFF" },
-  { icon: Shield, title: "Content Moderation", desc: "AI-assisted content review keeps the platform safe and welcoming for all creators.", accent: "#F39C12" },
+  { icon: Film, title: "Creator Studio", desc: "Pro creators get direct access to the full pipeline — skip voting and animate your manga directly.", accent: "#33DFFF" },
+  { icon: Shield, title: "Content Moderation", desc: "AI-assisted content review keeps the platform safe and welcoming for all storytellers.", accent: "#F39C12" },
 ];
 
 function FeatureGrid() {
@@ -356,10 +356,10 @@ function FeatureGrid() {
       <div className="container relative z-10">
         <ScrollReveal className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
-            Everything You Need to <span className="text-gradient-pink">Create Anime</span>
+            Everything You Need to <span className="text-gradient-pink">Tell Your Story</span>
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            From script to screen — a complete AI-powered pipeline for manga-to-anime conversion.
+            A complete AI-powered creative platform — from story idea to manga to anime.
           </p>
         </ScrollReveal>
 
@@ -396,9 +396,9 @@ const PRICING_TIERS = [
     name: "Free",
     price: "$0",
     period: "forever",
-    desc: "Perfect for trying out Awakli",
-    features: ["1 project", "3 episodes per project", "100 credits/month", "5 panels/day", "Community features", "Watermarked output"],
-    cta: "Get Started",
+    desc: "Start creating manga for free",
+    features: ["1 project", "3 episodes per project", "100 credits/month", "5 panels/day", "Community voting", "Watermarked output"],
+    cta: "Start Writing",
     ctaLink: "/signup",
     popular: false,
     accent: "border-white/10",
@@ -407,8 +407,8 @@ const PRICING_TIERS = [
     name: "Pro",
     price: "$29",
     period: "/month",
-    desc: "For serious creators",
-    features: ["5 projects", "12 episodes per project", "2,000 credits/month", "100 panels/day", "3 video episodes/month", "2 LoRA models", "2 voice clones", "No watermark"],
+    desc: "For dedicated storytellers",
+    features: ["5 projects", "12 episodes per project", "2,000 credits/month", "100 panels/day", "Direct anime pipeline", "2 LoRA models", "2 voice clones", "No watermark"],
     cta: "Start Pro Trial",
     ctaLink: "/pricing",
     popular: true,
@@ -418,8 +418,8 @@ const PRICING_TIERS = [
     name: "Studio",
     price: "$99",
     period: "/month",
-    desc: "For professional studios",
-    features: ["Unlimited projects", "Unlimited episodes", "10,000 credits/month", "Unlimited panels/day", "20 video episodes/month", "Unlimited LoRA models", "Unlimited voice clones", "API access", "Priority support"],
+    desc: "Full creative control & direct anime",
+    features: ["Unlimited projects", "Unlimited episodes", "10,000 credits/month", "Unlimited panels/day", "20 anime episodes/month", "Unlimited LoRA models", "Unlimited voice clones", "API access", "Priority support"],
     cta: "Contact Sales",
     ctaLink: "/pricing",
     popular: false,
@@ -495,20 +495,20 @@ function PricingPreview() {
 const TESTIMONIALS = [
   {
     name: "Yuki Tanaka",
-    role: "Manga Artist",
-    text: "Awakli transformed my workflow completely. What used to take weeks of coloring now happens in minutes. The AI understands manga composition beautifully.",
+    role: "Storyteller",
+    text: "I can't draw at all, but Awakli turned my story idea into a full manga in minutes. When it got enough votes, it became an anime. I still can't believe it.",
     avatar: "YT",
   },
   {
     name: "Alex Chen",
-    role: "Animation Studio Lead",
-    text: "We use Awakli for rapid prototyping. The quality of the AI-generated anime frames is remarkable — it's like having an entire colorist team on demand.",
+    role: "Community Creator",
+    text: "The voting system is genius. I published my manga, the community loved it, and now it's being animated. Awakli makes you feel like a real creator.",
     avatar: "AC",
   },
   {
     name: "Sarah Kim",
-    role: "Independent Creator",
-    text: "The voice cloning feature is incredible. My characters now have unique voices, and the community features help me grow my audience organically.",
+    role: "Pro Creator",
+    text: "As a Pro subscriber, I skip the voting queue and go straight to anime. The voice cloning and LoRA models give me total creative control.",
     avatar: "SK",
   },
 ];
@@ -559,10 +559,10 @@ function Testimonials() {
 // ─── 7. Stats Bar ─────────────────────────────────────────────────────────
 function StatsBar() {
   const stats = [
-    { label: "Projects Created", value: "10K+", icon: Film },
-    { label: "Anime Frames", value: "500K+", icon: Palette },
-    { label: "Active Creators", value: "2K+", icon: Users },
-    { label: "Episodes Generated", value: "25K+", icon: Zap },
+    { label: "Stories Written", value: "10K+", icon: BookOpen },
+    { label: "Manga Created", value: "500K+", icon: Palette },
+    { label: "Active Storytellers", value: "2K+", icon: Users },
+    { label: "Anime Episodes", value: "25K+", icon: Film },
   ];
 
   return (
@@ -730,10 +730,10 @@ function FinalCTA() {
                 transition={{ duration: 0.5 }}
               >
                 <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-6">
-                  Ready to Create Your <span className="text-gradient-pink">Anime</span>?
+                  Your Story Deserves to Be <span className="text-gradient-pink">Animated</span>
                 </h2>
                 <p className="text-gray-400 max-w-xl mx-auto mb-10 text-lg leading-relaxed">
-                  Join thousands of creators transforming their manga into stunning anime with AI. Start free — no credit card required.
+                  Write your story, let AI create the manga, and watch the community bring it to life as anime. Start free — no credit card required.
                 </p>
                 <div className="flex flex-wrap justify-center gap-4">
                   <Link href={isAuthenticated ? "/studio" : "/signup"}>
@@ -742,7 +742,7 @@ function FinalCTA() {
                       whileTap={{ scale: 0.97 }}
                       className="px-10 py-4 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-accent-pink/25"
                     >
-                      Get Started Free
+                      Start Writing — Free
                       <ArrowRight className="inline-block ml-2 w-5 h-5" />
                     </motion.button>
                   </Link>

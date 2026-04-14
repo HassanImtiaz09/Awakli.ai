@@ -743,7 +743,7 @@ export default function PipelineDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white font-display">Production Pipeline</h1>
-          <p className="text-gray-400 mt-1">Mission control for anime production</p>
+          <p className="text-gray-400 mt-1">Mission control for your creative pipeline</p>
         </div>
         <div className="flex items-center gap-4">
           {costQuery.data && (

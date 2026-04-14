@@ -15,7 +15,7 @@ const TIERS = [
     name: "Free",
     monthlyPrice: 0,
     annualPrice: 0,
-    desc: "Perfect for exploring Awakli",
+    desc: "Start creating manga for free",
     icon: Sparkles,
     accent: "from-gray-500 to-gray-600",
     features: {
@@ -36,7 +36,7 @@ const TIERS = [
     name: "Pro",
     monthlyPrice: 29,
     annualPrice: 23.20,
-    desc: "For serious creators",
+    desc: "For dedicated storytellers",
     icon: Zap,
     accent: "from-[#E94560] to-[#FF6B81]",
     popular: true,
@@ -58,7 +58,7 @@ const TIERS = [
     name: "Studio",
     monthlyPrice: 99,
     annualPrice: 79.20,
-    desc: "For professional studios",
+    desc: "Full creative control & direct anime pipeline",
     icon: Crown,
     accent: "from-[#00D4FF] to-[#0099CC]",
     features: {
@@ -132,7 +132,7 @@ export default function Pricing() {
               Choose Your <span className="text-gradient-pink">Plan</span>
             </h1>
             <p className="text-gray-400 max-w-xl mx-auto text-lg mb-8">
-              Start free and scale as you grow. All plans include community features.
+              Start creating manga for free. Upgrade for more credits, direct anime access, and Pro tools.
             </p>
 
             {/* Billing toggle */}

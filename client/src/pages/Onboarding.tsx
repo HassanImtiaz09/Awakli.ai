@@ -10,13 +10,13 @@ import {
 const STEPS = [
   {
     title: "Welcome to Awakli",
-    subtitle: "Let's set up your creative workspace in 3 quick steps.",
+    subtitle: "Create manga from your ideas. No art skills needed.",
     icon: Sparkles,
     color: "#E94560",
   },
   {
     title: "Choose Your Style",
-    subtitle: "What kind of anime do you want to create?",
+    subtitle: "Pick a visual style for your manga.",
     icon: Palette,
     color: "#8B5CF6",
     options: [
@@ -34,9 +34,9 @@ const STEPS = [
     icon: Film,
     color: "#00D4FF",
     options: [
-      { label: "Upload Manga", desc: "Transform existing manga panels", emoji: "📄" },
-      { label: "AI Script", desc: "Generate a script from scratch", emoji: "🤖" },
-      { label: "Explore First", desc: "Browse community creations", emoji: "🔍" },
+      { label: "Create a Manga", desc: "Write a story and let AI generate your manga", emoji: "✍️" },
+      { label: "Watch & Discover", desc: "Browse community manga and vote for anime", emoji: "🔍" },
+      { label: "Creator Studio", desc: "Advanced tools for Pro/Studio subscribers", emoji: "🎨" },
     ],
   },
 ];
@@ -59,8 +59,8 @@ export default function Onboarding() {
     if (isLast) {
       // Navigate based on selection
       const choice = selections[2];
-      if (choice === "Upload Manga") navigate("/studio/upload");
-      else if (choice === "AI Script") navigate("/studio/new");
+      if (choice === "Create a Manga") navigate("/studio/new");
+      else if (choice === "Creator Studio") navigate("/studio");
       else navigate("/discover");
       return;
     }
@@ -155,10 +155,10 @@ export default function Onboarding() {
             {step === 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 {[
-                  { icon: Wand2, label: "AI Scripts" },
+                  { icon: Wand2, label: "Text to Manga" },
                   { icon: Palette, label: "10+ Styles" },
-                  { icon: Mic, label: "Voice Clone" },
-                  { icon: Layers, label: "Storyboards" },
+                  { icon: Users, label: "Community Votes" },
+                  { icon: Film, label: "Anime Episodes" },
                 ].map((f) => (
                   <div key={f.label} className="p-3 rounded-lg border border-white/5 bg-white/[0.02] text-center">
                     <f.icon className="w-5 h-5 text-accent-pink mx-auto mb-2" />
