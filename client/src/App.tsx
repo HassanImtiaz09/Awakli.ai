@@ -38,6 +38,7 @@ import MusicStudio from "./pages/MusicStudio";
 import VocalRecordingStudio from "./pages/VocalRecordingStudio";
 import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
+import DemoRecording from "./pages/DemoRecording";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -83,6 +84,7 @@ function Router() {
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />
+        <Route path="/demo-recording" component={DemoRecording} />
 
         {/* Studio */}
         <Route path="/studio" component={StudioDashboard} />

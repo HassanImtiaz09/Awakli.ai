@@ -794,3 +794,28 @@ export async function getCharactersWithVoice(projectId: number) {
     .where(and(eq(characters.projectId, projectId), sql`${characters.voiceId} IS NOT NULL`))
     .orderBy(characters.name);
 }
+
+// ─── Platform Config ────────────────────────────────────────────────────
+
+import { platformConfig } from "../drizzle/schema";
+
+export async function getPlatformConfig(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(platformConfig).where(eq(platformConfig.key, key)).limit(1);
+  return result.length > 0 ? result[0].value : null;
+}
+
+export async function setPlatformConfig(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(platformConfig).values({ key, value })
+    .onDuplicateKeyUpdate({ set: { value, updatedAt: new Date() } });
+}
+
+export async function getPlatformConfigMulti(keys: string[]): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) return {};
+  const result = await db.select().from(platformConfig).where(inArray(platformConfig.key, keys));
+  return Object.fromEntries(result.map(r => [r.key, r.value]));
+}

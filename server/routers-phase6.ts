@@ -10,6 +10,9 @@ import {
   createModerationItem, getModerationQueue, updateModerationItem,
   getAdminMetrics, getAdminUserList, getAllSubscriptions,
 } from "./db-phase6";
+import { getPlatformConfig, getPlatformConfigMulti, setPlatformConfig } from "./db";
+import { DEMO_CONFIG_KEYS } from "../shared/demo-scenario";
+import { generateAllDemoAssets } from "./demo-assets";
 
 // ─── Billing Router ────────────────────────────────────────────────────
 
@@ -263,6 +266,32 @@ export const adminRouter = router({
       await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId));
       return { success: true };
     }),
+
+  // Get demo video configuration
+  getDemoConfig: adminProcedure.query(async () => {
+    const keys = Object.values(DEMO_CONFIG_KEYS);
+    const config = await getPlatformConfigMulti(keys);
+    return {
+      panelUrls: config[DEMO_CONFIG_KEYS.PANEL_URLS] ? JSON.parse(config[DEMO_CONFIG_KEYS.PANEL_URLS]) as string[] : [],
+      characterUrls: config[DEMO_CONFIG_KEYS.CHARACTER_URLS] ? JSON.parse(config[DEMO_CONFIG_KEYS.CHARACTER_URLS]) as Record<string, string> : {},
+      scriptText: config["demo_script_text"] || "",
+      fallbackUrls: config[DEMO_CONFIG_KEYS.FALLBACK_URLS] ? JSON.parse(config[DEMO_CONFIG_KEYS.FALLBACK_URLS]) as string[] : [],
+      streamId: config[DEMO_CONFIG_KEYS.STREAM_ID] || null,
+      posterUrl: config[DEMO_CONFIG_KEYS.POSTER_URL] || null,
+      updatedAt: config[DEMO_CONFIG_KEYS.UPDATED_AT] || null,
+      status: config[DEMO_CONFIG_KEYS.STATUS] || "not_started",
+    };
+  }),
+
+  // Regenerate demo assets
+  regenerateDemo: adminProcedure.mutation(async () => {
+    // Run in background (don't await)
+    generateAllDemoAssets().catch((err) => {
+      console.error("[Demo] Asset generation failed:", err);
+      setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "failed").catch(() => {});
+    });
+    return { success: true, message: "Demo asset generation started. Check status via getDemoConfig." };
+  }),
 });
 
 // ─── Report Content ────────────────────────────────────────────────────

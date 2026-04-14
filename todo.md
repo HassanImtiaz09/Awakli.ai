@@ -1327,3 +1327,26 @@
 - [x] Mobile optimization: touch swipe support, responsive sizing, scrollable step indicators
 - [ ] Bandwidth detection: skip heavy assets on slow connections (deferred — images use compressed WebP)
 - [ ] Device mockup frame for slideshow screenshots (deferred — clean borderless look preferred)
+
+## Demo Video Production Pipeline (Prompt 11 Supplement)
+- [x] Create platform_config DB helpers (getPlatformConfig, setPlatformConfig, getPlatformConfigMulti)
+- [x] Demo asset generation module (server/demo-assets.ts) with generateAllDemoAssets()
+- [x] Demo scenario constants (shared/demo-scenario.ts) — Neon Dreams: The Awakening
+- [x] Build demo recording page (/demo-recording) — admin-only, 7 shot state machine
+- [x] Shot 1: PromptShot (0-8s) — scripted typing, genre pills, Generate button click
+- [x] Shot 2: ScriptShot (8-15s) — typewriter script reveal, skeleton panels
+- [x] Shot 3: PanelsShot (15-28s) — panel reveal animations with zoom-out
+- [x] Shot 4: CustomizeShot (28-40s) — fast-cut montage (art styles, characters, voice, animation, music)
+- [x] Shot 5: PipelineShot (40-55s) — pipeline nodes lighting up + manga-to-anime morph
+- [x] Shot 6: CommunityShot (55-65s) — platform screenshot montage with Ken Burns
+- [x] Shot 7: CTAShot (65-75s) — logo, tagline, Start Free button
+- [x] Master timing controller with requestAnimationFrame
+- [x] Asset preloading with ready state indicator (data-demo-ready / data-demo-complete)
+- [x] Puppeteer recording script (scripts/record-demo.mjs) — CDP frame capture
+- [x] FFmpeg post-processing script (scripts/process-demo.mjs) — vignette, intro/outro, faststart
+- [x] Admin regeneration endpoint (admin.regenerateDemo mutation)
+- [x] Admin getDemoConfig endpoint for status monitoring
+- [x] Admin dashboard DemoVideoCard with status, panel preview, regenerate button
+- [x] Landing page DemoShowcase: video player (Cloudflare Stream) + slideshow fallback
+- [x] Public discover.getDemoVideo endpoint for landing page
+- [x] Compile comprehensive list of all external services/API keys (EXTERNAL_SERVICES.md)

@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import {
   Users, DollarSign, Film, Zap, Shield, AlertTriangle,
   CheckCircle, XCircle, Eye, ChevronRight, Crown, TrendingUp,
-  Clock, BarChart3
+  Clock, BarChart3, Video, RefreshCw, ExternalLink
 } from "lucide-react";
 import { PlatformLayout } from "@/components/awakli/Layouts";
 import { toast } from "sonner";
@@ -257,6 +257,95 @@ function SubscriptionOverview() {
   );
 }
 
+// ─── Demo Video Card ──────────────────────────────────────────────────────
+function DemoVideoCard() {
+  const config = trpc.admin.getDemoConfig.useQuery(undefined, { refetchInterval: 5000 });
+  const regenerate = trpc.admin.regenerateDemo.useMutation({
+    onSuccess: () => {
+      toast.success("Demo asset generation started!");
+      config.refetch();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const [, navigate] = useLocation();
+
+  const status = config.data?.status || "not_started";
+  const updatedAt = config.data?.updatedAt;
+  const panelCount = config.data?.panelUrls?.filter(Boolean).length || 0;
+  const hasVideo = !!config.data?.streamId;
+
+  const statusColors: Record<string, string> = {
+    not_started: "text-gray-400",
+    generating: "text-amber-400",
+    assets_ready: "text-blue-400",
+    recording: "text-purple-400",
+    processing: "text-cyan-400",
+    complete: "text-green-400",
+    failed: "text-red-400",
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
+      <div className="p-6 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Video className="w-5 h-5 text-pink-400" />
+          <h3 className="text-lg font-heading font-semibold text-white">Demo Video Pipeline</h3>
+        </div>
+        <span className={`text-xs font-medium px-2 py-1 rounded-full bg-white/5 ${statusColors[status] || "text-gray-400"}`}>
+          {status.replace("_", " ").toUpperCase()}
+        </span>
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-2xl font-bold text-white">{panelCount}/6</p>
+            <p className="text-xs text-gray-500">Panels</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-white">{hasVideo ? "Yes" : "No"}</p>
+            <p className="text-xs text-gray-500">Video Ready</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400">{updatedAt ? new Date(updatedAt).toLocaleDateString() : "Never"}</p>
+            <p className="text-xs text-gray-500">Last Updated</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => regenerate.mutate()}
+            disabled={regenerate.isPending || status === "generating"}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${status === "generating" ? "animate-spin" : ""}`} />
+            {status === "generating" ? "Generating..." : "Regenerate Assets"}
+          </button>
+          <button
+            onClick={() => navigate("/demo-recording")}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Preview
+          </button>
+        </div>
+
+        {/* Mini panel preview */}
+        {panelCount > 0 && (
+          <div className="flex gap-1.5 mt-2">
+            {config.data?.panelUrls?.slice(0, 6).map((url, i) => (
+              url ? (
+                <img key={i} src={url} alt={`Panel ${i+1}`} className="w-12 h-12 rounded object-cover border border-white/10" />
+              ) : (
+                <div key={i} className="w-12 h-12 rounded bg-white/5" />
+              )
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Admin Dashboard ──────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { user, isAuthenticated } = useAuth();
@@ -303,6 +392,11 @@ export default function AdminDashboard() {
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
             <SubscriptionOverview />
             <ModerationQueue />
+          </div>
+
+          {/* Demo Video Pipeline */}
+          <div className="mb-8">
+            <DemoVideoCard />
           </div>
 
           {/* User List */}

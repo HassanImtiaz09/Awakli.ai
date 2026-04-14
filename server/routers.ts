@@ -1246,6 +1246,18 @@ const discoverRouter = router({
     .query(async ({ input }) => {
       return getPublicProjects({ limit: input.limit, offset: input.offset, genre: input.genre, sort: "trending" });
     }),
+
+  getDemoVideo: publicProcedure.query(async () => {
+    const { getPlatformConfig } = await import("./db");
+    const streamId = await getPlatformConfig("demo_stream_id");
+    const posterUrl = await getPlatformConfig("demo_poster_url");
+    const status = await getPlatformConfig("demo_status");
+    return {
+      streamId: streamId || null,
+      posterUrl: posterUrl || null,
+      status: status || "not_started",
+    };
+  }),
 });
 
 // ─── Search Router (public) ──────────────────────────────────────────────
