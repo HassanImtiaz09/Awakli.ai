@@ -5,6 +5,7 @@ import { Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock } from "luci
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useEffect } from "react";
 
 const GENRES = [
   "Action", "Romance", "Sci-Fi", "Fantasy", "Horror",
@@ -25,7 +26,10 @@ const STYLES: { value: string; label: string }[] = [
 export default function Create() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("prompt") || "";
+  });
   const [genre, setGenre] = useState("Fantasy");
   const [style, setStyle] = useState("shonen");
   const [chapters, setChapters] = useState(3);

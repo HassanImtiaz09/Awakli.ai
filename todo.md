@@ -550,3 +550,59 @@
 - [x] Vitest: creatorVoting.projectsWithProgress (auth required, returns array)
 - [x] Vitest: animeProduction.start (auth required, NOT_FOUND for non-existent)
 - [x] All 135 tests passing across 9 test files
+
+## Landing Page & Onboarding Rewrite
+
+### Hero Section Rewrite
+- [x] Cycling headline: 'Ideas' -> 'Stories' -> 'Dreams' -> 'Worlds' with vertical slide animation
+- [x] Inline prompt input in hero (large text input + Create button)
+- [x] Prompt pre-fills /create page on submit
+- [x] Social proof counter animation: '12,000+ manga created | 500+ anime voted'
+- [x] 'Now in Public Beta' animated badge (accent-cyan)
+
+### Section 2: Showcase Gallery
+- [x] Title: 'Created by people like you'
+- [x] Masonry grid of manga panels + anime screenshots
+- [x] Hover shows project title + creator + vote count
+- [x] Auto-scrolling gentle animation
+
+### Section 3: How It Works (4 Steps)
+- [x] Title: 'From Idea to Anime in Four Steps'
+- [x] Step 1 WRITE: pencil icon, 'Describe your story in plain text'
+- [x] Step 2 GENERATE: wand icon, 'AI writes script and draws panels'
+- [x] Step 3 SHARE & VOTE: heart icon, 'Publish and community votes'
+- [x] Step 4 ANIMATE: film icon, 'Top-voted manga become anime'
+- [x] Connected by animated flowing dotted line
+
+### Section 4: Live Creation Demo
+- [x] Title: 'See It In Action'
+- [x] Interactive demo: click Generate to watch accelerated creation
+- [x] Show prompt -> script streaming -> panels generating -> final manga
+- [x] CTA: 'Try it yourself - free'
+
+### Section 5: Two Audiences Split
+- [x] Left: 'FOR READERS & FANS' with discover CTA
+- [x] Right: 'FOR CREATORS' with create CTA
+- [x] Dark cards with distinct illustrations
+
+### Section 6: Feature Grid (Updated)
+- [x] Title: 'Powered by the Best AI'
+- [x] Cards: Claude Opus 4, FLUX 1.1 Pro, Kling 2.1, ElevenLabs, Community, Awakli Pipeline
+
+### Section 7: Pricing (Updated Copy)
+- [x] Title: 'Start Free. Create Unlimited.'
+- [x] Free: 'Create manga from your ideas. Publish and earn votes.'
+- [x] Pro: 'More power, direct anime access, no limits.'
+- [x] Studio: 'Full pipeline control. Upload your own manga.'
+
+### Section 8: CTA (Updated)
+- [x] Headline: 'Every Great Anime Starts With an Idea'
+- [x] Subtext: 'Yours could be next.'
+- [x] Inline prompt input (same as hero)
+
+### Onboarding Rewrite
+- [x] Step 1: Welcome with two large cards: 'I Want to Create' vs 'I Want to Discover'
+- [x] Creator path: shows example prompt, redirects to /create with pre-filled prompt
+- [x] Reader path: explains voting flow, redirects to /discover
+- [x] /create page reads ?prompt query param to pre-fill textarea
+- [x] All 135 tests passing across 9 test files
