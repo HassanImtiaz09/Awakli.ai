@@ -3,8 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
 import { AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { STORAGE_KEY_RETURN_PATH } from "./const";
 import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
@@ -39,7 +41,17 @@ import CreateReader from "./pages/CreateReader";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+
+  // After OAuth callback redirects to /, check if there's a stored return path
+  useEffect(() => {
+    const returnPath = sessionStorage.getItem(STORAGE_KEY_RETURN_PATH);
+    if (returnPath && location === "/") {
+      sessionStorage.removeItem(STORAGE_KEY_RETURN_PATH);
+      navigate(returnPath, { replace: true });
+    }
+  }, [location, navigate]);
+
   return (
     <AnimatePresence mode="wait">
       <Switch key={location}>

@@ -1308,4 +1308,5 @@
 - [x] All tests passing with zero TypeScript errors
 
 ## Bug Fixes
-- [x] Fix Create page: after signing up, 'Generate Now' does not proceed further (OAuth now redirects back to /create via returnPath query param, prompt persisted in sessionStorage, auto-triggers generation after login)
+- [x] Fix Create page: after signing up, 'Generate Now' does not proceed further (prompt persisted in sessionStorage, auto-triggers generation after login)
+- [x] Fix OAuth callback error: reverted redirect URI to clean state (no query params), moved returnPath to sessionStorage, added post-login redirect hook in App.tsx Router that checks sessionStorage and navigates to stored path after OAuth callback
