@@ -41,6 +41,10 @@ import {
   discoverVotingRouter, roadToAnimeRouter, creatorVotingRouter, adminVotingRouter,
 } from "./routers-voting";
 import { quickCreateRouter } from "./routers-create";
+import {
+  qualityRouter, upscaleRouter, sceneRouter, sfxRouter,
+  narratorRouter, videoPromptRouter, moderationRouter, costRouter,
+} from "./routers-pipeline";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1831,6 +1835,16 @@ export const appRouter = router({
 
   // Quick Create (public creation flow)
   quickCreate: quickCreateRouter,
+
+  // Enhanced Pipeline Agents
+  quality: qualityRouter,
+  upscale: upscaleRouter,
+  scene: sceneRouter,
+  sfx: sfxRouter,
+  narrator: narratorRouter,
+  videoPrompt: videoPromptRouter,
+  moderation: moderationRouter,
+  cost: costRouter,
 });
 
 export type AppRouter = typeof appRouter;

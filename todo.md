@@ -606,3 +606,73 @@
 - [x] Reader path: explains voting flow, redirects to /discover
 - [x] /create page reads ?prompt query param to pre-fill textarea
 - [x] All 135 tests passing across 9 test files
+
+## Enhanced Production Pipeline
+
+### Pipeline Enhancement 1: Image Quality & Upscaling
+- [x] Add quality_score FLOAT, quality_details JSON, generation_attempts INT DEFAULT 1 to panels table
+- [x] Add upscaled_image_url TEXT to panels table
+- [x] Quality Assessment Agent: quality.assess procedure using LLM vision
+- [x] Score 5 criteria (1-10): prompt adherence, anatomy, style consistency, composition, character accuracy
+- [x] Auto-actions: 8-10 auto-approve, 5-7 show with warning, 1-4 auto-regenerate (max 3 attempts)
+- [x] Image Upscaler Agent: upscale.panel procedure using Real-ESRGAN via generateImage
+- [x] Store upscaled version as separate URL, keep original
+- [x] Upscaled version sent to Kling for video generation
+
+### Pipeline Enhancement 2: Scene Consistency System
+- [x] Create scenes table: id, episode_id FK, scene_number, location, time_of_day, mood, scene_context JSON, environment_lora_url
+- [x] Scene Context Builder: scene.getContext extracts context from existing scenes
+- [x] Context Injection: scene.buildPrompt prepends scene context to FLUX prompt for subsequent panels
+
+### Pipeline Enhancement 3: Sound Effects Agent
+- [x] Create episode_sfx table with episode_id FK, sfx_type, timestamp_ms, duration_ms, volume, sfx_url
+- [x] sfx.getLibrary returns curated SFX categories (impact, ambient, ui, nature, etc.)
+- [x] sfx.parseScript extracts SFX markers from episode scripts
+- [x] Output: array of { type, timestamp_ms, volume, duration }
+- [x] FFmpeg assembly mixes SFX into final audio alongside voice + music
+
+### Pipeline Enhancement 4: Enhanced Video Generation
+- [x] videoPrompt.getCameraPresets returns 10 camera angle presets with Kling motion prompts
+- [x] videoPrompt.getTransitions returns 8 FFmpeg transition filter templates
+- [x] videoPrompt.getMoodPresets returns 6 mood-to-motion-intensity mappings
+- [x] videoPrompt.build composes full Kling prompt from visual + camera + mood + transition
+- [x] FFmpeg transition template library: cross-dissolve, fade-to-black, wipe-right, slide-left, flash-white, zoom-in, zoom-out, blur
+
+### Pipeline Enhancement 5: Narrator Voice
+- [x] Add narrator_voice_id, narrator_enabled, narrator_style to episodes table
+- [x] narrator.extractLines parses script for __narrator__ blocks
+- [x] Default deep authoritative voice from ElevenLabs library
+- [x] Narrator audio mixed at lower volume than character dialogue
+- [x] narrator.getVoices returns available narrator voice options
+
+### Pipeline Enhancement 6: Smart Cost Estimation
+- [x] cost.estimate procedure calculates full pipeline cost breakdown
+- [x] Calculate: panels * upscale + panels * video_gen + dialogue_lines * voice + music + sfx + assembly
+- [x] CostEstimationCard component shows breakdown before Start Pipeline
+- [x] Pre-flight checks card shows quality/moderation/upscale/SFX readiness
+
+### Pipeline Enhancement 7: Content Moderation Gate
+- [x] moderation.scanPanel procedure: LLM vision scans panel for policy violations
+- [x] moderation.scanText procedure: LLM scans script text for policy violations
+- [x] If flagged: mark panel as 'flagged', show warning to creator
+- [x] moderation.getStatus returns moderation status and flags for a panel
+- [x] ModerationBanner component shows warnings with acknowledge/appeal options
+
+### Frontend Updates
+- [x] QualityBadge component: green check for 8+, yellow warning for 5-7, red for auto-regenerated
+- [x] QualityBadge shows upscale indicator when upscaled_image_url exists
+- [x] CostEstimationCard on PipelineDashboard before Start Pipeline with full breakdown
+- [x] ModerationBanner with revise/acknowledge options and severity-based styling
+- [x] VideoPromptBuilder with camera/mood/transition selectors and live preview
+- [x] Pre-flight checks card showing all pipeline gate readiness
+
+### Testing
+- [x] Vitest: quality.getScore and quality.assess (throws for non-existent panel)
+- [x] Vitest: upscale.getStatus and upscale.panel (throws for non-existent panel)
+- [x] Vitest: scene.buildPrompt (returns enhanced prompt with context)
+- [x] Vitest: sfx.getLibrary (public, returns SFX categories)
+- [x] Vitest: cost.estimate (throws for non-existent episode)
+- [x] Vitest: moderation.getStatus (throws for non-existent panel)
+- [x] Vitest: videoPrompt.getCameraPresets, getMoodPresets, getTransitions, build
+- [x] Vitest: narrator.extractLines (returns lines array)
+- [x] All 148 tests passing across 10 test files

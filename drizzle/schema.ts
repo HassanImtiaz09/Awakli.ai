@@ -117,6 +117,12 @@ export const episodes = mysqlTable("episodes", {
   duration: int("duration").default(0),
   videoUrl: text("videoUrl"),
   thumbnailUrl: text("thumbnailUrl"),
+  narratorEnabled: int("narratorEnabled").default(1),
+  narratorVoiceId: varchar("narratorVoiceId", { length: 255 }),
+  sfxData: json("sfxData"),  // Generated SFX timeline [{sfxType, timestampMs, volume, durationMs, url}]
+  scriptModerationStatus: mysqlEnum("scriptModerationStatus", ["pending", "clean", "flagged", "revised"]).default("pending"),
+  scriptModerationFlags: json("scriptModerationFlags"),  // [{category, severity, description, lineNumber}]
+  estimatedCostCents: int("estimatedCostCents"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -144,6 +150,12 @@ export const panels = mysqlTable("panels", {
   negativePrompt: text("negativePrompt"),
   status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "rejected"]).default("draft").notNull(),
   reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected", "needs_revision"]).default("pending"),
+  qualityScore: int("qualityScore"),  // 1-100 (average of 5 criteria * 10)
+  qualityDetails: json("qualityDetails"),  // {promptAdherence, anatomy, styleConsistency, composition, characterAccuracy}
+  generationAttempts: int("generationAttempts").default(1),
+  upscaledImageUrl: text("upscaledImageUrl"),
+  moderationStatus: mysqlEnum("moderationStatus", ["pending", "clean", "flagged", "acknowledged"]).default("pending"),
+  moderationFlags: json("moderationFlags"),  // [{category, severity, description}]
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -185,7 +197,7 @@ export const pipelineRuns = mysqlTable("pipeline_runs", {
   projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: mysqlEnum("status", ["pending", "running", "completed", "failed", "cancelled"]).default("pending").notNull(),
-  currentNode: mysqlEnum("currentNode", ["video_gen", "voice_gen", "lip_sync", "music_gen", "assembly", "qa_review", "none"]).default("none"),
+  currentNode: mysqlEnum("currentNode", ["quality_check", "upscale", "content_mod", "video_gen", "voice_gen", "narrator_gen", "lip_sync", "music_gen", "sfx_gen", "assembly", "qa_review", "none"]).default("none"),
   nodeStatuses: json("nodeStatuses"),  // {video_gen: 'complete', voice_gen: 'running', ...}
   progress: int("progress").default(0),
   estimatedTimeRemaining: int("estimatedTimeRemaining"),  // seconds
@@ -209,10 +221,10 @@ export const pipelineAssets = mysqlTable("pipeline_assets", {
   pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
   episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
   panelId: int("panelId"),
-  assetType: mysqlEnum("assetType", ["video_clip", "voice_clip", "synced_clip", "music_segment", "subtitle_srt", "final_video", "thumbnail"]).notNull(),
+  assetType: mysqlEnum("assetType", ["video_clip", "voice_clip", "synced_clip", "music_segment", "sfx_clip", "narrator_clip", "upscaled_panel", "subtitle_srt", "final_video", "thumbnail"]).notNull(),
   url: text("url").notNull(),
   metadata: json("metadata"),  // {duration, fileSize, format, characterId, ...}
-  nodeSource: mysqlEnum("nodeSource", ["video_gen", "voice_gen", "lip_sync", "music_gen", "assembly"]).notNull(),
+  nodeSource: mysqlEnum("nodeSource", ["quality_check", "upscale", "content_mod", "video_gen", "voice_gen", "narrator_gen", "lip_sync", "music_gen", "sfx_gen", "assembly"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -392,3 +404,40 @@ export const animePromotions = mysqlTable("anime_promotions", {
 
 export type AnimePromotion = typeof animePromotions.$inferSelect;
 export type InsertAnimePromotion = typeof animePromotions.$inferInsert;
+
+// ─── Scenes (for consistency tracking) ───────────────────────────────
+
+export const scenes = mysqlTable("scenes", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sceneNumber: int("sceneNumber").notNull(),
+  location: text("location"),
+  timeOfDay: varchar("timeOfDay", { length: 50 }),
+  mood: varchar("mood", { length: 50 }),
+  sceneContext: json("sceneContext"),  // Extracted visual context from first panel
+  environmentLoraUrl: text("environmentLoraUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Scene = typeof scenes.$inferSelect;
+export type InsertScene = typeof scenes.$inferInsert;
+
+// ─── Episode SFX ─────────────────────────────────────────────────────
+
+export const episodeSfx = mysqlTable("episode_sfx", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  panelId: int("panelId").references(() => panels.id, { onDelete: "cascade" }),
+  sfxType: varchar("sfxType", { length: 100 }).notNull(),  // explosion, footsteps, rain, etc.
+  sfxUrl: text("sfxUrl"),
+  timestampMs: int("timestampMs").default(0),
+  volume: int("volume").default(80),  // 0-100
+  durationMs: int("durationMs"),
+  source: mysqlEnum("source", ["generated", "library"]).default("library").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EpisodeSfx = typeof episodeSfx.$inferSelect;
+export type InsertEpisodeSfx = typeof episodeSfx.$inferInsert;

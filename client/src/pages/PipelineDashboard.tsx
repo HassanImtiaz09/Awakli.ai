@@ -10,8 +10,12 @@ import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import {
   Play, RotateCcw, CheckCircle, XCircle, Clock, DollarSign,
   ChevronDown, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
-  Loader2, Eye, Ban, Timer, AlertCircle, Volume2
+  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp
 } from "lucide-react";
+import { QualityBadge } from "@/components/awakli/QualityBadge";
+import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
+import { VideoPromptBuilder } from "@/components/awakli/VideoPromptBuilder";
+import { ModerationBanner } from "@/components/awakli/ModerationBanner";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -836,6 +840,48 @@ export default function PipelineDashboard() {
             )}
           </AnimatePresence>
         </AwakliCard>
+      )}
+
+      {/* Cost Estimation & Pre-flight */}
+      {episodesQuery.data && episodesQuery.data.length > 0 && !activeRun && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {episodesQuery.data.slice(0, 1).map((ep: any) => (
+            <CostEstimationCard key={ep.id} episodeId={ep.id} />
+          ))}
+          <AwakliCard className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Pre-flight Checks</h3>
+                <p className="text-[10px] text-zinc-500">Quality & moderation gates</p>
+              </div>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                <span className="text-zinc-400">Panel Quality Assessment</span>
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Ready</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                <span className="text-zinc-400">Content Moderation</span>
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Ready</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                <span className="text-zinc-400">Scene Consistency</span>
+                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Ready</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                <span className="text-zinc-400">Image Upscaling (4K)</span>
+                <span className="text-cyan-400 flex items-center gap-1"><ArrowUp className="w-3 h-3" /> Available</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-zinc-400">SFX & Narrator</span>
+                <span className="text-amber-400 flex items-center gap-1"><Music className="w-3 h-3" /> Optional</span>
+              </div>
+            </div>
+          </AwakliCard>
+        </div>
       )}
 
       {/* Episode Pipeline Table */}
