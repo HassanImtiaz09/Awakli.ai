@@ -11,6 +11,7 @@ import {
   Vote, Clapperboard, Brain, ImageIcon
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
+import DemoShowcase from "@/components/awakli/DemoShowcase";
 
 // CDN URLs
 const HERO_IMAGES = [
@@ -1031,7 +1032,7 @@ export default function Home() {
 
       <HowItWorks />
 
-      <CreationDemo />
+      <DemoShowcase />
 
       <TwoAudiences />
 

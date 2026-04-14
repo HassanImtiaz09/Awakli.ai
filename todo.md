@@ -1314,3 +1314,16 @@
 - [x] Allow guest generation: changed quickCreate.start to publicProcedure, added getOrCreateGuestUser for unauthenticated users
 - [x] Require sign-up only when user wants to download/save: publish endpoint remains protectedProcedure
 - [x] Remove auth modal and auth loop logic from Create page Generate button
+
+## Landing Page Demo Section Overhaul
+- [x] Replace broken 'See It In Action' section with polished DemoShowcase component
+- [x] Generate 5 AI demo images: prompt UI, manga panels, customize styles, pipeline, anime result
+- [x] Build animated image slideshow with 5 slides showing platform workflow
+- [x] Add smooth crossfade transitions (800ms) with auto-advance (5s per slide)
+- [x] Add dot navigation indicators below slideshow (active dot stretches wider)
+- [x] Add step indicator row: Write → Generate → Customize → Produce → Watch (with icons)
+- [x] Add CTA section below demo with 'Start Creating — Free' button
+- [x] Style demo container: max-w-6xl, rounded-2xl, accent-pink/purple glow border, shadow
+- [x] Mobile optimization: touch swipe support, responsive sizing, scrollable step indicators
+- [ ] Bandwidth detection: skip heavy assets on slow connections (deferred — images use compressed WebP)
+- [ ] Device mockup frame for slideshow screenshots (deferred — clean borderless look preferred)
