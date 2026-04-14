@@ -43,6 +43,13 @@
       "when": 1776127764285,
       "tag": "0005_complete_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1776130100110,
+      "tag": "0006_worthless_the_fallen",
+      "breakpoints": true
     }
   ]
 }

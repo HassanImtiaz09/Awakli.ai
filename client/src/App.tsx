@@ -22,6 +22,9 @@ import WatchProject from "./pages/WatchProject";
 import EpisodePlayer from "./pages/EpisodePlayer";
 import Leaderboard from "./pages/Leaderboard";
 import UserProfile from "./pages/UserProfile";
+import PipelineDashboard from "./pages/PipelineDashboard";
+import QAReview from "./pages/QAReview";
+import VoiceCloning from "./pages/VoiceCloning";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -83,6 +86,27 @@ function Router() {
           {(params) => (
             <StudioLayout>
               <StoryboardPreview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/pipeline">
+          {(params) => (
+            <StudioLayout>
+              <PipelineDashboard />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/pipeline/:runId/review">
+          {(params) => (
+            <StudioLayout>
+              <QAReview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/characters/:characterId/voice">
+          {(params) => (
+            <StudioLayout>
+              <VoiceCloning />
             </StudioLayout>
           )}
         </Route>

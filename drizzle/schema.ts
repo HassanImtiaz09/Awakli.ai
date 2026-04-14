@@ -104,11 +104,13 @@ export const episodes = mysqlTable("episodes", {
   title: varchar("title", { length: 255 }).notNull(),
   synopsis: text("synopsis"),
   scriptContent: json("scriptContent"),  // Full structured JSON script
-  status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "locked"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "locked", "pipeline", "review", "published"]).default("draft").notNull(),
   wordCount: int("wordCount").default(0),
   panelCount: int("panelCount").default(0),
   viewCount: int("viewCount").default(0),
   duration: int("duration").default(0),
+  videoUrl: text("videoUrl"),
+  thumbnailUrl: text("thumbnailUrl"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -159,12 +161,57 @@ export const characters = mysqlTable("characters", {
   loraStatus: mysqlEnum("loraStatus", ["none", "uploading", "training", "validating", "ready", "failed"]).default("none"),
   loraTriggerWord: varchar("loraTriggerWord", { length: 100 }),
   loraTrainingProgress: int("loraTrainingProgress").default(0),
+  voiceId: varchar("voiceId", { length: 255 }),
+  voiceCloneUrl: text("voiceCloneUrl"),
+  voiceSettings: json("voiceSettings"),  // {stability, similarity_boost}
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Character = typeof characters.$inferSelect;
 export type InsertCharacter = typeof characters.$inferInsert;
+
+// ─── Pipeline Runs ─────────────────────────────────────────────────────
+
+export const pipelineRuns = mysqlTable("pipeline_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["pending", "running", "completed", "failed", "cancelled"]).default("pending").notNull(),
+  currentNode: mysqlEnum("currentNode", ["video_gen", "voice_gen", "lip_sync", "music_gen", "assembly", "qa_review", "none"]).default("none"),
+  nodeStatuses: json("nodeStatuses"),  // {video_gen: 'complete', voice_gen: 'running', ...}
+  progress: int("progress").default(0),
+  estimatedTimeRemaining: int("estimatedTimeRemaining"),  // seconds
+  totalCost: int("totalCost").default(0),  // cents
+  nodeCosts: json("nodeCosts"),  // {video_gen: 120, voice_gen: 50, ...}
+  errors: json("errors"),  // [{node, message, timestamp}]
+  qaIssues: json("qaIssues"),  // [{type, description, node}]
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PipelineRun = typeof pipelineRuns.$inferSelect;
+export type InsertPipelineRun = typeof pipelineRuns.$inferInsert;
+
+// ─── Pipeline Assets ───────────────────────────────────────────────────
+
+export const pipelineAssets = mysqlTable("pipeline_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  panelId: int("panelId"),
+  assetType: mysqlEnum("assetType", ["video_clip", "voice_clip", "synced_clip", "music_segment", "subtitle_srt", "final_video", "thumbnail"]).notNull(),
+  url: text("url").notNull(),
+  metadata: json("metadata"),  // {duration, fileSize, format, characterId, ...}
+  nodeSource: mysqlEnum("nodeSource", ["video_gen", "voice_gen", "lip_sync", "music_gen", "assembly"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PipelineAsset = typeof pipelineAssets.$inferSelect;
+export type InsertPipelineAsset = typeof pipelineAssets.$inferInsert;
 
 // ─── Votes ──────────────────────────────────────────────────────────────
 

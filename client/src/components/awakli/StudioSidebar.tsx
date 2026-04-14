@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, Upload,
   Film, Settings, Layers, Users, Zap, FileText, PlusCircle,
-  ArrowLeft, FolderOpen, Palette, Grid3X3, BookOpen,
+  ArrowLeft, FolderOpen, Palette, Grid3X3, BookOpen, Clapperboard,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
@@ -28,6 +28,7 @@ function getProjectNav(projectId: string): NavItem[] {
     { href: `/studio/project/${projectId}/upload`,     label: "Upload",     icon: <Upload size={18} /> },
     { href: `/studio/project/${projectId}/panels`,     label: "Panels",     icon: <Grid3X3 size={18} /> },
     { href: `/studio/project/${projectId}/storyboard`, label: "Storyboard", icon: <BookOpen size={18} /> },
+    { href: `/studio/project/${projectId}/pipeline`,   label: "Pipeline",   icon: <Clapperboard size={18} /> },
   ];
 }
 

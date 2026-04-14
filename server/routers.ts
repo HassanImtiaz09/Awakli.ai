@@ -28,6 +28,13 @@ import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { nanoid } from "nanoid";
+import { runPipeline } from "./pipelineOrchestrator";
+import {
+  createPipelineRun, getPipelineRunById, getPipelineRunsByEpisode,
+  getPipelineRunsByProject, updatePipelineRun,
+  getPipelineAssetsByRun, getPipelineAssetsByEpisode,
+  updateCharacterVoice, getCharactersWithVoice,
+} from "./db";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1495,6 +1502,275 @@ const watchRouter = router({
     }),
 });
 
+// ─── Pipeline Router ─────────────────────────────────────────────────────
+
+const pipelineRouter = router({
+  start: protectedProcedure
+    .input(z.object({ episodeId: z.number(), projectId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const project = await getProjectById(input.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode || episode.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      }
+      if (episode.status !== "locked" && episode.status !== "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Episode must be locked/approved to start pipeline" });
+      }
+
+      const runId = await createPipelineRun({
+        episodeId: input.episodeId,
+        projectId: input.projectId,
+        userId: ctx.user.id,
+        status: "pending",
+        currentNode: "none",
+        progress: 0,
+        totalCost: 0,
+      });
+
+      // Start pipeline in background
+      runPipeline(runId).catch(err => {
+        console.error(`[Pipeline] Run ${runId} failed:`, err);
+      });
+
+      return { runId };
+    }),
+
+  getStatus: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+      return run;
+    }),
+
+  listByEpisode: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return getPipelineRunsByEpisode(input.episodeId);
+    }),
+
+  listByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return getPipelineRunsByProject(input.projectId);
+    }),
+
+  getAssets: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return getPipelineAssetsByRun(input.runId);
+    }),
+
+  getAssetsByEpisode: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return getPipelineAssetsByEpisode(input.episodeId);
+    }),
+
+  retry: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+      if (run.status !== "failed") throw new TRPCError({ code: "BAD_REQUEST", message: "Can only retry failed runs" });
+
+      // Create a new run for the same episode
+      const newRunId = await createPipelineRun({
+        episodeId: run.episodeId,
+        projectId: run.projectId,
+        userId: ctx.user.id,
+        status: "pending",
+        currentNode: "none",
+        progress: 0,
+        totalCost: 0,
+      });
+
+      runPipeline(newRunId).catch(err => {
+        console.error(`[Pipeline] Retry run ${newRunId} failed:`, err);
+      });
+
+      return { runId: newRunId };
+    }),
+
+  cancel: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+      if (run.status !== "running" && run.status !== "pending") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Can only cancel running/pending runs" });
+      }
+      await updatePipelineRun(input.runId, { status: "cancelled", completedAt: new Date() });
+      return { success: true };
+    }),
+
+  // QA Review
+  approve: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+      if (run.status !== "completed") throw new TRPCError({ code: "BAD_REQUEST", message: "Can only approve completed runs" });
+
+      // Mark episode as published
+      await updateEpisode(run.episodeId, {
+        status: "published",
+        publishedAt: new Date(),
+      } as any);
+
+      await notifyOwner({
+        title: "Episode Published",
+        content: `Episode from pipeline run #${input.runId} has been approved and published.`,
+      }).catch(() => {});
+
+      return { success: true };
+    }),
+
+  reject: protectedProcedure
+    .input(z.object({
+      runId: z.number(),
+      issues: z.array(z.object({
+        type: z.enum(["visual", "audio", "sync", "quality", "other"]),
+        description: z.string(),
+        node: z.string().optional(),
+      })).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+
+      await updatePipelineRun(input.runId, {
+        qaIssues: input.issues as any,
+      });
+
+      // Revert episode to locked for re-processing
+      await updateEpisode(run.episodeId, { status: "locked" } as any);
+
+      return { success: true };
+    }),
+
+  publish: protectedProcedure
+    .input(z.object({ runId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const run = await getPipelineRunById(input.runId);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Pipeline run not found" });
+
+      await updateEpisode(run.episodeId, {
+        status: "published",
+        publishedAt: new Date(),
+      } as any);
+
+      // Make project public if not already
+      await updateProject(run.projectId, ctx.user.id, { visibility: "public" });
+
+      return { success: true };
+    }),
+
+  getCostSummary: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const runs = await getPipelineRunsByProject(input.projectId);
+      const totalCost = runs.reduce((sum, r) => sum + (r.totalCost ?? 0), 0);
+      const completedRuns = runs.filter(r => r.status === "completed").length;
+      const failedRuns = runs.filter(r => r.status === "failed").length;
+      return { totalCost, completedRuns, failedRuns, totalRuns: runs.length };
+    }),
+});
+
+// ─── Voice Router ────────────────────────────────────────────────────────
+
+const voiceRouter = router({
+  clone: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      audioUrl: z.string(),
+      name: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Simulate voice cloning (in production, call ElevenLabs or similar API)
+      const voiceId = `voice_${input.characterId}_${nanoid(8)}`;
+
+      await updateCharacterVoice(input.characterId, {
+        voiceId,
+        voiceCloneUrl: input.audioUrl,
+        voiceSettings: { stability: 0.5, similarity_boost: 0.75 },
+      });
+
+      return { voiceId, success: true };
+    }),
+
+  getSettings: protectedProcedure
+    .input(z.object({ characterId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+      return {
+        voiceId: character.voiceId,
+        voiceCloneUrl: character.voiceCloneUrl,
+        voiceSettings: character.voiceSettings,
+      };
+    }),
+
+  updateSettings: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      stability: z.number().min(0).max(1).optional(),
+      similarity_boost: z.number().min(0).max(1).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+      const currentSettings = (character.voiceSettings as any) || {};
+      const newSettings = {
+        ...currentSettings,
+        ...(input.stability !== undefined ? { stability: input.stability } : {}),
+        ...(input.similarity_boost !== undefined ? { similarity_boost: input.similarity_boost } : {}),
+      };
+      await updateCharacterVoice(input.characterId, { voiceSettings: newSettings });
+      return { success: true };
+    }),
+
+  test: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      text: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character || !character.voiceId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Character has no voice clone" });
+      }
+
+      // Simulate TTS generation
+      const audioKey = `voice-test/${input.characterId}/${nanoid(8)}.mp3`;
+      const placeholderBuffer = Buffer.from(`TTS: ${input.text.slice(0, 200)}`);
+      const { url } = await storagePut(audioKey, placeholderBuffer, "audio/mpeg");
+
+      return { audioUrl: url };
+    }),
+
+  listByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return getCharactersWithVoice(input.projectId);
+    }),
+
+  remove: protectedProcedure
+    .input(z.object({ characterId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await updateCharacterVoice(input.characterId, {
+        voiceId: null,
+        voiceCloneUrl: null,
+        voiceSettings: null,
+      });
+      return { success: true };
+    }),
+});
+
 // ─── App Router ───────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -1528,6 +1804,10 @@ export const appRouter = router({
   notifications: notificationsRouter,
   userProfile: userProfileRouter,
   watch: watchRouter,
+
+  // Phase 5: Production Pipeline
+  pipeline: pipelineRouter,
+  voice: voiceRouter,
 });
 
 export type AppRouter = typeof appRouter;

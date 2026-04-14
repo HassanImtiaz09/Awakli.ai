@@ -259,3 +259,69 @@
 - [x] Vitest: follows and watchlist procedures
 - [x] Vitest: leaderboard and discover procedures
 - [x] Vitest: notifications procedures
+
+## Phase 5: Anime Production Pipeline & Mission Control
+
+### 5A. Database Schema
+- [x] pipeline_runs table (id, episodeId, status, currentNode, progress, estimatedTime, cost, errors, timestamps)
+- [x] pipeline_assets table (id, episodeId, panelId, assetType ENUM, url, metadata JSON, createdAt)
+- [x] Add voiceId, voiceCloneUrl columns to characters table
+- [x] Add videoUrl, thumbnailUrl columns to episodes table
+- [x] Migration SQL generated and applied
+
+### 5B. Pipeline Agent Nodes (Server-Side)
+- [x] Video Generation Agent: builds prompt from scene desc + camera movement, calls image gen as proxy, stores clips
+- [x] Voice Generation Agent: TTS for dialogue lines using character voice settings
+- [x] Lip Sync Agent: composites voice onto video clips (simulated)
+- [x] Background Music Agent: generates per-episode music segments
+- [x] Assembly Agent: creates final video asset, generates thumbnail, updates episode URLs
+- [x] Pipeline orchestrator: runs 5 nodes sequentially (video_gen → voice_gen → lip_sync → music_gen → assembly)
+- [x] Retry logic: creates new pipeline run for failed episodes
+- [x] Cost tracking per node and per episode
+- [x] Owner notification on pipeline complete/fail
+
+### 5C. tRPC Procedures
+- [x] pipeline.start: starts pipeline for an episode
+- [x] pipeline.getStatus: returns run with nodeStatuses, progress, cost, ETA
+- [x] pipeline.retry: creates new run for failed episode pipeline
+- [x] pipeline.approve: approves QA review, sets episode to published
+- [x] pipeline.reject: flags issues on specific nodes for re-processing
+- [x] pipeline.publish: publishes approved episode
+- [x] pipeline.listByProject / pipeline.listByEpisode: lists pipeline runs
+- [x] voice.clone: accepts audio URL, creates simulated voice clone for character
+- [x] voice.test: generates simulated TTS sample via S3 placeholder
+
+### 5D. Pipeline Dashboard UI (/studio/[projectId]/pipeline)
+- [x] Visual node graph: horizontal flow diagram with 5 agent nodes as connected rounded rectangles
+- [x] Node status styling: pending (gray), running (cyan pulsing glow + progress ring), complete (green check), failed (red X + retry)
+- [x] SVG connection lines: animated dashed stroke (cyan) when flowing, solid (green) when complete
+- [x] Overall progress bar with gradient-accent fill and estimated time remaining
+- [x] Click node to expand detail panel below graph (Framer Motion)
+- [x] Video Gen detail: grid of video clip thumbnails with play overlay buttons
+- [x] Voice Gen detail: waveform visualizations with audio playback per voice clip
+- [x] Lip Sync detail: before/after video comparison layout per synced clip
+- [x] Music Gen detail: audio player bars with mood and duration per music segment
+- [x] Assembly detail: full video preview player with subtitle download link
+- [x] Each detail panel shows: processing time, API cost, output count, and error log
+- [x] Episode pipeline list table: Episode | Status | Progress | Duration | Cost | Actions
+- [x] Batch actions: multi-select checkboxes + Start Pipeline for multiple episodes
+- [x] Per-episode Start/Retry/View actions in pipeline table
+
+### 5E. QA Review Screen
+- [x] Full-width video player with assembled episode
+- [x] Approve & Publish button (accent-pink) and Request Changes button (secondary)
+- [x] Request Changes modal: checkboxes for issue types (visual, audio, sync, quality, other)
+- [x] Other issue type has text area for description
+- [x] Submitted issues flagged on specific nodes for re-processing
+
+### 5F. Voice Cloning UI (/studio/[projectId]/characters/[id]/voice)
+- [x] Audio upload drag-and-drop zone with waveform preview
+- [x] Clone Voice button with progress animation
+- [x] Test section: type text, click Test Voice to hear sample
+- [x] Side-by-side: original audio vs cloned audio playback
+
+### 5G. Testing
+- [x] Vitest: pipeline start, status, retry procedures
+- [x] Vitest: pipeline approve/reject/publish procedures
+- [x] Vitest: voice cloning and test voice procedures
+- [x] Vitest: pipeline list runs procedure (covered in pipeline.listByProject auth test)

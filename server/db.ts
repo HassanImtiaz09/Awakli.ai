@@ -682,3 +682,88 @@ export async function getProjectsByUserIdPublic(userId: number) {
     .where(and(eq(projects.userId, userId), eq(projects.visibility, "public")))
     .orderBy(desc(projects.createdAt));
 }
+
+// ─── Pipeline Runs ─────────────────────────────────────────────────────
+
+import { pipelineRuns, pipelineAssets, InsertPipelineRun, InsertPipelineAsset } from "../drizzle/schema";
+
+export async function createPipelineRun(data: InsertPipelineRun) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(pipelineRuns).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getPipelineRunById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(pipelineRuns).where(eq(pipelineRuns.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getPipelineRunsByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pipelineRuns)
+    .where(eq(pipelineRuns.episodeId, episodeId))
+    .orderBy(desc(pipelineRuns.createdAt));
+}
+
+export async function getPipelineRunsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pipelineRuns)
+    .where(eq(pipelineRuns.projectId, projectId))
+    .orderBy(desc(pipelineRuns.createdAt));
+}
+
+export async function updatePipelineRun(id: number, data: Partial<InsertPipelineRun>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pipelineRuns).set(data).where(eq(pipelineRuns.id, id));
+}
+
+// ─── Pipeline Assets ───────────────────────────────────────────────────
+
+export async function createPipelineAsset(data: InsertPipelineAsset) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(pipelineAssets).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getPipelineAssetsByRun(pipelineRunId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pipelineAssets)
+    .where(eq(pipelineAssets.pipelineRunId, pipelineRunId))
+    .orderBy(pipelineAssets.createdAt);
+}
+
+export async function getPipelineAssetsByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pipelineAssets)
+    .where(eq(pipelineAssets.episodeId, episodeId))
+    .orderBy(pipelineAssets.createdAt);
+}
+
+// ─── Voice Cloning ─────────────────────────────────────────────────────
+
+export async function updateCharacterVoice(id: number, data: {
+  voiceId?: string | null;
+  voiceCloneUrl?: string | null;
+  voiceSettings?: any;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(characters).set(data).where(eq(characters.id, id));
+}
+
+export async function getCharactersWithVoice(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(characters)
+    .where(and(eq(characters.projectId, projectId), sql`${characters.voiceId} IS NOT NULL`))
+    .orderBy(characters.name);
+}
