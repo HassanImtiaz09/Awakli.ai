@@ -7,6 +7,7 @@
 import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
+import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import {
   getPipelineRunById,
   updatePipelineRun,
@@ -136,21 +137,41 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
       ? dialogue.map((d: any) => d.text || d.line || d).join(". ")
       : typeof dialogue === "string" ? dialogue : JSON.stringify(dialogue);
 
-    // Simulate voice generation (store a placeholder URL)
+    // Generate voice using ElevenLabs TTS
     const voiceKey = `pipeline/${runId}/voice-${panel.id}-${nanoid(6)}.mp3`;
-    const placeholderBuffer = Buffer.from(`Voice clip for: ${dialogueText.slice(0, 100)}`);
 
     try {
-      const { url } = await storagePut(voiceKey, placeholderBuffer, "audio/mpeg");
+      // Pick a voice — use first available voice, or default narrator
+      let voiceId: string;
+      try {
+        const voices = await listVoices();
+        voiceId = voices[0]?.voice_id || "CwhRBWXzGAHq8TQ4Fs17"; // Roger as fallback
+      } catch {
+        voiceId = "CwhRBWXzGAHq8TQ4Fs17"; // Roger - Laid-Back, Casual
+      }
+
+      const audioBuffer = await textToSpeech({
+        voiceId,
+        text: dialogueText.slice(0, 5000), // ElevenLabs limit
+        modelId: MODELS.MULTILINGUAL_V2,
+        voiceSettings: VOICE_PRESETS.heroic,
+      });
+
+      const { url } = await storagePut(voiceKey, audioBuffer, "audio/mpeg");
+      // Estimate duration: ~150 words/min
+      const wordCount = dialogueText.split(/\s+/).length;
+      const durationEstimate = Math.max(1, Math.round((wordCount / 150) * 60));
+
       await createPipelineAsset({
         pipelineRunId: runId,
         episodeId,
         panelId: panel.id,
         assetType: "voice_clip",
         url,
-        metadata: { duration: 4, characterId: null, text: dialogueText.slice(0, 200) } as any,
+        metadata: { duration: durationEstimate, characterId: null, text: dialogueText.slice(0, 200) } as any,
         nodeSource: "voice_gen",
       });
+      console.log(`[Pipeline] Voice generated for panel ${panel.id}: ${durationEstimate}s`);
     } catch (err) {
       console.error(`[Pipeline] Voice gen failed for panel ${panel.id}:`, err);
     }

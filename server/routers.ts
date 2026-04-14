@@ -28,6 +28,7 @@ import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { nanoid } from "nanoid";
+import { instantVoiceClone, textToSpeech, MODELS } from "./elevenlabs";
 import { runPipeline } from "./pipelineOrchestrator";
 import {
   createPipelineRun, getPipelineRunById, getPipelineRunsByEpisode,
@@ -1730,8 +1731,22 @@ const voiceRouter = router({
       const character = await getCharacterById(input.characterId);
       if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
 
-      // Simulate voice cloning (in production, call ElevenLabs or similar API)
-      const voiceId = `voice_${input.characterId}_${nanoid(8)}`;
+      // Clone voice using ElevenLabs instant voice cloning
+      const cloneName = input.name || `${character.name || "Character"}_${input.characterId}`;
+      let voiceId: string;
+
+      try {
+        const result = await instantVoiceClone({
+          name: cloneName,
+          description: `Voice clone for character: ${character.name}`,
+          audioUrls: [input.audioUrl],
+          labels: { character_id: String(input.characterId) },
+        });
+        voiceId = result.voice_id;
+      } catch (err: any) {
+        console.error("[Voice] ElevenLabs clone failed:", err.message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice cloning failed: " + err.message });
+      }
 
       await updateCharacterVoice(input.characterId, {
         voiceId,
@@ -1784,12 +1799,26 @@ const voiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Character has no voice clone" });
       }
 
-      // Simulate TTS generation
+      // Generate TTS using ElevenLabs with the character's cloned voice
       const audioKey = `voice-test/${input.characterId}/${nanoid(8)}.mp3`;
-      const placeholderBuffer = Buffer.from(`TTS: ${input.text.slice(0, 200)}`);
-      const { url } = await storagePut(audioKey, placeholderBuffer, "audio/mpeg");
+      const voiceSettings = (character.voiceSettings as any) || {};
 
-      return { audioUrl: url };
+      try {
+        const audioBuffer = await textToSpeech({
+          voiceId: character.voiceId,
+          text: input.text,
+          modelId: MODELS.MULTILINGUAL_V2,
+          voiceSettings: {
+            stability: voiceSettings.stability ?? 0.5,
+            similarity_boost: voiceSettings.similarity_boost ?? 0.75,
+          },
+        });
+        const { url } = await storagePut(audioKey, audioBuffer, "audio/mpeg");
+        return { audioUrl: url };
+      } catch (err: any) {
+        console.error("[Voice] TTS failed:", err.message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice generation failed: " + err.message });
+      }
     }),
 
   listByProject: protectedProcedure

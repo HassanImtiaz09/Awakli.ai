@@ -6,6 +6,7 @@
 
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { textToSpeech, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import {
   getPanelById,
   updatePanel,
@@ -641,10 +642,20 @@ export async function generateNarratorVoice(
     if (!line.text.trim()) continue;
 
     try {
-      // Store placeholder narrator clip (in production, call ElevenLabs)
+      // Generate narrator voice using ElevenLabs
       const key = `pipeline/${runId}/narrator-s${line.sceneNumber}-p${line.panelNumber}-${nanoid(6)}.mp3`;
-      const buffer = Buffer.from(`Narrator: ${line.text.slice(0, 200)}`);
-      const { url } = await storagePut(key, buffer, "audio/mpeg");
+
+      // Use "Roger" as default narrator voice (deep, resonant, laid-back)
+      const narratorVoiceId = "CwhRBWXzGAHq8TQ4Fs17";
+      const audioBuffer = await textToSpeech({
+        voiceId: narratorVoiceId,
+        text: line.text.slice(0, 5000),
+        modelId: MODELS.MULTILINGUAL_V2,
+        voiceSettings: VOICE_PRESETS.narrator,
+      });
+
+      const { url } = await storagePut(key, audioBuffer, "audio/mpeg");
+      const estimatedDuration = Math.ceil(line.text.split(/\s+/).length / 2.5); // ~2.5 words/sec for narration
 
       await createPipelineAsset({
         pipelineRunId: runId,
@@ -655,10 +666,11 @@ export async function generateNarratorVoice(
           text: line.text.slice(0, 500),
           sceneNumber: line.sceneNumber,
           panelNumber: line.panelNumber,
-          duration: Math.ceil(line.text.length / 15), // ~15 chars per second
+          duration: estimatedDuration,
         } as any,
         nodeSource: "narrator_gen",
       });
+      console.log(`[NarratorAgent] Generated clip: scene ${line.sceneNumber}, panel ${line.panelNumber}, ~${estimatedDuration}s`);
 
       generatedCount++;
     } catch (err) {

@@ -1350,3 +1350,15 @@
 - [x] Landing page DemoShowcase: video player (Cloudflare Stream) + slideshow fallback
 - [x] Public discover.getDemoVideo endpoint for landing page
 - [x] Compile comprehensive list of all external services/API keys (EXTERNAL_SERVICES.md)
+
+## ElevenLabs Voice Integration
+- [x] Add ELEVENLABS_API_KEY as environment secret
+- [x] Create ElevenLabs service module (server/elevenlabs.ts) with TTS, voice library, voice cloning, streaming, subscription info
+- [x] Replace placeholder voice generation in pipelineOrchestrator.ts — real TTS with voice selection
+- [x] Replace placeholder voice generation in pipelineAgents.ts — narrator uses Roger voice with narrator preset
+- [x] Replace placeholder TTS in routers.ts — voice.clone uses instantVoiceClone, voice.test uses real TTS
+- [x] Replace placeholder voice auditions in routers-preproduction.ts — real TTS with S3 upload
+- [x] Replace placeholder voice library browsing in routers-preproduction.ts — browseSharedVoices API
+- [x] Replace placeholder voice cloning in routers-preproduction.ts — instantVoiceClone API
+- [x] Write integration tests: 10 tests (3 key validation + 7 integration), all passing
+- [x] Add env variable to server/_core/env.ts

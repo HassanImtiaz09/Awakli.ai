@@ -14,6 +14,9 @@ import {
   subscriptions,
 } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
+import { browseSharedVoices, textToSpeech, instantVoiceClone, MODELS, VOICE_PRESETS } from "./elevenlabs";
+import { storagePut } from "./storage";
+import { nanoid } from "nanoid";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -665,32 +668,49 @@ export const voiceCastingRouter = router({
     .query(async ({ ctx, input }) => {
       await requireCreatorOrStudio(ctx.user.id);
 
-      // In production: call ElevenLabs voice library API with filters
-      // For now: return mock voice library
-      const voices = [
-        { id: "v_deep_male", name: "Marcus", gender: "male", age: "adult", tone: "warm", accent: "neutral", sampleUrl: "" },
-        { id: "v_young_male", name: "Kai", gender: "male", age: "young", tone: "energetic", accent: "neutral", sampleUrl: "" },
-        { id: "v_rough_male", name: "Viktor", gender: "male", age: "adult", tone: "rough", accent: "eastern_european", sampleUrl: "" },
-        { id: "v_elderly_male", name: "Elder Tanaka", gender: "male", age: "elderly", tone: "calm", accent: "japanese", sampleUrl: "" },
-        { id: "v_warm_female", name: "Sakura", gender: "female", age: "young", tone: "warm", accent: "japanese", sampleUrl: "" },
-        { id: "v_cool_female", name: "Raven", gender: "female", age: "adult", tone: "cool", accent: "british", sampleUrl: "" },
-        { id: "v_energetic_female", name: "Luna", gender: "female", age: "young", tone: "energetic", accent: "neutral", sampleUrl: "" },
-        { id: "v_smooth_female", name: "Aria", gender: "female", age: "adult", tone: "smooth", accent: "neutral", sampleUrl: "" },
-        { id: "v_narrator_deep", name: "Narrator (Deep)", gender: "male", age: "adult", tone: "warm", accent: "neutral", sampleUrl: "" },
-        { id: "v_narrator_soft", name: "Narrator (Soft)", gender: "female", age: "adult", tone: "smooth", accent: "neutral", sampleUrl: "" },
-      ];
+      // Browse ElevenLabs shared voice library with filters
+      try {
+        const ageMap: Record<string, "young" | "middle_aged" | "old"> = {
+          young: "young",
+          adult: "middle_aged",
+          elderly: "old",
+        };
 
-      let filtered = voices;
-      if (input.gender) filtered = filtered.filter((v) => v.gender === input.gender);
-      if (input.age) filtered = filtered.filter((v) => v.age === input.age);
-      if (input.tone) filtered = filtered.filter((v) => v.tone === input.tone);
+        const result = await browseSharedVoices({
+          gender: input.gender === "non-binary" ? undefined : (input.gender as "male" | "female" | undefined),
+          age: input.age ? ageMap[input.age] : undefined,
+          accent: input.accent,
+          page_size: input.limit,
+          sort: "trending",
+        });
 
-      const start = (input.page - 1) * input.limit;
-      return {
-        voices: filtered.slice(start, start + input.limit),
-        total: filtered.length,
-        page: input.page,
-      };
+        const voices = result.voices.map((v) => ({
+          id: v.voice_id,
+          name: v.name,
+          gender: v.gender || "unknown",
+          age: v.age || "adult",
+          tone: v.use_case || "neutral",
+          accent: v.accent || "neutral",
+          sampleUrl: v.preview_url || "",
+        }));
+
+        // Apply tone filter client-side (ElevenLabs doesn't have a direct tone filter)
+        let filtered = voices;
+        if (input.tone) {
+          filtered = filtered.filter((v) =>
+            v.tone.toLowerCase().includes(input.tone!.toLowerCase())
+          );
+        }
+
+        return {
+          voices: filtered,
+          total: filtered.length,
+          page: input.page,
+        };
+      } catch (err: any) {
+        console.error("[VoiceCasting] Browse library failed:", err.message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to browse voice library" });
+      }
     }),
 
   // Audition voice with character's first dialogue line
@@ -751,8 +771,22 @@ export const voiceCastingRouter = router({
         }
       }
 
-      // In production: call ElevenLabs TTS with voiceId and dialogueText
-      const audioUrl = `https://placeholder.awakli.ai/audition/${input.characterId}/${input.voiceId}/${Date.now()}.mp3`;
+      // Generate audition audio using ElevenLabs TTS
+      let audioUrl: string;
+      try {
+        const audioBuffer = await textToSpeech({
+          voiceId: input.voiceId,
+          text: dialogueText,
+          modelId: MODELS.MULTILINGUAL_V2,
+          voiceSettings: VOICE_PRESETS.heroic,
+        });
+        const audioKey = `auditions/${input.characterId}/${input.voiceId}-${nanoid(6)}.mp3`;
+        const { url } = await storagePut(audioKey, audioBuffer, "audio/mpeg");
+        audioUrl = url;
+      } catch (err: any) {
+        console.error("[VoiceCasting] Audition TTS failed:", err.message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice audition failed: " + err.message });
+      }
 
       const [auditionId] = await db
         .insert(voiceAuditions)
@@ -872,20 +906,44 @@ export const voiceCastingRouter = router({
         }
       }
 
-      // In production: upload to ElevenLabs for cloning
-      const cloneUrl = `https://placeholder.awakli.ai/voice-clone/${input.characterId}/${Date.now()}`;
+      // Clone voice using ElevenLabs instant voice cloning
+      try {
+        const [character] = await db
+          .select()
+          .from(characters)
+          .where(eq(characters.id, input.characterId))
+          .limit(1);
 
-      await db
-        .update(characters)
-        .set({ voiceCloneUrl: cloneUrl })
-        .where(eq(characters.id, input.characterId));
+        const cloneName = character?.name
+          ? `${character.name}_clone_${Date.now()}`
+          : `character_${input.characterId}_clone`;
 
-      return {
-        characterId: input.characterId,
-        cloneUrl,
-        status: "processing",
-        estimatedMinutes: 2,
-      };
+        const result = await instantVoiceClone({
+          name: cloneName,
+          description: `Voice clone for character ${input.characterId}`,
+          audioUrls: [input.audioUrl],
+          labels: { character_id: String(input.characterId), source: "user_upload" },
+        });
+
+        await db
+          .update(characters)
+          .set({
+            voiceCloneUrl: input.audioUrl,
+            voiceId: result.voice_id,
+          })
+          .where(eq(characters.id, input.characterId));
+
+        return {
+          characterId: input.characterId,
+          cloneUrl: input.audioUrl,
+          voiceId: result.voice_id,
+          status: "complete",
+          estimatedMinutes: 0,
+        };
+      } catch (err: any) {
+        console.error("[VoiceCasting] Clone failed:", err.message);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice cloning failed: " + err.message });
+      }
     }),
 
   // Set voice direction notes
