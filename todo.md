@@ -1310,3 +1310,4 @@
 ## Bug Fixes
 - [x] Fix Create page: after signing up, 'Generate Now' does not proceed further (prompt persisted in sessionStorage, auto-triggers generation after login)
 - [x] Fix OAuth callback error: reverted redirect URI to clean state (no query params), moved returnPath to sessionStorage, added post-login redirect hook in App.tsx Router that checks sessionStorage and navigates to stored path after OAuth callback
+- [x] Fix OAuth login loop: added trust proxy to Express server, auth attempt counter to prevent infinite loops, auth error modal with "Clear Session & Retry" and "Try Signing In Again" options, clearSession endpoint to clear stale cookies
