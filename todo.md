@@ -185,3 +185,77 @@
 - [x] Vitest: overlay procedure
 - [x] Vitest: batch actions (approve all, regenerate failed)
 - [x] Vitest: LoRA training procedures
+
+## Phase 4: Community, Voting & Streaming Platform
+
+### 4A. Homepage & Discovery
+- [x] Full-screen hero with featured project rotation (crossfade every 8s)
+- [x] Hero: blurred background, title, synopsis, genre badges, creator avatar, CTA buttons
+- [x] Scroll indicator (animated bouncing chevron)
+- [x] Netflix-style content rows: Trending, New Releases, Top Rated, genre rows
+- [x] Horizontal scroll carousel with peek, snap-to-card, arrow buttons on hover
+- [x] Poster card (2:3): image, gradient overlay, title, episode count, vote count, genre badge
+- [x] Poster card hover: scale(1.08), expand with synopsis and Watch Now button (absolute, no push)
+- [x] Landscape card (16:9) for Continue Watching with progress bar
+- [x] Search overlay: full-width bar, debounced 300ms, real-time results, keyboard navigable
+- [x] Explore page (/explore): genre filter pills, sort dropdown, responsive grid
+
+### 4B. Project Page (/watch/[slug])
+- [x] Hero banner with cover image and gradient fade
+- [x] Left column: title, creator card, synopsis, genre badges, stats row
+- [x] Episode list: numbered cards with thumbnail, title, duration, vote count
+- [x] Right column (sticky): Start/Continue Watching, Add to Watchlist, Share, Similar projects
+
+### 4C. Video/Storyboard Player (/watch/[slug]/[episodeNumber])
+- [x] Storyboard slideshow player for manga-only episodes (panels, crossfade, typewriter dialogue)
+- [x] Custom overlay controls (hidden after 3s inactivity)
+- [x] Episode end screen with next episode countdown and vote buttons
+- [x] Episode info bar and tabbed section (Comments, Episode Details)
+
+### 4D. Voting System
+- [x] Custom animated upvote/downvote icons with bounce animation
+- [x] Vote count animates (number rolls) on change
+- [x] Weekly hot algorithm: score = upvotes - downvotes + recency_bonus * views
+- [x] Leaderboard (/leaderboard): ranked list, medal icons, tabs (Week/Month/All Time)
+- [x] Top 3 projects: larger cards with gold/silver/bronze border glow
+
+### 4E. Comments & Discussion
+- [x] Comment input with avatar + textarea + Post button
+- [x] Comment card: avatar, username, timestamp, content, delete button
+- [ ] Threaded replies (max 3 levels, indented with accent-cyan border) — deferred
+- [x] Sort tabs: Newest, Top, Oldest
+- [ ] Markdown support with DOMPurify sanitization — deferred
+
+### 4F. User Profiles & Notifications
+- [x] Profile page (/profile/[userId]): banner, avatar, stats, tabs (Created/Watchlist)
+- [x] Follow button toggle
+- [x] Notification center dropdown (bell icon, w-96, types: new episode/reply/vote milestone/follower)
+- [x] Mark all read functionality
+
+### 4G. Database Schema
+- [x] votes table (userId, episodeId, type: up/down)
+- [x] comments table (id, episodeId, userId, parentId, content, timestamps)
+- [x] follows table (followerId, followingId)
+- [x] watchlist table (userId, projectId, lastEpisodeId, progress)
+- [x] notifications table (id, userId, type, content, read, timestamps)
+- [x] Add slug, coverImageUrl, featured fields to projects table
+- [x] Add viewCount, duration fields to episodes table
+- [x] Migration SQL generated and applied
+
+### 4H. tRPC Procedures
+- [x] discover.trending, discover.newReleases, discover.topRated, discover.byGenre
+- [x] search.projects (debounced full-text)
+- [x] votes.cast, votes.remove, votes.getForEpisode
+- [x] comments.list, comments.create, comments.delete
+- [x] follows.toggle, follows.status
+- [x] watchlist.add, watchlist.remove, watchlist.list, watchlist.updateProgress
+- [x] notifications.list, notifications.markAllRead
+- [x] leaderboard.get (week/month/all)
+- [x] projects.getBySlug (public)
+
+### 4I. Tests
+- [x] Vitest: voting procedures (cast, remove, get)
+- [x] Vitest: comments procedures (list, create, delete)
+- [x] Vitest: follows and watchlist procedures
+- [x] Vitest: leaderboard and discover procedures
+- [x] Vitest: notifications procedures

@@ -41,6 +41,11 @@ export const projects = mysqlTable("projects", {
   tone: varchar("tone", { length: 100 }),
   targetAudience: mysqlEnum("targetAudience", ["kids", "teen", "adult"]).default("teen"),
   settings: json("settings"),
+  slug: varchar("slug", { length: 255 }).unique(),
+  featured: int("featured").default(0),
+  viewCount: int("viewCount").default(0),
+  voteScore: int("voteScore").default(0),
+  trailerVideoUrl: text("trailerVideoUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -102,6 +107,9 @@ export const episodes = mysqlTable("episodes", {
   status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "locked"]).default("draft").notNull(),
   wordCount: int("wordCount").default(0),
   panelCount: int("panelCount").default(0),
+  viewCount: int("viewCount").default(0),
+  duration: int("duration").default(0),
+  publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -157,3 +165,76 @@ export const characters = mysqlTable("characters", {
 
 export type Character = typeof characters.$inferSelect;
 export type InsertCharacter = typeof characters.$inferInsert;
+
+// ─── Votes ──────────────────────────────────────────────────────────────
+
+export const votes = mysqlTable("votes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  voteType: mysqlEnum("voteType", ["up", "down"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Vote = typeof votes.$inferSelect;
+export type InsertVote = typeof votes.$inferInsert;
+
+// ─── Comments ───────────────────────────────────────────────────────────
+
+export const comments = mysqlTable("comments", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  parentId: int("parentId"),
+  content: text("content").notNull(),
+  upvotes: int("upvotes").default(0),
+  downvotes: int("downvotes").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = typeof comments.$inferInsert;
+
+// ─── Follows ────────────────────────────────────────────────────────────
+
+export const follows = mysqlTable("follows", {
+  id: int("id").autoincrement().primaryKey(),
+  followerId: int("followerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followingId: int("followingId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Follow = typeof follows.$inferSelect;
+export type InsertFollow = typeof follows.$inferInsert;
+
+// ─── Watchlist ──────────────────────────────────────────────────────────
+
+export const watchlist = mysqlTable("watchlist", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  lastEpisodeId: int("lastEpisodeId"),
+  progress: int("progress").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Watchlist = typeof watchlist.$inferSelect;
+export type InsertWatchlist = typeof watchlist.$inferInsert;
+
+// ─── Notifications ──────────────────────────────────────────────────────
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: mysqlEnum("type", ["new_episode", "reply", "vote_milestone", "new_follower"]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content"),
+  linkUrl: varchar("linkUrl", { length: 512 }),
+  isRead: int("isRead").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;

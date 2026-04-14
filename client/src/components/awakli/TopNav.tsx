@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Menu, Search, X, LogOut, User, Settings, LayoutDashboard, Upload } from "lucide-react";
+import { Menu, Search, X, LogOut, User, Settings, LayoutDashboard, Upload, Trophy } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -7,10 +7,12 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { AwakliButton } from "./AwakliButton";
 import { cn } from "@/lib/utils";
+import SearchOverlay from "./SearchOverlay";
+import { NotificationBell } from "./NotificationCenter";
 
 const NAV_LINKS = [
-  { href: "/discover", label: "Discover" },
-  { href: "/browse", label: "Browse" },
+  { href: "/explore", label: "Explore" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/studio", label: "Studio" },
 ];
 
@@ -43,6 +45,18 @@ export function TopNav() {
   }, []);
 
   useEffect(() => { setDrawerOpen(false); }, [location]);
+
+  // Cmd+K / Ctrl+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <>
@@ -83,23 +97,19 @@ export function TopNav() {
           <div className="flex items-center gap-2">
             {/* Search toggle */}
             <motion.button
-              className="hidden md:flex items-center justify-center w-9 h-9 rounded-lg text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] transition-colors"
-              onClick={() => setSearchOpen(!searchOpen)}
-              whileTap={{ scale: 0.9 }}
+              className="hidden md:flex items-center justify-center gap-2 h-9 px-3 rounded-lg text-[#9494B8] hover:text-[#F0F0F5] bg-[#1C1C35]/50 hover:bg-[#1C1C35] border border-white/5 transition-colors text-xs"
+              onClick={() => setSearchOpen(true)}
+              whileTap={{ scale: 0.95 }}
             >
-              <Search size={18} />
+              <Search size={14} />
+              <span>Search</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-[#5C5C7A] font-mono">⌘K</kbd>
             </motion.button>
 
             {isAuthenticated ? (
               <>
                 {/* Notification bell */}
-                <motion.button
-                  className="relative flex items-center justify-center w-9 h-9 rounded-lg text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] transition-colors"
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Bell size={18} />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E94560]" />
-                </motion.button>
+                <NotificationBell />
 
                 {/* Avatar dropdown */}
                 <div className="relative" ref={dropdownRef}>
@@ -130,9 +140,10 @@ export function TopNav() {
                           <p className="text-xs text-[#5C5C7A] truncate">{user?.email}</p>
                         </div>
                         <div className="p-1.5 space-y-0.5">
+                          <DropdownItem href={`/profile/${user?.id}`} icon={<User size={15} />}>My Profile</DropdownItem>
                           <DropdownItem href="/studio" icon={<LayoutDashboard size={15} />}>Studio</DropdownItem>
                           <DropdownItem href="/studio/upload" icon={<Upload size={15} />}>Upload Manga</DropdownItem>
-                          <DropdownItem href="/settings" icon={<Settings size={15} />}>Settings</DropdownItem>
+                          <DropdownItem href="/leaderboard" icon={<Trophy size={15} />}>Leaderboard</DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <button
                             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#E74C3C] hover:bg-[rgba(231,76,60,0.1)] transition-colors"
@@ -168,29 +179,10 @@ export function TopNav() {
             </motion.button>
           </div>
         </div>
-
-        {/* Search bar expansion */}
-        <AnimatePresence>
-          {searchOpen && (
-            <motion.div
-              className="absolute top-full left-0 right-0 bg-[rgba(8,8,15,0.95)] backdrop-blur-xl border-b border-white/5 px-4 py-3"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="container">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search manga, anime, creators..."
-                  className="w-full bg-[#151528] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-[#F0F0F5] placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#00D4FF]"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.header>
+
+      {/* Search overlay */}
+      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Mobile drawer */}
       <AnimatePresence>

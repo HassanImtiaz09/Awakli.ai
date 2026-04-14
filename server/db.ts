@@ -3,9 +3,12 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   users, projects, mangaUploads, processingJobs,
   episodes, panels, characters,
+  votes, comments, follows, watchlist, notifications,
   InsertUser, InsertProject, InsertMangaUpload, InsertProcessingJob,
   InsertEpisode, InsertPanel, InsertCharacter,
+  InsertVote, InsertComment, InsertFollow, InsertWatchlist, InsertNotification,
 } from "../drizzle/schema";
+import { like, or, asc, count, isNull, ne } from "drizzle-orm";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -311,4 +314,371 @@ export async function deleteCharacter(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(characters).where(eq(characters.id, id));
+}
+
+// ─── Votes ──────────────────────────────────────────────────────────────
+
+export async function castVote(userId: number, episodeId: number, voteType: "up" | "down") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Remove existing vote first
+  await db.delete(votes).where(and(eq(votes.userId, userId), eq(votes.episodeId, episodeId)));
+  // Insert new vote
+  await db.insert(votes).values({ userId, episodeId, voteType });
+}
+
+export async function removeVote(userId: number, episodeId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(votes).where(and(eq(votes.userId, userId), eq(votes.episodeId, episodeId)));
+}
+
+export async function getVoteCounts(episodeId: number) {
+  const db = await getDb();
+  if (!db) return { upvotes: 0, downvotes: 0 };
+  const allVotes = await db.select({ voteType: votes.voteType }).from(votes)
+    .where(eq(votes.episodeId, episodeId));
+  return {
+    upvotes: allVotes.filter(v => v.voteType === "up").length,
+    downvotes: allVotes.filter(v => v.voteType === "down").length,
+  };
+}
+
+export async function getUserVote(userId: number, episodeId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(votes)
+    .where(and(eq(votes.userId, userId), eq(votes.episodeId, episodeId)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+// ─── Comments ───────────────────────────────────────────────────────────
+
+export async function createComment(data: InsertComment) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(comments).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getCommentsByEpisode(episodeId: number, sort: "newest" | "top" | "oldest" = "newest") {
+  const db = await getDb();
+  if (!db) return [];
+  const orderFn = sort === "oldest" ? asc(comments.createdAt)
+    : sort === "top" ? desc(comments.upvotes)
+    : desc(comments.createdAt);
+  const allComments = await db.select({
+    id: comments.id,
+    episodeId: comments.episodeId,
+    userId: comments.userId,
+    parentId: comments.parentId,
+    content: comments.content,
+    upvotes: comments.upvotes,
+    downvotes: comments.downvotes,
+    createdAt: comments.createdAt,
+    userName: users.name,
+  }).from(comments)
+    .leftJoin(users, eq(comments.userId, users.id))
+    .where(eq(comments.episodeId, episodeId))
+    .orderBy(orderFn);
+  return allComments;
+}
+
+export async function deleteComment(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(comments).where(and(eq(comments.id, id), eq(comments.userId, userId)));
+}
+
+// ─── Follows ────────────────────────────────────────────────────────────
+
+export async function toggleFollow(followerId: number, followingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(follows)
+    .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.delete(follows).where(eq(follows.id, existing[0].id));
+    return { following: false };
+  }
+  await db.insert(follows).values({ followerId, followingId });
+  return { following: true };
+}
+
+export async function getFollowStatus(followerId: number, followingId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(follows)
+    .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)))
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function getFollowerCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(follows)
+    .where(eq(follows.followingId, userId));
+  return result[0]?.cnt ?? 0;
+}
+
+export async function getFollowingCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(follows)
+    .where(eq(follows.followerId, userId));
+  return result[0]?.cnt ?? 0;
+}
+
+// ─── Watchlist ──────────────────────────────────────────────────────────
+
+export async function addToWatchlist(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(watchlist)
+    .where(and(eq(watchlist.userId, userId), eq(watchlist.projectId, projectId)))
+    .limit(1);
+  if (existing.length > 0) return existing[0].id;
+  const [result] = await db.insert(watchlist).values({ userId, projectId });
+  return (result as any).insertId as number;
+}
+
+export async function removeFromWatchlist(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(watchlist).where(and(eq(watchlist.userId, userId), eq(watchlist.projectId, projectId)));
+}
+
+export async function getUserWatchlist(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: watchlist.id,
+    projectId: watchlist.projectId,
+    lastEpisodeId: watchlist.lastEpisodeId,
+    progress: watchlist.progress,
+    projectTitle: projects.title,
+    projectSlug: projects.slug,
+    projectCover: projects.coverImageUrl,
+    projectGenre: projects.genre,
+  }).from(watchlist)
+    .leftJoin(projects, eq(watchlist.projectId, projects.id))
+    .where(eq(watchlist.userId, userId))
+    .orderBy(desc(watchlist.updatedAt));
+}
+
+export async function updateWatchlistProgress(userId: number, projectId: number, lastEpisodeId: number, progress: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(watchlist)
+    .set({ lastEpisodeId, progress })
+    .where(and(eq(watchlist.userId, userId), eq(watchlist.projectId, projectId)));
+}
+
+export async function isInWatchlist(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(watchlist)
+    .where(and(eq(watchlist.userId, userId), eq(watchlist.projectId, projectId)))
+    .limit(1);
+  return result.length > 0;
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────
+
+export async function createNotification(data: InsertNotification) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(notifications).values(data);
+}
+
+export async function getUserNotifications(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(limit);
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: 1 }).where(eq(notifications.userId, userId));
+}
+
+export async function getUnreadNotificationCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, 0)));
+  return result[0]?.cnt ?? 0;
+}
+
+// ─── Discover & Search ──────────────────────────────────────────────────
+
+export async function getPublicProjects(opts: { limit?: number; offset?: number; genre?: string; sort?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const { limit: lim = 20, offset = 0, genre, sort = "trending" } = opts;
+  let query = db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    animeStyle: projects.animeStyle,
+    createdAt: projects.createdAt,
+    userId: projects.userId,
+    userName: users.name,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(
+      genre
+        ? and(eq(projects.visibility, "public"), like(projects.genre, `%${genre}%`))
+        : eq(projects.visibility, "public")
+    )
+    .limit(lim)
+    .offset(offset);
+
+  if (sort === "newest") query = query.orderBy(desc(projects.createdAt)) as any;
+  else if (sort === "top_rated") query = query.orderBy(desc(projects.voteScore)) as any;
+  else query = query.orderBy(desc(projects.voteScore), desc(projects.viewCount)) as any;
+
+  return query;
+}
+
+export async function getFeaturedProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    animeStyle: projects.animeStyle,
+    trailerVideoUrl: projects.trailerVideoUrl,
+    userId: projects.userId,
+    userName: users.name,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(and(eq(projects.visibility, "public"), ne(projects.featured, 0)))
+    .orderBy(desc(projects.featured))
+    .limit(5);
+}
+
+export async function searchProjects(query: string, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  const term = `%${query}%`;
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    voteScore: projects.voteScore,
+    userName: users.name,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(
+      and(
+        eq(projects.visibility, "public"),
+        or(like(projects.title, term), like(projects.description, term))
+      )
+    )
+    .orderBy(desc(projects.voteScore))
+    .limit(limit);
+}
+
+export async function getProjectBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    animeStyle: projects.animeStyle,
+    visibility: projects.visibility,
+    trailerVideoUrl: projects.trailerVideoUrl,
+    userId: projects.userId,
+    userName: users.name,
+    createdAt: projects.createdAt,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(eq(projects.slug, slug))
+    .limit(1);
+  return result[0];
+}
+
+export async function getEpisodeCountForProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(episodes)
+    .where(eq(episodes.projectId, projectId));
+  return result[0]?.cnt ?? 0;
+}
+
+// ─── Leaderboard ────────────────────────────────────────────────────────
+
+export async function getLeaderboard(period: "week" | "month" | "all", limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  // For simplicity, use voteScore which can be periodically recalculated
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    voteScore: projects.voteScore,
+    viewCount: projects.viewCount,
+    genre: projects.genre,
+    userId: projects.userId,
+    userName: users.name,
+    createdAt: projects.createdAt,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(eq(projects.visibility, "public"))
+    .orderBy(desc(projects.voteScore), desc(projects.viewCount))
+    .limit(limit);
+}
+
+// ─── User Profile ───────────────────────────────────────────────────────
+
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getProjectsByUserIdPublic(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    genre: projects.genre,
+    voteScore: projects.voteScore,
+    createdAt: projects.createdAt,
+  }).from(projects)
+    .where(and(eq(projects.userId, userId), eq(projects.visibility, "public")))
+    .orderBy(desc(projects.createdAt));
 }

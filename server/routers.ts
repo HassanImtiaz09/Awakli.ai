@@ -12,6 +12,15 @@ import {
   createPanel, createPanelsBulk, getPanelsByEpisode, updatePanel, deletePanelsByEpisode,
   getPanelById, getPanelsByProject, batchUpdatePanelStatus, getPanelsGeneratingCount,
   createCharacter, getCharactersByProject, getCharacterById, updateCharacter, deleteCharacter,
+  // Phase 4
+  castVote, removeVote, getVoteCounts, getUserVote,
+  createComment, getCommentsByEpisode, deleteComment,
+  toggleFollow, getFollowStatus, getFollowerCount, getFollowingCount,
+  addToWatchlist, removeFromWatchlist, getUserWatchlist, isInWatchlist, updateWatchlistProgress,
+  createNotification, getUserNotifications, markAllNotificationsRead, getUnreadNotificationCount,
+  getPublicProjects, getFeaturedProjects, searchProjects, getProjectBySlug,
+  getEpisodeCountForProject, getLeaderboard,
+  getUserById, getProjectsByUserIdPublic,
 } from "./db";
 import { storagePut } from "./storage";
 import { runMangaToAnimeJob } from "./pipeline";
@@ -1173,6 +1182,299 @@ const aiRouter = router({
     }),
 });
 
+// ─── Discover Router (public) ────────────────────────────────────────────
+
+const discoverRouter = router({
+  featured: publicProcedure.query(async () => {
+    return getFeaturedProjects();
+  }),
+
+  trending: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(20), offset: z.number().default(0) }).optional())
+    .query(async ({ input }) => {
+      return getPublicProjects({ limit: input?.limit ?? 20, offset: input?.offset ?? 0, sort: "trending" });
+    }),
+
+  newReleases: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(20), offset: z.number().default(0) }).optional())
+    .query(async ({ input }) => {
+      return getPublicProjects({ limit: input?.limit ?? 20, offset: input?.offset ?? 0, sort: "newest" });
+    }),
+
+  topRated: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(20), offset: z.number().default(0) }).optional())
+    .query(async ({ input }) => {
+      return getPublicProjects({ limit: input?.limit ?? 20, offset: input?.offset ?? 0, sort: "top_rated" });
+    }),
+
+  byGenre: publicProcedure
+    .input(z.object({ genre: z.string(), limit: z.number().default(20), offset: z.number().default(0) }))
+    .query(async ({ input }) => {
+      return getPublicProjects({ limit: input.limit, offset: input.offset, genre: input.genre, sort: "trending" });
+    }),
+});
+
+// ─── Search Router (public) ──────────────────────────────────────────────
+
+const searchRouter = router({
+  projects: publicProcedure
+    .input(z.object({ query: z.string().min(1).max(200), limit: z.number().default(20) }))
+    .query(async ({ input }) => {
+      return searchProjects(input.query, input.limit);
+    }),
+});
+
+// ─── Voting Router ───────────────────────────────────────────────────────
+
+const votingRouter = router({
+  cast: protectedProcedure
+    .input(z.object({ episodeId: z.number(), voteType: z.enum(["up", "down"]) }))
+    .mutation(async ({ ctx, input }) => {
+      await castVote(ctx.user.id, input.episodeId, input.voteType);
+      const counts = await getVoteCounts(input.episodeId);
+      return { ...counts, userVote: input.voteType };
+    }),
+
+  remove: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await removeVote(ctx.user.id, input.episodeId);
+      const counts = await getVoteCounts(input.episodeId);
+      return { ...counts, userVote: null };
+    }),
+
+  get: publicProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const counts = await getVoteCounts(input.episodeId);
+      const userVote = ctx.user ? await getUserVote(ctx.user.id, input.episodeId) : null;
+      return { ...counts, userVote: userVote?.voteType ?? null };
+    }),
+});
+
+// ─── Comments Router ─────────────────────────────────────────────────────
+
+const commentsRouter = router({
+  list: publicProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      sort: z.enum(["newest", "top", "oldest"]).default("newest"),
+    }))
+    .query(async ({ input }) => {
+      return getCommentsByEpisode(input.episodeId, input.sort);
+    }),
+
+  create: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      content: z.string().min(1).max(5000),
+      parentId: z.number().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createComment({
+        episodeId: input.episodeId,
+        userId: ctx.user.id,
+        content: input.content,
+        parentId: input.parentId ?? null,
+      });
+      // Notify parent comment author if replying
+      if (input.parentId) {
+        try {
+          const { getDb } = await import("./db");
+          const db = await getDb();
+          if (db) {
+            const { comments: commentsTable } = await import("../drizzle/schema");
+            const { eq } = await import("drizzle-orm");
+            const parent = await db.select().from(commentsTable).where(eq(commentsTable.id, input.parentId)).limit(1);
+            if (parent[0] && parent[0].userId !== ctx.user.id) {
+              await createNotification({
+                userId: parent[0].userId,
+                type: "reply",
+                title: "New reply to your comment",
+                content: input.content.substring(0, 200),
+                linkUrl: `/watch/episode/${input.episodeId}`,
+              });
+            }
+          }
+        } catch { /* notification is best-effort */ }
+      }
+      return { id };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteComment(input.id, ctx.user.id);
+      return { success: true };
+    }),
+});
+
+// ─── Follows Router ──────────────────────────────────────────────────────
+
+const followsRouter = router({
+  toggle: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.id === input.userId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot follow yourself" });
+      }
+      const result = await toggleFollow(ctx.user.id, input.userId);
+      if (result.following) {
+        await createNotification({
+          userId: input.userId,
+          type: "new_follower",
+          title: `${ctx.user.name || "Someone"} started following you`,
+          content: null,
+          linkUrl: `/profile/${ctx.user.id}`,
+        }).catch(() => {});
+      }
+      return result;
+    }),
+
+  status: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const isFollowing = ctx.user ? await getFollowStatus(ctx.user.id, input.userId) : false;
+      const followers = await getFollowerCount(input.userId);
+      const following = await getFollowingCount(input.userId);
+      return { isFollowing, followers, following };
+    }),
+});
+
+// ─── Watchlist Router ────────────────────────────────────────────────────
+
+const watchlistRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return getUserWatchlist(ctx.user.id);
+  }),
+
+  add: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await addToWatchlist(ctx.user.id, input.projectId);
+      return { id };
+    }),
+
+  remove: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await removeFromWatchlist(ctx.user.id, input.projectId);
+      return { success: true };
+    }),
+
+  isAdded: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      return { inWatchlist: await isInWatchlist(ctx.user.id, input.projectId) };
+    }),
+
+  updateProgress: protectedProcedure
+    .input(z.object({ projectId: z.number(), lastEpisodeId: z.number(), progress: z.number().min(0).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      await updateWatchlistProgress(ctx.user.id, input.projectId, input.lastEpisodeId, input.progress);
+      return { success: true };
+    }),
+});
+
+// ─── Leaderboard Router ──────────────────────────────────────────────────
+
+const leaderboardRouter = router({
+  get: publicProcedure
+    .input(z.object({
+      period: z.enum(["week", "month", "all"]).default("all"),
+      limit: z.number().min(1).max(100).default(20),
+    }).optional())
+    .query(async ({ input }) => {
+      return getLeaderboard(input?.period ?? "all", input?.limit ?? 20);
+    }),
+});
+
+// ─── Notifications Router ────────────────────────────────────────────────
+
+const notificationsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ limit: z.number().default(50) }).optional())
+    .query(async ({ ctx, input }) => {
+      return getUserNotifications(ctx.user.id, input?.limit ?? 50);
+    }),
+
+  unreadCount: protectedProcedure.query(async ({ ctx }) => {
+    return { count: await getUnreadNotificationCount(ctx.user.id) };
+  }),
+
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+    await markAllNotificationsRead(ctx.user.id);
+    return { success: true };
+  }),
+});
+
+// ─── User Profile Router (public) ───────────────────────────────────────
+
+const userProfileRouter = router({
+  get: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      const user = await getUserById(input.userId);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      const projectsList = await getProjectsByUserIdPublic(input.userId);
+      const followers = await getFollowerCount(input.userId);
+      const following = await getFollowingCount(input.userId);
+      return {
+        id: user.id,
+        name: user.name,
+        createdAt: user.createdAt,
+        projects: projectsList,
+        followers,
+        following,
+      };
+    }),
+});
+
+// ─── Watch Router (public project/episode viewing) ──────────────────────
+
+const watchRouter = router({
+  project: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ input }) => {
+      const project = await getProjectBySlug(input.slug);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      const episodesList = await getEpisodesByProject(project.id);
+      const episodeCount = episodesList.length;
+      return { ...project, episodes: episodesList, episodeCount };
+    }),
+
+  episode: publicProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const panelsList = await getPanelsByEpisode(input.episodeId);
+      return { ...episode, panels: panelsList };
+    }),
+
+  storyboard: publicProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const panelsList = await getPanelsByEpisode(input.episodeId);
+      // Return panels with composite images preferred
+      const storyboardPanels = panelsList.map(p => ({
+        id: p.id,
+        sceneNumber: p.sceneNumber,
+        panelNumber: p.panelNumber,
+        imageUrl: (p.compositeImageUrl || p.imageUrl) as string | null,
+        rawImageUrl: p.imageUrl,
+        visualDescription: p.visualDescription,
+        cameraAngle: p.cameraAngle,
+        dialogue: p.dialogue,
+        sfx: p.sfx,
+        transition: p.transition,
+      }));
+      return { episode, panels: storyboardPanels };
+    }),
+});
+
 // ─── App Router ───────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -1194,6 +1496,18 @@ export const appRouter = router({
   panels: panelsRouter,
   characters: charactersRouter,
   ai: aiRouter,
+
+  // Phase 4: Community & Streaming
+  discover: discoverRouter,
+  search: searchRouter,
+  voting: votingRouter,
+  comments: commentsRouter,
+  follows: followsRouter,
+  watchlist: watchlistRouter,
+  leaderboard: leaderboardRouter,
+  notifications: notificationsRouter,
+  userProfile: userProfileRouter,
+  watch: watchRouter,
 });
 
 export type AppRouter = typeof appRouter;

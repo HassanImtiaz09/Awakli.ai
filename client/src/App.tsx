@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Discover from "./pages/Discover";
+import Explore from "./pages/Explore";
 import StudioDashboard from "./pages/StudioDashboard";
 import MangaUpload from "./pages/MangaUpload";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -17,6 +18,10 @@ import ScriptEditor from "./pages/ScriptEditor";
 import CharacterCreator from "./pages/CharacterCreator";
 import PanelReview from "./pages/PanelReview";
 import StoryboardPreview from "./pages/StoryboardPreview";
+import WatchProject from "./pages/WatchProject";
+import EpisodePlayer from "./pages/EpisodePlayer";
+import Leaderboard from "./pages/Leaderboard";
+import UserProfile from "./pages/UserProfile";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -29,6 +34,15 @@ function Router() {
         <Route path="/signin" component={SignIn} />
         <Route path="/signup" component={SignUp} />
         <Route path="/discover" component={Discover} />
+        <Route path="/explore" component={Explore} />
+        <Route path="/leaderboard" component={Leaderboard} />
+
+        {/* Watch / community */}
+        <Route path="/watch/:slug" component={WatchProject} />
+        <Route path="/watch/:slug/:episodeNumber" component={EpisodePlayer} />
+
+        {/* User profiles */}
+        <Route path="/profile/:userId" component={UserProfile} />
 
         {/* Studio */}
         <Route path="/studio" component={StudioDashboard} />
