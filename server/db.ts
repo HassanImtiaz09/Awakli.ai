@@ -1,4 +1,4 @@
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   users, projects, mangaUploads, processingJobs,
@@ -239,6 +239,42 @@ export async function deletePanelsByEpisode(episodeId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(panels).where(eq(panels.episodeId, episodeId));
+}
+
+export async function getPanelById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(panels).where(eq(panels.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getPanelsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(panels)
+    .where(eq(panels.projectId, projectId))
+    .orderBy(panels.sceneNumber, panels.panelNumber);
+}
+
+export async function batchUpdatePanelStatus(panelIds: number[], status: string, reviewStatus: string) {
+  const db = await getDb();
+  if (!db) return;
+  if (panelIds.length === 0) return;
+  await db.update(panels)
+    .set({ status: status as any, reviewStatus: reviewStatus as any })
+    .where(inArray(panels.id, panelIds));
+}
+
+export async function getPanelsGeneratingCount(episodeId: number) {
+  const db = await getDb();
+  if (!db) return { total: 0, completed: 0, generating: 0 };
+  const allPanels = await db.select({ status: panels.status }).from(panels)
+    .where(eq(panels.episodeId, episodeId));
+  return {
+    total: allPanels.length,
+    completed: allPanels.filter(p => p.status === 'generated' || p.status === 'approved').length,
+    generating: allPanels.filter(p => p.status === 'generating').length,
+  };
 }
 
 // ─── Characters ──────────────────────────────────────────────────────────

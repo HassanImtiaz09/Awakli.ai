@@ -15,6 +15,8 @@ import ProjectDetail from "./pages/ProjectDetail";
 import ProjectWizard from "./pages/ProjectWizard";
 import ScriptEditor from "./pages/ScriptEditor";
 import CharacterCreator from "./pages/CharacterCreator";
+import PanelReview from "./pages/PanelReview";
+import StoryboardPreview from "./pages/StoryboardPreview";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -53,6 +55,20 @@ function Router() {
           {(params) => (
             <StudioLayout>
               <MangaUpload />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/panels">
+          {(params) => (
+            <StudioLayout>
+              <PanelReview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/storyboard">
+          {(params) => (
+            <StudioLayout>
+              <StoryboardPreview />
             </StudioLayout>
           )}
         </Route>

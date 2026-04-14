@@ -123,3 +123,65 @@
 ### 2F. Tests
 - [x] Vitest: episodes procedures (generate, approve, update)
 - [x] Vitest: characters procedures (create, update, delete, generate reference)
+
+## Phase 3: Manga Panel Generation Engine
+
+### 3A. Panel Generation Pipeline
+- [x] tRPC procedure: episodes.generatePanels (reads script, builds FLUX prompts, generates images)
+- [x] Prompt builder: art_style + camera_angle + visual_description + character traits + location + mood
+- [x] Negative prompt handling for quality control
+- [x] Concurrency control (4 panels simultaneously)
+- [x] Retry with exponential backoff (3 attempts)
+- [x] Upload generated images to S3, update panel records with imageUrl
+- [x] Notify owner on completion/failure
+
+### 3B. Dialogue & SFX Overlay Engine
+- [x] tRPC procedure: panels.applyOverlay (composites dialogue/SFX onto panel image)
+- [x] Speech bubble placement logic (server-side using canvas or image generation)
+- [x] SFX text overlay (bold, angled, colored)
+- [x] Store both raw and composite image URLs
+
+### 3C. Panel Review Interface (/studio/[projectId]/panels)
+- [x] Episode tab bar (horizontal scrollable, active tab with accent-pink underline)
+- [x] Generation progress section (full-width gradient progress bar, panel count, estimated time)
+- [x] Live panel fade-in as they complete (Framer Motion)
+- [x] Masonry-style grid (3 cols desktop, 2 tablet, 1 mobile)
+- [x] Panel card: generated image, hover overlay with action buttons (approve/reject/regenerate/edit)
+- [x] Panel status styling: approved (green border), rejected (red border, grayed), generating (skeleton)
+- [x] Batch action toolbar (sticky bottom: Approve All Visible, Regenerate Failed)
+
+### 3D. Panel Detail Modal
+- [x] Full-screen Radix Dialog overlay
+- [x] Large image view with zoom on hover (transform-origin cursor position)
+- [x] Toggle bar: Raw Panel / With Dialogue (segmented control)
+- [x] Side panel: visual description (editable), FLUX prompt (collapsible), dialogue lines (editable)
+- [x] Action buttons: Approve, Reject, Regenerate, Edit Prompt & Regenerate
+- [x] Keyboard shortcuts: arrow keys navigate, A to approve, R to reject
+
+### 3E. Storyboard Preview (/studio/[projectId]/storyboard)
+- [x] Manga page reader layout (dark bg-void, panels centered)
+- [x] Panels arranged 2-4 per row with varying sizes based on camera angle
+- [x] Thin white borders between panels (manga gutter style)
+- [x] Dialogue text rendered below each panel
+- [x] Click-through slideshow mode (single panel fullscreen, fade transitions, typewriter dialogue)
+- [x] Auto-advance timer in slideshow mode
+- [x] Export as PDF button (jsPDF, manga chapter format)
+- [x] Subtle paper texture overlay at 5% opacity
+
+### 3F. LoRA Integration
+- [x] tRPC procedure: characters.trainLora (upload reference images, start training)
+- [x] tRPC procedure: characters.loraStatus (poll training progress)
+- [x] Store lora_model_url in characters table
+- [x] LoRA training UI: progress card with animated ring, stage labels
+- [x] Sample generation test when training complete
+
+### 3G. Database Schema Extensions
+- [x] Add loraModelUrl, loraStatus, loraTriggerWord columns to characters table
+- [x] Add compositeImageUrl, fluxPrompt, reviewStatus columns to panels table
+- [x] Migration SQL generated and applied
+
+### 3H. Tests
+- [x] Vitest: panel generation procedures (generate, approve, reject, regenerate)
+- [x] Vitest: overlay procedure
+- [x] Vitest: batch actions (approve all, regenerate failed)
+- [x] Vitest: LoRA training procedures

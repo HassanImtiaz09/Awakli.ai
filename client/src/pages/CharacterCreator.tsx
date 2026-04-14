@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import LoraTrainingCard from "@/components/awakli/LoraTrainingCard";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -664,6 +665,34 @@ export default function CharacterCreator() {
             <span className="text-sm font-medium">Add Character</span>
           </motion.button>
         </motion.div>
+      )}
+
+      {/* LoRA Training Section */}
+      {characters && characters.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-heading text-[var(--text-primary)] flex items-center gap-2">
+            <Sparkles size={18} className="text-accent-cyan" />
+            LoRA Training
+          </h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            Train character-specific LoRA models to improve consistency in generated panels.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {characters.map((char) => (
+              <div key={char.id}>
+                <div className="text-sm font-medium text-white mb-2">{char.name}</div>
+                <LoraTrainingCard
+                  characterId={char.id}
+                  characterName={char.name}
+                  loraStatus={(char as any).loraStatus ?? null}
+                  loraModelUrl={(char as any).loraModelUrl ?? null}
+                  loraTriggerWord={(char as any).loraTriggerWord ?? null}
+                  onStatusChange={() => refetch()}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Character form modal */}

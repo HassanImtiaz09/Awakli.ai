@@ -123,7 +123,11 @@ export const panels = mysqlTable("panels", {
   sfx: varchar("sfx", { length: 255 }),
   transition: mysqlEnum("transition", ["cut", "fade", "dissolve"]),
   imageUrl: text("imageUrl"),
-  status: mysqlEnum("status", ["draft", "generating", "generated", "approved"]).default("draft").notNull(),
+  compositeImageUrl: text("compositeImageUrl"),  // Image with dialogue/SFX overlay
+  fluxPrompt: text("fluxPrompt"),  // The actual prompt sent to image generation
+  negativePrompt: text("negativePrompt"),
+  status: mysqlEnum("status", ["draft", "generating", "generated", "approved", "rejected"]).default("draft").notNull(),
+  reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected", "needs_revision"]).default("pending"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -143,6 +147,10 @@ export const characters = mysqlTable("characters", {
   visualTraits: json("visualTraits"),  // {hairColor, eyeColor, bodyType, clothing, distinguishingFeatures}
   referenceImages: json("referenceImages"),  // string[] of CDN URLs
   bio: text("bio"),
+  loraModelUrl: text("loraModelUrl"),
+  loraStatus: mysqlEnum("loraStatus", ["none", "uploading", "training", "validating", "ready", "failed"]).default("none"),
+  loraTriggerWord: varchar("loraTriggerWord", { length: 100 }),
+  loraTrainingProgress: int("loraTrainingProgress").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

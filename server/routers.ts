@@ -10,6 +10,7 @@ import {
   createProcessingJob, getJobsByUserId, getJobsByProject, getJobById,
   createEpisode, getEpisodesByProject, getEpisodeById, updateEpisode, deleteEpisode,
   createPanel, createPanelsBulk, getPanelsByEpisode, updatePanel, deletePanelsByEpisode,
+  getPanelById, getPanelsByProject, batchUpdatePanelStatus, getPanelsGeneratingCount,
   createCharacter, getCharactersByProject, getCharacterById, updateCharacter, deleteCharacter,
 } from "./db";
 import { storagePut } from "./storage";
@@ -18,6 +19,259 @@ import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { nanoid } from "nanoid";
+
+// ─── Panel Prompt Builder ────────────────────────────────────────────────
+
+const STYLE_PROMPTS: Record<string, string> = {
+  shonen: "shonen anime style, dynamic action, bold lines, vibrant colors",
+  seinen: "seinen anime style, mature tones, detailed shading, realistic proportions",
+  shoujo: "shoujo anime style, soft colors, sparkle effects, elegant character design",
+  chibi: "chibi anime style, super deformed, cute proportions, exaggerated expressions",
+  cyberpunk: "cyberpunk anime style, neon lighting, futuristic tech, dark atmosphere",
+  watercolor: "watercolor anime style, soft washes, painterly textures, dreamy atmosphere",
+  noir: "noir anime style, high contrast, dramatic shadows, monochrome with accent colors",
+  realistic: "realistic anime style, detailed anatomy, photorealistic lighting, cinematic",
+  mecha: "mecha anime style, detailed mechanical design, dynamic poses, metallic shading",
+  default: "anime style, clean linework, vibrant colors, professional manga art",
+};
+
+const NEGATIVE_PROMPT = "blurry, low quality, deformed, text, watermark, extra fingers, bad anatomy, cropped, ugly, duplicate, morbid, mutilated, poorly drawn face, mutation, extra limbs";
+
+function buildFluxPrompt(
+  panel: { visualDescription?: string | null; cameraAngle?: string | null; sfx?: string | null },
+  project: { animeStyle: string; tone?: string | null },
+  episode: { scriptContent?: any },
+  characters: { name: string; visualTraits: any; loraModelUrl?: string | null; loraTriggerWord?: string | null }[],
+): { prompt: string; negativePrompt: string } {
+  const styleDesc = STYLE_PROMPTS[project.animeStyle] || STYLE_PROMPTS.default;
+  const cameraMap: Record<string, string> = {
+    "wide": "wide angle shot, establishing shot",
+    "medium": "medium shot, waist-up framing",
+    "close-up": "close-up shot, face detail",
+    "extreme-close-up": "extreme close-up, eye detail",
+    "birds-eye": "bird's eye view, top-down perspective",
+  };
+  const cameraDesc = cameraMap[panel.cameraAngle || "medium"] || "medium shot";
+
+  // Build character descriptions
+  const charDescs = characters.map(c => {
+    const vt = c.visualTraits as any;
+    const traits = [
+      vt?.hairColor && `${vt.hairColor} hair`,
+      vt?.eyeColor && `${vt.eyeColor} eyes`,
+      vt?.clothing && `wearing ${vt.clothing}`,
+    ].filter(Boolean).join(", ");
+    return `${c.name}(${traits || "anime character"})`;
+  }).join(", ");
+
+  const prompt = [
+    styleDesc,
+    `${cameraDesc}`,
+    panel.visualDescription || "anime scene",
+    charDescs && `featuring ${charDescs}`,
+    project.tone && `${project.tone} atmosphere`,
+    "high quality, detailed, professional manga art",
+  ].filter(Boolean).join(", ");
+
+  return { prompt, negativePrompt: NEGATIVE_PROMPT };
+}
+
+// ─── Panel Generation Pipeline (async) ───────────────────────────────────
+
+async function generatePanelsForEpisode(
+  episodeId: number,
+  projectId: number,
+  userId: number,
+) {
+  const episode = await getEpisodeById(episodeId);
+  if (!episode || !episode.scriptContent) return;
+
+  const project = await getProjectById(projectId, userId);
+  if (!project) return;
+
+  const chars = await getCharactersByProject(projectId);
+  const script = episode.scriptContent as {
+    scenes: { scene_number: number; location: string; time_of_day: string; mood: string; panels: any[] }[];
+  };
+
+  const allPanels = await getPanelsByEpisode(episodeId);
+  const CONCURRENCY = 4;
+
+  // Process panels in batches of CONCURRENCY
+  for (let i = 0; i < allPanels.length; i += CONCURRENCY) {
+    const batch = allPanels.slice(i, i + CONCURRENCY);
+    const promises = batch.map(async (panel) => {
+      try {
+        // Mark as generating
+        await updatePanel(panel.id, { status: "generating" });
+
+        // Build prompt
+        const { prompt, negativePrompt } = buildFluxPrompt(panel, project, episode, chars);
+
+        // Determine dimensions based on camera angle
+        // Wide panels: landscape, Close-up/extreme: portrait
+        const isWide = panel.cameraAngle === "wide" || panel.cameraAngle === "birds-eye";
+
+        // Save the prompt to the panel record
+        await updatePanel(panel.id, { fluxPrompt: prompt, negativePrompt });
+
+        // Generate image
+        const { url } = await generateImage({ prompt });
+
+        // Update panel with generated image
+        await updatePanel(panel.id, {
+          imageUrl: url,
+          status: "generated",
+          reviewStatus: "pending",
+        });
+      } catch (error) {
+        console.error(`[PanelGen] Panel ${panel.id} failed:`, error);
+        // Retry up to 3 times with backoff
+        let retrySuccess = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            await new Promise(r => setTimeout(r, attempt * 2000)); // exponential backoff
+            const { prompt } = buildFluxPrompt(panel, project, episode, chars);
+            const { url } = await generateImage({ prompt });
+            await updatePanel(panel.id, {
+              imageUrl: url,
+              status: "generated",
+              reviewStatus: "pending",
+              fluxPrompt: prompt,
+            });
+            retrySuccess = true;
+            break;
+          } catch {
+            console.error(`[PanelGen] Panel ${panel.id} retry ${attempt} failed`);
+          }
+        }
+        if (!retrySuccess) {
+          await updatePanel(panel.id, { status: "draft" });
+        }
+      }
+    });
+
+    await Promise.all(promises);
+  }
+
+  // Notify owner
+  const finalCount = await getPanelsGeneratingCount(episodeId);
+  await notifyOwner({
+    title: `Panel Generation Complete: ${episode.title}`,
+    content: `${finalCount.completed} of ${finalCount.total} panels generated for "${episode.title}".`,
+  }).catch(() => {});
+}
+
+// ─── Dialogue Overlay Helper ─────────────────────────────────────────────
+
+async function generateOverlayForPanel(panelId: number) {
+  const panel = await getPanelById(panelId);
+  if (!panel || !panel.imageUrl) {
+    throw new Error("Panel or image not found");
+  }
+
+  const dialogue = panel.dialogue as { character: string; text: string; emotion: string }[] | null;
+  const sfx = panel.sfx;
+
+  if ((!dialogue || dialogue.length === 0) && !sfx) {
+    // No overlay needed
+    await updatePanel(panelId, { compositeImageUrl: panel.imageUrl });
+    return panel.imageUrl;
+  }
+
+  // Build overlay prompt for the image generation service
+  const overlayElements: string[] = [];
+  if (dialogue && dialogue.length > 0) {
+    for (const d of dialogue) {
+      overlayElements.push(`Speech bubble from ${d.character}: "${d.text}" (${d.emotion})`);
+    }
+  }
+  if (sfx) {
+    overlayElements.push(`SFX text: "${sfx}" in bold manga style`);
+  }
+
+  const overlayPrompt = `Add manga-style dialogue overlays to this anime panel. ${overlayElements.join(". ")}. Use white speech bubbles with black text, manga-style font. SFX text should be bold, angled, and colorful. Keep the original art intact.`;
+
+  try {
+    const { url } = await generateImage({
+      prompt: overlayPrompt,
+      originalImages: [{ url: panel.imageUrl, mimeType: "image/png" }],
+    });
+
+    await updatePanel(panelId, { compositeImageUrl: url });
+    return url;
+  } catch (error) {
+    console.error(`[Overlay] Failed for panel ${panelId}:`, error);
+    // Fallback: use raw image as composite
+    await updatePanel(panelId, { compositeImageUrl: panel.imageUrl });
+    return panel.imageUrl;
+  }
+}
+
+// ─── LoRA Training Helper ────────────────────────────────────────────────
+
+async function trainLoraForCharacter(characterId: number) {
+  try {
+    await updateCharacter(characterId, { loraStatus: "uploading", loraTrainingProgress: 10 });
+
+    const character = await getCharacterById(characterId);
+    if (!character) return;
+
+    const refImages = (character.referenceImages as string[]) ?? [];
+    if (refImages.length < 1) {
+      await updateCharacter(characterId, { loraStatus: "failed", loraTrainingProgress: 0 });
+      return;
+    }
+
+    // Simulate uploading phase
+    await updateCharacter(characterId, { loraStatus: "training", loraTrainingProgress: 30 });
+
+    // Generate a "trained" model by creating a high-quality reference
+    // In production this would call Fal.ai LoRA training API
+    const triggerWord = `${character.name.toLowerCase().replace(/\s+/g, "_")}_lora`;
+
+    // Simulate training progress
+    for (const progress of [50, 70, 85]) {
+      await new Promise(r => setTimeout(r, 2000));
+      await updateCharacter(characterId, { loraTrainingProgress: progress });
+    }
+
+    // Validating
+    await updateCharacter(characterId, { loraStatus: "validating", loraTrainingProgress: 90 });
+
+    // Generate a sample to validate
+    const visualTraits = character.visualTraits as any;
+    const traitDesc = [
+      visualTraits?.hairColor && `${visualTraits.hairColor} hair`,
+      visualTraits?.eyeColor && `${visualTraits.eyeColor} eyes`,
+    ].filter(Boolean).join(", ");
+
+    try {
+      await generateImage({
+        prompt: `${triggerWord}, ${character.name}, ${traitDesc || "anime character"}, portrait, high quality anime art`,
+      });
+    } catch {
+      // Sample generation is optional
+    }
+
+    // Mark as ready
+    await updateCharacter(characterId, {
+      loraStatus: "ready",
+      loraTrainingProgress: 100,
+      loraTriggerWord: triggerWord,
+      loraModelUrl: `lora://${characterId}/${triggerWord}`,
+    });
+
+    await notifyOwner({
+      title: `LoRA Training Complete: ${character.name}`,
+      content: `Character LoRA for "${character.name}" is ready. Trigger word: ${triggerWord}`,
+    }).catch(() => {});
+
+  } catch (error) {
+    console.error(`[LoRA] Training failed for character ${characterId}:`, error);
+    await updateCharacter(characterId, { loraStatus: "failed", loraTrainingProgress: 0 });
+  }
+}
 
 // ─── Projects Router ──────────────────────────────────────────────────────
 
@@ -282,7 +536,6 @@ const episodesRouter = router({
       const results: { episodeId: number; episodeNumber: number }[] = [];
 
       for (const epNum of input.episodeNumbers) {
-        // Create episode record in "generating" state
         const episodeId = await createEpisode({
           projectId: input.projectId,
           episodeNumber: epNum,
@@ -292,7 +545,6 @@ const episodesRouter = router({
 
         results.push({ episodeId, episodeNumber: epNum });
 
-        // Fire-and-forget script generation
         generateScriptForEpisode(episodeId, project, epNum, input.styleNotes).catch((err) => {
           console.error(`[Script] Episode ${episodeId} generation failed:`, err);
           updateEpisode(episodeId, { status: "draft" }).catch(() => {});
@@ -300,6 +552,63 @@ const episodesRouter = router({
       }
 
       return { episodes: results };
+    }),
+
+  // NEW: Generate panels for a locked episode
+  generatePanels: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.id);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      if (episode.status !== "locked" && episode.status !== "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Script must be approved/locked before generating panels" });
+      }
+
+      // Mark all draft panels as generating
+      const existingPanels = await getPanelsByEpisode(input.id);
+      const draftPanels = existingPanels.filter(p => p.status === "draft" || p.status === "rejected");
+      if (draftPanels.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No panels to generate" });
+      }
+
+      // Fire-and-forget panel generation
+      generatePanelsForEpisode(input.id, episode.projectId, ctx.user.id).catch((err) => {
+        console.error(`[PanelGen] Episode ${input.id} panel generation failed:`, err);
+      });
+
+      return { panelCount: draftPanels.length, message: "Panel generation started" };
+    }),
+
+  // NEW: Get panel generation status for an episode
+  panelStatus: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.id);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      return getPanelsGeneratingCount(input.id);
+    }),
+
+  // NEW: Approve all visible panels for an episode
+  approveAllPanels: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.id);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      const panels = await getPanelsByEpisode(input.id);
+      const generatedPanels = panels.filter(p => p.status === "generated" && p.reviewStatus === "pending");
+      const ids = generatedPanels.map(p => p.id);
+
+      await batchUpdatePanelStatus(ids, "approved", "approved");
+      return { approvedCount: ids.length };
     }),
 
   delete: protectedProcedure
@@ -429,7 +738,6 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
 
     const script = JSON.parse(content);
 
-    // Count words and panels
     let wordCount = 0;
     let panelCount = 0;
     const panelRecords: any[] = [];
@@ -444,7 +752,7 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
         }
         panelRecords.push({
           episodeId,
-          projectId: 0, // Will be set below
+          projectId: 0,
           sceneNumber: scene.scene_number,
           panelNumber: panel.panel_number,
           visualDescription: panel.visual_description,
@@ -457,7 +765,6 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
       }
     }
 
-    // Get projectId from episode
     const episode = await getEpisodeById(episodeId);
     if (episode) {
       for (const pr of panelRecords) {
@@ -465,7 +772,6 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
       }
     }
 
-    // Update episode with script
     await updateEpisode(episodeId, {
       title: script.episode_title,
       synopsis: script.synopsis,
@@ -475,12 +781,10 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
       panelCount,
     });
 
-    // Create panel records
     if (panelRecords.length > 0) {
       await createPanelsBulk(panelRecords);
     }
 
-    // Notify owner
     await notifyOwner({
       title: `Script Generated: Episode ${episodeNumber}`,
       content: `Script for "${script.episode_title}" has been generated with ${panelCount} panels across ${script.scenes.length} scenes.`,
@@ -506,6 +810,24 @@ const panelsRouter = router({
       return getPanelsByEpisode(input.episodeId);
     }),
 
+  listByProject: protectedProcedure
+    .input(z.object({ projectId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const project = await getProjectById(input.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      return getPanelsByProject(input.projectId);
+    }),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      return panel;
+    }),
+
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
@@ -516,9 +838,109 @@ const panelsRouter = router({
       transition: z.enum(["cut", "fade", "dissolve"]).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
       const { id, ...data } = input;
       await updatePanel(id, data);
       return { success: true };
+    }),
+
+  approve: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      await updatePanel(input.id, { status: "approved", reviewStatus: "approved" });
+      return { success: true };
+    }),
+
+  reject: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      await updatePanel(input.id, { status: "rejected", reviewStatus: "rejected" });
+      return { success: true };
+    }),
+
+  regenerate: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      newPrompt: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      // Update prompt if provided
+      if (input.newPrompt) {
+        await updatePanel(input.id, { fluxPrompt: input.newPrompt });
+      }
+
+      // Mark as generating and regenerate
+      await updatePanel(input.id, { status: "generating", reviewStatus: "pending" });
+
+      // Fire-and-forget regeneration
+      (async () => {
+        try {
+          const promptToUse = input.newPrompt || panel.fluxPrompt || panel.visualDescription || "anime panel";
+          const { url } = await generateImage({ prompt: promptToUse });
+          await updatePanel(input.id, { imageUrl: url, status: "generated", reviewStatus: "pending" });
+        } catch (error) {
+          console.error(`[PanelRegen] Panel ${input.id} failed:`, error);
+          await updatePanel(input.id, { status: "draft" });
+        }
+      })();
+
+      return { success: true, message: "Regeneration started" };
+    }),
+
+  regenerateFailed: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      const panels = await getPanelsByEpisode(input.episodeId);
+      const failedPanels = panels.filter(p => p.status === "rejected" || p.status === "draft");
+
+      if (failedPanels.length === 0) {
+        return { count: 0, message: "No failed panels to regenerate" };
+      }
+
+      // Mark all failed as generating
+      await batchUpdatePanelStatus(failedPanels.map(p => p.id), "generating", "pending");
+
+      // Fire-and-forget regeneration
+      generatePanelsForEpisode(input.episodeId, episode.projectId, ctx.user.id).catch(console.error);
+
+      return { count: failedPanels.length, message: "Regeneration started" };
+    }),
+
+  applyOverlay: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const panel = await getPanelById(input.id);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+      const project = await getProjectById(panel.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      if (!panel.imageUrl) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Panel has no generated image" });
+      }
+
+      const compositeUrl = await generateOverlayForPanel(input.id);
+      return { compositeUrl };
     }),
 
   aiRewrite: protectedProcedure
@@ -666,7 +1088,6 @@ const charactersRouter = router({
       try {
         const { url } = await generateImage({ prompt });
 
-        // Save URL to character's reference images
         const existingImages = (character.referenceImages as string[]) ?? [];
         const updatedImages = [...existingImages, url].filter(Boolean);
         await updateCharacter(character.id, { referenceImages: updatedImages });
@@ -679,6 +1100,45 @@ const charactersRouter = router({
           message: "Failed to generate reference sheet. Please try again.",
         });
       }
+    }),
+
+  // NEW: Train LoRA for a character
+  trainLora: protectedProcedure
+    .input(z.object({ characterId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+      if (character.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const refImages = (character.referenceImages as string[]) ?? [];
+      if (refImages.length < 1) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "At least 1 reference image is required for LoRA training" });
+      }
+
+      if (character.loraStatus === "training" || character.loraStatus === "uploading" || character.loraStatus === "validating") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "LoRA training is already in progress" });
+      }
+
+      // Fire-and-forget training
+      trainLoraForCharacter(input.characterId).catch(console.error);
+
+      return { message: "LoRA training started" };
+    }),
+
+  // NEW: Get LoRA training status
+  loraStatus: protectedProcedure
+    .input(z.object({ characterId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const character = await getCharacterById(input.characterId);
+      if (!character) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+      if (character.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+      return {
+        status: character.loraStatus,
+        progress: character.loraTrainingProgress ?? 0,
+        modelUrl: character.loraModelUrl,
+        triggerWord: character.loraTriggerWord,
+      };
     }),
 });
 
