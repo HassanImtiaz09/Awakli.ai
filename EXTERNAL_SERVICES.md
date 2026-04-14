@@ -20,84 +20,65 @@ These services are provided by the Manus platform and are automatically injected
 
 ---
 
-## Priority 1: Critical for Core Features
+## Integrated & Active
 
-These services are needed to replace placeholder implementations and enable real functionality.
+These external services have been fully integrated with real API calls replacing all placeholders.
 
-### 1. ElevenLabs — Voice Generation & Cloning
+### 1. ElevenLabs — Voice Generation & Cloning (ACTIVE)
 
-**Used for:** Character voice acting, narrator voice, text-to-speech, voice cloning
+**Status:** Fully integrated. Creator tier account with 110,000 characters available.
 
-**Where it's referenced:**
-- `server/pipelineOrchestrator.ts` — Voice generation step in anime pipeline
-- `server/pipelineAgents.ts` — Narrator voice clips
-- `server/routers.ts` — Voice cloning endpoint
-- `server/routers-preproduction.ts` — Voice auditions, voice library browsing
+**Used for:** Character voice acting, narrator voice, text-to-speech, voice cloning, voice library browsing
 
-**Current state:** All voice endpoints return placeholder buffers (`Buffer.from("TTS: ...")`)
+**Service module:** `server/elevenlabs.ts`
 
-**API Key needed:**
-- `ELEVENLABS_API_KEY` — Your ElevenLabs API key
+**Endpoints replaced:**
+- `server/pipelineOrchestrator.ts` — Real TTS with voice selection for character dialogue
+- `server/pipelineAgents.ts` — Narrator uses "Roger" voice with narrator preset
+- `server/routers.ts` — Voice cloning via `instantVoiceClone`, voice testing via real TTS
+- `server/routers-preproduction.ts` — Voice auditions with S3 upload, voice library browsing via `browseSharedVoices`, voice cloning via `instantVoiceClone`
 
-**How to get it:**
-1. Go to [elevenlabs.io](https://elevenlabs.io) and create an account
-2. Navigate to **Profile** → **API Keys**
-3. Click **Create API Key**
-4. Copy the key
+**Env variable:** `ELEVENLABS_API_KEY` — Set and validated
 
-**Pricing:** Starter plan ($5/mo) includes 30,000 characters. Scale plan ($22/mo) for production use. Professional ($99/mo) for voice cloning.
+**Pricing:** Creator tier. Starter plan ($5/mo) includes 30,000 characters. Scale plan ($22/mo) for production use.
 
 ---
 
-### 2. Kling AI (or RunwayML / Pika) — Manga-to-Anime Video Generation
+### 2. Kling AI — Manga-to-Anime Video Generation (ACTIVE)
 
-**Used for:** Converting static manga panels into animated anime clips
+**Status:** Fully integrated. JWT auth, image-to-video, text-to-video, and task polling all working.
 
-**Where it's referenced:**
-- `server/pipelineOrchestrator.ts` — Panel animation step
-- `server/routers-preproduction.ts` — Animation style preview with `klingModifier`
-- `server/routers-phase13.ts` — Full anime pipeline
+**Used for:** Converting static manga panels into animated anime clips, style previews, sneak peeks
 
-**Current state:** Returns placeholder video buffers
+**Service module:** `server/kling.ts`
 
-**API Key needed:**
-- `KLING_API_KEY` — Kling AI API key (or equivalent video generation service)
+**Endpoints replaced:**
+- `server/pipelineOrchestrator.ts` — Real Kling image-to-video with polling for panel animation
+- `server/routers-freemium.ts` — Async Kling generation with S3 storage for anime previews
+- `server/routers-phase13.ts` — Async Kling generation for sneak peek clips
+- `server/routers-preproduction.ts` — Kling image-to-video for style previews, real image generation for character sheets and environment concept art
 
-**How to get it:**
-1. Go to [klingai.com](https://klingai.com) and create an account
-2. Navigate to API settings
-3. Generate an API key
+**Env variables:** `KLING_ACCESS_KEY`, `KLING_SECRET_KEY` — Set and validated
 
-**Alternatives:**
-- [RunwayML](https://runwayml.com) — Gen-3 Alpha for image-to-video (`RUNWAY_API_KEY`)
-- [Pika](https://pika.art) — Image-to-video generation (`PIKA_API_KEY`)
-- [Luma AI](https://lumalabs.ai) — Dream Machine for video generation (`LUMA_API_KEY`)
-
-**Pricing:** Varies by provider. Kling: ~$0.10-0.30 per 5s clip. Runway: $0.05 per second of video.
+**Pricing:** ~$0.10-0.30 per 5s clip.
 
 ---
 
-### 3. Suno AI — Music & Background Score Generation
+### 3. MiniMax Music 2.6 — Music & Background Score Generation (ACTIVE)
 
-**Used for:** Opening/ending themes, background music, custom soundtracks
+**Status:** Fully integrated. Lyrics generation and instrumental music generation confirmed working (130s track, 4.2MB MP3).
 
-**Where it's referenced:**
-- `server/routers-music.ts` — Theme generation, BGM generation, custom music, refinement
-- `server/pipelineOrchestrator.ts` — Background music step in pipeline
+**Used for:** Opening/ending themes, background music, custom soundtracks, scene BGM, lyrics generation
 
-**Current state:** Returns placeholder audio buffers with `sunoGenerationId` stubs
+**Service module:** `server/minimax-music.ts`
 
-**API Key needed:**
-- `SUNO_API_KEY` — Suno API key
+**Endpoints replaced:**
+- `server/pipelineOrchestrator.ts` — `generateSceneBGM` for pipeline music_gen node
+- `server/routers-music.ts` — `generateTheme`, `refineTheme`, `generateOst`, `generateCustomTrack`, `regenerateTrack` (5 endpoints)
 
-**How to get it:**
-1. Go to [suno.com](https://suno.com) and create an account
-2. Navigate to API/Developer settings
-3. Generate an API key
+**Env variable:** `MINIMAX_API_KEY` — Set and validated (sk-api-* format)
 
-**Alternative:** [Udio](https://udio.com) for music generation
-
-**Pricing:** Pro plan ($10/mo) for 500 songs. Premier ($30/mo) for commercial use.
+**Pricing:** Pay-as-you-go. Free tier available with `music-2.6-free` model.
 
 ---
 
@@ -113,7 +94,9 @@ These services are needed for the automated demo video production pipeline.
 - `client/src/components/awakli/DemoShowcase.tsx` — Video player embed
 - `server/demo-assets.ts` — Upload destination for processed demo video
 
-**API Key needed:**
+**Current state:** Landing page falls back to image slideshow when no video URL is configured
+
+**API Keys needed:**
 - `CLOUDFLARE_ACCOUNT_ID` — Your Cloudflare account ID
 - `CLOUDFLARE_STREAM_TOKEN` — API token with Stream permissions
 
@@ -155,7 +138,7 @@ These services enhance the platform but are not blocking core functionality.
 **Where it's referenced:**
 - `server/pipelineOrchestrator.ts` — Lip sync step in pipeline
 
-**Current state:** Returns placeholder video buffers
+**Current state:** Returns placeholder video buffers (lip sync is the only remaining placeholder in the pipeline)
 
 **Options:**
 - Self-hosted SadTalker/Wav2Lip (requires GPU server)
@@ -182,28 +165,22 @@ These services enhance the platform but are not blocking core functionality.
 
 ## Environment Variables Summary
 
-Add these to your project via **Settings → Secrets** in the Manus Management UI:
-
-| Variable | Service | Priority | Required For |
-|----------|---------|----------|-------------|
-| `ELEVENLABS_API_KEY` | ElevenLabs | P1 | Voice acting, TTS, voice cloning |
-| `KLING_API_KEY` | Kling AI | P1 | Manga-to-anime video generation |
-| `SUNO_API_KEY` | Suno | P1 | Music & BGM generation |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | P2 | Demo video hosting |
-| `CLOUDFLARE_STREAM_TOKEN` | Cloudflare | P2 | Demo video hosting |
-| `DID_API_KEY` | D-ID (optional) | P3 | Lip sync |
+| Variable | Service | Priority | Status |
+|----------|---------|----------|--------|
+| `ELEVENLABS_API_KEY` | ElevenLabs | P1 | **Active** — Voice acting, TTS, voice cloning |
+| `KLING_ACCESS_KEY` | Kling AI | P1 | **Active** — Manga-to-anime video generation |
+| `KLING_SECRET_KEY` | Kling AI | P1 | **Active** — Manga-to-anime video generation |
+| `MINIMAX_API_KEY` | MiniMax Music | P1 | **Active** — Music & BGM generation |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | P2 | Needed — Demo video hosting |
+| `CLOUDFLARE_STREAM_TOKEN` | Cloudflare | P2 | Needed — Demo video hosting |
+| `DID_API_KEY` | D-ID (optional) | P3 | Optional — Lip sync |
 
 ---
 
-## Integration Workflow
+## Remaining Placeholders
 
-Once you have the API keys, provide them to me and I will:
+Only **one placeholder** remains in the entire pipeline:
 
-1. **Add each key** as an environment variable via the Secrets system
-2. **Replace placeholder implementations** in the pipeline orchestrator and routers with real API calls
-3. **Write integration tests** to verify each service connection
-4. **Update the pipeline** to use real voice generation, video generation, and music generation
-5. **Configure Cloudflare Stream** for demo video hosting
-6. **Run the full demo pipeline** end-to-end
+1. **Lip sync** (`server/pipelineOrchestrator.ts` — `lipSyncAgent`) — Returns placeholder video. Requires D-ID API key or self-hosted SadTalker/Wav2Lip.
 
-The platform is architecturally ready for all these integrations — the placeholder code follows the exact same data flow that the real implementations will use, so swapping in real APIs is straightforward.
+All other pipeline nodes (video generation, voice generation, music generation, image generation) now use real API calls.

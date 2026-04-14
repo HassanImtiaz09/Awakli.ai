@@ -12,4 +12,5 @@ export const ENV = {
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
   klingAccessKey: process.env.KLING_ACCESS_KEY ?? "",
   klingSecretKey: process.env.KLING_SECRET_KEY ?? "",
+  minimaxApiKey: process.env.MINIMAX_API_KEY ?? "",
 };

@@ -9,6 +9,7 @@ import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { generateVideoFromImage, imageToVideo, queryTask } from "./kling";
+import { generateSceneBGM } from "./minimax-music";
 import {
   getPipelineRunById,
   updatePipelineRun,
@@ -261,26 +262,61 @@ async function lipSyncAgent(runId: number, episodeId: number, nodeStatuses: Node
 
 async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
-
-  // Simulate music generation
-  await sleep(2000);
   totalCost += NODE_COSTS.music_gen;
 
+  // Get episode and project info for contextual music generation
+  const episode = await getEpisodeById(episodeId);
+  const genre = "cinematic anime";
+  const mood = "dramatic, emotional";
+  const title = episode?.title || "Untitled Episode";
+
   const musicKey = `pipeline/${runId}/music-${nanoid(6)}.mp3`;
-  const placeholderBuffer = Buffer.from("Background music placeholder");
 
   try {
-    const { url } = await storagePut(musicKey, placeholderBuffer, "audio/mpeg");
+    // Generate real background music using MiniMax Music 2.6
+    const result = await generateSceneBGM({
+      sceneDescription: `anime episode background score for "${title}", orchestral, cinematic`,
+      mood,
+    });
+
+    // Download from MiniMax temporary URL and upload to S3
+    const audioRes = await fetch(result.audioUrl);
+    if (!audioRes.ok) throw new Error(`Failed to download music: ${audioRes.status}`);
+    const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+    const { url } = await storagePut(musicKey, audioBuffer, "audio/mpeg");
+
     await createPipelineAsset({
       pipelineRunId: runId,
       episodeId,
       assetType: "music_segment",
       url,
-      metadata: { duration: 60, genre: "cinematic", mood: "dramatic" } as any,
+      metadata: {
+        duration: Math.round(result.durationMs / 1000),
+        genre,
+        mood,
+        sizeBytes: result.sizeBytes,
+        sampleRate: result.sampleRate,
+      } as any,
       nodeSource: "music_gen",
     });
+    console.log(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
   } catch (err) {
-    console.error("[Pipeline] Music gen failed:", err);
+    console.error("[Pipeline] Music gen failed, using silent fallback:", err);
+    // Fallback: store a minimal silent placeholder so pipeline doesn't break
+    const silentBuffer = Buffer.alloc(1024, 0);
+    try {
+      const { url } = await storagePut(musicKey, silentBuffer, "audio/mpeg");
+      await createPipelineAsset({
+        pipelineRunId: runId,
+        episodeId,
+        assetType: "music_segment",
+        url,
+        metadata: { duration: 0, genre, mood, fallback: true } as any,
+        nodeSource: "music_gen",
+      });
+    } catch (fallbackErr) {
+      console.error("[Pipeline] Music fallback also failed:", fallbackErr);
+    }
   }
 
   await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 80, totalCost, nodeCosts);

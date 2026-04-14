@@ -4,6 +4,22 @@ import { getDb } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { generateMusic, type MusicResult } from "./minimax-music";
+
+/** Helper to generate music via MiniMax and return the result */
+async function generateMusicForTrack(opts: {
+  prompt: string;
+  lyrics?: string;
+  instrumental?: boolean;
+  autoLyrics?: boolean;
+}): Promise<MusicResult> {
+  return generateMusic({
+    prompt: opts.prompt,
+    lyrics: opts.lyrics,
+    instrumental: opts.instrumental ?? false,
+    autoLyrics: opts.autoLyrics ?? false,
+  });
+}
 import {
   musicTracks,
   musicVersions,
@@ -329,7 +345,7 @@ Rewrite this section.`,
 // ─── Song Generation & Refinement Router ─────────────────────────────
 
 export const musicGenerationRouter = router({
-  // Generate theme song via Suno-style API
+  // Generate theme song via MiniMax Music 2.6
   generateTheme: protectedProcedure
     .input(z.object({
       projectId: z.number(),
@@ -354,29 +370,55 @@ export const musicGenerationRouter = router({
 
       const actualVariations = Math.min(input.variationCount, maxVariations);
 
-      // Build Suno-style prompt
+      // Build music generation prompt
       const instrumentList = input.instruments?.join(", ") || "full band";
       const stylePrompt = `${input.genre}, ${input.tempo} BPM, ${input.vocalType} vocals, ${input.language}, ${instrumentList}, anime ${input.themeType} theme, emotional, professional production quality, ${input.energyCurve.replace(/_/g, " ")}`;
 
-      // Create tracks for each variation (simulated - in production would call Suno API)
+      // Generate tracks using MiniMax Music 2.6
       const tracks = [];
       for (let i = 0; i < actualVariations; i++) {
         const versionLabel = String.fromCharCode(65 + i); // A, B, C...
+        const isInstrumental = input.vocalType === "instrumental";
+
+        // Insert track record first (status: generating)
         const [track] = await db.insert(musicTracks).values({
           projectId: input.projectId,
           trackType: input.themeType,
           title: `${input.themeType === "opening" ? "OP" : "ED"} Theme - Version ${versionLabel}`,
           lyrics: input.lyrics,
           stylePrompt,
-          trackUrl: null, // Would be set by Suno callback
+          trackUrl: null,
           durationSeconds: 90,
-          isVocal: input.vocalType !== "instrumental" ? 1 : 0,
+          isVocal: isInstrumental ? 0 : 1,
           isLoopable: 0,
           versionNumber: 1,
           isApproved: 0,
           isUserUploaded: 0,
-          sunoGenerationId: `suno_${Date.now()}_${i}`,
+          sunoGenerationId: `minimax_${Date.now()}_${i}`,
         }).$returningId();
+
+        // Fire-and-forget: generate music in background and update track when done
+        (async () => {
+          try {
+            const result = await generateMusicForTrack({
+              prompt: stylePrompt,
+              lyrics: isInstrumental ? undefined : (input.lyrics || undefined),
+              instrumental: isInstrumental,
+              autoLyrics: !isInstrumental && !input.lyrics,
+            });
+            const s3Key = `music/themes/${input.projectId}/${track.id}-v${versionLabel}-${Date.now()}.mp3`;
+            const audioRes = await fetch(result.audioUrl);
+            const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+            const { url } = await storagePut(s3Key, audioBuffer, "audio/mpeg");
+            await db.update(musicTracks).set({
+              trackUrl: url,
+              durationSeconds: Math.round(result.durationMs / 1000),
+            }).where(eq(musicTracks.id, track.id));
+            console.log(`[Music] Theme ${versionLabel} generated: ${Math.round(result.durationMs / 1000)}s`);
+          } catch (err) {
+            console.error(`[Music] Theme ${versionLabel} generation failed:`, err);
+          }
+        })();
 
         tracks.push({
           id: track.id,
@@ -391,7 +433,7 @@ export const musicGenerationRouter = router({
         tracks,
         variationsGenerated: actualVariations,
         stylePrompt,
-        message: `Generating ${actualVariations} variations. Each takes 30-60 seconds.`,
+        message: `Generating ${actualVariations} variations. Each takes 30-90 seconds.`,
       };
     }),
 
@@ -453,9 +495,33 @@ export const musicGenerationRouter = router({
       await db.update(musicTracks).set({
         stylePrompt: modifiedPrompt,
         versionNumber: track.versionNumber + 1,
-        trackUrl: null, // Would be regenerated
-        sunoGenerationId: `suno_refine_${Date.now()}`,
+        trackUrl: null,
+        sunoGenerationId: `minimax_refine_${Date.now()}`,
       }).where(eq(musicTracks.id, input.trackId));
+
+      // Fire-and-forget: regenerate music in background
+      (async () => {
+        try {
+          const isInstrumental = track.isVocal === 0;
+          const result = await generateMusicForTrack({
+            prompt: modifiedPrompt,
+            lyrics: isInstrumental ? undefined : (track.lyrics || undefined),
+            instrumental: isInstrumental,
+            autoLyrics: !isInstrumental && !track.lyrics,
+          });
+          const s3Key = `music/themes/${track.projectId}/${input.trackId}-v${track.versionNumber + 1}-${Date.now()}.mp3`;
+          const audioRes = await fetch(result.audioUrl);
+          const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+          const { url } = await storagePut(s3Key, audioBuffer, "audio/mpeg");
+          await db.update(musicTracks).set({
+            trackUrl: url,
+            durationSeconds: Math.round(result.durationMs / 1000),
+          }).where(eq(musicTracks.id, input.trackId));
+          console.log(`[Music] Refined track ${input.trackId}: ${Math.round(result.durationMs / 1000)}s`);
+        } catch (err) {
+          console.error(`[Music] Refinement generation failed for track ${input.trackId}:`, err);
+        }
+      })();
 
       return {
         trackId: input.trackId,
@@ -562,8 +628,29 @@ export const musicOstRouter = router({
           versionNumber: 1,
           isApproved: 0,
           isUserUploaded: 0,
-          sunoGenerationId: `suno_bgm_${Date.now()}_${mood.id}`,
+          sunoGenerationId: `minimax_bgm_${Date.now()}_${mood.id}`,
         }).$returningId();
+
+        // Fire-and-forget: generate BGM in background
+        (async () => {
+          try {
+            const result = await generateMusicForTrack({
+              prompt: stylePrompt,
+              instrumental: true,
+            });
+            const s3Key = `music/bgm/${input.projectId}/${track.id}-${mood.id}-${Date.now()}.mp3`;
+            const audioRes = await fetch(result.audioUrl);
+            const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+            const { url } = await storagePut(s3Key, audioBuffer, "audio/mpeg");
+            await db.update(musicTracks).set({
+              trackUrl: url,
+              durationSeconds: Math.round(result.durationMs / 1000),
+            }).where(eq(musicTracks.id, track.id));
+            console.log(`[Music] BGM ${mood.id} generated: ${Math.round(result.durationMs / 1000)}s`);
+          } catch (err) {
+            console.error(`[Music] BGM ${mood.id} generation failed:`, err);
+          }
+        })();
 
         tracks.push({
           id: track.id,
@@ -617,8 +704,29 @@ export const musicOstRouter = router({
         versionNumber: 1,
         isApproved: 0,
         isUserUploaded: 0,
-        sunoGenerationId: `suno_custom_${Date.now()}`,
+        sunoGenerationId: `minimax_custom_${Date.now()}`,
       }).$returningId();
+
+      // Fire-and-forget: generate custom track in background
+      (async () => {
+        try {
+          const result = await generateMusicForTrack({
+            prompt: stylePrompt,
+            instrumental: true,
+          });
+          const s3Key = `music/custom/${input.projectId}/${track.id}-${Date.now()}.mp3`;
+          const audioRes = await fetch(result.audioUrl);
+          const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+          const { url } = await storagePut(s3Key, audioBuffer, "audio/mpeg");
+          await db.update(musicTracks).set({
+            trackUrl: url,
+            durationSeconds: Math.round(result.durationMs / 1000),
+          }).where(eq(musicTracks.id, track.id));
+          console.log(`[Music] Custom track generated: ${Math.round(result.durationMs / 1000)}s`);
+        } catch (err) {
+          console.error(`[Music] Custom track generation failed:`, err);
+        }
+      })();
 
       return {
         id: track.id,
@@ -839,16 +947,41 @@ export const musicTrackRouter = router({
       });
 
       const newPrompt = input.styleModifier
-        ? `${track.stylePrompt}, ${input.styleModifier}`
-        : track.stylePrompt;
+        ? `${track.stylePrompt || ""}, ${input.styleModifier}`
+        : (track.stylePrompt || "");
 
       await db.update(musicTracks).set({
         stylePrompt: newPrompt,
         versionNumber: track.versionNumber + 1,
         trackUrl: null,
-        sunoGenerationId: `suno_regen_${Date.now()}`,
+        sunoGenerationId: `minimax_regen_${Date.now()}`,
         isApproved: 0,
       }).where(eq(musicTracks.id, input.trackId));
+
+      // Fire-and-forget: regenerate track in background
+      (async () => {
+        try {
+          const isInstrumental = track.isVocal === 0;
+          const lyricsStr = track.lyrics || undefined;
+          const result = await generateMusicForTrack({
+            prompt: newPrompt,
+            lyrics: isInstrumental ? undefined : lyricsStr,
+            instrumental: isInstrumental,
+            autoLyrics: !isInstrumental && !track.lyrics,
+          });
+          const s3Key = `music/regen/${track.projectId}/${input.trackId}-v${track.versionNumber + 1}-${Date.now()}.mp3`;
+          const audioRes = await fetch(result.audioUrl);
+          const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+          const { url } = await storagePut(s3Key, audioBuffer, "audio/mpeg");
+          await db.update(musicTracks).set({
+            trackUrl: url,
+            durationSeconds: Math.round(result.durationMs / 1000),
+          }).where(eq(musicTracks.id, input.trackId));
+          console.log(`[Music] Regenerated track ${input.trackId}: ${Math.round(result.durationMs / 1000)}s`);
+        } catch (err) {
+          console.error(`[Music] Regeneration failed for track ${input.trackId}:`, err);
+        }
+      })();
 
       return { trackId: input.trackId, newVersion: track.versionNumber + 1, status: "generating" };
     }),

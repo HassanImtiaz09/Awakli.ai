@@ -1376,3 +1376,13 @@
 - [x] Replace placeholder environment concept art in routers-preproduction.ts — real image generation
 - [x] Write integration tests: 4 tests (API connection, image2video, text2video, task query) — all passing
 - [x] Confirmed: image-to-video task submitted successfully (task_id: 873085464255799327)
+
+## MiniMax Music 2.6 Integration
+- [x] Add MINIMAX_API_KEY as environment secret (sk-api-* format key)
+- [x] Add env variable to server/_core/env.ts
+- [x] Research MiniMax Music 2.6 API: music generation (sync), lyrics generation, cover generation
+- [x] Create MiniMax Music service module (server/minimax-music.ts) — generateMusic, generateLyrics, generateSceneBGM, generateMusicAndUpload
+- [x] Replace placeholder music generation in pipelineOrchestrator.ts — generateSceneBGM already wired
+- [x] Replace all placeholder music in routers-music.ts — generateTheme, refineTheme, generateOst, generateCustomTrack, regenerateTrack (5 endpoints)
+- [x] Write integration tests: 3 tests (API auth, lyrics generation, instrumental music generation) — all 375 tests pass
+- [x] Confirmed: music generation working — 130s instrumental track generated (4.2MB MP3)
