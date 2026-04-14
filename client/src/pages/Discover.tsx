@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, TrendingUp, Clock, Star, Wand2, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, Clock, Star, Wand2, ArrowRight, Flame, Trophy, Film } from "lucide-react";
 import React, { useRef } from "react";
 import { useInView } from "framer-motion";
 import { Link } from "wouter";
@@ -8,6 +8,7 @@ import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import { AwakliPosterSkeleton } from "@/components/awakli/AwakliSkeleton";
 import { PlatformLayout } from "@/components/awakli/Layouts";
 import { trpc } from "@/lib/trpc";
+import { VoteProgressBar } from "@/components/awakli/VoteProgressBar";
 
 // Mock featured content
 const FEATURED = [
@@ -136,6 +137,176 @@ function JustCreatedRow() {
   );
 }
 
+function RisingStarsRow() {
+  const { data: rising, isLoading } = trpc.discoverVoting.rising.useQuery({ limit: 8 });
+
+  if (isLoading) {
+    return (
+      <section>
+        <ScrollReveal>
+          <div className="flex items-center gap-2 mb-6">
+            <Flame size={20} className="text-orange-400" />
+            <h2 className="text-h3 text-[#F0F0F5]">Rising Stars</h2>
+          </div>
+        </ScrollReveal>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="aspect-[3/4] rounded-xl bg-white/[0.03] border border-white/5 animate-pulse" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (!rising || rising.length === 0) return null;
+
+  return (
+    <section>
+      <ScrollReveal>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Flame size={20} className="text-orange-400" />
+            <h2 className="text-h3 text-[#F0F0F5]">Rising Stars</h2>
+            <AwakliiBadge variant="pink" size="sm">Vote to Anime</AwakliiBadge>
+          </div>
+          <Link href="/leaderboard">
+            <span className="text-sm text-orange-400 hover:underline cursor-pointer flex items-center gap-1">
+              See all <ArrowRight size={14} />
+            </span>
+          </Link>
+        </div>
+      </ScrollReveal>
+      <p className="text-white/40 text-sm mb-4 -mt-3">
+        These manga are climbing toward the anime vote threshold. Your vote could make the difference!
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {rising.map((item, i) => (
+          <ScrollReveal key={item.id} delay={i * 0.06}>
+            <Link href={`/watch/${item.slug}`}>
+              <AwakliCard variant="elevated" glow="pink" className="p-0 overflow-hidden cursor-pointer group">
+                <div className="aspect-[3/2] relative overflow-hidden">
+                  <img
+                    src={item.coverImageUrl || `https://picsum.photos/seed/${item.id}/400/260`}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D1A] via-transparent to-transparent" />
+                  <div className="absolute top-2 right-2">
+                    <span className="text-xs font-bold bg-orange-500/90 text-white px-2 py-0.5 rounded-full">
+                      {item.percentage}%
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-[#F0F0F5] truncate">{item.title}</h3>
+                  <div className="flex items-center gap-1.5 mt-1 mb-2">
+                    <AwakliiBadge variant={(item.genre?.toLowerCase() || "fantasy") as any} size="sm">
+                      {item.genre || "Fantasy"}
+                    </AwakliiBadge>
+                    {item.userName && <span className="text-[10px] text-[#5C5C7A]">by {item.userName}</span>}
+                  </div>
+                  <VoteProgressBar projectId={item.id} compact />
+                </div>
+              </AwakliCard>
+            </Link>
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BecomingAnimeRow() {
+  const { data: becoming, isLoading } = trpc.discoverVoting.becomingAnime.useQuery({ limit: 6 });
+
+  if (isLoading) {
+    return (
+      <section>
+        <ScrollReveal>
+          <div className="flex items-center gap-2 mb-6">
+            <Film size={20} className="text-cyan-400" />
+            <h2 className="text-h3 text-[#F0F0F5]">Becoming Anime</h2>
+          </div>
+        </ScrollReveal>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 rounded-xl bg-white/[0.03] border border-white/5 animate-pulse" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (!becoming || becoming.length === 0) return null;
+
+  return (
+    <section>
+      <ScrollReveal>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Film size={20} className="text-cyan-400" />
+            <h2 className="text-h3 text-[#F0F0F5]">Becoming Anime</h2>
+            <AwakliiBadge variant="default" size="sm">
+              <Sparkles size={10} className="mr-1" /> In Production
+            </AwakliiBadge>
+          </div>
+          <Link href="/leaderboard">
+            <span className="text-sm text-cyan-400 hover:underline cursor-pointer flex items-center gap-1">
+              View all <ArrowRight size={14} />
+            </span>
+          </Link>
+        </div>
+      </ScrollReveal>
+      <p className="text-white/40 text-sm mb-4 -mt-3">
+        These manga earned enough community votes and are now being converted to anime!
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {becoming.map((item, i) => (
+          <ScrollReveal key={item.id} delay={i * 0.08}>
+            <Link href={`/watch/${item.slug}`}>
+              <AwakliCard variant="elevated" className="p-4 flex gap-4 cursor-pointer group border-cyan-500/20">
+                <div className="w-20 h-28 rounded-lg overflow-hidden shrink-0 relative">
+                  <img
+                    src={item.coverImageUrl || `https://picsum.photos/seed/${item.id}/120/170`}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 border-2 border-cyan-400/30 rounded-lg" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Trophy size={14} className="text-amber-400 shrink-0" />
+                    <h3 className="font-semibold text-[#F0F0F5] truncate">{item.title}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <AwakliiBadge variant={(item.genre?.toLowerCase() || "fantasy") as any} size="sm">
+                      {item.genre || "Fantasy"}
+                    </AwakliiBadge>
+                    <span className="text-xs text-cyan-400 font-medium">
+                      {(item.totalVotes ?? 0).toLocaleString()} votes
+                    </span>
+                  </div>
+                  {item.userName && (
+                    <p className="text-[10px] text-[#5C5C7A] mt-1.5">Created by {item.userName}</p>
+                  )}
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-cyan-400/70">
+                    <motion.div
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="w-1.5 h-1.5 rounded-full bg-cyan-400"
+                    />
+                    Anime production in progress
+                  </div>
+                </div>
+              </AwakliCard>
+            </Link>
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function Discover() {
   return (
     <PlatformLayout>
@@ -197,6 +368,12 @@ export default function Discover() {
 
         {/* Just Created — real data from quick create */}
         <JustCreatedRow />
+
+        {/* Rising Stars — close to anime threshold */}
+        <RisingStarsRow />
+
+        {/* Becoming Anime — in production */}
+        <BecomingAnimeRow />
 
         {/* Recently Added */}
         <section>

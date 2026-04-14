@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import {
   Play, Star, ChevronRight, Plus, Check, Share2, Clock, Film,
   ThumbsUp, ThumbsDown, Eye, BookmarkPlus, Bookmark, Users,
-  ArrowLeft, Calendar, Sparkles
+  ArrowLeft, Calendar, Sparkles, Trophy, Flame
 } from "lucide-react";
+import { VoteProgressBar, EnhancedVoteButton } from "@/components/awakli/VoteProgressBar";
 
 function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -240,6 +241,41 @@ export default function WatchProject() {
                   </div>
                 </div>
               </ScrollReveal>
+
+              {/* Vote Progress - Road to Anime */}
+              {p.id && (
+                <ScrollReveal delay={0.15}>
+                  <div className="rounded-xl border border-white/5 bg-surface-1/50 p-6">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                      {p.animeStatus === 'in_production' || p.animeStatus === 'completed' ? (
+                        <><Trophy className="w-5 h-5 text-amber-400" /> Anime Status</>
+                      ) : (
+                        <><Flame className="w-5 h-5 text-orange-400" /> Road to Anime</>
+                      )}
+                    </h3>
+                    {p.animeStatus === 'in_production' ? (
+                      <div className="text-center py-3">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-400/20 text-amber-400 text-sm font-medium mb-2">
+                          <Trophy className="w-4 h-4" />
+                          In Production
+                        </div>
+                        <p className="text-xs text-gray-400">This manga earned enough votes and is being converted to anime.</p>
+                      </div>
+                    ) : p.animeStatus === 'completed' ? (
+                      <div className="text-center py-3">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-400/20 text-cyan-400 text-sm font-medium">
+                          <Sparkles className="w-4 h-4" /> Anime Complete
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-400 mb-3">Vote to help this manga become anime!</p>
+                        <VoteProgressBar projectId={p.id} />
+                      </>
+                    )}
+                  </div>
+                </ScrollReveal>
+              )}
 
               {/* Quick actions */}
               <ScrollReveal delay={0.2}>

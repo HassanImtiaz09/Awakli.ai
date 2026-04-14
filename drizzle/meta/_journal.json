@@ -64,6 +64,13 @@
       "when": 1776134058101,
       "tag": "0008_normal_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1776135673960,
+      "tag": "0009_abandoned_nightmare",
+      "breakpoints": true
     }
   ]
 }

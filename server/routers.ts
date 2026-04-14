@@ -36,6 +36,10 @@ import {
   updateCharacterVoice, getCharactersWithVoice,
 } from "./db";
 import { billingRouter, usageRouter, marketplaceRouter, adminRouter, reportRouter } from "./routers-phase6";
+import {
+  enhancedVotingRouter, voteProgressRouter, animeProductionRouter,
+  discoverVotingRouter, roadToAnimeRouter, creatorVotingRouter, adminVotingRouter,
+} from "./routers-voting";
 import { quickCreateRouter } from "./routers-create";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
@@ -1798,11 +1802,18 @@ export const appRouter = router({
   // Phase 4: Community & Streaming
   discover: discoverRouter,
   search: searchRouter,
-  voting: votingRouter,
+  voting: enhancedVotingRouter,
   comments: commentsRouter,
   follows: followsRouter,
   watchlist: watchlistRouter,
   leaderboard: leaderboardRouter,
+  // Voting-to-Anime Pipeline
+  voteProgress: voteProgressRouter,
+  animeProduction: animeProductionRouter,
+  discoverVoting: discoverVotingRouter,
+  roadToAnime: roadToAnimeRouter,
+  creatorVoting: creatorVotingRouter,
+  adminVoting: adminVotingRouter,
   notifications: notificationsRouter,
   userProfile: userProfileRouter,
   watch: watchRouter,

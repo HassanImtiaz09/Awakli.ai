@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   Plus, Upload, Layers, Zap, Film, Clock, CheckCircle2, XCircle, Loader2,
-  FolderOpen, ArrowRight, Sparkles
+  FolderOpen, ArrowRight, Sparkles, Wand2, PenTool, Trophy, Flame
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link } from "wouter";
@@ -78,6 +78,52 @@ export default function StudioDashboard() {
           </Link>
         </div>
 
+        {/* 3 Creation Paths */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Link href="/create">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0 }}
+              className="group p-5 rounded-xl border border-[#E94560]/20 bg-gradient-to-br from-[#E94560]/5 to-transparent hover:border-[#E94560]/40 hover:bg-[#E94560]/10 transition-all cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-xl bg-[#E94560]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Wand2 size={24} className="text-[#E94560]" />
+              </div>
+              <h3 className="font-semibold text-[#F0F0F5] mb-1">Quick Create</h3>
+              <p className="text-xs text-[#9494B8] leading-relaxed">Describe your story and AI generates a full manga instantly. Best for new ideas.</p>
+            </motion.div>
+          </Link>
+          <Link href="/studio/new">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06 }}
+              className="group p-5 rounded-xl border border-[#9B59B6]/20 bg-gradient-to-br from-[#9B59B6]/5 to-transparent hover:border-[#9B59B6]/40 hover:bg-[#9B59B6]/10 transition-all cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-xl bg-[#9B59B6]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <PenTool size={24} className="text-[#9B59B6]" />
+              </div>
+              <h3 className="font-semibold text-[#F0F0F5] mb-1">Studio Project</h3>
+              <p className="text-xs text-[#9494B8] leading-relaxed">Full creative control. Write scripts, edit panels, train custom styles.</p>
+            </motion.div>
+          </Link>
+          <Link href="/studio/upload">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="group p-5 rounded-xl border border-[#00D4FF]/20 bg-gradient-to-br from-[#00D4FF]/5 to-transparent hover:border-[#00D4FF]/40 hover:bg-[#00D4FF]/10 transition-all cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-xl bg-[#00D4FF]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Upload size={24} className="text-[#00D4FF]" />
+              </div>
+              <h3 className="font-semibold text-[#F0F0F5] mb-1">Upload Manga</h3>
+              <p className="text-xs text-[#9494B8] leading-relaxed">Already have manga art? Upload it and let the community vote it to anime.</p>
+            </motion.div>
+          </Link>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -137,6 +183,9 @@ export default function StudioDashboard() {
             </div>
           </section>
         )}
+
+        {/* Anime Promotion Status */}
+        <AnimePromotionStatus projects={projects ?? []} />
 
         {/* Projects */}
         <section>
@@ -255,6 +304,70 @@ export default function StudioDashboard() {
         onCreated={() => { refetchProjects(); setShowCreateModal(false); }}
       />
     </StudioLayout>
+  );
+}
+
+function AnimePromotionStatus({ projects }: { projects: any[] }) {
+  const promoted = projects.filter(p => p.animeStatus === 'in_production' || p.animeStatus === 'completed');
+  const eligible = projects.filter(p => p.animeStatus === 'eligible');
+
+  if (promoted.length === 0 && eligible.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="text-base font-semibold text-[#F0F0F5] mb-4 flex items-center gap-2">
+        <Trophy size={16} className="text-amber-400" />
+        Anime Promotion Status
+      </h2>
+      <div className="space-y-3">
+        {promoted.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4 p-4 rounded-xl border border-amber-400/20 bg-amber-500/5"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center flex-shrink-0">
+              <Trophy size={18} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-[#F0F0F5] truncate">{p.title}</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <AwakliiBadge variant={p.animeStatus === 'completed' ? 'success' : 'warning'}>
+                  {p.animeStatus === 'completed' ? 'Anime Complete' : 'In Production'}
+                </AwakliiBadge>
+              </div>
+            </div>
+            <Link href={`/studio/project/${p.id}`}>
+              <AwakliButton variant="ghost" size="sm">
+                View <ArrowRight size={14} />
+              </AwakliButton>
+            </Link>
+          </motion.div>
+        ))}
+        {eligible.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4 p-4 rounded-xl border border-orange-400/10 bg-orange-500/5"
+          >
+            <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+              <Flame size={18} className="text-orange-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-[#F0F0F5] truncate">{p.title}</h3>
+              <p className="text-xs text-[#9494B8] mt-0.5">Eligible for anime conversion — reached the vote threshold!</p>
+            </div>
+            <Link href={`/studio/project/${p.id}`}>
+              <AwakliButton variant="primary" size="sm">
+                Start Anime
+              </AwakliButton>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+    </section>
   );
 }
 

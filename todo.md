@@ -480,3 +480,73 @@
 - [x] Vitest: quickCreate.start (requires auth, validates prompt length)
 - [x] Vitest: quickCreate.publish (requires auth, throws NOT_FOUND)
 - [x] All 124 tests passing across 8 test files
+
+## Community Voting Gate & Anime Promotion
+
+### Database Changes
+- [x] Add total_votes INT DEFAULT 0 to projects table
+- [x] Add anime_status ENUM('not_eligible','eligible','in_production','completed') DEFAULT 'not_eligible' to projects
+- [x] Add anime_promoted_at TIMESTAMP to projects
+- [x] Create platform_config table (key VARCHAR PK, value TEXT, updated_at TIMESTAMP)
+- [x] Seed platform_config: anime_vote_threshold=500, anime_featured_threshold=1000
+- [x] Create anime_promotions table (id, project_id UNIQUE FK, vote_count_at_promotion, promoted_at, production_started_at, production_completed_at, status ENUM)
+- [x] Migration SQL generated and applied
+
+### Backend: Voting & Anime Procedures
+- [x] vote-progress procedure: returns { totalVotes, threshold, percentage, isEligible }
+- [x] Enhanced vote procedure: after vote, check threshold, auto-promote if crossed
+- [x] start-anime procedure: creator confirms anime production start
+- [x] rising procedure: manga between 50-80% of threshold, sorted by proximity
+- [x] becoming-anime procedure: manga that crossed threshold, anime in production
+- [x] leaderboard/rising: sorted by vote count, closest to threshold first
+- [x] leaderboard/promoted: sorted by promotion date
+- [x] leaderboard/completed: finished anime series
+- [x] Notification to creator when threshold crossed
+
+### Frontend: Vote Progress Bar Component
+- [x] Wide progress bar: gradient fill, animated shimmer at leading edge
+- [x] Label: '{current_votes} / {threshold} votes for anime'
+- [x] Near threshold (>80%): pulsing glow, accent-pink text, 'Almost there!' message
+- [x] Threshold reached: confetti, gold bar, 'Voted for anime!' message
+
+### Frontend: Enhanced Voting UX
+- [x] After voting toast: 'You voted! {X} more votes until this becomes anime.'
+- [x] Vote button hover tooltip: 'Vote to help this manga become anime'
+- [x] First-time voter explainer modal (integrated into VoteProgressBar)
+
+### Frontend: Discover Page New Sections
+- [x] 'Rising Stars' row: manga 50-80% of threshold, mini vote progress on cards
+- [x] 'Becoming Anime' row: in-production manga with status badge
+
+### Frontend: Road to Anime Leaderboard (3 tabs)
+- [x] Tab 1 'Rising': rank, cover, title, creator, vote count, progress bar, inline Vote button
+- [x] Tab 2 'Promoted': promoted manga with anime production status
+- [x] Tab 3 'Completed': finished anime with 'Watch Anime' button
+
+### Frontend: Project Page Manga/Anime Tabs
+- [x] VoteProgressBar integrated into WatchProject sidebar
+- [x] Anime status section: shows progress, in-production, or completed state
+- [x] Correct animeStatus enum handling (not_eligible/eligible/in_production/completed)
+
+### Frontend: Studio Home 3 Creation Paths
+- [x] Card 1: 'Quick Create' (accent-pink, Wand2 icon) -> /create
+- [x] Card 2: 'Studio Project' (accent-purple, PenTool icon) -> /studio/new
+- [x] Card 3: 'Upload Manga' (accent-cyan, Upload icon) -> /studio/upload
+
+### Frontend: Creator Dashboard Promotion Status
+- [x] AnimePromotionStatus component shows promoted/eligible projects
+- [x] Promoted: gold accent with Trophy icon, In Production/Completed badge
+- [x] Eligible: orange accent with Flame icon, 'Start Anime' button
+- [x] Auto-hides when no promoted/eligible projects
+
+### Testing
+- [x] Vitest: discoverVoting.rising (public, returns array)
+- [x] Vitest: discoverVoting.becomingAnime (public, returns array)
+- [x] Vitest: roadToAnime.rising (returns items + threshold)
+- [x] Vitest: roadToAnime.promoted (returns array)
+- [x] Vitest: roadToAnime.completed (returns array)
+- [x] Vitest: voteProgress.get (returns progress data)
+- [x] Vitest: voteProgress.getThreshold (returns threshold object)
+- [x] Vitest: creatorVoting.projectsWithProgress (auth required, returns array)
+- [x] Vitest: animeProduction.start (auth required, NOT_FOUND for non-existent)
+- [x] All 135 tests passing across 9 test files
