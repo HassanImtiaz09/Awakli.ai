@@ -56,6 +56,9 @@ import {
   preProductionRouter, characterGalleryRouter, voiceCastingRouter,
   animationStyleRouter, environmentsRouter, productionConfigRouter, reviewRouter,
 } from "./routers-preproduction";
+import {
+  musicConceptRouter, musicGenerationRouter, musicOstRouter, musicTrackRouter,
+} from "./routers-music";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1880,6 +1883,12 @@ export const appRouter = router({
   environments: environmentsRouter,
   productionConfig: productionConfigRouter,
   review: reviewRouter,
+
+  // Phase 16: Music Pipeline
+  musicConcept: musicConceptRouter,
+  musicGeneration: musicGenerationRouter,
+  musicOst: musicOstRouter,
+  musicTrack: musicTrackRouter,
 });
 
 export type AppRouter = typeof appRouter;

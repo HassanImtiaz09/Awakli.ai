@@ -1136,3 +1136,83 @@
 - [x] Vitest: production config update procedures
 - [x] Vitest: cost estimation and lock procedures
 - [x] All 277 tests passing across 14 test files with zero TypeScript errors
+
+## Phase 16: Theme Song, OST & Music Pipeline
+
+### Database Changes
+- [x] Create music_tracks table (id, project_id FK, track_type ENUM opening/ending/bgm/stinger/custom, mood TEXT, title TEXT, lyrics TEXT, style_prompt TEXT, track_url TEXT, duration_seconds FLOAT, is_vocal BOOLEAN, is_loopable BOOLEAN, version_number INT DEFAULT 1, is_approved BOOLEAN DEFAULT false, is_user_uploaded BOOLEAN DEFAULT false, suno_generation_id TEXT, created_at)
+- [x] Create music_versions table (id, music_track_id FK, version_number INT, track_url TEXT, style_prompt TEXT, refinement_notes TEXT, created_at)
+- [x] Add music_config JSON column to pre_production_configs table
+- [x] Migration SQL generated and applied
+
+### Backend: Theme Concept & Lyrics
+- [x] music.suggestThemeConcept: Claude Opus analyzes project and generates mood, genre, tempo, key themes, vocal suggestion, reference vibes, concept summary
+- [x] music.generateLyrics: Claude Opus writes structured lyrics (intro/verse/pre-chorus/chorus/bridge/outro) with emotion markers
+- [x] music.updateLyrics: save edited lyrics per section
+- [x] music.generateAltLine: generate 3 alternative lines for a specific lyric line
+- [x] music.rewriteSection: rewrite an entire lyrics section
+
+### Backend: Song Generation & Refinement
+- [x] music.generateTheme: call Suno API with lyrics + style to generate 3-5 variations (90s duration)
+- [x] music.refineTheme: regenerate with modifier (more energetic, softer, speed up, etc.) - Creator: 3 cycles, Studio: 5
+- [x] music.selectVersion: select a generated version as the chosen theme
+- [x] music.confirmTheme: confirm as OP/ED with TV-size cut option (90s -> 60s smart trim)
+
+### Backend: BGM/OST Generation
+- [x] music.generateOst: Claude analyzes script moods, generates 8-12 instrumental BGM tracks via Suno
+- [x] music.generateCustomTrack: user-described custom BGM track generation
+- [x] music.generateStingers: auto-cut short stingers from BGM tracks (impact, suspense, emotional, comedy, transition)
+
+### Backend: Scene Assignment & Track Management
+- [x] music.assignSceneBgm: assign BGM track to scene with volume and offset
+- [x] music.autoAssignScenes: Claude auto-maps scene moods to closest BGM tracks
+- [x] music.getTracks: list all tracks for a project with filtering
+- [x] music.approveTrack: approve a track
+- [x] music.regenerateTrack: regenerate a specific track
+- [x] music.getVersions: version history for a track
+- [x] music.revertVersion: revert track to previous version
+- [x] music.uploadTrack: user upload own music (Creator/Studio, 50MB max)
+- [x] music.uploadLyricsOnly: user provides lyrics, AI generates music around them
+- [x] music.saveMusicConfig: save full music config JSON to pre_production_configs
+
+### Frontend: Music Studio Layout
+- [x] Add Music Studio as Stage 3.5 in pre-production stepper (between Animation Style and Environments)
+- [x] Three sub-tabs: Opening Theme, Ending Theme, Background Score
+- [x] Tab navigation with active/completed indicators
+
+### Frontend: Opening Theme Flow
+- [x] Step 1: Theme concept card with mood/genre/tempo tags, concept summary, reference vibes
+- [x] Use This Concept / Write My Own buttons
+- [x] Custom concept form: description textarea, genre dropdown (9 options), vocal type, language selector
+- [x] Step 2: Lyrics editor with structured sections (Intro/Verse/Pre-Chorus/Chorus/Bridge/Outro)
+- [x] Emotion markers per section (building, explosive, soft, whispered, belted)
+- [x] Inline line editing with alternative suggestions
+- [x] Approve Lyrics button
+- [x] Step 3: Musical style picker with 8 genre preset cards + Custom option
+- [x] Tempo slider (80-200 BPM), energy curve selector, instrumentation toggles
+- [x] Step 4: Audition player with 3 versions, waveform visualization, select button
+- [x] Step 5: Refinement quick-edit buttons (8 modifiers) with A/B comparison
+- [x] Confirm as Opening Theme with TV-size cut option
+
+### Frontend: Ending Theme
+- [x] Same flow as OP with softer defaults (ballad/lo-fi suggestions)
+- [x] Quick preset: Instrumental version of OP
+- [x] Skip option: Use BGM during credits
+
+### Frontend: BGM Studio
+- [x] Track list view with mood tags, audio players, duration, regenerate/approve buttons
+- [x] Add Custom Track button with description textarea
+- [x] Scene-to-BGM assignment table with auto-assign and manual override
+- [x] Stinger library display with type labels and short audio players
+- [x] Upload own music drag-drop area
+
+### Testing
+- [x] Vitest: theme concept suggestion procedure
+- [x] Vitest: lyrics generation and editing procedures
+- [x] Vitest: song generation and refinement procedures with tier limits
+- [x] Vitest: OST generation and custom track procedures
+- [x] Vitest: scene-BGM assignment procedures
+- [x] Vitest: track management (approve, regenerate, versions, revert)
+- [x] Vitest: upload procedures with size validation
+- [x] Vitest: music config save/load
+- [x] All tests passing with zero TypeScript errors

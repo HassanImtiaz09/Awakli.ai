@@ -7,6 +7,7 @@ import {
   varchar,
   json,
   bigint,
+  float,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ────────────────────────────────────────────────────────────────
@@ -524,6 +525,7 @@ export const preProductionConfigs = mysqlTable("pre_production_configs", {
   subtitleConfig: json("subtitleConfig"),  // {primaryLang, additionalLangs[], style, fontSize, burnedIn}
   audioConfig: json("audioConfig"),  // {musicVolume, sfxVolume, duckingIntensity}
   environmentApprovals: json("environmentApprovals"),  // {locationId: {approvedUrl, timeVariants}}
+  musicConfig: json("musicConfig"),  // {opening_theme, ending_theme, ost_tracks[], scene_bgm_mapping[], stingers[]}
   estimatedCostCredits: int("estimatedCostCredits"),
   lockedAt: timestamp("lockedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -564,3 +566,42 @@ export const voiceAuditions = mysqlTable("voice_auditions", {
 
 export type VoiceAudition = typeof voiceAuditions.$inferSelect;
 export type InsertVoiceAudition = typeof voiceAuditions.$inferInsert;
+
+// ─── Music Tracks ─────────────────────────────────────────────────────
+
+export const musicTracks = mysqlTable("music_tracks", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  trackType: mysqlEnum("trackType", ["opening", "ending", "bgm", "stinger", "custom"]).notNull(),
+  mood: varchar("mood", { length: 100 }),  // for BGM: action, romance, tension, etc.
+  title: varchar("title", { length: 255 }),
+  lyrics: text("lyrics"),  // for OP/ED with vocals
+  stylePrompt: text("stylePrompt"),  // the Suno prompt used
+  trackUrl: text("trackUrl"),  // S3/R2 URL
+  durationSeconds: float("durationSeconds"),
+  isVocal: int("isVocal").default(0),
+  isLoopable: int("isLoopable").default(0),  // for BGM tracks
+  versionNumber: int("versionNumber").default(1).notNull(),
+  isApproved: int("isApproved").default(0),
+  isUserUploaded: int("isUserUploaded").default(0),
+  sunoGenerationId: varchar("sunoGenerationId", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MusicTrack = typeof musicTracks.$inferSelect;
+export type InsertMusicTrack = typeof musicTracks.$inferInsert;
+
+// ─── Music Versions ───────────────────────────────────────────────────
+
+export const musicVersions = mysqlTable("music_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  musicTrackId: int("musicTrackId").notNull().references(() => musicTracks.id, { onDelete: "cascade" }),
+  versionNumber: int("versionNumber").notNull(),
+  trackUrl: text("trackUrl"),
+  stylePrompt: text("stylePrompt"),
+  refinementNotes: text("refinementNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MusicVersion = typeof musicVersions.$inferSelect;
+export type InsertMusicVersion = typeof musicVersions.$inferInsert;
