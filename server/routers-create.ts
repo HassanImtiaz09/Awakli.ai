@@ -16,6 +16,7 @@ import {
   createPanelsBulk,
   updatePanel,
   getDb,
+  getOrCreateGuestUser,
 } from "./db";
 import { projects, episodes, panels } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -23,8 +24,8 @@ import { eq, desc, and } from "drizzle-orm";
 // ─── Quick Create Router ─────────────────────────────────────────────────
 
 export const quickCreateRouter = router({
-  // Step 1: Create project from prompt
-  start: protectedProcedure
+  // Step 1: Create project from prompt (allows guests)
+  start: publicProcedure
     .input(z.object({
       prompt: z.string().min(10).max(5000),
       genre: z.string().default("Fantasy"),
@@ -42,6 +43,9 @@ export const quickCreateRouter = router({
       chapterLength: z.enum(["short", "standard", "long"]).nullish(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Use authenticated user ID if available, otherwise create/get guest user
+      const userId = ctx.user?.id ?? await getOrCreateGuestUser();
+
       // Auto-generate a title from the prompt
       let title = input.prompt.slice(0, 60).replace(/[^\w\s]/g, "").trim();
       try {
@@ -64,7 +68,7 @@ export const quickCreateRouter = router({
 
       // Create the project
       const projectId = await createProject({
-        userId: ctx.user.id,
+        userId,
         title,
         description: input.prompt,
         genre: input.genre,

@@ -64,6 +64,30 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+// ─── Guest User ──────────────────────────────────────────────────────────
+
+const GUEST_OPEN_ID = "__guest__";
+
+export async function getOrCreateGuestUser(): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
+  if (existing.length > 0) return existing[0].id;
+
+  await db.insert(users).values({
+    openId: GUEST_OPEN_ID,
+    name: "Guest",
+    email: null,
+    loginMethod: "guest",
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+
+  const created = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
+  return created[0].id;
+}
+
 // ─── Projects ─────────────────────────────────────────────────────────────
 
 export async function getProjectsByUserId(userId: number) {

@@ -86,21 +86,26 @@ describe("quickCreate", () => {
   });
 
   describe("quickCreate.start", () => {
-    it("requires authentication", async () => {
+    it("allows unauthenticated (guest) access", async () => {
       const ctx = createPublicContext();
       const caller = appRouter.createCaller(ctx);
-      await expect(
-        caller.quickCreate.start({
+      // Should NOT throw auth error — guests can generate
+      // It will throw a different error (e.g., DB/LLM) but not UNAUTHORIZED
+      try {
+        await caller.quickCreate.start({
           prompt: "A samurai discovers a hidden portal to another dimension",
           genre: "Fantasy",
           style: "shonen",
           chapters: 1,
-        })
-      ).rejects.toThrow();
+        });
+      } catch (err: any) {
+        // Should not be an auth error
+        expect(err.code).not.toBe("UNAUTHORIZED");
+      }
     });
 
     it("validates minimum prompt length", async () => {
-      const ctx = createAuthContext();
+      const ctx = createPublicContext();
       const caller = appRouter.createCaller(ctx);
       await expect(
         caller.quickCreate.start({

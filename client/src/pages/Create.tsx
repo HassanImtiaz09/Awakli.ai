@@ -2,13 +2,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock,
+  Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap,
   ArrowLeft, ArrowRight, Palette, Drama, Settings2, ChevronRight,
-  AlertCircle, RefreshCw,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl, STORAGE_KEY_RETURN_PATH } from "@/const";
 import StylePicker from "@/components/awakli/StylePicker";
 import TonePicker from "@/components/awakli/TonePicker";
 import ChapterPrefs from "@/components/awakli/ChapterPrefs";
@@ -35,12 +33,10 @@ const STORAGE_KEY_PROMPT = "awakli_create_prompt";
 const STORAGE_KEY_GENRE = "awakli_create_genre";
 const STORAGE_KEY_PENDING = "awakli_create_pending";
 const STORAGE_KEY_AUTH_ATTEMPT = "awakli_auth_attempt";
-// Max number of auth attempts before showing error instead of looping
-const MAX_AUTH_ATTEMPTS = 2;
 
 export default function Create() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const hasAutoTriggered = useRef(false);
 
   // Prompt state — restore from sessionStorage if available
@@ -70,11 +66,7 @@ export default function Create() {
   const [endingStyle, setEndingStyle] = useState<"cliffhanger" | "resolution" | "serialized">("cliffhanger");
 
   // UI state
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authError, setAuthError] = useState(false);
-
-  const clearSession = trpc.auth.clearSession.useMutation();
 
   // Persist prompt and genre to sessionStorage whenever they change
   useEffect(() => {
@@ -102,23 +94,7 @@ export default function Create() {
   const handleGenerate = useCallback((useCustomization: boolean) => {
     if (!prompt.trim() || prompt.trim().length < 10) return;
 
-    if (!isAuthenticated) {
-      // Check how many auth attempts we've made to prevent infinite loops
-      const attempts = parseInt(sessionStorage.getItem(STORAGE_KEY_AUTH_ATTEMPT) || "0", 10);
-      if (attempts >= MAX_AUTH_ATTEMPTS) {
-        // We've tried authenticating multiple times — show error instead of looping
-        setAuthError(true);
-        return;
-      }
-      // Save pending action so we can auto-trigger after login
-      sessionStorage.setItem(STORAGE_KEY_PENDING, useCustomization ? "customize" : "quick");
-      sessionStorage.setItem(STORAGE_KEY_AUTH_ATTEMPT, String(attempts + 1));
-      setShowAuthModal(true);
-      return;
-    }
-    // Auth succeeded — reset attempt counter
-    sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
-
+    // No auth required — guests can generate freely
     setIsSubmitting(true);
     quickCreate.mutate({
       prompt: prompt.trim(),
@@ -130,41 +106,28 @@ export default function Create() {
         targetAudience: "general",
       } : {}),
     });
-  }, [prompt, genre, style, chapters, tone, isAuthenticated, quickCreate]);
+  }, [prompt, genre, style, chapters, tone, quickCreate]);
 
   const handleQuickGenerate = useCallback(() => handleGenerate(false), [handleGenerate]);
   const handleCustomGenerate = useCallback(() => handleGenerate(true), [handleGenerate]);
 
   // Auto-trigger generation after OAuth redirect if there was a pending action
   useEffect(() => {
-    if (authLoading || hasAutoTriggered.current) return;
+    if (hasAutoTriggered.current) return;
 
     const pending = sessionStorage.getItem(STORAGE_KEY_PENDING);
     if (!pending) return;
+    if (!prompt.trim() || prompt.trim().length < 10) return;
 
-    if (isAuthenticated) {
-      // Auth succeeded — clear attempt counter and auto-trigger
-      if (!prompt.trim() || prompt.trim().length < 10) return;
-      hasAutoTriggered.current = true;
-      sessionStorage.removeItem(STORAGE_KEY_PENDING);
-      sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
+    hasAutoTriggered.current = true;
+    sessionStorage.removeItem(STORAGE_KEY_PENDING);
+    sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
 
-      const timer = setTimeout(() => {
-        handleGenerate(pending === "customize");
-      }, 500);
-      return () => clearTimeout(timer);
-    } else {
-      // Auth loading is done but user is NOT authenticated
-      // This means OAuth completed but session is invalid (stale cookie, secret mismatch, etc.)
-      const attempts = parseInt(sessionStorage.getItem(STORAGE_KEY_AUTH_ATTEMPT) || "0", 10);
-      if (attempts >= MAX_AUTH_ATTEMPTS) {
-        // We've been through the OAuth flow already — show error, don't loop
-        hasAutoTriggered.current = true;
-        setAuthError(true);
-        return;
-      }
-    }
-  }, [authLoading, isAuthenticated, prompt, handleGenerate]);
+    const timer = setTimeout(() => {
+      handleGenerate(pending === "customize");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [prompt, handleGenerate]);
 
   const canProceed = prompt.trim().length >= 10;
 
@@ -187,9 +150,6 @@ export default function Create() {
       setCustomizeStep((s) => (s + 1) as CustomizeStep);
     }
   }, [customizeStep]);
-
-  // Build login URL that returns to /create after OAuth
-  const loginUrl = useMemo(() => getLoginUrl("/create"), []);
 
   // Progress bar
   const progress = useMemo(() => ((customizeStep + 1) / 4) * 100, [customizeStep]);
@@ -531,120 +491,7 @@ export default function Create() {
         </AnimatePresence>
       </div>
 
-      {/* Auth Modal */}
-      <AnimatePresence>
-        {showAuthModal && !authError && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
-            onClick={() => setShowAuthModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#12121A] border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <div className="w-14 h-14 rounded-full bg-[#E94560]/10 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-7 h-7 text-[#E94560]" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Sign in to create</h2>
-                <p className="text-white/50 mb-6">
-                  Create a free account to generate your manga and save your stories.
-                </p>
-                <a
-                  href={loginUrl}
-                  className="block w-full py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all text-center"
-                >
-                  <Zap className="inline w-5 h-5 mr-2" />
-                  Sign Up Free
-                </a>
-                <button
-                  onClick={() => setShowAuthModal(false)}
-                  className="mt-3 text-white/40 hover:text-white/60 text-sm transition"
-                >
-                  Maybe later
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Auth Error Modal — shown when login loop is detected */}
-      <AnimatePresence>
-        {authError && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
-            onClick={() => setAuthError(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#12121A] border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-7 h-7 text-amber-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Session issue detected</h2>
-                <p className="text-white/50 mb-6">
-                  Your login session couldn't be verified. This can happen if your browser blocks cookies or if your session expired. Let's clear it and try again.
-                </p>
-                <button
-                  onClick={async () => {
-                    try {
-                      await clearSession.mutateAsync();
-                    } catch {}
-                    // Clear all auth-related storage
-                    sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
-                    sessionStorage.removeItem(STORAGE_KEY_PENDING);
-                    sessionStorage.removeItem(STORAGE_KEY_RETURN_PATH);
-                    setAuthError(false);
-                    setShowAuthModal(false);
-                    // Force a full page reload to clear any cached auth state
-                    window.location.reload();
-                  }}
-                  className="block w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold text-lg shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all text-center"
-                >
-                  <RefreshCw className="inline w-5 h-5 mr-2" />
-                  Clear Session & Retry
-                </button>
-                <a
-                  href={loginUrl}
-                  onClick={() => {
-                    // Reset attempt counter so user gets a fresh start
-                    sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
-                    sessionStorage.setItem(STORAGE_KEY_PENDING, "quick");
-                  }}
-                  className="block w-full mt-3 py-3 rounded-xl border border-white/10 text-white/70 font-medium text-center hover:bg-white/5 transition-all"
-                >
-                  Try Signing In Again
-                </a>
-                <button
-                  onClick={() => {
-                    setAuthError(false);
-                    sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
-                    sessionStorage.removeItem(STORAGE_KEY_PENDING);
-                  }}
-                  className="mt-3 text-white/40 hover:text-white/60 text-sm transition"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
