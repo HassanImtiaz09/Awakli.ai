@@ -30,6 +30,16 @@ export const quickCreateRouter = router({
       genre: z.string().default("Fantasy"),
       style: z.enum(["shonen", "seinen", "shoujo", "chibi", "cyberpunk", "watercolor", "noir", "realistic", "mecha", "default"]).default("shonen"),
       chapters: z.number().min(1).max(12).default(3),
+      // Phase 14: Optional customization params (null = AI decides)
+      tone: z.string().nullish(),
+      audience: z.enum(["everyone", "teens", "adults"]).nullish(),
+      characters: z.array(z.object({
+        name: z.string(),
+        role: z.string(),
+        description: z.string().optional(),
+        appearance: z.string().optional(),
+      })).nullish(),
+      chapterLength: z.enum(["short", "standard", "long"]).nullish(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Auto-generate a title from the prompt
@@ -59,11 +69,14 @@ export const quickCreateRouter = router({
         description: input.prompt,
         genre: input.genre,
         animeStyle: input.style,
+        tone: input.tone || undefined,
+        targetAudience: input.audience === "teens" ? "teen" : input.audience === "adults" ? "adult" : undefined,
         status: "active",
         visibility: "private",
         slug,
         originalPrompt: input.prompt,
         creationMode: "quick_create",
+        chapterLengthPreset: input.chapterLength || undefined,
       });
 
       // Create episodes (chapters)

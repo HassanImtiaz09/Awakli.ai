@@ -1,44 +1,61 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock, Settings2 } from "lucide-react";
+import {
+  Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap, Lock,
+  ArrowLeft, ArrowRight, Palette, Drama, Settings2, ChevronRight,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { useEffect } from "react";
+import StylePicker from "@/components/awakli/StylePicker";
+import TonePicker from "@/components/awakli/TonePicker";
+import ChapterPrefs from "@/components/awakli/ChapterPrefs";
+import CustomizeSummary from "@/components/awakli/CustomizeSummary";
+import type { StyleKey, ToneKey } from "../../../shared/style-images";
 
 const GENRES = [
   "Action", "Romance", "Sci-Fi", "Fantasy", "Horror",
   "Comedy", "Mystery", "Slice of Life", "Thriller", "Adventure",
 ];
 
-const STYLES: { value: string; label: string }[] = [
-  { value: "shonen", label: "Shonen" },
-  { value: "seinen", label: "Seinen" },
-  { value: "shoujo", label: "Shojo" },
-  { value: "cyberpunk", label: "Cyberpunk" },
-  { value: "watercolor", label: "Watercolor" },
-  { value: "noir", label: "Noir" },
-  { value: "realistic", label: "Realistic" },
-  { value: "mecha", label: "Mecha" },
+type FlowMode = "prompt" | "customize";
+type CustomizeStep = 0 | 1 | 2 | 3; // 0=style, 1=tone, 2=chapter, 3=summary
+
+const STEP_TITLES = [
+  { title: "Choose Your Art Style", subtitle: "How should your manga look?" },
+  { title: "Set the Tone", subtitle: "What mood should your story have?" },
+  { title: "Story Structure", subtitle: "How should your chapters be organized?" },
+  { title: "Ready to Create", subtitle: "Review your settings and generate!" },
 ];
 
 export default function Create() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
+
+  // Prompt state
   const [prompt, setPrompt] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("prompt") || "";
   });
   const [genre, setGenre] = useState("Fantasy");
-  const [style, setStyle] = useState("shonen");
+
+  // Flow mode
+  const [flowMode, setFlowMode] = useState<FlowMode>("prompt");
+  const [customizeStep, setCustomizeStep] = useState<CustomizeStep>(0);
+
+  // Customization state
+  const [style, setStyle] = useState<StyleKey>("shonen");
+  const [previewGender, setPreviewGender] = useState<"male" | "female">("male");
+  const [tone, setTone] = useState<ToneKey>("epic");
   const [chapters, setChapters] = useState(3);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [chapterLength, setChapterLength] = useState<"short" | "standard" | "long">("standard");
   const [pacingStyle, setPacingStyle] = useState<"action_heavy" | "dialogue_heavy" | "balanced">("balanced");
   const [endingStyle, setEndingStyle] = useState<"cliffhanger" | "resolution" | "serialized">("cliffhanger");
+
+  // UI state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const quickCreate = trpc.quickCreate.start.useMutation({
     onSuccess: (data) => {
@@ -50,7 +67,7 @@ export default function Create() {
     },
   });
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback((useCustomization: boolean) => {
     if (!prompt.trim() || prompt.trim().length < 10) return;
 
     if (!isAuthenticated) {
@@ -64,8 +81,40 @@ export default function Create() {
       genre,
       style: style as any,
       chapters,
+      ...(useCustomization ? {
+        tone: tone,
+        targetAudience: "general",
+      } : {}),
     });
-  }, [prompt, genre, style, chapters, isAuthenticated, quickCreate]);
+  }, [prompt, genre, style, chapters, tone, isAuthenticated, quickCreate]);
+
+  const handleQuickGenerate = useCallback(() => handleGenerate(false), [handleGenerate]);
+  const handleCustomGenerate = useCallback(() => handleGenerate(true), [handleGenerate]);
+
+  const canProceed = prompt.trim().length >= 10;
+
+  const handleStartCustomize = useCallback(() => {
+    if (!canProceed) return;
+    setFlowMode("customize");
+    setCustomizeStep(0);
+  }, [canProceed]);
+
+  const handleBack = useCallback(() => {
+    if (customizeStep === 0) {
+      setFlowMode("prompt");
+    } else {
+      setCustomizeStep((s) => (s - 1) as CustomizeStep);
+    }
+  }, [customizeStep]);
+
+  const handleNext = useCallback(() => {
+    if (customizeStep < 3) {
+      setCustomizeStep((s) => (s + 1) as CustomizeStep);
+    }
+  }, [customizeStep]);
+
+  // Progress bar
+  const progress = useMemo(() => ((customizeStep + 1) / 4) * 100, [customizeStep]);
 
   return (
     <div className="min-h-screen bg-[#08080F] relative overflow-hidden">
@@ -82,296 +131,312 @@ export default function Create() {
         backgroundSize: "60px 60px",
       }} />
 
-      {/* Top nav link back */}
-      <div className="relative z-10 pt-6 px-6">
-        <button onClick={() => navigate("/")} className="text-white/40 hover:text-white/70 transition text-sm flex items-center gap-1">
-          <BookOpen className="w-4 h-4" /> Back to Awakli
+      {/* Top nav */}
+      <div className="relative z-10 pt-6 px-6 flex items-center justify-between">
+        <button onClick={() => flowMode === "customize" ? handleBack() : navigate("/")} className="text-white/40 hover:text-white/70 transition text-sm flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" />
+          {flowMode === "customize" ? (customizeStep === 0 ? "Back to prompt" : "Previous step") : "Back to Awakli"}
         </button>
+
+        {/* Progress indicator for customize mode */}
+        {flowMode === "customize" && (
+          <div className="flex items-center gap-2">
+            {[0, 1, 2, 3].map((step) => (
+              <div
+                key={step}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  step <= customizeStep ? "bg-[#E94560] w-8" : "bg-white/10 w-4"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 pb-12">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full max-w-2xl"
-        >
-          {/* Heading */}
-          <div className="text-center mb-8">
+      <div className="relative z-10 flex flex-col items-center min-h-[calc(100vh-80px)] px-4 pb-12">
+        <AnimatePresence mode="wait">
+          {flowMode === "prompt" ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm mb-6"
+              key="prompt-mode"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.5 }}
+              className="w-full max-w-2xl mt-8"
             >
-              <Sparkles className="w-4 h-4 text-[#E94560]" />
-              No artistic skill needed
-            </motion.div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
-              What story will{" "}
-              <span className="bg-gradient-to-r from-[#E94560] via-[#FF6B81] to-[#6C63FF] bg-clip-text text-transparent">
-                you tell?
-              </span>
-            </h1>
-            <p className="text-white/40 mt-3 text-lg">
-              Describe your story and AI will create the manga panels for you.
-            </p>
-          </div>
-
-          {/* Prompt textarea */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="relative"
-          >
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="A young hacker discovers that the city's AI defense system is actually sentient and has been protecting a secret for 50 years..."
-              className="w-full min-h-[200px] p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-lg placeholder:text-white/20 focus:outline-none focus:border-[#E94560]/40 focus:ring-1 focus:ring-[#E94560]/20 resize-none transition-all"
-              maxLength={5000}
-            />
-            <div className="absolute bottom-3 right-4 text-white/20 text-xs">
-              {prompt.length}/5000
-            </div>
-          </motion.div>
-
-          {/* Inline options */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap items-center gap-3 mt-4"
-          >
-            {/* Genre pills */}
-            <div className="flex flex-wrap gap-1.5">
-              {GENRES.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGenre(g)}
-                  className={`px-3 py-1 rounded-full text-sm transition-all ${
-                    genre === g
-                      ? "bg-[#E94560] text-white shadow-lg shadow-[#E94560]/25"
-                      : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
-                  }`}
+              {/* Heading */}
+              <div className="text-center mb-8">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm mb-6"
                 >
-                  {g}
-                </button>
-              ))}
-            </div>
+                  <Sparkles className="w-4 h-4 text-[#E94560]" />
+                  No artistic skill needed
+                </motion.div>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                  What story will{" "}
+                  <span className="bg-gradient-to-r from-[#E94560] via-[#FF6B81] to-[#6C63FF] bg-clip-text text-transparent">
+                    you tell?
+                  </span>
+                </h1>
+                <p className="text-white/40 mt-3 text-lg">
+                  Describe your story and AI will create the manga panels for you.
+                </p>
+              </div>
 
-            {/* Divider */}
-            <div className="w-px h-6 bg-white/10 hidden md:block" />
-
-            {/* Style dropdown */}
-            <div className="relative">
-              <select
-                value={style}
-                onChange={(e) => setStyle(e.target.value)}
-                className="appearance-none bg-white/5 border border-white/10 text-white/70 text-sm rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:border-[#E94560]/40 cursor-pointer"
-              >
-                {STYLES.map((s) => (
-                  <option key={s.value} value={s.value} className="bg-[#12121A]">
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 pointer-events-none" />
-            </div>
-
-            {/* Chapters */}
-            <div className="flex items-center gap-2">
-              <span className="text-white/40 text-sm">Chapters:</span>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={chapters}
-                onChange={(e) => setChapters(Math.max(1, Math.min(12, parseInt(e.target.value) || 1)))}
-                className="w-14 bg-white/5 border border-white/10 text-white text-sm rounded-lg px-2 py-1.5 text-center focus:outline-none focus:border-[#E94560]/40"
-              />
-            </div>
-
-            {/* Advanced toggle */}
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 text-sm hover:text-white/60 hover:bg-white/10 transition-all"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-              Story Settings
-              <ChevronDown className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-            </button>
-          </motion.div>
-
-          {/* Advanced story settings */}
-          <AnimatePresence>
-            {showAdvanced && (
+              {/* Prompt textarea */}
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="relative"
               >
-                <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-4">
-                  {/* Chapter Length */}
-                  <div>
-                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Chapter Length</label>
-                    <div className="flex gap-2">
-                      {([
-                        { key: "short" as const, label: "Short", desc: "8-12 pages, quick reads" },
-                        { key: "standard" as const, label: "Standard", desc: "12-20 pages, weekly manga" },
-                        { key: "long" as const, label: "Long", desc: "20-32 pages, monthly manga" },
-                      ]).map((opt) => (
-                        <button
-                          key={opt.key}
-                          onClick={() => setChapterLength(opt.key)}
-                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
-                            chapterLength === opt.key
-                              ? "bg-[#E94560]/10 border-[#E94560]/40 text-white"
-                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <div className="text-sm font-medium">{opt.label}</div>
-                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Pacing Style */}
-                  <div>
-                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Pacing Style</label>
-                    <div className="flex gap-2">
-                      {([
-                        { key: "action_heavy" as const, label: "Action-Heavy", desc: "Fast cuts, more panels" },
-                        { key: "balanced" as const, label: "Balanced", desc: "Mix of action & dialogue" },
-                        { key: "dialogue_heavy" as const, label: "Dialogue-Heavy", desc: "Character-driven" },
-                      ]).map((opt) => (
-                        <button
-                          key={opt.key}
-                          onClick={() => setPacingStyle(opt.key)}
-                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
-                            pacingStyle === opt.key
-                              ? "bg-[#6C63FF]/10 border-[#6C63FF]/40 text-white"
-                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <div className="text-sm font-medium">{opt.label}</div>
-                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Ending Style */}
-                  <div>
-                    <label className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2 block">Chapter Endings</label>
-                    <div className="flex gap-2">
-                      {([
-                        { key: "cliffhanger" as const, label: "Cliffhanger", desc: "End on suspense" },
-                        { key: "resolution" as const, label: "Resolution", desc: "Wrap up each chapter" },
-                        { key: "serialized" as const, label: "Serialized", desc: "Continuous flow" },
-                      ]).map((opt) => (
-                        <button
-                          key={opt.key}
-                          onClick={() => setEndingStyle(opt.key)}
-                          className={`flex-1 p-3 rounded-lg border text-left transition-all ${
-                            endingStyle === opt.key
-                              ? "bg-[#00D4AA]/10 border-[#00D4AA]/40 text-white"
-                              : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
-                          }`}
-                        >
-                          <div className="text-sm font-medium">{opt.label}</div>
-                          <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="A young hacker discovers that the city's AI defense system is actually sentient and has been protecting a secret for 50 years..."
+                  className="w-full min-h-[180px] p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-lg placeholder:text-white/20 focus:outline-none focus:border-[#E94560]/40 focus:ring-1 focus:ring-[#E94560]/20 resize-none transition-all"
+                  maxLength={5000}
+                />
+                <div className="absolute bottom-3 right-4 text-white/20 text-xs">
+                  {prompt.length}/5000
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Generate button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-6"
-          >
-            <button
-              onClick={handleGenerate}
-              disabled={!prompt.trim() || prompt.trim().length < 10 || isSubmitting}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Creating your manga...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Wand2 className="w-5 h-5" />
-                  Generate My Manga
-                </span>
-              )}
-              {/* Glow effect on hover */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-            </button>
-            {prompt.trim().length > 0 && prompt.trim().length < 10 && (
-              <p className="text-[#E94560]/60 text-sm mt-2 text-center">
-                Please write at least 10 characters to describe your story
-              </p>
-            )}
-          </motion.div>
+              {/* Genre pills */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex flex-wrap gap-1.5 mt-4"
+              >
+                {GENRES.map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setGenre(g)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all ${
+                      genre === g
+                        ? "bg-[#E94560] text-white shadow-lg shadow-[#E94560]/25"
+                        : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </motion.div>
 
-          {/* Inspiration section */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-10 text-center"
-          >
-            <p className="text-white/30 text-sm mb-3">Need inspiration? Try one of these:</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {[
-                "A samurai who can see 10 seconds into the future must protect a blind oracle",
-                "In a world where dreams are currency, a broke teenager discovers she can forge them",
-                "Two rival chefs compete in a cooking tournament where the dishes come alive",
-              ].map((idea, i) => (
+              {/* Two-path buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3"
+              >
+                {/* Generate Now */}
                 <button
-                  key={i}
-                  onClick={() => setPrompt(idea)}
-                  className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-white/30 text-xs hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left max-w-[280px] truncate"
+                  onClick={handleQuickGenerate}
+                  disabled={!canProceed || isSubmitting}
+                  className="py-4 px-6 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
                 >
-                  {idea}
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Creating...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Zap className="w-5 h-5" />
+                      Generate Now
+                    </span>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 </button>
-              ))}
-            </div>
-          </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="mt-8 flex justify-center gap-8 text-center"
-          >
-            {[
-              { label: "Manga Created", value: "12K+" },
-              { label: "Panels Generated", value: "180K+" },
-              { label: "Active Creators", value: "3.2K" },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-white/80 font-semibold text-lg">{stat.value}</div>
-                <div className="text-white/30 text-xs">{stat.label}</div>
+                {/* Customize First */}
+                <button
+                  onClick={handleStartCustomize}
+                  disabled={!canProceed || isSubmitting}
+                  className="py-4 px-6 rounded-xl bg-white/[0.05] border border-white/15 text-white font-semibold text-lg hover:bg-white/[0.08] hover:border-white/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Palette className="w-5 h-5 text-[#6C63FF]" />
+                    Customize First
+                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </button>
+              </motion.div>
+
+              {canProceed && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center text-white/25 text-xs mt-3"
+                >
+                  "Generate Now" uses smart defaults. "Customize First" lets you pick art style, tone, and more.
+                </motion.p>
+              )}
+
+              {prompt.trim().length > 0 && prompt.trim().length < 10 && (
+                <p className="text-[#E94560]/60 text-sm mt-3 text-center">
+                  Please write at least 10 characters to describe your story
+                </p>
+              )}
+
+              {/* Inspiration */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="mt-10 text-center"
+              >
+                <p className="text-white/30 text-sm mb-3">Need inspiration? Try one of these:</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[
+                    "A samurai who can see 10 seconds into the future must protect a blind oracle",
+                    "In a world where dreams are currency, a broke teenager discovers she can forge them",
+                    "Two rival chefs compete in a cooking tournament where the dishes come alive",
+                  ].map((idea, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPrompt(idea)}
+                      className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-white/30 text-xs hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left max-w-[280px] truncate"
+                    >
+                      {idea}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Stats */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="mt-8 flex justify-center gap-8 text-center"
+              >
+                {[
+                  { label: "Manga Created", value: "12K+" },
+                  { label: "Panels Generated", value: "180K+" },
+                  { label: "Active Creators", value: "3.2K" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className="text-white/80 font-semibold text-lg">{stat.value}</div>
+                    <div className="text-white/30 text-xs">{stat.label}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+          ) : (
+            /* Customize Flow */
+            <motion.div
+              key={`customize-step-${customizeStep}`}
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.4 }}
+              className="w-full max-w-3xl mt-6"
+            >
+              {/* Step header */}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold text-white">
+                  {STEP_TITLES[customizeStep].title}
+                </h2>
+                <p className="text-white/40 mt-1">
+                  {STEP_TITLES[customizeStep].subtitle}
+                </p>
               </div>
-            ))}
-          </motion.div>
-        </motion.div>
+
+              {/* Prompt preview pill */}
+              <div className="mb-6 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-3">
+                <BookOpen className="w-4 h-4 text-[#E94560] mt-0.5 shrink-0" />
+                <p className="text-white/50 text-sm line-clamp-2">{prompt}</p>
+              </div>
+
+              {/* Step content */}
+              <div className="min-h-[400px]">
+                {customizeStep === 0 && (
+                  <StylePicker
+                    value={style}
+                    onChange={setStyle}
+                    gender={previewGender}
+                    onGenderChange={setPreviewGender}
+                  />
+                )}
+                {customizeStep === 1 && (
+                  <TonePicker value={tone} onChange={setTone} />
+                )}
+                {customizeStep === 2 && (
+                  <ChapterPrefs
+                    chapters={chapters}
+                    onChaptersChange={setChapters}
+                    chapterLength={chapterLength}
+                    onChapterLengthChange={setChapterLength}
+                    pacingStyle={pacingStyle}
+                    onPacingStyleChange={setPacingStyle}
+                    endingStyle={endingStyle}
+                    onEndingStyleChange={setEndingStyle}
+                  />
+                )}
+                {customizeStep === 3 && (
+                  <div className="space-y-6">
+                    <CustomizeSummary
+                      style={style}
+                      tone={tone}
+                      chapters={chapters}
+                      chapterLength={chapterLength}
+                      pacingStyle={pacingStyle}
+                      endingStyle={endingStyle}
+                      genre={genre}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={handleBack}
+                  className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-medium hover:bg-white/10 hover:text-white transition-all"
+                >
+                  <ArrowLeft className="w-4 h-4 inline mr-1.5" />
+                  Back
+                </button>
+
+                {customizeStep < 3 ? (
+                  <button
+                    onClick={handleNext}
+                    className="flex-1 py-3 rounded-xl bg-white/10 border border-white/15 text-white font-semibold hover:bg-white/15 transition-all"
+                  >
+                    Next Step
+                    <ArrowRight className="w-4 h-4 inline ml-1.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCustomGenerate}
+                    disabled={isSubmitting}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all disabled:opacity-40 relative overflow-hidden group"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Creating your manga...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Wand2 className="w-5 h-5" />
+                        Generate My Manga
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Auth Modal */}

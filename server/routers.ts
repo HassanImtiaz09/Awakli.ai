@@ -41,6 +41,7 @@ import {
   discoverVotingRouter, roadToAnimeRouter, creatorVotingRouter, adminVotingRouter,
 } from "./routers-voting";
 import { quickCreateRouter } from "./routers-create";
+import { smartCreateRouter } from "./routers-smartcreate";
 import {
   tierRouter, animePreviewRouter, exportRouter, premiumRouter,
 } from "./routers-freemium";
@@ -1863,6 +1864,9 @@ export const appRouter = router({
   sneakPeek: sneakPeekRouter,
   downloads: downloadsRouter,
   sharing: sharingRouter,
+
+  // Phase 14: Smart Creation Flow
+  smartCreate: smartCreateRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -22,6 +22,7 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   animePreviewUsed: int("animePreviewUsed").default(0),
+  preferences: json("preferences"),  // {preferred_style, preferred_tone, preferred_chapter_length, preferred_audience, last_used_style}
 });
 
 export type User = typeof users.$inferSelect;

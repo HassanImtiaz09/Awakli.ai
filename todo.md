@@ -913,3 +913,88 @@
 - [x] Vitest: sharing procedures (getShareData, getEmbedCode, generatePanelImage)
 - [x] Vitest: export status and download URL procedures
 - [x] All 203 tests passing across 12 test files with zero TypeScript errors
+
+## Phase 14: Smart Creation Flow with Visual Customization
+
+### Database Changes
+- [x] Add preferences JSON column to users table (preferred_style, preferred_tone, preferred_chapter_length, preferred_audience, last_used_style)
+- [x] Migration SQL generated and applied
+
+### Backend: Prompt Analysis Procedure
+- [x] create.analyzePrompt procedure (Claude Haiku): input prompt -> suggested_genre, suggested_style, suggested_style_display, suggested_tone, detected_characters, suggested_chapter_count, suggested_chapter_length, confidence
+- [x] Genre-to-style mapping rules (action->Shonen, sci-fi->Cyberpunk, romance->Shojo, etc.)
+- [x] Prompt keyword analysis for tone/style inference
+- [x] Character detection from prompt (named characters, role descriptions)
+- [x] Culturally appropriate auto-naming based on story setting
+- [x] Response time target: < 2 seconds
+
+### Backend: Updated Quick-Create
+- [x] Accept optional customization params: style, tone, audience, characters[], chapter_count, chapter_length
+- [x] Null fields = AI decides using analyzePrompt logic
+- [x] Merge user customizations with AI defaults before generation
+
+### Backend: User Preferences
+- [x] create.savePreferences procedure: save style/tone/chapter/audience prefs
+- [x] create.getPreferences procedure: load saved prefs for returning users
+- [x] Auto-save preferences after each creation
+
+### Pre-Generated Style Comparison Images
+- [x] Generate male character in 8 styles (shonen, seinen, shojo, chibi, cyberpunk, watercolor, noir, realistic) at 512x768
+- [x] Generate female character in 8 styles at 512x768
+- [x] Generate 6 tone mood-board images at 400x300 (epic, fun, dark, romantic, scary, comedic)
+- [x] Upload all 22 images to CDN via manus-upload-file --webdev
+- [x] Create style/tone image URL constants file (shared/style-images.ts)
+
+### Frontend: Two-Path Create Page
+- [x] Replace single 'Generate My Manga' button with 'Generate Now' (primary pink glow) + 'Customize First' (outlined purple)
+- [x] Help text below buttons explaining the two paths
+- [x] 'Generate Now' triggers identical flow to current (zero friction)
+- [x] 'Customize First' opens 4-step customization flow with slide animation
+- [x] Smooth transitions between prompt mode and customize mode
+
+### Frontend: Customization Flow Container
+- [x] Step-by-step flow with one question at a time
+- [x] Prompt preview pill showing story text throughout flow
+- [x] Smooth slide animations between steps (AnimatePresence)
+- [x] Progress indicator: 4 segmented dots showing current step
+
+### Frontend: Q1 - Art Style Visual Picker (StylePicker.tsx)
+- [x] 8-card grid (2 rows x 4 cols desktop, 2 cols mobile) with pre-generated character images
+- [x] Accessible names: Bold & Dynamic, Mature & Detailed, Elegant & Expressive, Cute & Playful, Neon & Futuristic, Painted & Artistic, Dark & Moody, Cinematic & Realistic
+- [x] One-line descriptions for each style
+- [x] Male/Female toggle to switch character preview set
+- [x] Selected card: accent-pink border + glow + scale(1.02) + check icon
+
+### Frontend: Q2 - Character Cards
+- [x] Deferred to Phase 15 (character customization is complex and benefits from dedicated implementation)
+
+### Frontend: Q3 - Tone & Audience (TonePicker.tsx)
+- [x] 6 mood-board style cards with AI-generated mood images + emoji + label
+- [x] Tones: Epic & Intense, Fun & Light, Dark & Psychological, Romantic & Emotional, Mystery & Suspense, Comedy & Satire
+- [x] Selected card: accent-purple border + glow + check icon
+
+### Frontend: Q4 - Chapter Preferences (ChapterPrefs.tsx)
+- [x] Chapter count slider (1-12) with visual display
+- [x] 3 chapter length cards: Short / Standard / Long
+- [x] 3 pacing style cards: Action-Heavy / Balanced / Dialogue-Heavy with icons
+- [x] 3 ending style cards: Cliffhanger / Resolution / Serialized
+
+### Frontend: Summary Card (CustomizeSummary.tsx)
+- [x] 4-item grid showing Art Style, Tone, Chapters, and Genre with icons
+- [x] Pacing and ending style shown as tags below
+- [x] Large 'Generate My Manga' button (primary, full-width, glow)
+
+### Mobile & Accessibility
+- [x] Style grid reflows to 2 columns on mobile (sm:grid-cols-4)
+- [x] Tone grid reflows to 2 columns on mobile (sm:grid-cols-3)
+- [x] Touch-friendly card interactions with scale animations
+
+### Testing
+- [x] Vitest: style map constants (8 styles with internal/display/description)
+- [x] Vitest: tone map constants (6 tones with display/colors)
+- [x] Vitest: style images module (CDN URLs, STYLE_INFO, TONE_INFO)
+- [x] Vitest: genre-to-style inference mapping
+- [x] Vitest: two-path flow modes and 4 customization steps
+- [x] Vitest: chapter preferences validation
+- [x] Vitest: user preferences schema validation
+- [x] All 226 tests passing across 13 test files with zero TypeScript errors
