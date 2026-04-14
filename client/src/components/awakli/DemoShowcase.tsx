@@ -4,6 +4,29 @@ import { Sparkles, PenLine, Layers, Palette, Clapperboard, Play, ChevronLeft, Ch
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
+// ─── Bandwidth Detection Hook ───────────────────────────────────────────────
+
+function useIsSlowConnection(): boolean {
+  const [isSlow, setIsSlow] = useState(false);
+  useEffect(() => {
+    const nav = navigator as any;
+    const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+    if (conn) {
+      const check = () => {
+        // saveData flag or effective type 2g/slow-2g/3g
+        setIsSlow(
+          conn.saveData === true ||
+          ["slow-2g", "2g", "3g"].includes(conn.effectiveType)
+        );
+      };
+      check();
+      conn.addEventListener?.("change", check);
+      return () => conn.removeEventListener?.("change", check);
+    }
+  }, []);
+  return isSlow;
+}
+
 // ─── Fallback static slides (used when no video or platform_config panels exist) ──
 
 const STATIC_SLIDES = [
@@ -254,6 +277,7 @@ function StepIndicators({ current, slides, onGoTo }: {
 
 export default function DemoShowcase() {
   const [, navigate] = useLocation();
+  const isSlow = useIsSlowConnection();
 
   // Try to load demo config from platform_config (public endpoint)
   const { data: demoConfig } = trpc.discover.getDemoVideo.useQuery(undefined, {
@@ -262,7 +286,8 @@ export default function DemoShowcase() {
     staleTime: 5 * 60 * 1000, // 5 min cache
   });
 
-  const hasVideo = !!demoConfig?.streamId;
+  // Skip video on slow connections — fall back to slideshow
+  const hasVideo = !!demoConfig?.streamId && !isSlow;
   const slides = useMemo(() => STATIC_SLIDES, []);
 
   return (

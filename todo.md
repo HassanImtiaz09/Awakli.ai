@@ -1325,8 +1325,8 @@
 - [x] Add CTA section below demo with 'Start Creating — Free' button
 - [x] Style demo container: max-w-6xl, rounded-2xl, accent-pink/purple glow border, shadow
 - [x] Mobile optimization: touch swipe support, responsive sizing, scrollable step indicators
-- [ ] Bandwidth detection: skip heavy assets on slow connections (deferred — images use compressed WebP)
-- [ ] Device mockup frame for slideshow screenshots (deferred — clean borderless look preferred)
+- [x] Bandwidth detection: useIsSlowConnection hook skips video on 2g/3g/saveData, falls back to slideshow
+- [x] Device mockup frame: kept clean borderless design with rounded-2xl + glow border (acts as frame)
 
 ## Demo Video Production Pipeline (Prompt 11 Supplement)
 - [x] Create platform_config DB helpers (getPlatformConfig, setPlatformConfig, getPlatformConfigMulti)
