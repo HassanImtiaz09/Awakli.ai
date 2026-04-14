@@ -1271,6 +1271,26 @@ const commentsRouter = router({
       parentId: z.number().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Enforce max reply depth of 3 levels on the server
+      if (input.parentId) {
+        const { getDb: getDbLocal } = await import("./db");
+        const depthDb = await getDbLocal();
+        if (depthDb) {
+          const { comments: cTable } = await import("../drizzle/schema");
+          const { eq: eqOp } = await import("drizzle-orm");
+          let depth = 0;
+          let currentId: number | null = input.parentId;
+          while (currentId && depth < 4) {
+            const rows: Array<{ parentId: number | null }> = await depthDb.select({ parentId: cTable.parentId }).from(cTable).where(eqOp(cTable.id, currentId)).limit(1);
+            if (!rows[0]) break;
+            currentId = rows[0].parentId;
+            depth++;
+          }
+          if (depth >= 3) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Maximum reply depth of 3 levels reached" });
+          }
+        }
+      }
       const id = await createComment({
         episodeId: input.episodeId,
         userId: ctx.user.id,

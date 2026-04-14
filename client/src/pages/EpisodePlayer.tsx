@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 import {
   Play, Pause, SkipForward, SkipBack, ChevronLeft, ChevronRight,
   ThumbsUp, ThumbsDown, MessageSquare, Share2, Maximize, Minimize,
@@ -467,6 +468,176 @@ function VotingSection({ episodeId }: { episodeId: number }) {
   );
 }
 
+// ─── Simple Markdown Renderer ─────────────────────────────────────────────
+function renderMarkdown(text: string): string {
+  // First escape HTML, then apply markdown formatting
+  const escaped = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-accent-cyan text-xs">$1</code>')
+    .replace(/\n/g, "<br/>");
+  // Sanitize with DOMPurify to prevent XSS
+  return DOMPurify.sanitize(escaped, {
+    ALLOWED_TAGS: ["strong", "em", "code", "br"],
+    ALLOWED_ATTR: ["class"],
+  });
+}
+
+// ─── Comment type ─────────────────────────────────────────────────────────
+interface CommentData {
+  id: number;
+  content: string;
+  userId: number;
+  userName?: string | null;
+  createdAt: Date;
+  parentId: number | null;
+}
+
+// ─── Single Comment Card ──────────────────────────────────────────────────
+function CommentCard({
+  comment, depth, episodeId, onRefetch, allComments,
+}: {
+  comment: CommentData;
+  depth: number;
+  episodeId: number;
+  onRefetch: () => void;
+  allComments: CommentData[];
+}) {
+  const { user, isAuthenticated } = useAuth();
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [showReplies, setShowReplies] = useState(true);
+
+  const createComment = trpc.comments.create.useMutation({
+    onSuccess: () => { setReplyText(""); setReplyOpen(false); onRefetch(); toast.success("Reply posted!"); },
+  });
+  const deleteComment = trpc.comments.delete.useMutation({
+    onSuccess: () => { onRefetch(); toast.success("Comment deleted"); },
+  });
+
+  const replies = allComments.filter((c) => c.parentId === comment.id);
+  const canReply = depth < 3;
+
+  const handleReply = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
+    createComment.mutate({ episodeId, content: replyText.trim(), parentId: comment.id });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={depth > 0 ? "ml-6 pl-4 border-l-2 border-accent-cyan/20" : ""}
+    >
+      <div className="flex gap-3">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-cyan/30 to-accent-purple/30 flex items-center justify-center flex-shrink-0 text-xs font-bold">
+          {(comment.userName || "U").charAt(0)}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-medium text-white">{comment.userName || "Anonymous"}</span>
+            <span className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleDateString()}</span>
+          </div>
+          <p
+            className="text-sm text-gray-300 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(comment.content) }}
+          />
+          <div className="flex items-center gap-3 mt-1.5">
+            {canReply && (
+              <button
+                onClick={() => { if (!isAuthenticated) { window.location.href = getLoginUrl(); return; } setReplyOpen(!replyOpen); }}
+                className="text-xs text-gray-500 hover:text-accent-cyan transition-colors"
+              >
+                Reply
+              </button>
+            )}
+            {user && comment.userId === user.id && (
+              <button
+                onClick={() => deleteComment.mutate({ id: comment.id })}
+                className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /> Delete
+              </button>
+            )}
+          </div>
+
+          {/* Reply input */}
+          <AnimatePresence>
+            {replyOpen && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleReply}
+                className="mt-3 overflow-hidden"
+              >
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Write a reply... (supports **bold**, *italic*, `code`)"
+                  rows={2}
+                  className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-cyan/50 resize-none"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2 mt-2">
+                  <button type="button" onClick={() => setReplyOpen(false)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!replyText.trim() || createComment.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-cyan/20 text-accent-cyan text-xs font-medium disabled:opacity-50 hover:bg-accent-cyan/30 transition-colors"
+                  >
+                    <Send className="w-3 h-3" />
+                    {createComment.isPending ? "Posting..." : "Reply"}
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Threaded replies */}
+      {replies.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowReplies(!showReplies)}
+            className="text-xs text-accent-cyan/70 hover:text-accent-cyan flex items-center gap-1 mb-2 ml-11"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform ${showReplies ? "" : "-rotate-90"}`} />
+            {replies.length} {replies.length === 1 ? "reply" : "replies"}
+          </button>
+          <AnimatePresence>
+            {showReplies && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-3"
+              >
+                {replies.map((reply) => (
+                  <CommentCard
+                    key={reply.id}
+                    comment={reply}
+                    depth={depth + 1}
+                    episodeId={episodeId}
+                    onRefetch={onRefetch}
+                    allComments={allComments}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ─── Comments Section ──────────────────────────────────────────────────────
 function CommentsSection({ episodeId }: { episodeId: number }) {
   const { user, isAuthenticated } = useAuth();
@@ -477,9 +648,6 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
   const createComment = trpc.comments.create.useMutation({
     onSuccess: () => { setNewComment(""); comments.refetch(); toast.success("Comment posted!"); },
   });
-  const deleteComment = trpc.comments.delete.useMutation({
-    onSuccess: () => { comments.refetch(); toast.success("Comment deleted"); },
-  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -488,7 +656,8 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
     createComment.mutate({ episodeId, content: newComment.trim() });
   };
 
-  const commentList = (comments.data ?? []) as Array<{ id: number; content: string; userId: number; userName?: string | null; createdAt: Date; parentId: number | null }>;
+  const commentList = (comments.data ?? []) as CommentData[];
+  const topLevelComments = commentList.filter((c) => !c.parentId);
 
   return (
     <div>
@@ -522,7 +691,7 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder={isAuthenticated ? "Add a comment..." : "Sign in to comment"}
+              placeholder={isAuthenticated ? "Add a comment... (supports **bold**, *italic*, `code`)" : "Sign in to comment"}
               rows={2}
               className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-pink/50 resize-none"
             />
@@ -540,34 +709,17 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
         </div>
       </form>
 
-      {/* Comment list */}
+      {/* Comment list — threaded */}
       <div className="space-y-4">
-        {commentList.map((comment) => (
-          <motion.div
+        {topLevelComments.map((comment) => (
+          <CommentCard
             key={comment.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex gap-3"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-cyan/30 to-accent-purple/30 flex items-center justify-center flex-shrink-0 text-xs font-bold">
-              {(comment.userName || "U").charAt(0)}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-white">{comment.userName || "Anonymous"}</span>
-                <span className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleDateString()}</span>
-              </div>
-              <p className="text-sm text-gray-300 leading-relaxed">{comment.content}</p>
-              {user && comment.userId === user.id && (
-                <button
-                  onClick={() => deleteComment.mutate({ id: comment.id })}
-                  className="text-xs text-gray-500 hover:text-red-400 mt-1 flex items-center gap-1 transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
-              )}
-            </div>
-          </motion.div>
+            comment={comment}
+            depth={0}
+            episodeId={episodeId}
+            onRefetch={() => comments.refetch()}
+            allComments={commentList}
+          />
         ))}
         {commentList.length === 0 && (
           <div className="text-center py-8 text-gray-500">

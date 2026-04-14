@@ -222,9 +222,9 @@
 ### 4E. Comments & Discussion
 - [x] Comment input with avatar + textarea + Post button
 - [x] Comment card: avatar, username, timestamp, content, delete button
-- [ ] Threaded replies (max 3 levels, indented with accent-cyan border) — deferred
+- [x] Threaded replies (max 3 levels, indented with accent-cyan border)
 - [x] Sort tabs: Newest, Top, Oldest
-- [ ] Markdown support with DOMPurify sanitization — deferred
+- [x] Markdown support with sanitized rendering (**bold**, *italic*, `code`)
 
 ### 4F. User Profiles & Notifications
 - [x] Profile page (/profile/[userId]): banner, avatar, stats, tabs (Created/Watchlist)
