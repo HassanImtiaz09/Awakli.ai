@@ -15,6 +15,8 @@ import {
 } from "../drizzle/schema";
 import { TRPCError } from "@trpc/server";
 import { browseSharedVoices, textToSpeech, instantVoiceClone, MODELS, VOICE_PRESETS } from "./elevenlabs";
+import { imageToVideo, queryTask } from "./kling";
+import { generateImage } from "./_core/imageGeneration";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 
@@ -359,8 +361,7 @@ export const characterGalleryRouter = router({
 
       const nextVersion = existingVersions.length > 0 ? existingVersions[0].versionNumber + 1 : 1;
 
-      // In production: generate 5 views via FLUX
-      // For now: create placeholder version with simulated URLs
+      // Generate 5 character sheet views via image generation
       const viewTypes = {
         portrait: "face close-up, showing hairstyle, eye color, expression",
         fullBody: "full body front view, showing outfit, proportions, stance",
@@ -371,9 +372,19 @@ export const characterGalleryRouter = router({
 
       const images: Record<string, string> = {};
       for (const [view, desc] of Object.entries(viewTypes)) {
-        // In production: call FLUX with prompt
-        // `anime character sheet, ${artStyle}, ${character.name}, ${traitDesc}, ${desc}, white background, clean lines, professional character design, consistent proportions`
-        images[view] = `https://placeholder.awakli.ai/character-sheet/${input.characterId}/${view}/v${nextVersion}`;
+        try {
+          const result = await generateImage({
+            prompt: `anime character sheet, ${artStyle}, ${character.name}, ${traitDesc}, ${desc}, white background, clean lines, professional character design, consistent proportions`,
+          });
+          if (result?.url) {
+            images[view] = result.url;
+          } else {
+            images[view] = "";
+          }
+        } catch (err) {
+          console.error(`[CharSheet] Failed to generate ${view} for character ${input.characterId}:`, err);
+          images[view] = "";
+        }
       }
 
       const [versionId] = await db
@@ -429,8 +440,24 @@ export const characterGalleryRouter = router({
       const description = input.updatedDescription || latestVersion.descriptionUsed || "";
       const changes = input.specificChanges ? `. Changes: ${input.specificChanges}` : "";
 
-      // In production: regenerate via FLUX with updated description
-      const newUrl = `https://placeholder.awakli.ai/character-sheet/${input.characterId}/${input.view}/v${latestVersion.versionNumber}-regen-${Date.now()}`;
+      // Regenerate the specific view via image generation
+      const viewDescriptions: Record<string, string> = {
+        portrait: "face close-up, showing hairstyle, eye color, expression",
+        fullBody: "full body front view, showing outfit, proportions, stance",
+        threeQuarter: "3/4 angle view, showing depth and dimension",
+        action: "dynamic action pose fitting their role",
+        expressions: "expression sheet, 4 emotions: happy, angry, sad, surprised in a 2x2 grid",
+      };
+      let newUrl = "";
+      try {
+        const result = await generateImage({
+          prompt: `anime character sheet, ${description}${changes}, ${viewDescriptions[input.view] || input.view}, white background, clean lines, professional character design, consistent proportions`,
+        });
+        newUrl = result?.url || "";
+      } catch (err) {
+        console.error(`[CharSheet] Failed to regenerate ${input.view}:`, err);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to regenerate character view" });
+      }
 
       // Create new version with the updated view
       const newImages = { ...currentImages, [input.view]: newUrl };
@@ -1020,9 +1047,52 @@ export const animationStyleRouter = router({
       const style = ANIMATION_STYLES.find((s) => s.id === input.styleId);
       if (!style) throw new TRPCError({ code: "NOT_FOUND", message: "Style not found" });
 
-      // In production: find best scene, generate 3-5s video clip via Kling
-      // with style.klingModifier applied
-      const previewUrl = `https://placeholder.awakli.ai/style-preview/${input.projectId}/${input.styleId}/${Date.now()}.mp4`;
+      // Generate a 5s style preview video via Kling AI
+      let previewUrl = "";
+      try {
+        // First generate a reference image in the selected style
+        const imgResult = await generateImage({
+          prompt: `Anime scene in ${style.name} style, cinematic composition, dramatic lighting, high quality, ${(style as any).klingModifier || ""}`,
+        });
+        if (imgResult?.url) {
+          // Convert the style reference image to a short video clip
+          const videoResult = await imageToVideo({
+            image: imgResult.url,
+            prompt: `Smooth cinematic camera movement, ${style.name} anime style, fluid animation, dramatic lighting`,
+            duration: "5",
+            mode: "std",
+            modelName: "kling-v2-6",
+          });
+          if (videoResult.code === 0 && videoResult.data?.task_id) {
+            // Poll for completion (max 3 minutes for a preview)
+            const maxWait = 3 * 60 * 1000;
+            const start = Date.now();
+            let interval = 5000;
+            while (Date.now() - start < maxWait) {
+              await new Promise(r => setTimeout(r, interval));
+              const status = await queryTask(videoResult.data.task_id, "image2video");
+              if (status.data?.task_status === "succeed") {
+                const video = status.data.task_result?.videos?.[0];
+                if (video?.url) {
+                  // Store to S3 for persistence
+                  const res = await fetch(video.url);
+                  const buf = Buffer.from(await res.arrayBuffer());
+                  const key = `style-preview/${input.projectId}/${input.styleId}-${nanoid(6)}.mp4`;
+                  const { url } = await storagePut(key, buf, "video/mp4");
+                  previewUrl = url;
+                }
+                break;
+              } else if (status.data?.task_status === "failed") {
+                console.error(`[StylePreview] Kling task failed: ${status.data.task_status_msg}`);
+                break;
+              }
+              interval = Math.min(interval * 1.3, 15000);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[StylePreview] Failed to generate style preview:`, err);
+      }
 
       return {
         styleId: input.styleId,
@@ -1132,8 +1202,23 @@ export const environmentsRouter = router({
       await requireCreatorOrStudio(ctx.user.id);
       await requireProjectOwner(input.projectId, ctx.user.id);
 
-      // In production: generate via FLUX with landscape 16:9 aspect
-      const imageUrl = `https://placeholder.awakli.ai/environment/${input.projectId}/${encodeURIComponent(input.locationName)}/${input.timeOfDay}/${Date.now()}.png`;
+      // Generate environment concept art via image generation
+      const timeDescriptions: Record<string, string> = {
+        day: "bright daylight, clear sky, warm sunlight",
+        night: "nighttime, moonlight, city lights, dark sky with stars",
+        dawn: "early morning, golden hour, soft pink and orange sky",
+        dusk: "sunset, warm orange and purple sky, long shadows",
+      };
+      let imageUrl = "";
+      try {
+        const result = await generateImage({
+          prompt: `Anime background art, ${input.locationName}, ${timeDescriptions[input.timeOfDay] || "daytime"}, ${input.description || "detailed environment"}, wide landscape 16:9, cinematic composition, studio quality background painting, no characters`,
+        });
+        imageUrl = result?.url || "";
+      } catch (err) {
+        console.error(`[Environment] Failed to generate concept art:`, err);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate environment concept art" });
+      }
 
       return {
         locationName: input.locationName,

@@ -6,6 +6,10 @@ import { TIERS, normalizeTier, ANIME_PREVIEW, type TierKey } from "./stripe/prod
 import { getSubscriptionByUserId } from "./db-phase6";
 import { projects, episodes, panels, users, characters, tierLimits } from "../drizzle/schema";
 import { eq, and, sql, count, gte } from "drizzle-orm";
+import { generateImage } from "./_core/imageGeneration";
+import { imageToVideo, queryTask } from "./kling";
+import { storagePut } from "./storage";
+import { nanoid } from "nanoid";
 
 // ─── Tier Enforcement Helpers ─────────────────────────────────────────
 
@@ -398,16 +402,103 @@ export const animePreviewRouter = router({
         .set({ animePreviewUsed: 1 })
         .where(eq(users.id, ctx.user.id));
 
-      // In a real implementation, this would trigger the abbreviated pipeline
-      // For now, we return a placeholder that indicates the preview is being generated
-      const previewUrl = "generating";
+      // Mark as generating
       await db
         .update(projects)
         .set({
-          previewVideoUrl: previewUrl,
+          previewVideoUrl: "generating",
           previewGeneratedAt: new Date(),
         })
         .where(eq(projects.id, input.projectId));
+
+      // Trigger async preview generation via Kling AI
+      (async () => {
+        try {
+          // Find the best panel image from the project
+          const projectPanels = await db
+            .select({ imageUrl: panels.imageUrl, visualDescription: panels.visualDescription })
+            .from(panels)
+            .innerJoin(episodes, eq(panels.episodeId, episodes.id))
+            .where(and(eq(episodes.projectId, input.projectId), sql`${panels.imageUrl} IS NOT NULL AND ${panels.imageUrl} != ''`))
+            .limit(1);
+
+          let sourceImageUrl = projectPanels[0]?.imageUrl;
+
+          // If no panel images exist, generate a reference image
+          if (!sourceImageUrl) {
+            const imgResult = await generateImage({
+              prompt: `Cinematic anime scene, ${project.title || "dramatic scene"}, high quality, anime style`,
+            });
+            sourceImageUrl = imgResult?.url || null;
+          }
+
+          if (!sourceImageUrl) {
+            console.error(`[AnimePreview] No source image for project ${input.projectId}`);
+            return;
+          }
+
+          // Submit Kling image-to-video task
+          const klingResult = await imageToVideo({
+            image: sourceImageUrl,
+            prompt: `Cinematic anime scene, smooth camera movement, dramatic lighting, fluid character animation, high quality anime, ${projectPanels[0]?.visualDescription || "dynamic action"}`,
+            negativePrompt: "static, blurry, low quality, distorted",
+            duration: "5",
+            mode: "std",
+            modelName: "kling-v2-6",
+          });
+
+          if (klingResult.code !== 0 || !klingResult.data?.task_id) {
+            console.error(`[AnimePreview] Kling submission failed:`, klingResult.message);
+            return;
+          }
+
+          // Poll for completion (max 5 minutes)
+          const taskId = klingResult.data.task_id;
+          const maxWait = 5 * 60 * 1000;
+          const start = Date.now();
+          let interval = 5000;
+
+          while (Date.now() - start < maxWait) {
+            await new Promise(r => setTimeout(r, interval));
+            const status = await queryTask(taskId, "image2video");
+
+            if (status.data?.task_status === "succeed") {
+              const video = status.data.task_result?.videos?.[0];
+              if (video?.url) {
+                // Download and store to S3
+                const videoRes = await fetch(video.url);
+                const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+                const videoKey = `preview/${input.projectId}/anime-preview-${nanoid(6)}.mp4`;
+                const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+
+                await db
+                  .update(projects)
+                  .set({ previewVideoUrl: storedUrl })
+                  .where(eq(projects.id, input.projectId));
+                console.log(`[AnimePreview] Preview generated for project ${input.projectId}: ${storedUrl}`);
+              }
+              return;
+            } else if (status.data?.task_status === "failed") {
+              console.error(`[AnimePreview] Kling task failed: ${status.data.task_status_msg}`);
+              // Reset so user can try again
+              await db
+                .update(users)
+                .set({ animePreviewUsed: 0 })
+                .where(eq(users.id, ctx.user.id));
+              await db
+                .update(projects)
+                .set({ previewVideoUrl: null })
+                .where(eq(projects.id, input.projectId));
+              return;
+            }
+            interval = Math.min(interval * 1.3, 15000);
+          }
+
+          console.error(`[AnimePreview] Timed out for project ${input.projectId}`);
+        } catch (err) {
+          console.error(`[AnimePreview] Async generation error:`, err);
+        }
+      })();
 
       return {
         status: "generating",

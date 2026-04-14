@@ -8,6 +8,7 @@ import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
+import { generateVideoFromImage, imageToVideo, queryTask } from "./kling";
 import {
   getPipelineRunById,
   updatePipelineRun,
@@ -85,35 +86,80 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
   const approvedPanels = panels.filter(p => p.imageUrl);
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
 
-  // Generate video clips from approved panel images
-  for (let i = 0; i < Math.min(approvedPanels.length, 4); i++) {
-    const panel = approvedPanels[i];
-    try {
-      // Use image generation to create an animated version of the panel
-      const result = await generateImage({
-        prompt: `Cinematic anime scene animation frame, smooth motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality`,
-        originalImages: panel.imageUrl ? [{ url: panel.imageUrl, mimeType: "image/png" }] : undefined,
-      });
+  // Generate video clips from approved panel images using Kling AI image-to-video
+  const panelsToProcess = approvedPanels.slice(0, 4);
 
-      if (result?.url) {
-        await createPipelineAsset({
-          pipelineRunId: runId,
-          episodeId,
-          panelId: panel.id,
-          assetType: "video_clip",
-          url: result.url,
-          metadata: { duration: 3, format: "mp4", panelNumber: panel.panelNumber } as any,
-          nodeSource: "video_gen",
-        });
+  // Step 1: Submit all image-to-video tasks in parallel
+  const taskIds: { panelId: number; taskId: string; panelNumber: number | null }[] = [];
+  for (const panel of panelsToProcess) {
+    if (!panel.imageUrl) continue;
+    try {
+      const result = await imageToVideo({
+        image: panel.imageUrl,
+        prompt: `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`,
+        negativePrompt: "static, still image, blurry, low quality, distorted",
+        duration: "5",
+        mode: "pro",
+        modelName: "kling-v2-6",
+      });
+      if (result.code === 0 && result.data?.task_id) {
+        taskIds.push({ panelId: panel.id, taskId: result.data.task_id, panelNumber: panel.panelNumber });
+        console.log(`[Pipeline] Kling task submitted for panel ${panel.id}: ${result.data.task_id}`);
       }
     } catch (err) {
-      console.error(`[Pipeline] Video gen failed for panel ${panel.id}:`, err);
+      console.error(`[Pipeline] Kling submission failed for panel ${panel.id}:`, err);
+    }
+  }
+
+  // Step 2: Poll all tasks until completion
+  const completedTasks = new Set<string>();
+  const maxPollTime = 8 * 60 * 1000; // 8 minutes
+  const pollStart = Date.now();
+  let pollInterval = 5000;
+
+  while (completedTasks.size < taskIds.length && (Date.now() - pollStart) < maxPollTime) {
+    for (const task of taskIds) {
+      if (completedTasks.has(task.taskId)) continue;
+      try {
+        const status = await queryTask(task.taskId, "image2video");
+        if (status.data?.task_status === "succeed") {
+          completedTasks.add(task.taskId);
+          const video = status.data.task_result?.videos?.[0];
+          if (video?.url) {
+            // Upload to our S3 for persistence (Kling URLs may expire)
+            const videoRes = await fetch(video.url);
+            const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+            const videoKey = `pipeline/${runId}/clip-panel${task.panelId}-${nanoid(6)}.mp4`;
+            const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+
+            await createPipelineAsset({
+              pipelineRunId: runId,
+              episodeId,
+              panelId: task.panelId,
+              assetType: "video_clip",
+              url: storedUrl,
+              metadata: { duration: Number(video.duration) || 5, format: "mp4", panelNumber: task.panelNumber, klingTaskId: task.taskId } as any,
+              nodeSource: "video_gen",
+            });
+            console.log(`[Pipeline] Video clip stored for panel ${task.panelId}: ${storedUrl}`);
+          }
+        } else if (status.data?.task_status === "failed") {
+          completedTasks.add(task.taskId);
+          console.error(`[Pipeline] Kling task failed for panel ${task.panelId}: ${status.data.task_status_msg}`);
+        }
+      } catch (err) {
+        console.error(`[Pipeline] Poll error for task ${task.taskId}:`, err);
+      }
     }
 
-    totalCost += Math.round(NODE_COSTS.video_gen / approvedPanels.length);
-    const progress = Math.round(((i + 1) / approvedPanels.length) * 20);
+    totalCost += Math.round(NODE_COSTS.video_gen / Math.max(panelsToProcess.length, 1));
+    const progress = Math.round((completedTasks.size / Math.max(taskIds.length, 1)) * 20);
     await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, progress, totalCost, nodeCosts);
-    await sleep(1000); // Simulate processing time
+
+    if (completedTasks.size < taskIds.length) {
+      await sleep(pollInterval);
+      pollInterval = Math.min(pollInterval * 1.3, 20000);
+    }
   }
 
   return totalCost;

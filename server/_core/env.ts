@@ -10,4 +10,6 @@ export const ENV = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
+  klingAccessKey: process.env.KLING_ACCESS_KEY ?? "",
+  klingSecretKey: process.env.KLING_SECRET_KEY ?? "",
 };

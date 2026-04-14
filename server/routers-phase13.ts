@@ -5,6 +5,10 @@ import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { projects, episodes, panels, scenes, exports as exportsTable, users, subscriptions } from "../drizzle/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { generateImage } from "./_core/imageGeneration";
+import { imageToVideo, queryTask } from "./kling";
+import { storagePut } from "./storage";
+import { nanoid } from "nanoid";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PART A: CHAPTER STRUCTURE SYSTEM
@@ -626,23 +630,99 @@ export const sneakPeekRouter = router({
         sneakPeekStatus: "generating",
       }).where(eq(projects.id, input.projectId));
 
-      // In production, this would trigger an async job
-      // For now, simulate the pipeline steps and return a placeholder
-      // The actual pipeline: upscale panels -> Kling video -> ElevenLabs voice -> FFmpeg assembly
+      // Trigger async sneak peek generation via Kling AI
       const selectedMusicSting = MUSIC_STINGS[Math.floor(Math.random() * MUSIC_STINGS.length)];
 
-      // Simulate completion (in production, this runs async)
-      await db.update(projects).set({
-        sneakPeekStatus: "ready",
-        sneakPeekUrl: `https://cdn.awakli.ai/sneak-peek/${input.projectId}-preview.mp4`,
-        sneakPeekGeneratedAt: new Date(),
-      }).where(eq(projects.id, input.projectId));
+      (async () => {
+        try {
+          // Find the best panel image from the selected scene
+          const scenePanels = await db
+            .select({ imageUrl: panels.imageUrl, visualDescription: panels.visualDescription })
+            .from(panels)
+            .innerJoin(episodes, eq(panels.episodeId, episodes.id))
+            .where(and(eq(episodes.projectId, input.projectId), sql`${panels.imageUrl} IS NOT NULL AND ${panels.imageUrl} != ''`))
+            .limit(1);
+
+          let sourceImageUrl = scenePanels[0]?.imageUrl;
+
+          if (!sourceImageUrl) {
+            const imgResult = await generateImage({
+              prompt: `Cinematic anime scene, dramatic lighting, high quality, anime style`,
+            });
+            sourceImageUrl = imgResult?.url || null;
+          }
+
+          if (!sourceImageUrl) {
+            console.error(`[SneakPeek] No source image for project ${input.projectId}`);
+            await db.update(projects).set({ sneakPeekStatus: "failed" }).where(eq(projects.id, input.projectId));
+            return;
+          }
+
+          // Submit Kling image-to-video task
+          const klingResult = await imageToVideo({
+            image: sourceImageUrl,
+            prompt: `Cinematic anime scene, smooth camera movement, dramatic lighting, fluid animation, ${scenePanels[0]?.visualDescription || "dynamic action scene"}`,
+            negativePrompt: "static, blurry, low quality, distorted",
+            duration: "5",
+            mode: "std",
+            modelName: "kling-v2-6",
+          });
+
+          if (klingResult.code !== 0 || !klingResult.data?.task_id) {
+            console.error(`[SneakPeek] Kling submission failed:`, klingResult.message);
+            await db.update(projects).set({ sneakPeekStatus: "failed" }).where(eq(projects.id, input.projectId));
+            return;
+          }
+
+          // Poll for completion (max 5 minutes)
+          const taskId = klingResult.data.task_id;
+          const maxWait = 5 * 60 * 1000;
+          const start = Date.now();
+          let interval = 5000;
+
+          while (Date.now() - start < maxWait) {
+            await new Promise(r => setTimeout(r, interval));
+            const status = await queryTask(taskId, "image2video");
+
+            if (status.data?.task_status === "succeed") {
+              const video = status.data.task_result?.videos?.[0];
+              if (video?.url) {
+                const videoRes = await fetch(video.url);
+                const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+                const videoKey = `sneak-peek/${input.projectId}/preview-${nanoid(6)}.mp4`;
+                const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+
+                await db.update(projects).set({
+                  sneakPeekStatus: "ready",
+                  sneakPeekUrl: storedUrl,
+                  sneakPeekGeneratedAt: new Date(),
+                }).where(eq(projects.id, input.projectId));
+                console.log(`[SneakPeek] Generated for project ${input.projectId}: ${storedUrl}`);
+              }
+              return;
+            } else if (status.data?.task_status === "failed") {
+              console.error(`[SneakPeek] Kling task failed: ${status.data.task_status_msg}`);
+              await db.update(projects).set({ sneakPeekStatus: "failed" }).where(eq(projects.id, input.projectId));
+              return;
+            }
+            interval = Math.min(interval * 1.3, 15000);
+          }
+
+          console.error(`[SneakPeek] Timed out for project ${input.projectId}`);
+          await db.update(projects).set({ sneakPeekStatus: "failed" }).where(eq(projects.id, input.projectId));
+        } catch (err) {
+          console.error(`[SneakPeek] Async generation error:`, err);
+          try {
+            const db2 = (await getDb())!;
+            await db2.update(projects).set({ sneakPeekStatus: "failed" }).where(eq(projects.id, input.projectId));
+          } catch {}
+        }
+      })();
 
       return {
-        status: "ready",
-        url: `https://cdn.awakli.ai/sneak-peek/${input.projectId}-preview.mp4`,
+        status: "generating",
         musicSting: selectedMusicSting.name,
-        estimatedDurationMs: 8000,
+        estimatedDurationMs: 120000, // ~2 minutes for Kling generation
       };
     }),
 

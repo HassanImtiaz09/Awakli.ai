@@ -1362,3 +1362,17 @@
 - [x] Replace placeholder voice cloning in routers-preproduction.ts — instantVoiceClone API
 - [x] Write integration tests: 10 tests (3 key validation + 7 integration), all passing
 - [x] Add env variable to server/_core/env.ts
+
+## Kling AI Video Integration
+- [x] Add KLING_ACCESS_KEY and KLING_SECRET_KEY as environment secrets
+- [x] Add env variables to server/_core/env.ts
+- [x] Research Kling AI API endpoints — JWT auth, image-to-video, text-to-video, task polling
+- [x] Create Kling AI service module (server/kling.ts) — JWT auth, imageToVideo, textToVideo, queryTask, getAccountInfo
+- [x] Replace placeholder video generation in pipelineOrchestrator.ts — real Kling image-to-video with polling
+- [x] Replace placeholder anime preview in routers-freemium.ts — async Kling generation with S3 storage
+- [x] Replace placeholder sneak peek in routers-phase13.ts — async Kling generation with S3 storage
+- [x] Replace placeholder style preview video in routers-preproduction.ts — Kling image-to-video
+- [x] Replace placeholder character sheets in routers-preproduction.ts — real image generation
+- [x] Replace placeholder environment concept art in routers-preproduction.ts — real image generation
+- [x] Write integration tests: 4 tests (API connection, image2video, text2video, task query) — all passing
+- [x] Confirmed: image-to-video task submitted successfully (task_id: 873085464255799327)
