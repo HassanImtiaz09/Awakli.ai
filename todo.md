@@ -676,3 +676,84 @@
 - [x] Vitest: videoPrompt.getCameraPresets, getMoodPresets, getTransitions, build
 - [x] Vitest: narrator.extractLines (returns lines array)
 - [x] All 148 tests passing across 10 test files
+
+## Freemium Funnel & Anime Preview System
+
+### Database Changes
+- [x] Create tier_limits table with all tier configuration
+- [x] Seed tier_limits: free (3 projects, 3 chapters, 20 panels, 0 anime, sonnet, 720p, watermark), creator (10, 12, 30, 5, opus, 1080p, no watermark), studio (999, 999, 999, 20, opus, 4K, no watermark)
+- [x] Add anime_preview_used BOOLEAN DEFAULT false to users table
+- [x] Add preview_video_url TEXT to projects table
+- [x] Add is_premium ENUM('free','premium','pay_per_view') DEFAULT 'free' to episodes table
+- [x] Add ppv_price_cents INT to episodes table
+- [x] Migration SQL generated and applied
+
+### Stripe Products Update
+- [x] Rename Pro -> Creator ($19/mo, $15/mo annual)
+- [x] Update Studio ($49/mo, $39/mo annual)
+- [x] Update products.ts with new tier names and prices
+- [x] Update Stripe checkout to use new price IDs
+
+### Backend: Tier Enforcement Middleware
+- [x] checkTierLimit(userId, actionType) -> { allowed, reason, upgradeTier, upgradeBenefit }
+- [x] Actions: create_project, create_chapter, create_panel, generate_anime, clone_voice, train_lora, export_manga, export_anime, set_premium
+- [x] Enforce at tRPC procedure level before every generation action
+- [x] Return structured upgrade prompt data
+
+### Backend: Anime Preview System
+- [x] POST generate-anime-preview: select best scene, run abbreviated pipeline
+- [x] Preview = 1-3 min clip, watermarked, 720p
+- [x] One preview per account (check anime_preview_used)
+- [x] Save preview_video_url on project
+- [x] Trigger points: first manga complete, 50% vote threshold, manual button
+
+### Backend: Export System
+- [x] Manga export: PDF, PNG, ZIP formats based on tier
+- [x] Anime export: MP4 (Creator), MP4+ProRes+stems+SRT (Studio)
+- [x] Generate presigned download URLs (24h expiry)
+- [x] File size estimation before download
+
+### Backend: Premium Episodes & Earnings
+- [x] Set episode premium status (free/premium/ppv)
+- [x] Enhanced earnings dashboard with breakdown by project/episode/type
+- [x] Payout history tracking
+
+### Frontend: Pricing Page Rewrite
+- [x] Three cards: Free/$0, Creator/$19 (highlighted), Studio/$49
+- [x] Monthly/Annual toggle with 20% discount
+- [x] Feature comparison with checkmarks
+- [x] FAQ section below cards
+- [x] Updated CTAs: Get Started / Start Creating / Go Studio
+
+### Frontend: Upgrade Modals
+- [x] Contextual upgrade modal: shows reason, benefit, upgrade CTA
+- [x] Appears when tier limit is hit (not annoying, only on action)
+- [x] Links to Stripe checkout for the recommended tier
+
+### Frontend: Anime Preview
+- [x] Preview banner card on project page (for free users who haven't used preview)
+- [x] 'Generate Anime Preview' button (accent-gold)
+- [x] Full-screen preview player with upgrade CTAs below
+- [x] Feature comparison: Preview vs Full side-by-side
+- [x] After preview used: button changes to 'Upgrade for Full Anime Access'
+
+### Frontend: Export Modal
+- [x] Format selection (PDF/PNG/ZIP for manga, MP4/ProRes/stems for anime)
+- [x] File size estimates
+- [x] Download buttons with tier gating
+- [x] Tier-locked formats show lock icon + upgrade prompt
+
+### Frontend: Enhanced Creator Earnings
+- [x] Top row: Total earnings, This month, Pending payout
+- [x] Earnings over time line chart
+- [x] Breakdown table by project/episode/type
+- [x] Payout history with dates and amounts
+
+### Testing
+- [x] Vitest: tier enforcement middleware (all action types)
+- [x] Vitest: anime preview generation procedure
+- [x] Vitest: tier status procedure
+- [x] Vitest: export procedures (manga + anime)
+- [x] Vitest: premium episode procedures
+- [x] Vitest: updated billing checkout with new tiers
+- [x] All 160 tests passing across 11 test files

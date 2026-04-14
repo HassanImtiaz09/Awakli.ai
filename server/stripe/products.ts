@@ -1,21 +1,33 @@
 // ─── Awakli Subscription Tiers & Pricing ─────────────────────────────
+// Revised: Free / Creator ($19) / Studio ($49)
 
-export type TierKey = "free" | "pro" | "studio";
+export type TierKey = "free" | "creator" | "studio";
 
 export interface TierConfig {
   name: string;
-  monthlyPrice: number;   // cents
-  annualPrice: number;     // cents (per year)
-  credits: number;         // monthly allocation
+  monthlyPrice: number;       // cents
+  annualPrice: number;         // cents (per year)
+  annualMonthlyPrice: number;  // cents (monthly equivalent when billed annually)
+  credits: number;             // monthly allocation
   maxProjects: number;
-  maxEpisodesPerProject: number;
-  maxPanelsPerDay: number;
-  videoEpisodesPerMonth: number;
-  maxLoraModels: number;
+  maxChaptersPerProject: number;
+  maxPanelsPerChapter: number;
+  maxAnimeEpisodesPerMonth: number;
+  maxLoraCharacters: number;
   maxVoiceClones: number;
-  hasApiAccess: boolean;
+  scriptModel: string;
+  videoResolution: string;
   hasWatermark: boolean;
+  canUploadManga: boolean;
+  canMonetize: boolean;
+  revenueSharePercent: number;
+  hasApiAccess: boolean;
+  hasPriorityQueue: boolean;
   hasPrioritySupport: boolean;
+  hasCustomNarrator: boolean;
+  canExportManga: boolean;
+  canExportAnime: boolean;
+  exportFormats: string[];
   stripePriceIdMonthly?: string;
   stripePriceIdAnnual?: string;
 }
@@ -25,46 +37,79 @@ export const TIERS: Record<TierKey, TierConfig> = {
     name: "Free",
     monthlyPrice: 0,
     annualPrice: 0,
+    annualMonthlyPrice: 0,
     credits: 100,
-    maxProjects: 1,
-    maxEpisodesPerProject: 3,
-    maxPanelsPerDay: 5,
-    videoEpisodesPerMonth: 0,
-    maxLoraModels: 0,
+    maxProjects: 3,
+    maxChaptersPerProject: 3,
+    maxPanelsPerChapter: 20,
+    maxAnimeEpisodesPerMonth: 0,
+    maxLoraCharacters: 0,
     maxVoiceClones: 0,
-    hasApiAccess: false,
+    scriptModel: "claude-sonnet-4-20250514",
+    videoResolution: "720p",
     hasWatermark: true,
-    hasPrioritySupport: false,
-  },
-  pro: {
-    name: "Pro",
-    monthlyPrice: 2900,
-    annualPrice: 27840,  // 2320 * 12 = 20% discount
-    credits: 2000,
-    maxProjects: 5,
-    maxEpisodesPerProject: 12,
-    maxPanelsPerDay: 100,
-    videoEpisodesPerMonth: 3,
-    maxLoraModels: 2,
-    maxVoiceClones: 2,
+    canUploadManga: false,
+    canMonetize: false,
+    revenueSharePercent: 0,
     hasApiAccess: false,
-    hasWatermark: false,
+    hasPriorityQueue: false,
     hasPrioritySupport: false,
+    hasCustomNarrator: false,
+    canExportManga: false,
+    canExportAnime: false,
+    exportFormats: [],
+  },
+  creator: {
+    name: "Creator",
+    monthlyPrice: 1900,
+    annualPrice: 18000,       // $15/mo * 12 = $180/year
+    annualMonthlyPrice: 1500, // $15/mo billed annually
+    credits: 2000,
+    maxProjects: 10,
+    maxChaptersPerProject: 12,
+    maxPanelsPerChapter: 30,
+    maxAnimeEpisodesPerMonth: 5,
+    maxLoraCharacters: 3,
+    maxVoiceClones: 2,
+    scriptModel: "claude-opus-4-20250514",
+    videoResolution: "1080p",
+    hasWatermark: false,
+    canUploadManga: false,
+    canMonetize: true,
+    revenueSharePercent: 80,
+    hasApiAccess: false,
+    hasPriorityQueue: false,
+    hasPrioritySupport: false,
+    hasCustomNarrator: false,
+    canExportManga: true,
+    canExportAnime: true,
+    exportFormats: ["pdf", "png", "mp4"],
   },
   studio: {
     name: "Studio",
-    monthlyPrice: 9900,
-    annualPrice: 95040,  // 7920 * 12 = 20% discount
+    monthlyPrice: 4900,
+    annualPrice: 46800,       // $39/mo * 12 = $468/year
+    annualMonthlyPrice: 3900, // $39/mo billed annually
     credits: 10000,
     maxProjects: 999,
-    maxEpisodesPerProject: 999,
-    maxPanelsPerDay: 999,
-    videoEpisodesPerMonth: 20,
-    maxLoraModels: 999,
+    maxChaptersPerProject: 999,
+    maxPanelsPerChapter: 999,
+    maxAnimeEpisodesPerMonth: 20,
+    maxLoraCharacters: 999,
     maxVoiceClones: 999,
-    hasApiAccess: true,
+    scriptModel: "claude-opus-4-20250514",
+    videoResolution: "4K",
     hasWatermark: false,
+    canUploadManga: true,
+    canMonetize: true,
+    revenueSharePercent: 85,
+    hasApiAccess: true,
+    hasPriorityQueue: true,
     hasPrioritySupport: true,
+    hasCustomNarrator: true,
+    canExportManga: true,
+    canExportAnime: true,
+    exportFormats: ["pdf", "png", "zip", "mp4", "prores", "stems", "srt"],
   },
 };
 
@@ -75,37 +120,56 @@ export const CREDIT_COSTS: Record<string, number> = {
   video: 20,
   voice: 1,
   lora_train: 50,
+  upscale: 3,
+  sfx: 2,
+  narrator: 1,
 };
 
-// Overage rate: $0.05 per credit for Pro/Studio
-export const OVERAGE_RATE_CENTS = 5;  // 5 cents per credit
+// Overage rate: $0.05 per credit for Creator/Studio
+export const OVERAGE_RATE_CENTS = 5;
+
+// Anime preview config
+export const ANIME_PREVIEW = {
+  maxPanels: 6,         // 3-6 panels worth of video
+  resolution: "720p",
+  watermark: true,
+  expiryDays: 30,
+};
 
 export function getTierFeatureList(tier: TierKey): string[] {
   const t = TIERS[tier];
   const features: string[] = [];
 
-  features.push(`${t.maxProjects === 999 ? "Unlimited" : t.maxProjects} project${t.maxProjects !== 1 ? "s" : ""}`);
-  features.push(`${t.maxEpisodesPerProject === 999 ? "Unlimited" : t.maxEpisodesPerProject} episodes per project`);
-  features.push(`${t.credits.toLocaleString()} credits/month`);
-  features.push(`${t.maxPanelsPerDay === 999 ? "Unlimited" : t.maxPanelsPerDay} panels/day`);
-
-  if (t.videoEpisodesPerMonth > 0) {
-    features.push(`${t.videoEpisodesPerMonth === 20 ? "20" : t.videoEpisodesPerMonth} video episodes/month`);
-  } else {
-    features.push("No video pipeline");
+  if (tier === "free") {
+    features.push("3 manga projects (3 chapters each)");
+    features.push("AI script + panel generation");
+    features.push("Publish to community");
+    features.push("Vote and comment");
+    features.push("1 free anime preview clip");
+  } else if (tier === "creator") {
+    features.push("Everything in Free");
+    features.push("10 manga projects (12 chapters each)");
+    features.push("Claude Opus 4 scripts (best quality)");
+    features.push("5 anime episodes per month (1080p)");
+    features.push("Voice cloning (2 characters)");
+    features.push("Character LoRA training");
+    features.push("Download manga + anime files");
+    features.push("Earn revenue from premium content (80/20 split)");
+  } else if (tier === "studio") {
+    features.push("Everything in Creator");
+    features.push("Unlimited manga + 20 anime eps/mo");
+    features.push("4K output + ProRes export");
+    features.push("Priority pipeline queue");
+    features.push("85/15 revenue split (best rate)");
+    features.push("API access + analytics");
   }
-
-  if (t.maxLoraModels > 0) {
-    features.push(`${t.maxLoraModels === 999 ? "Unlimited" : t.maxLoraModels} LoRA models`);
-  }
-  if (t.maxVoiceClones > 0) {
-    features.push(`${t.maxVoiceClones === 999 ? "Unlimited" : t.maxVoiceClones} voice clones`);
-  }
-
-  if (!t.hasWatermark) features.push("No watermark");
-  if (t.hasApiAccess) features.push("API access");
-  if (t.hasPrioritySupport) features.push("Priority support");
-  features.push("Community features");
 
   return features;
+}
+
+// Map old 'pro' tier to 'creator' for backward compatibility
+export function normalizeTier(tier: string): TierKey {
+  if (tier === "pro") return "creator";
+  if (tier === "creator" || tier === "studio") return tier as TierKey;
+  return "free";
 }

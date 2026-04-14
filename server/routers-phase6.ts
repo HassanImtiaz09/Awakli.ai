@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure, adminProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getStripe } from "./stripe/client";
-import { TIERS, CREDIT_COSTS, getTierFeatureList, type TierKey } from "./stripe/products";
+import { TIERS, CREDIT_COSTS, getTierFeatureList, normalizeTier, type TierKey } from "./stripe/products";
 import {
   getSubscriptionByUserId, upsertSubscription,
   createUsageRecord, getUsageRecordsByUser, getMonthlyUsageSummary,
@@ -44,12 +44,12 @@ export const billingRouter = router({
   // Create checkout session
   createCheckout: protectedProcedure
     .input(z.object({
-      tier: z.enum(["pro", "studio"]),
+      tier: z.enum(["creator", "studio"]),
       interval: z.enum(["monthly", "annual"]).default("monthly"),
     }))
     .mutation(async ({ ctx, input }) => {
       const stripe = getStripe();
-      const tierConfig = TIERS[input.tier];
+      const tierConfig = TIERS[normalizeTier(input.tier)];
       const priceInCents = input.interval === "annual" ? tierConfig.annualPrice : tierConfig.monthlyPrice;
 
       const session = await stripe.checkout.sessions.create({

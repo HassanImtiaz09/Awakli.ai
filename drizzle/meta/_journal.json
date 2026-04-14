@@ -78,6 +78,13 @@
       "when": 1776137791676,
       "tag": "0010_zippy_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1776140850373,
+      "tag": "0011_lucky_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

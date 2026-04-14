@@ -21,6 +21,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  animePreviewUsed: int("animePreviewUsed").default(0),
 });
 
 export type User = typeof users.$inferSelect;
@@ -52,6 +53,8 @@ export const projects = mysqlTable("projects", {
   animeStatus: mysqlEnum("animeStatus", ["not_eligible", "eligible", "in_production", "completed"]).default("not_eligible").notNull(),
   animePromotedAt: timestamp("animePromotedAt"),
   trailerVideoUrl: text("trailerVideoUrl"),
+  previewVideoUrl: text("previewVideoUrl"),
+  previewGeneratedAt: timestamp("previewGeneratedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -123,6 +126,8 @@ export const episodes = mysqlTable("episodes", {
   scriptModerationStatus: mysqlEnum("scriptModerationStatus", ["pending", "clean", "flagged", "revised"]).default("pending"),
   scriptModerationFlags: json("scriptModerationFlags"),  // [{category, severity, description, lineNumber}]
   estimatedCostCents: int("estimatedCostCents"),
+  isPremium: mysqlEnum("isPremium", ["free", "premium", "pay_per_view"]).default("free"),
+  ppvPriceCents: int("ppvPriceCents"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -311,7 +316,7 @@ export type InsertNotification = typeof notifications.$inferInsert;
 export const subscriptions = mysqlTable("subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tier: mysqlEnum("tier", ["free", "pro", "studio"]).default("free").notNull(),
+  tier: mysqlEnum("tier", ["free", "pro", "creator", "studio"]).default("free").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
   status: mysqlEnum("status", ["active", "past_due", "canceled", "trialing", "incomplete"]).default("active").notNull(),
@@ -441,3 +446,25 @@ export const episodeSfx = mysqlTable("episode_sfx", {
 
 export type EpisodeSfx = typeof episodeSfx.$inferSelect;
 export type InsertEpisodeSfx = typeof episodeSfx.$inferInsert;
+
+// ─── Tier Limits (configuration table) ──────────────────────────────
+
+export const tierLimits = mysqlTable("tier_limits", {
+  tier: varchar("tier", { length: 20 }).primaryKey(),
+  maxProjects: int("maxProjects").notNull(),
+  maxChaptersPerProject: int("maxChaptersPerProject").notNull(),
+  maxPanelsPerChapter: int("maxPanelsPerChapter").notNull(),
+  maxAnimeEpisodesPerMonth: int("maxAnimeEpisodesPerMonth").notNull(),
+  maxLoraCharacters: int("maxLoraCharacters").notNull(),
+  maxVoiceClones: int("maxVoiceClones").notNull(),
+  scriptModel: varchar("scriptModel", { length: 100 }).notNull(),
+  videoResolution: varchar("videoResolution", { length: 20 }).notNull(),
+  hasWatermark: int("hasWatermark").default(0).notNull(),
+  canUploadManga: int("canUploadManga").default(0).notNull(),
+  canMonetize: int("canMonetize").default(0).notNull(),
+  revenueSharePercent: int("revenueSharePercent").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TierLimit = typeof tierLimits.$inferSelect;
+export type InsertTierLimit = typeof tierLimits.$inferInsert;

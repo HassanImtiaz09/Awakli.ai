@@ -42,6 +42,9 @@ import {
 } from "./routers-voting";
 import { quickCreateRouter } from "./routers-create";
 import {
+  tierRouter, animePreviewRouter, exportRouter, premiumRouter,
+} from "./routers-freemium";
+import {
   qualityRouter, upscaleRouter, sceneRouter, sfxRouter,
   narratorRouter, videoPromptRouter, moderationRouter, costRouter,
 } from "./routers-pipeline";
@@ -1845,6 +1848,12 @@ export const appRouter = router({
   videoPrompt: videoPromptRouter,
   moderation: moderationRouter,
   cost: costRouter,
+
+  // Freemium Funnel
+  tier: tierRouter,
+  animePreview: animePreviewRouter,
+  export: exportRouter,
+  premium: premiumRouter,
 });
 
 export type AppRouter = typeof appRouter;
