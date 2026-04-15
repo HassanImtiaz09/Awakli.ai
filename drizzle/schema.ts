@@ -645,3 +645,40 @@ export const rvcVoiceModels = mysqlTable("rvc_voice_models", {
 
 export type RvcVoiceModel = typeof rvcVoiceModels.$inferSelect;
 export type InsertRvcVoiceModel = typeof rvcVoiceModels.$inferInsert;
+
+// ─── Kling Character Elements (Subject Library) ─────────────────────────
+
+export const characterElements = mysqlTable("character_elements", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // Kling Voice API
+  klingVoiceTaskId: varchar("klingVoiceTaskId", { length: 255 }),
+  klingVoiceId: varchar("klingVoiceId", { length: 255 }),
+  voiceSourceUrl: text("voiceSourceUrl"),  // audio sample used for voice cloning
+
+  // Kling Element API
+  klingElementTaskId: varchar("klingElementTaskId", { length: 255 }),
+  klingElementId: int("klingElementId"),  // the element_id from Kling API
+  referenceImageUrl: text("referenceImageUrl"),  // frontal image used
+  additionalImageUrls: json("additionalImageUrls"),  // string[] of additional reference images
+
+  // Status tracking
+  status: mysqlEnum("status", [
+    "pending",
+    "creating_voice",
+    "voice_ready",
+    "creating_element",
+    "ready",
+    "failed",
+  ]).default("pending").notNull(),
+  errorMessage: text("errorMessage"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CharacterElement = typeof characterElements.$inferSelect;
+export type InsertCharacterElement = typeof characterElements.$inferInsert;

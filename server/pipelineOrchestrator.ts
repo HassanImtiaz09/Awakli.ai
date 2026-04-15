@@ -13,6 +13,7 @@ import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { imageToVideo, omniVideo, queryTask } from "./kling";
+import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import { assembleVideo } from "./video-assembly";
@@ -24,6 +25,8 @@ import {
   getPanelsByEpisode,
   getEpisodeById,
   getCharactersByProject,
+  getReadyElementMapForProject,
+  getReadyElementsByProject,
   updateEpisode,
 } from "./db";
 import { nanoid } from "nanoid";
@@ -90,9 +93,13 @@ async function updateNodeProgress(
  * Video Generation Agent — uses Kling V3 Omni for panels with dialogue (native lip sync),
  * falls back to Kling v2.6 image2video for panels without dialogue.
  *
- * When a panel has dialogue, the prompt includes the dialogue text so Kling V3 Omni
- * generates video with natively lip-synced audio. This eliminates the need for a
- * separate lip sync step.
+ * When Subject Library elements are available for the project's characters:
+ *   - Uses element_list with <<<element_N>>> voice tags for true lip-synced animation
+ *   - Characters speak with their cloned voices and lip movements match the audio
+ *
+ * When no elements are available (fallback):
+ *   - Uses V3 Omni with sound:on and dialogue in the prompt (ambient audio, no lip sync)
+ *   - ElevenLabs voice clips are overlaid in the assembly step
  */
 async function videoGenAgent(runId: number, episodeId: number, projectId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   const panels = await getPanelsByEpisode(episodeId);
@@ -101,8 +108,26 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
 
   const panelsToProcess = approvedPanels.slice(0, 4);
 
+  // ─── Subject Library: look up ready character elements ───────────────
+  const elementMap = await getReadyElementMapForProject(projectId); // Map<characterName, klingElementId>
+  const readyElements = await getReadyElementsByProject(projectId);
+  const hasSubjectLibrary = elementMap.size > 0;
+
+  // Build element_list and name→index mapping for voice tags
+  const elementList: Array<{ element_id: number }> = [];
+  const elementOrder: string[] = []; // character names in element_list order
+  if (hasSubjectLibrary) {
+    for (const [charName, elementId] of Array.from(elementMap.entries())) {
+      elementList.push({ element_id: elementId });
+      elementOrder.push(charName);
+    }
+    console.log(`[Pipeline] Subject Library active: ${elementList.length} character elements loaded (${elementOrder.join(", ")})`);
+  } else {
+    console.log(`[Pipeline] No Subject Library elements found — using fallback Omni mode`);
+  }
+
   // Submit all video generation tasks in parallel
-  const taskIds: { panelId: number; taskId: string; panelNumber: number | null; taskType: "image2video" | "omni-video"; hasDialogue: boolean }[] = [];
+  const taskIds: { panelId: number; taskId: string; panelNumber: number | null; taskType: "image2video" | "omni-video"; hasDialogue: boolean; hasNativeLipSync: boolean }[] = [];
 
   for (const panel of panelsToProcess) {
     if (!panel.imageUrl) continue;
@@ -113,20 +138,54 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       Array.isArray(dialogue) ? dialogue.length > 0 : typeof dialogue === "string" ? dialogue.length > 0 : Object.keys(dialogue).length > 0
     );
 
-    const dialogueText = hasDialogue
-      ? (Array.isArray(dialogue)
-          ? dialogue.map((d: any) => d.text || d.line || d).join(". ")
-          : typeof dialogue === "string" ? dialogue : "")
-      : "";
+    // Extract structured dialogue lines [{character, text, emotion}]
+    const dialogueLines: Array<{ characterName: string; dialogue: string; emotion?: string }> = [];
+    if (hasDialogue && Array.isArray(dialogue)) {
+      for (const d of dialogue) {
+        if (typeof d === "string") {
+          dialogueLines.push({ characterName: "narrator", dialogue: d });
+        } else if (d && typeof d === "object") {
+          dialogueLines.push({
+            characterName: d.character || d.speaker || "narrator",
+            dialogue: d.text || d.line || d.dialogue || "",
+            emotion: d.emotion,
+          });
+        }
+      }
+    } else if (hasDialogue && typeof dialogue === "string") {
+      dialogueLines.push({ characterName: "narrator", dialogue });
+    }
+
+    const dialogueText = dialogueLines.map(d => d.dialogue).filter(Boolean).join(". ");
 
     try {
       if (hasDialogue && dialogueText) {
-        // Use Kling V3 Omni with native audio + lip sync
-        const omniPrompt = `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. The character says: "${dialogueText.slice(0, 500)}". Anime style, high quality animation, fluid movement, expressive character performance.`;
+        // Check if any dialogue characters have Subject Library elements
+        const panelCharNames = dialogueLines.map(d => d.characterName);
+        const hasMatchingElements = hasSubjectLibrary && panelCharNames.some(name => elementMap.has(name));
+
+        let omniPrompt: string;
+        let omniElementList: Array<{ element_id: number }> | undefined;
+
+        if (hasMatchingElements) {
+          // ─── NATIVE LIP SYNC: use element_list + <<<element_N>>> voice tags ───
+          omniPrompt = buildLipSyncPrompt(
+            `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. Anime style, high quality animation, fluid movement, expressive character performance.`,
+            dialogueLines,
+            elementOrder
+          );
+          omniElementList = elementList;
+          console.log(`[Pipeline] Panel ${panel.id}: using Subject Library lip sync (${panelCharNames.filter(n => elementMap.has(n)).join(", ")})`);
+        } else {
+          // ─── FALLBACK: dialogue in prompt, no element_list ───
+          omniPrompt = `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. The character says: "${dialogueText.slice(0, 500)}". Anime style, high quality animation, fluid movement, expressive character performance.`;
+          omniElementList = undefined;
+        }
 
         const result = await omniVideo({
           prompt: omniPrompt,
           imageList: [{ image_url: panel.imageUrl, type: "first_frame" }],
+          elementList: omniElementList,
           sound: "on",
           duration: "5",
           mode: "pro",
@@ -141,8 +200,9 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             panelNumber: panel.panelNumber,
             taskType: "omni-video",
             hasDialogue: true,
+            hasNativeLipSync: !!hasMatchingElements,
           });
-          console.log(`[Pipeline] Kling V3 Omni task submitted for panel ${panel.id} (with lip sync): ${result.data.task_id}`);
+          console.log(`[Pipeline] Kling V3 Omni task submitted for panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
         }
       } else {
         // No dialogue — use standard image2video (cheaper, no audio needed)
@@ -162,6 +222,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             panelNumber: panel.panelNumber,
             taskType: "image2video",
             hasDialogue: false,
+            hasNativeLipSync: false,
           });
           console.log(`[Pipeline] Kling v2.6 task submitted for panel ${panel.id} (no dialogue): ${result.data.task_id}`);
         }
@@ -209,10 +270,13 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
                 klingModel: task.hasDialogue ? "kling-video-o1 (V3 Omni)" : "kling-v2-6",
                 hasNativeAudio: task.hasDialogue,
                 hasLipSync: task.hasDialogue,
+                hasNativeLipSync: task.hasNativeLipSync,
+                usedSubjectLibrary: task.hasNativeLipSync,
               } as any,
               nodeSource: "video_gen",
             });
-            console.log(`[Pipeline] ${task.hasDialogue ? "Lip-synced" : "Silent"} video stored for panel ${task.panelId}: ${storedUrl}`);
+            const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.hasDialogue ? "Omni audio" : "Silent";
+            console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl}`);
           }
         } else if (status.data?.task_status === "failed") {
           completedTasks.add(task.taskId);

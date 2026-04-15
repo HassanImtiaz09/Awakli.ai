@@ -63,6 +63,7 @@ import {
 import {
   performanceGuideRouter, singingVoiceRouter, vocalRecordingRouter, voiceConversionRouter,
 } from "./routers-vocalrecording";
+import { subjectLibraryRouter } from "./routers-subjects";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1945,6 +1946,9 @@ export const appRouter = router({
   singingVoice: singingVoiceRouter,
   vocalRecording: vocalRecordingRouter,
   voiceConversion: voiceConversionRouter,
+
+  // Phase 17: Kling Subject Library (Native Lip Sync)
+  subjectLibrary: subjectLibraryRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1450,3 +1450,26 @@
 - [x] video-assembly.ts: normalizeClip, concatenateClips, overlayVoice, mixMusic, assembleVideo
 - [x] 9 video assembly tests (ffmpeg, ffprobe, normalize, concat, audio mix)
 - [x] All 406 tests pass across 23 test files — zero failures
+
+## Kling Subject Library — Native Lip Sync Integration
+- [x] Research Kling Subject Library API (/v1/general/advanced-custom-elements)
+- [x] Research voice binding API for character elements
+- [x] Build Subject Library service module (server/kling-subjects.ts)
+- [x] Implement createCharacterElement() with reference images + voice binding
+- [x] Implement queryElement(), deleteElement(), listElements()
+- [x] Add DB schema for character_elements table (project-level character persistence)
+- [x] Create migration SQL and apply to database
+- [x] Update pipeline orchestrator to use element_list with voice tags in V3 Omni requests
+- [x] Build character management UI (create, view, delete character elements)
+- [x] Write tests for Subject Library service module
+- [x] Run full E2E pipeline test with Subject Library lip sync
+- [x] Update EXTERNAL_SERVICES.md with Subject Library documentation
+- [x] Custom Voice API: createCustomVoice, queryCustomVoice, listCustomVoices, listPresetVoices, deleteCustomVoice, pollVoiceUntilReady, createAndWaitForVoice
+- [x] Element API: createElement, queryElement, listElements, listPresetElements, deleteElement, pollElementUntilReady, createAndWaitForElement
+- [x] buildLipSyncPrompt() with <<<element_N>>> voice tags for native lip sync
+- [x] getReadyElementMapForProject() in pipeline orchestrator for automatic element lookup
+- [x] SubjectLibrary.tsx UI component integrated into Voice Casting stage
+- [x] tRPC router: listElements, getReadyElements, createElement, getElementStatus, deleteElement, retryElement, previewLipSyncPrompt
+- [x] DB helpers: createCharacterElement, getCharacterElementsByProject, getReadyElementMapForProject, updateCharacterElementStatus, deleteCharacterElement
+- [x] 13 tests for Subject Library (buildLipSyncPrompt, API list, voice clone, element creation, router)
+- [x] All 419 tests pass across 24 test files — zero failures

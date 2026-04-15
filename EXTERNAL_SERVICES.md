@@ -66,11 +66,22 @@ These external services have been fully integrated with real API calls replacing
 - `server/routers-phase13.ts` — Async Kling generation for sneak peek clips
 - `server/routers-preproduction.ts` — Kling image-to-video for style previews, real image generation for character sheets and environment concept art
 
-**Lip sync strategy:** Panels with dialogue use V3 Omni (`sound: "on"`) with dialogue-enriched prompts, generating video with natively lip-synced audio in a single pass. This eliminates the need for a separate lip sync service (D-ID, SadTalker, etc.).
+**Subject Library (Native Lip Sync):**
+- **Service module:** `server/kling-subjects.ts`
+- **Custom Voice API:** Clone character voices from audio samples via `/v1/general/custom-voices`
+- **Element API:** Create persistent character elements with voice binding via `/v1/general/advanced-custom-elements`
+- **Pipeline integration:** When character elements exist for a project, the `video_gen` node automatically uses `element_list` with `<<<element_N>>>` voice tags for true lip-synced animation
+- **Fallback:** When no elements exist, falls back to V3 Omni with dialogue-enriched prompts
+- **UI:** SubjectLibrary component in Voice Casting stage (Pre-Production) for creating/managing character elements
+- **DB table:** `character_elements` stores element IDs, voice IDs, and status per project/character
+
+**Lip sync strategy:** Two-tier approach:
+1. **With Subject Library elements:** True native lip sync via `element_list` + voice tags in V3 Omni requests
+2. **Without elements (fallback):** V3 Omni with `sound: "on"` and dialogue-enriched prompts
 
 **Env variables:** `KLING_ACCESS_KEY`, `KLING_SECRET_KEY` — Set and validated
 
-**Pricing:** ~$0.10-0.30 per 5s clip (v2.6), ~$0.20-0.50 per 5s clip (V3 Omni with audio).
+**Pricing:** ~$0.10-0.30 per 5s clip (v2.6), ~$0.20-0.50 per 5s clip (V3 Omni with audio). Element creation: ~$0.05-0.10 per element.
 
 ---
 
@@ -132,13 +143,15 @@ pnpm add -D puppeteer
 
 These services enhance the platform but are not blocking core functionality.
 
-### 6. Lip Sync — Handled by Kling V3 Omni (NO SEPARATE SERVICE NEEDED)
+### 6. Lip Sync — Handled by Kling V3 Omni + Subject Library (NO SEPARATE SERVICE NEEDED)
 
-**Status:** Fully handled by Kling V3 Omni. No separate lip sync service required.
+**Status:** Fully handled by Kling V3 Omni with Subject Library integration. No separate lip sync service required.
 
-**How it works:** The pipeline's `video_gen` node automatically uses Kling V3 Omni with `sound: "on"` for panels that have dialogue. The Omni endpoint generates video with natively lip-synced audio in a single pass, eliminating the need for D-ID, SadTalker, Wav2Lip, or any other lip sync service.
+**How it works:** The pipeline's `video_gen` node uses a two-tier approach:
+1. **Subject Library elements (best quality):** When character elements with voice binding exist, the pipeline uses `element_list` + `<<<element_N>>>` voice tags for true native lip sync
+2. **Fallback:** V3 Omni with `sound: "on"` and dialogue-enriched prompts for ambient audio
 
-**Previous state:** Was a placeholder returning dummy buffers. Now fully replaced by Kling V3 Omni.
+**Previous state:** Was a placeholder returning dummy buffers. Now fully replaced by Kling V3 Omni + Subject Library.
 
 ---
 

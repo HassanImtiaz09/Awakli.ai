@@ -4,9 +4,11 @@ import {
   users, projects, mangaUploads, processingJobs,
   episodes, panels, characters,
   votes, comments, follows, watchlist, notifications,
+  characterElements,
   InsertUser, InsertProject, InsertMangaUpload, InsertProcessingJob,
   InsertEpisode, InsertPanel, InsertCharacter,
   InsertVote, InsertComment, InsertFollow, InsertWatchlist, InsertNotification,
+  InsertCharacterElement,
 } from "../drizzle/schema";
 import { like, or, asc, count, isNull, ne } from "drizzle-orm";
 import { ENV } from "./_core/env";
@@ -818,4 +820,78 @@ export async function getPlatformConfigMulti(keys: string[]): Promise<Record<str
   if (!db) return {};
   const result = await db.select().from(platformConfig).where(inArray(platformConfig.key, keys));
   return Object.fromEntries(result.map(r => [r.key, r.value]));
+}
+
+
+// ─── Character Elements (Kling Subject Library) ─────────────────────────
+
+export async function createCharacterElement(data: InsertCharacterElement) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(characterElements).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getCharacterElementById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(characterElements).where(eq(characterElements.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getCharacterElementByCharacterId(characterId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(characterElements)
+    .where(and(eq(characterElements.characterId, characterId), eq(characterElements.status, "ready")))
+    .limit(1);
+  return result[0];
+}
+
+export async function getCharacterElementsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(characterElements)
+    .where(eq(characterElements.projectId, projectId))
+    .orderBy(desc(characterElements.createdAt));
+}
+
+export async function getReadyElementsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(characterElements)
+    .where(and(eq(characterElements.projectId, projectId), eq(characterElements.status, "ready")))
+    .orderBy(characterElements.id);
+}
+
+export async function updateCharacterElement(id: number, data: Partial<InsertCharacterElement>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(characterElements).set(data).where(eq(characterElements.id, id));
+}
+
+export async function deleteCharacterElement(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(characterElements).where(eq(characterElements.id, id));
+}
+
+/**
+ * Get all ready character elements for a project, joined with character names.
+ * Returns a map of characterName → klingElementId for use in the pipeline.
+ */
+export async function getReadyElementMapForProject(projectId: number): Promise<Map<string, number>> {
+  const db = await getDb();
+  if (!db) return new Map();
+  const results = await db.select({
+    characterName: characters.name,
+    klingElementId: characterElements.klingElementId,
+  }).from(characterElements)
+    .innerJoin(characters, eq(characterElements.characterId, characters.id))
+    .where(and(
+      eq(characterElements.projectId, projectId),
+      eq(characterElements.status, "ready"),
+      sql`${characterElements.klingElementId} IS NOT NULL`
+    ));
+  return new Map(results.map(r => [r.characterName, r.klingElementId!]));
 }

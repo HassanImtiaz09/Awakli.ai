@@ -21,6 +21,7 @@ import {
   Palette, Cloud, Sun, Moon, Sunrise, Sunset,
   Loader2, Crown, Zap, DollarSign, Clock,
 } from "lucide-react";
+import SubjectLibrary from "@/components/awakli/SubjectLibrary";
 
 // ─── Stage Definitions ──────────────────────────────────────────────
 
@@ -575,6 +576,11 @@ function VoiceCastingStage({ projectId, characters }: { projectId: number; chara
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Subject Library — Native Lip Sync */}
+      <div className="mt-8 pt-6 border-t border-border/50">
+        <SubjectLibrary projectId={projectId} characters={characters} />
       </div>
     </div>
   );
