@@ -239,7 +239,7 @@ export const pipelineAssets = mysqlTable("pipeline_assets", {
   pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
   episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
   panelId: int("panelId"),
-  assetType: mysqlEnum("assetType", ["video_clip", "voice_clip", "synced_clip", "music_segment", "sfx_clip", "narrator_clip", "upscaled_panel", "subtitle_srt", "final_video", "thumbnail"]).notNull(),
+  assetType: mysqlEnum("assetType", ["video_clip", "voice_clip", "synced_clip", "music_segment", "sfx_clip", "narrator_clip", "upscaled_panel", "subtitle_srt", "final_video", "thumbnail", "stream_video"]).notNull(),
   url: text("url").notNull(),
   metadata: json("metadata"),  // {duration, fileSize, format, characterId, ...}
   nodeSource: mysqlEnum("nodeSource", ["quality_check", "upscale", "content_mod", "video_gen", "voice_gen", "narrator_gen", "lip_sync", "music_gen", "sfx_gen", "assembly"]).notNull(),

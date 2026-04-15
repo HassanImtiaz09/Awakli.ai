@@ -13,6 +13,7 @@ import {
 import { getPlatformConfig, getPlatformConfigMulti, setPlatformConfig } from "./db";
 import { DEMO_CONFIG_KEYS } from "../shared/demo-scenario";
 import { generateAllDemoAssets } from "./demo-assets";
+import * as cfStream from "./cloudflare-stream";
 
 // ─── Billing Router ────────────────────────────────────────────────────
 
@@ -292,6 +293,109 @@ export const adminRouter = router({
     });
     return { success: true, message: "Demo asset generation started. Check status via getDemoConfig." };
   }),
+
+  // Upload a video to Cloudflare Stream from a public URL
+  uploadDemoVideo: adminProcedure
+    .input(z.object({
+      videoUrl: z.string().url(),
+      waitForReady: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "uploading_stream");
+
+      try {
+        if (input.waitForReady) {
+          // Upload and wait until ready (may take a few minutes)
+          const result = await cfStream.uploadAndWait(input.videoUrl, { name: "awakli-demo" }, { timeoutMs: 10 * 60 * 1000 });
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID, result.uid);
+          await setPlatformConfig("demo_video_embed_url", result.embedUrl);
+          await setPlatformConfig(DEMO_CONFIG_KEYS.POSTER_URL, result.thumbnailUrl);
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "stream_ready");
+          await setPlatformConfig(DEMO_CONFIG_KEYS.UPDATED_AT, new Date().toISOString());
+          return { success: true, uid: result.uid, embedUrl: result.embedUrl, thumbnailUrl: result.thumbnailUrl };
+        } else {
+          // Upload and return immediately (poll separately)
+          const uploaded = await cfStream.uploadFromUrl(input.videoUrl, { name: "awakli-demo" });
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID, uploaded.uid);
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "stream_processing");
+          await setPlatformConfig(DEMO_CONFIG_KEYS.UPDATED_AT, new Date().toISOString());
+          return { success: true, uid: uploaded.uid, status: uploaded.status.state };
+        }
+      } catch (err: any) {
+        console.error("[Admin] Demo video upload failed:", err);
+        await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "stream_failed");
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message || "Stream upload failed" });
+      }
+    }),
+
+  // Check the processing status of a Cloudflare Stream video
+  checkStreamStatus: adminProcedure
+    .input(z.object({ uid: z.string().optional() }))
+    .query(async ({ input }) => {
+      const uid = input.uid || await getPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID);
+      if (!uid) return { ready: false, status: "no_video", uid: null };
+
+      try {
+        const video = await cfStream.getVideoStatus(uid);
+        // If newly ready, update platform config with embed/poster URLs
+        if (video.readyToStream) {
+          const embedUrl = cfStream.getEmbedUrl(video);
+          const thumbnailUrl = cfStream.getThumbnailUrl(video);
+          await setPlatformConfig("demo_video_embed_url", embedUrl);
+          await setPlatformConfig(DEMO_CONFIG_KEYS.POSTER_URL, thumbnailUrl);
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "stream_ready");
+        }
+        return {
+          ready: video.readyToStream,
+          status: video.status.state,
+          uid: video.uid,
+          pctComplete: video.status.pctComplete || null,
+          duration: video.duration || null,
+          embedUrl: video.readyToStream ? cfStream.getEmbedUrl(video) : null,
+          thumbnailUrl: video.thumbnail || null,
+        };
+      } catch (err: any) {
+        return { ready: false, status: "error", uid, error: err.message };
+      }
+    }),
+
+  // List all videos in Cloudflare Stream account
+  listStreamVideos: adminProcedure.query(async () => {
+    try {
+      const videos = await cfStream.listVideos({ perPage: 20 });
+      return videos.map((v) => ({
+        uid: v.uid,
+        name: v.meta?.name || "Untitled",
+        ready: v.readyToStream,
+        status: v.status.state,
+        duration: v.duration || null,
+        created: v.created,
+        thumbnail: v.thumbnail,
+      }));
+    } catch (err: any) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message || "Failed to list videos" });
+    }
+  }),
+
+  // Delete a video from Cloudflare Stream
+  deleteStreamVideo: adminProcedure
+    .input(z.object({ uid: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        await cfStream.deleteVideo(input.uid);
+        // If this was the demo video, clear the config
+        const currentStreamId = await getPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID);
+        if (currentStreamId === input.uid) {
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID, "");
+          await setPlatformConfig("demo_video_embed_url", "");
+          await setPlatformConfig(DEMO_CONFIG_KEYS.POSTER_URL, "");
+          await setPlatformConfig(DEMO_CONFIG_KEYS.STATUS, "assets_ready");
+        }
+        return { success: true };
+      } catch (err: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message || "Failed to delete video" });
+      }
+    }),
 });
 
 // ─── Report Content ────────────────────────────────────────────────────

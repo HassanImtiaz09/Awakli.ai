@@ -1250,12 +1250,15 @@ const discoverRouter = router({
 
   getDemoVideo: publicProcedure.query(async () => {
     const { getPlatformConfig } = await import("./db");
-    const streamId = await getPlatformConfig("demo_stream_id");
-    const posterUrl = await getPlatformConfig("demo_poster_url");
-    const status = await getPlatformConfig("demo_status");
+    const { DEMO_CONFIG_KEYS } = await import("../shared/demo-scenario");
+    const streamId = await getPlatformConfig(DEMO_CONFIG_KEYS.STREAM_ID);
+    const posterUrl = await getPlatformConfig(DEMO_CONFIG_KEYS.POSTER_URL);
+    const embedUrl = await getPlatformConfig("demo_video_embed_url");
+    const status = await getPlatformConfig(DEMO_CONFIG_KEYS.STATUS);
     return {
       streamId: streamId || null,
       posterUrl: posterUrl || null,
+      embedUrl: embedUrl || null,
       status: status || "not_started",
     };
   }),

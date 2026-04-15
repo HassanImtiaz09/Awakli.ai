@@ -1386,3 +1386,17 @@
 - [x] Replace all placeholder music in routers-music.ts — generateTheme, refineTheme, generateOst, generateCustomTrack, regenerateTrack (5 endpoints)
 - [x] Write integration tests: 3 tests (API auth, lyrics generation, instrumental music generation) — all 375 tests pass
 - [x] Confirmed: music generation working — 130s instrumental track generated (4.2MB MP3)
+
+## Cloudflare Stream Integration
+- [x] Add CLOUDFLARE_STREAM_TOKEN as environment secret
+- [x] Add env variables to server/_core/env.ts (CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_STREAM_TOKEN)
+- [x] Research Cloudflare Stream API (upload via URL, status check, embed/playback URL)
+- [x] Create Cloudflare Stream service module (server/cloudflare-stream.ts)
+- [x] Wire upload into demo pipeline (admin regeneration endpoint)
+- [x] Update DemoShowcase to use Cloudflare Stream embed for video playback
+- [x] Write integration test to validate Cloudflare Stream API connection
+- [x] Add admin endpoints: uploadDemoVideo, checkStreamStatus, listStreamVideos, deleteStreamVideo
+- [x] Wire Cloudflare Stream into pipeline assembly agent for CDN delivery
+- [x] Fix getDemoVideo endpoint to use correct DEMO_CONFIG_KEYS
+- [x] Add stream_video to pipeline_assets assetType enum + migration
+- [x] 18 new Cloudflare Stream tests (credentials, service module, admin endpoints, pipeline integration, config keys)

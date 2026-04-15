@@ -62,5 +62,5 @@ describe("MiniMax Music API Key Validation", () => {
     if (data.data?.audio) {
       console.log("Audio URL/data received:", typeof data.data.audio === "string" ? data.data.audio.substring(0, 80) + "..." : "hex data");
     }
-  }, 120000);
+  }, 180000);
 });

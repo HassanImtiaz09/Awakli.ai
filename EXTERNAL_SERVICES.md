@@ -82,30 +82,21 @@ These external services have been fully integrated with real API calls replacing
 
 ---
 
-## Priority 2: Demo Video Pipeline
+### 4. Cloudflare Stream — Video Hosting & Delivery (ACTIVE)
 
-These services are needed for the automated demo video production pipeline.
+**Status:** Fully integrated. API token verified active, Stream access confirmed.
 
-### 4. Cloudflare Stream — Video Hosting & Delivery
+**Used for:** Hosting demo video on landing page, CDN delivery for pipeline-produced anime videos
 
-**Used for:** Hosting the demo video on the landing page, video CDN
+**Service module:** `server/cloudflare-stream.ts`
 
-**Where it's referenced:**
-- `client/src/components/awakli/DemoShowcase.tsx` — Video player embed
-- `server/demo-assets.ts` — Upload destination for processed demo video
+**Endpoints integrated:**
+- `server/routers-phase6.ts` — Admin endpoints: `uploadDemoVideo`, `checkStreamStatus`, `listStreamVideos`, `deleteStreamVideo`
+- `server/pipelineOrchestrator.ts` — Assembly agent uploads final video to Cloudflare Stream for CDN delivery
+- `server/routers.ts` — Public `getDemoVideo` endpoint returns stream ID, embed URL, poster URL
+- `client/src/components/awakli/DemoShowcase.tsx` — Cloudflare Stream iframe embed with poster, autoplay, bandwidth detection
 
-**Current state:** Landing page falls back to image slideshow when no video URL is configured
-
-**API Keys needed:**
-- `CLOUDFLARE_ACCOUNT_ID` — Your Cloudflare account ID
-- `CLOUDFLARE_STREAM_TOKEN` — API token with Stream permissions
-
-**How to get it:**
-1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) and create an account
-2. Navigate to **Stream** in the sidebar
-3. Your Account ID is in the URL or right sidebar
-4. Go to **My Profile** → **API Tokens** → **Create Token**
-5. Use the "Cloudflare Stream" template or create custom with Stream:Edit permissions
+**Env variables:** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_TOKEN` — Set and validated
 
 **Pricing:** $5/mo for 1,000 minutes of storage + $1 per 1,000 minutes of video delivered.
 
@@ -171,8 +162,8 @@ These services enhance the platform but are not blocking core functionality.
 | `KLING_ACCESS_KEY` | Kling AI | P1 | **Active** — Manga-to-anime video generation |
 | `KLING_SECRET_KEY` | Kling AI | P1 | **Active** — Manga-to-anime video generation |
 | `MINIMAX_API_KEY` | MiniMax Music | P1 | **Active** — Music & BGM generation |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | P2 | Needed — Demo video hosting |
-| `CLOUDFLARE_STREAM_TOKEN` | Cloudflare | P2 | Needed — Demo video hosting |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | P1 | **Active** — Video hosting & CDN delivery |
+| `CLOUDFLARE_STREAM_TOKEN` | Cloudflare | P1 | **Active** — Video hosting & CDN delivery |
 | `DID_API_KEY` | D-ID (optional) | P3 | Optional — Lip sync |
 
 ---

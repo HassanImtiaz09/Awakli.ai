@@ -13,4 +13,6 @@ export const ENV = {
   klingAccessKey: process.env.KLING_ACCESS_KEY ?? "",
   klingSecretKey: process.env.KLING_SECRET_KEY ?? "",
   minimaxApiKey: process.env.MINIMAX_API_KEY ?? "",
+  cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
+  cloudflareStreamToken: process.env.CLOUDFLARE_STREAM_TOKEN ?? "",
 };

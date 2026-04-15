@@ -62,17 +62,44 @@ const AUTO_ADVANCE_MS = 5000;
 
 // ─── Video Player Component ──────────────────────────────────────────────
 
-function DemoVideoPlayer({ streamId, posterUrl }: { streamId: string; posterUrl?: string | null }) {
+function DemoVideoPlayer({
+  streamId,
+  embedUrl,
+  posterUrl,
+}: {
+  streamId: string;
+  embedUrl?: string | null;
+  posterUrl?: string | null;
+}) {
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Cloudflare Stream embed URL
-  const embedUrl = `https://customer-${streamId}.cloudflarestream.com/${streamId}/iframe?autoplay=1&loop=1&muted=1&preload=auto&poster=${encodeURIComponent(posterUrl || "")}`;
+  // Use the embed URL from platform config if available, otherwise construct from streamId
+  // Cloudflare Stream iframe embed format:
+  //   https://customer-<subdomain>.cloudflarestream.com/<uid>/iframe
+  // Or the generic format:
+  //   https://iframe.cloudflarestream.com/<uid>
+  const iframeSrc = useMemo(() => {
+    if (embedUrl) {
+      // Append autoplay/loop/muted params
+      const sep = embedUrl.includes("?") ? "&" : "?";
+      return `${embedUrl}${sep}autoplay=1&loop=1&muted=1&preload=auto`;
+    }
+    // Fallback: use the generic Cloudflare Stream iframe URL
+    return `https://iframe.cloudflarestream.com/${streamId}?autoplay=1&loop=1&muted=1&preload=auto`;
+  }, [streamId, embedUrl]);
 
   if (!isPlaying) {
     return (
-      <div className="relative aspect-video bg-[#0A0A14] cursor-pointer group" onClick={() => setIsPlaying(true)}>
+      <div
+        className="relative aspect-video bg-[#0A0A14] cursor-pointer group"
+        onClick={() => setIsPlaying(true)}
+      >
         {posterUrl && (
-          <img src={posterUrl} alt="Demo video poster" className="absolute inset-0 w-full h-full object-cover" />
+          <img
+            src={posterUrl}
+            alt="Demo video poster"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         )}
         <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
           <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -86,11 +113,12 @@ function DemoVideoPlayer({ streamId, posterUrl }: { streamId: string; posterUrl?
   return (
     <div className="relative aspect-video bg-[#0A0A14]">
       <iframe
-        src={embedUrl}
+        src={iframeSrc}
         className="absolute inset-0 w-full h-full"
-        allow="autoplay; fullscreen; picture-in-picture"
+        allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
         title="Awakli Demo"
+        style={{ border: "none" }}
       />
     </div>
   );
@@ -345,7 +373,11 @@ export default function DemoShowcase() {
 
           {/* Video player or slideshow */}
           {hasVideo ? (
-            <DemoVideoPlayer streamId={demoConfig!.streamId!} posterUrl={demoConfig?.posterUrl} />
+            <DemoVideoPlayer
+              streamId={demoConfig!.streamId!}
+              embedUrl={demoConfig?.embedUrl}
+              posterUrl={demoConfig?.posterUrl}
+            />
           ) : (
             <DemoSlideshow slides={slides} />
           )}

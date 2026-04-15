@@ -10,6 +10,7 @@ import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { generateVideoFromImage, imageToVideo, queryTask } from "./kling";
 import { generateSceneBGM } from "./minimax-music";
+import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import {
   getPipelineRunById,
   updatePipelineRun,
@@ -347,6 +348,22 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
     // Update episode with video URL
     await updateEpisode(episodeId, { videoUrl: url } as any);
+
+    // Upload to Cloudflare Stream for CDN delivery (non-blocking)
+    try {
+      const streamResult = await cfUploadFromUrl(url, { name: `episode-${episodeId}-final` });
+      console.log(`[Pipeline] Video uploaded to Cloudflare Stream: uid=${streamResult.uid}`);
+      await createPipelineAsset({
+        pipelineRunId: runId,
+        episodeId,
+        assetType: "stream_video",
+        url: streamResult.preview || `https://cloudflarestream.com/${streamResult.uid}/watch`,
+        metadata: { streamUid: streamResult.uid, status: streamResult.status.state } as any,
+        nodeSource: "assembly",
+      });
+    } catch (streamErr) {
+      console.warn("[Pipeline] Cloudflare Stream upload failed (non-critical):", streamErr);
+    }
   } catch (err) {
     console.error("[Pipeline] Assembly failed:", err);
   }
