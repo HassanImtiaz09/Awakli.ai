@@ -1565,3 +1565,76 @@
 - [x] Pipeline integration: imports and exports verified (2 tests)
 - [x] tRPC routers: procedure existence verified (3 tests)
 - [x] All 449 tests passing across 25 test files
+
+## Smart Kling Model Router — Cost-Optimized Video Generation
+
+### Database Schema
+- [x] Add kling_model_used, complexity_tier, lip_sync_method, classification_reasoning columns to pipeline_assets
+- [x] Add cost_actual, cost_if_v3_omni, user_override columns to pipeline_assets
+- [x] Create model_routing_stats table (episode_id, tier counts, actual_cost, v3_omni_cost, savings)
+- [x] Generate and apply migration SQL (0019_smart_model_router.sql)
+
+### Scene Complexity Classifier (server/scene-classifier.ts)
+- [x] Deterministic Rule 1: empty dialogue + wide/birds-eye → Tier 3 (V2.1)
+- [x] Deterministic Rule 2: extreme-close-up + dialogue → Tier 1 (V3 Omni)
+- [x] Deterministic Rule 3: transition panel → Tier 4 (V1.6)
+- [x] Deterministic Rule 4: Sakuga style → minimum Tier 2 (V2.6)
+- [x] LLM fallback classifier for non-deterministic panels (~$0.005/panel)
+- [x] Face size estimation heuristics for medium shots (character count + camera angle)
+- [x] Classification adds < 1 second per panel (deterministic ~0ms, LLM ~500ms)
+
+### Model Routing
+- [x] Model map: Tier 1→V3 Omni ($0.126/s pro), Tier 2→V2.6 ($0.084/s), Tier 3→V2.1 ($0.056/s), Tier 4→V1.6 ($0.035/s)
+- [x] User override support (overrideModel tRPC endpoint)
+- [x] Include audio only for V3 Omni (Tier 1) clips
+
+### Lip Sync Preservation
+- [x] Strategy 1: Anime convention (default, zero cost) — no lip sync on non-V3 clips
+- [x] Strategy 2: Post-sync via Sync.so (optional, ~$0.05/clip) for lip_sync_beneficial panels
+- [x] Strategy 3: User override — Force V3 Omni button with cost comparison
+
+### Video Generation Node Update (pipelineOrchestrator.ts)
+- [x] Integrate classifier into video_gen pipeline node
+- [x] Route each panel to appropriate Kling model based on classification
+- [x] Record classification results in pipeline_assets (tier, model, reasoning, costs)
+- [x] Save model_routing_stats after episode completion
+- [x] Fallback to V2.6 if classifier fails
+
+### tRPC Endpoints (server/routers-model-routing.ts)
+- [x] POST classifyPanel — preview classification without side effects
+- [x] GET getStatsByEpisode — routing stats for all runs of an episode
+- [x] GET getStatsByRun — routing stats for a specific pipeline run
+- [x] GET getRoutingBreakdown — per-panel routing details
+- [x] PUT overrideModel — force a specific tier for a panel
+- [x] GET getCostComparison — actual vs V3-Omni-only cost with per-tier breakdown
+- [x] GET getModelInfo — available model tiers and pricing
+
+### Pipeline Dashboard UI (ModelRoutingWidget.tsx)
+- [x] Tier allocation bar chart with animated segments (T1 cyan, T2 purple, T3 amber, T4 gray)
+- [x] Cost savings badge ("$X.XX saved (XX%)")
+- [x] Per-panel breakdown table (Panel, Tier, Model, Lip Sync, Cost, V3 Cost, Saved)
+- [x] Cost comparison widget (actual vs V3-Omni-only, savings percentage)
+- [x] Compact mode for inline use in pipeline status
+- [x] Expandable/collapsible card with animated transitions
+- [x] Integrated into PipelineDashboard.tsx after node graph
+
+### Tests (server/model-routing.test.ts — 31 tests)
+- [x] Deterministic rules: empty dialogue + wide → Tier 3
+- [x] Deterministic rules: extreme-close-up + dialogue → Tier 1
+- [x] Deterministic rules: transition → Tier 4
+- [x] Deterministic rules: Sakuga override → minimum Tier 2
+- [x] Deterministic rules: transition + Sakuga → Tier 2 override
+- [x] Deterministic rules: wide + Sakuga → Tier 2 override
+- [x] Deterministic rules: birds-eye → Tier 3
+- [x] Deterministic rules: no match returns null (needs LLM)
+- [x] LLM classifier: medium shot with dialogue → LLM fallback
+- [x] LLM classifier: deterministic result when rules match
+- [x] LLM classifier: Sakuga override after LLM classification
+- [x] Cost calculations: correct per-tier pricing (pro and std modes)
+- [x] Cost calculations: Tier 4 is ~72% cheaper than Tier 1
+- [x] Cost calculations: duration scaling
+- [x] MODEL_MAP: 4 tiers with correct model names and decreasing costs
+- [x] tRPC router: all 7 procedures registered
+- [x] tRPC router: registered in main appRouter
+- [x] Edge cases: empty description, undefined camera, empty dialogue, mixed case
+- [x] All 479 tests passing across 26 test files

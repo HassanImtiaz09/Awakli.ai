@@ -16,6 +16,7 @@ import { QualityBadge } from "@/components/awakli/QualityBadge";
 import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
 import { VideoPromptBuilder } from "@/components/awakli/VideoPromptBuilder";
 import { ModerationBanner } from "@/components/awakli/ModerationBanner";
+import { ModelRoutingWidget } from "@/components/awakli/ModelRoutingWidget";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -769,6 +770,7 @@ export default function PipelineDashboard() {
 
       {/* Active Run Node Graph */}
       {activeRun && (
+        <>
         <AwakliCard className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -838,6 +840,12 @@ export default function PipelineDashboard() {
             )}
           </AnimatePresence>
         </AwakliCard>
+
+        {/* Smart Model Routing Widget */}
+        {(activeRun.status === "completed" || activeRun.status === "running") && (
+          <ModelRoutingWidget pipelineRunId={activeRun.id} />
+        )}
+        </>
       )}
 
       {/* Cost Estimation & Pre-flight */}

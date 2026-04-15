@@ -13,6 +13,8 @@ import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { imageToVideo, omniVideo, queryTask } from "./kling";
+import { classifyScene, calculateCost, calculateV3OmniCost, MODEL_MAP, type PanelScriptData, type SceneClassification } from "./scene-classifier";
+import { createModelRoutingStat, updatePipelineAssetRouting } from "./db";
 import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
@@ -125,16 +127,24 @@ async function runHarnessGate(
 // ─── Agent Nodes ────────────────────────────────────────────────────────
 
 /**
- * Video Generation Agent — uses Kling V3 Omni for panels with dialogue (native lip sync),
- * falls back to Kling v2.6 image2video for panels without dialogue.
+ * Video Generation Agent — Smart Kling Model Router
  *
- * When Subject Library elements are available for the project's characters:
+ * Routes each panel to the most cost-effective Kling model:
+ *   Tier 1: V3 Omni  — lip sync critical (close-up dialogue)
+ *   Tier 2: V2.6     — high complexity (action, complex movement)
+ *   Tier 3: V2.1     — medium complexity (establishing shots, minimal movement)
+ *   Tier 4: V1.6     — simple (transitions, title cards)
+ *
+ * Deterministic rules handle ~40-50% of panels instantly (zero cost).
+ * Remaining panels are classified by LLM (~$0.005 each).
+ *
+ * When Subject Library elements are available for Tier 1 panels:
  *   - Uses element_list with <<<element_N>>> voice tags for true lip-synced animation
- *   - Characters speak with their cloned voices and lip movements match the audio
  *
- * When no elements are available (fallback):
- *   - Uses V3 Omni with sound:on and dialogue in the prompt (ambient audio, no lip sync)
- *   - ElevenLabs voice clips are overlaid in the assembly step
+ * Lip Sync Preservation Strategies:
+ *   Strategy 1 (default): Anime convention — no lip sync on non-V3 clips (zero cost)
+ *   Strategy 2 (optional): Post-sync via Sync.so for lip_sync_beneficial panels
+ *   Strategy 3: User override — Force V3 Omni per panel (Studio tier)
  */
 async function videoGenAgent(runId: number, episodeId: number, projectId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   const panels = await getPanelsByEpisode(episodeId);
@@ -144,13 +154,12 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
   const panelsToProcess = approvedPanels.slice(0, 4);
 
   // ─── Subject Library: look up ready character elements ───────────────
-  const elementMap = await getReadyElementMapForProject(projectId); // Map<characterName, klingElementId>
+  const elementMap = await getReadyElementMapForProject(projectId);
   const readyElements = await getReadyElementsByProject(projectId);
   const hasSubjectLibrary = elementMap.size > 0;
 
-  // Build element_list and name→index mapping for voice tags
   const elementList: Array<{ element_id: number }> = [];
-  const elementOrder: string[] = []; // character names in element_list order
+  const elementOrder: string[] = [];
   if (hasSubjectLibrary) {
     for (const [charName, elementId] of Array.from(elementMap.entries())) {
       elementList.push({ element_id: elementId });
@@ -161,41 +170,89 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     console.log(`[Pipeline] No Subject Library elements found — using fallback Omni mode`);
   }
 
-  // Submit all video generation tasks in parallel
-  const taskIds: { panelId: number; taskId: string; panelNumber: number | null; taskType: "image2video" | "omni-video"; hasDialogue: boolean; hasNativeLipSync: boolean }[] = [];
+  // ─── Step 1: Classify all panels via Smart Model Router ───────────────
+  console.log(`[Pipeline] Smart Model Router: classifying ${panelsToProcess.length} panels...`);
+
+  // Get the production bible's animation style for Sakuga override
+  let projectAnimationStyle = "default";
+  try {
+    const bible = await getOrCompileProductionBible(projectId);
+    projectAnimationStyle = bible.animationStyle || "default";
+  } catch { /* use default */ }
+
+  const classifications: Map<number, SceneClassification> = new Map();
+  let classificationCost = 0;
+  const tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+  for (const panel of panelsToProcess) {
+    const dialogue = panel.dialogue as any;
+    const dialogueArray: Array<{ character?: string; text: string; emotion?: string }> = [];
+    if (Array.isArray(dialogue)) {
+      for (const d of dialogue) {
+        if (typeof d === "string") dialogueArray.push({ text: d });
+        else if (d && typeof d === "object") dialogueArray.push({ character: d.character || d.speaker, text: d.text || d.line || d.dialogue || "", emotion: d.emotion });
+      }
+    } else if (typeof dialogue === "string" && dialogue.trim()) {
+      dialogueArray.push({ text: dialogue });
+    }
+
+    const panelData: PanelScriptData = {
+      panelId: panel.id,
+      visualDescription: String(panel.visualDescription || ""),
+      cameraAngle: panel.cameraAngle || undefined,
+      dialogue: dialogueArray.length > 0 ? dialogueArray : undefined,
+      mood: undefined,
+      sceneType: panel.transition === "fade" || panel.transition === "dissolve" ? "transition" : undefined,
+      animationStyle: projectAnimationStyle,
+      characterCount: dialogueArray.length > 0 ? new Set(dialogueArray.map(d => d.character).filter(Boolean)).size || 1 : undefined,
+    };
+
+    const classification = await classifyScene(panelData);
+    classifications.set(panel.id, classification);
+    classificationCost += classification.classificationCostUsd;
+    tierCounts[classification.tier]++;
+
+    console.log(`[Router] Panel ${panel.id}: Tier ${classification.tier} → ${classification.model} (${classification.deterministic ? "deterministic" : "LLM"}) — ${classification.reasoning}`);
+  }
+
+  console.log(`[Router] Classification complete: T1=${tierCounts[1]} T2=${tierCounts[2]} T3=${tierCounts[3]} T4=${tierCounts[4]}, cost=$${classificationCost.toFixed(3)}`);
+
+  // ─── Step 2: Submit video generation tasks based on classification ────
+  interface TaskInfo {
+    panelId: number;
+    taskId: string;
+    panelNumber: number | null;
+    taskType: "image2video" | "omni-video";
+    hasDialogue: boolean;
+    hasNativeLipSync: boolean;
+    classification: SceneClassification;
+  }
+  const taskIds: TaskInfo[] = [];
 
   for (const panel of panelsToProcess) {
     if (!panel.imageUrl) continue;
 
-    // Check if panel has dialogue for lip sync
-    const dialogue = panel.dialogue as any;
-    const hasDialogue = dialogue && (
-      Array.isArray(dialogue) ? dialogue.length > 0 : typeof dialogue === "string" ? dialogue.length > 0 : Object.keys(dialogue).length > 0
-    );
+    const classification = classifications.get(panel.id);
+    if (!classification) continue;
 
-    // Extract structured dialogue lines [{character, text, emotion}]
+    const dialogue = panel.dialogue as any;
+    const hasDialogue = classification.hasDialogue;
+
+    // Extract dialogue lines for prompt building
     const dialogueLines: Array<{ characterName: string; dialogue: string; emotion?: string }> = [];
     if (hasDialogue && Array.isArray(dialogue)) {
       for (const d of dialogue) {
-        if (typeof d === "string") {
-          dialogueLines.push({ characterName: "narrator", dialogue: d });
-        } else if (d && typeof d === "object") {
-          dialogueLines.push({
-            characterName: d.character || d.speaker || "narrator",
-            dialogue: d.text || d.line || d.dialogue || "",
-            emotion: d.emotion,
-          });
-        }
+        if (typeof d === "string") dialogueLines.push({ characterName: "narrator", dialogue: d });
+        else if (d && typeof d === "object") dialogueLines.push({ characterName: d.character || d.speaker || "narrator", dialogue: d.text || d.line || d.dialogue || "", emotion: d.emotion });
       }
     } else if (hasDialogue && typeof dialogue === "string") {
       dialogueLines.push({ characterName: "narrator", dialogue });
     }
-
     const dialogueText = dialogueLines.map(d => d.dialogue).filter(Boolean).join(". ");
 
     try {
-      if (hasDialogue && dialogueText) {
-        // Check if any dialogue characters have Subject Library elements
+      if (classification.tier === 1 && hasDialogue && dialogueText) {
+        // ─── TIER 1: V3 Omni with native lip sync ───
         const panelCharNames = dialogueLines.map(d => d.characterName);
         const hasMatchingElements = hasSubjectLibrary && panelCharNames.some(name => elementMap.has(name));
 
@@ -203,16 +260,14 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
         let omniElementList: Array<{ element_id: number }> | undefined;
 
         if (hasMatchingElements) {
-          // ─── NATIVE LIP SYNC: use element_list + <<<element_N>>> voice tags ───
           omniPrompt = buildLipSyncPrompt(
             `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. Anime style, high quality animation, fluid movement, expressive character performance.`,
             dialogueLines,
             elementOrder
           );
           omniElementList = elementList;
-          console.log(`[Pipeline] Panel ${panel.id}: using Subject Library lip sync (${panelCharNames.filter(n => elementMap.has(n)).join(", ")})`);
+          console.log(`[Pipeline] Panel ${panel.id}: Tier 1 + Subject Library lip sync (${panelCharNames.filter(n => elementMap.has(n)).join(", ")})`);
         } else {
-          // ─── FALLBACK: dialogue in prompt, no element_list ───
           omniPrompt = `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. The character says: "${dialogueText.slice(0, 500)}". Anime style, high quality animation, fluid movement, expressive character performance.`;
           omniElementList = undefined;
         }
@@ -236,18 +291,22 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             taskType: "omni-video",
             hasDialogue: true,
             hasNativeLipSync: !!hasMatchingElements,
+            classification,
           });
-          console.log(`[Pipeline] Kling V3 Omni task submitted for panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
+          console.log(`[Pipeline] Tier 1 V3 Omni task: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
         }
       } else {
-        // No dialogue — use standard image2video (cheaper, no audio needed)
+        // ─── TIER 2/3/4: Use appropriate model via image2video ───
+        const modelName = classification.modelName;
+        const prompt = `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`;
+
         const result = await imageToVideo({
           image: panel.imageUrl,
-          prompt: `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`,
+          prompt,
           negativePrompt: "static, still image, blurry, low quality, distorted",
           duration: "5",
           mode: "pro",
-          modelName: "kling-v2-6",
+          modelName,
         });
 
         if (result.code === 0 && result.data?.task_id) {
@@ -256,10 +315,11 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             taskId: result.data.task_id,
             panelNumber: panel.panelNumber,
             taskType: "image2video",
-            hasDialogue: false,
+            hasDialogue,
             hasNativeLipSync: false,
+            classification,
           });
-          console.log(`[Pipeline] Kling v2.6 task submitted for panel ${panel.id} (no dialogue): ${result.data.task_id}`);
+          console.log(`[Pipeline] Tier ${classification.tier} ${classification.model} task: panel ${panel.id}: ${result.data.task_id}`);
         }
       }
     } catch (err) {
@@ -267,11 +327,13 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     }
   }
 
-  // Poll all tasks until completion
+  // ─── Step 3: Poll all tasks until completion ──────────────────────────
   const completedTasks = new Set<string>();
-  const maxPollTime = 10 * 60 * 1000; // 10 minutes (Omni can take longer)
+  const maxPollTime = 10 * 60 * 1000;
   const pollStart = Date.now();
   let pollInterval = 5000;
+  let totalActualCostUsd = 0;
+  let totalV3OmniCostUsd = 0;
 
   while (completedTasks.size < taskIds.length && (Date.now() - pollStart) < maxPollTime) {
     for (const task of taskIds) {
@@ -282,36 +344,54 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
           completedTasks.add(task.taskId);
           const video = status.data.task_result?.videos?.[0];
           if (video?.url) {
-            // Upload to our S3 for persistence (Kling URLs may expire)
             const videoRes = await fetch(video.url);
             const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
-            const suffix = task.hasDialogue ? "omni-lipsync" : "clip";
+            const suffix = task.classification.tier === 1 ? "omni-lipsync" : `t${task.classification.tier}-clip`;
             const videoKey = `pipeline/${runId}/${suffix}-panel${task.panelId}-${nanoid(6)}.mp4`;
             const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
 
-            // Store as video_clip (or synced_clip if it has lip sync)
-            const assetType = task.hasDialogue ? "synced_clip" : "video_clip";
-            await createPipelineAsset({
+            const durationSec = Number(video.duration) || 5;
+            const actualCost = calculateCost(task.classification.tier, durationSec, "pro");
+            const v3OmniCost = calculateV3OmniCost(durationSec, "pro");
+            totalActualCostUsd += actualCost;
+            totalV3OmniCostUsd += v3OmniCost;
+
+            const assetType = task.classification.tier === 1 ? "synced_clip" : "video_clip";
+            const lipSyncMethod = task.classification.tier === 1
+              ? (task.hasNativeLipSync ? "native" : "native")
+              : task.classification.lipSyncBeneficial ? "post_sync" : "none";
+
+            const assetId = await createPipelineAsset({
               pipelineRunId: runId,
               episodeId,
               panelId: task.panelId,
               assetType,
               url: storedUrl,
               metadata: {
-                duration: Number(video.duration) || 5,
+                duration: durationSec,
                 format: "mp4",
                 panelNumber: task.panelNumber,
                 klingTaskId: task.taskId,
-                klingModel: task.hasDialogue ? "kling-video-o1 (V3 Omni)" : "kling-v2-6",
-                hasNativeAudio: task.hasDialogue,
-                hasLipSync: task.hasDialogue,
+                klingModel: task.classification.model,
+                hasNativeAudio: task.classification.tier === 1,
+                hasLipSync: task.classification.tier === 1,
                 hasNativeLipSync: task.hasNativeLipSync,
                 usedSubjectLibrary: task.hasNativeLipSync,
+                complexityTier: task.classification.tier,
+                lipSyncBeneficial: task.classification.lipSyncBeneficial,
               } as any,
               nodeSource: "video_gen",
+              klingModelUsed: task.classification.model,
+              complexityTier: task.classification.tier,
+              lipSyncMethod,
+              classificationReasoning: task.classification.reasoning,
+              costActual: actualCost,
+              costIfV3Omni: v3OmniCost,
+              userOverride: 0,
             });
-            const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.hasDialogue ? "Omni audio" : "Silent";
-            console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl}`);
+
+            const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.classification.tier === 1 ? "Omni audio" : `Tier ${task.classification.tier}`;
+            console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl} ($${actualCost.toFixed(3)} vs $${v3OmniCost.toFixed(3)} V3)`);
           }
         } else if (status.data?.task_status === "failed") {
           completedTasks.add(task.taskId);
@@ -330,6 +410,29 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       await sleep(pollInterval);
       pollInterval = Math.min(pollInterval * 1.3, 20000);
     }
+  }
+
+  // ─── Step 4: Save model routing stats ─────────────────────────────────
+  const savings = totalV3OmniCostUsd - totalActualCostUsd;
+  const savingsPercent = totalV3OmniCostUsd > 0 ? (savings / totalV3OmniCostUsd) * 100 : 0;
+
+  try {
+    await createModelRoutingStat({
+      episodeId,
+      pipelineRunId: runId,
+      totalPanels: panelsToProcess.length,
+      tier1Count: tierCounts[1],
+      tier2Count: tierCounts[2],
+      tier3Count: tierCounts[3],
+      tier4Count: tierCounts[4],
+      actualCost: totalActualCostUsd,
+      v3OmniCost: totalV3OmniCostUsd,
+      savings,
+      savingsPercent,
+    });
+    console.log(`[Router] Stats saved: actual=$${totalActualCostUsd.toFixed(2)}, v3=$${totalV3OmniCostUsd.toFixed(2)}, saved=$${savings.toFixed(2)} (${savingsPercent.toFixed(0)}%)`);
+  } catch (err) {
+    console.error(`[Router] Failed to save routing stats:`, err);
   }
 
   return totalCost;

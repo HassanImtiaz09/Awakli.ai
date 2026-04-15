@@ -246,6 +246,14 @@ export const pipelineAssets = mysqlTable("pipeline_assets", {
   harnessScore: float("harnessScore"),  // overall quality score from harness (0-10)
   harnessResult: varchar("harnessResult", { length: 20 }),  // pass/warn/retry/block/human_review
   harnessDetails: json("harnessDetails"),  // full harness check output for this asset
+  // ─── Smart Model Router fields ───
+  klingModelUsed: varchar("klingModelUsed", { length: 30 }),  // v3-omni, v2-6, v2-1, v1-6
+  complexityTier: int("complexityTier"),  // 1-4
+  lipSyncMethod: varchar("lipSyncMethod", { length: 20 }),  // native, post_sync, none
+  classificationReasoning: text("classificationReasoning"),
+  costActual: float("costActual"),  // actual cost in dollars
+  costIfV3Omni: float("costIfV3Omni"),  // what it would have cost with V3 Omni
+  userOverride: int("userOverride").default(0),  // 1 if user manually overrode model
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -700,6 +708,27 @@ export const productionBibles = mysqlTable("production_bibles", {
 
 export type ProductionBible = typeof productionBibles.$inferSelect;
 export type InsertProductionBible = typeof productionBibles.$inferInsert;
+
+// ─── Model Routing Stats ──────────────────────────────────────────────
+
+export const modelRoutingStats = mysqlTable("model_routing_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  pipelineRunId: int("pipelineRunId").references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  totalPanels: int("totalPanels").notNull(),
+  tier1Count: int("tier1Count").default(0).notNull(),
+  tier2Count: int("tier2Count").default(0).notNull(),
+  tier3Count: int("tier3Count").default(0).notNull(),
+  tier4Count: int("tier4Count").default(0).notNull(),
+  actualCost: float("actualCost").notNull(),  // total actual cost in dollars
+  v3OmniCost: float("v3OmniCost").notNull(),  // what all-V3-Omni would have cost
+  savings: float("savings").notNull(),  // v3OmniCost - actualCost
+  savingsPercent: float("savingsPercent").notNull(),  // (savings / v3OmniCost) * 100
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ModelRoutingStat = typeof modelRoutingStats.$inferSelect;
+export type InsertModelRoutingStat = typeof modelRoutingStats.$inferInsert;
 
 // ─── Harness Results ───────────────────────────────────────────────────
 

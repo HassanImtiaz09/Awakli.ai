@@ -895,3 +895,56 @@ export async function getReadyElementMapForProject(projectId: number): Promise<M
     ));
   return new Map(results.map(r => [r.characterName, r.klingElementId!]));
 }
+
+// ─── Model Routing Stats ──────────────────────────────────────────────────
+
+import { modelRoutingStats, InsertModelRoutingStat } from "../drizzle/schema";
+
+export async function createModelRoutingStat(data: InsertModelRoutingStat) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(modelRoutingStats).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getModelRoutingStatsByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(modelRoutingStats)
+    .where(eq(modelRoutingStats.episodeId, episodeId))
+    .orderBy(desc(modelRoutingStats.createdAt));
+}
+
+export async function getModelRoutingStatsByRun(pipelineRunId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(modelRoutingStats)
+    .where(eq(modelRoutingStats.pipelineRunId, pipelineRunId))
+    .limit(1);
+  return result[0];
+}
+
+export async function updatePipelineAssetRouting(assetId: number, data: {
+  klingModelUsed?: string;
+  complexityTier?: number;
+  lipSyncMethod?: string;
+  classificationReasoning?: string;
+  costActual?: number;
+  costIfV3Omni?: number;
+  userOverride?: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pipelineAssets).set(data).where(eq(pipelineAssets.id, assetId));
+}
+
+export async function getRoutingDataByRun(pipelineRunId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pipelineAssets)
+    .where(and(
+      eq(pipelineAssets.pipelineRunId, pipelineRunId),
+      sql`${pipelineAssets.complexityTier} IS NOT NULL`
+    ))
+    .orderBy(pipelineAssets.createdAt);
+}

@@ -65,6 +65,7 @@ import {
 } from "./routers-vocalrecording";
 import { subjectLibraryRouter } from "./routers-subjects";
 import { harnessRouter, productionBibleRouter } from "./routers-harness";
+import { modelRoutingRouter } from "./routers-model-routing";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1954,6 +1955,9 @@ export const appRouter = router({
   // Phase 18: Harness Engineering (Quality Gates)
   harness: harnessRouter,
   productionBible: productionBibleRouter,
+
+  // Phase 19: Smart Kling Model Router
+  modelRouting: modelRoutingRouter,
 });
 
 export type AppRouter = typeof appRouter;
