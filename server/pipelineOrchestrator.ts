@@ -15,10 +15,12 @@ import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { imageToVideo, omniVideo, queryTask } from "./kling";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
+import { assembleVideo } from "./video-assembly";
 import {
   getPipelineRunById,
   updatePipelineRun,
   createPipelineAsset,
+  getPipelineAssetsByRun,
   getPanelsByEpisode,
   getEpisodeById,
   getCharactersByProject,
@@ -309,34 +311,54 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
   const musicKey = `pipeline/${runId}/bgm-${nanoid(6)}.mp3`;
 
-  try {
-    const result = await generateSceneBGM({
-      sceneDescription: `anime episode background score for "${title}", orchestral, cinematic`,
-      mood,
-    });
+  // Retry logic for transient network errors (e.g., socket closed)
+  const MAX_RETRIES = 3;
+  let lastError: any = null;
 
-    const audioRes = await fetch(result.audioUrl);
-    if (!audioRes.ok) throw new Error(`Failed to download music: ${audioRes.status}`);
-    const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
-    const { url } = await storagePut(musicKey, audioBuffer, "audio/mpeg");
-
-    await createPipelineAsset({
-      pipelineRunId: runId,
-      episodeId,
-      assetType: "music_segment",
-      url,
-      metadata: {
-        duration: Math.round(result.durationMs / 1000),
-        genre,
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[Pipeline] Music gen attempt ${attempt}/${MAX_RETRIES}`);
+      const result = await generateSceneBGM({
+        sceneDescription: `anime episode background score for "${title}", orchestral, cinematic`,
         mood,
-        sizeBytes: result.sizeBytes,
-        sampleRate: result.sampleRate,
-      } as any,
-      nodeSource: "music_gen",
-    });
-    console.log(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
-  } catch (err) {
-    console.error("[Pipeline] Music gen failed, using silent fallback:", err);
+      });
+
+      const audioRes = await fetch(result.audioUrl);
+      if (!audioRes.ok) throw new Error(`Failed to download music: ${audioRes.status}`);
+      const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+      const { url } = await storagePut(musicKey, audioBuffer, "audio/mpeg");
+
+      await createPipelineAsset({
+        pipelineRunId: runId,
+        episodeId,
+        assetType: "music_segment",
+        url,
+        metadata: {
+          duration: Math.round(result.durationMs / 1000),
+          genre,
+          mood,
+          sizeBytes: result.sizeBytes,
+          sampleRate: result.sampleRate,
+        } as any,
+        nodeSource: "music_gen",
+      });
+      console.log(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
+      lastError = null;
+      break; // Success — exit retry loop
+    } catch (err: any) {
+      lastError = err;
+      console.error(`[Pipeline] Music gen attempt ${attempt} failed:`, err.message || err);
+      if (attempt < MAX_RETRIES) {
+        const backoff = attempt * 3000; // 3s, 6s
+        console.log(`[Pipeline] Retrying music gen in ${backoff / 1000}s...`);
+        await sleep(backoff);
+      }
+    }
+  }
+
+  // If all retries failed, use silent fallback
+  if (lastError) {
+    console.error("[Pipeline] Music gen failed after all retries, using silent fallback");
     const silentBuffer = Buffer.alloc(1024, 0);
     try {
       const { url } = await storagePut(musicKey, silentBuffer, "audio/mpeg");
@@ -359,25 +381,90 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
 async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
-
-  await sleep(1500);
   totalCost += NODE_COSTS.assembly;
 
   const finalKey = `pipeline/${runId}/final-${nanoid(6)}.mp4`;
-  const placeholderBuffer = Buffer.from("Final assembled video");
 
   try {
-    const { url } = await storagePut(finalKey, placeholderBuffer, "video/mp4");
+    // Gather all pipeline assets from previous nodes
+    const allAssets = await getPipelineAssetsByRun(runId);
+
+    // Collect video clips (sorted by panel number)
+    const videoClips = allAssets
+      .filter(a => a.assetType === "video_clip" || a.assetType === "synced_clip")
+      .map(a => {
+        const meta = (a.metadata || {}) as any;
+        return {
+          url: a.url,
+          panelId: a.panelId || 0,
+          panelNumber: meta.panelNumber ?? a.panelId ?? 0,
+          duration: meta.duration || 5,
+          hasNativeAudio: meta.hasNativeAudio || false,
+        };
+      });
+
+    // Collect voice clips
+    const voiceClips = allAssets
+      .filter(a => a.assetType === "voice_clip")
+      .map(a => {
+        const meta = (a.metadata || {}) as any;
+        return {
+          url: a.url,
+          panelId: a.panelId || 0,
+          duration: meta.duration || 3,
+          text: meta.text || "",
+        };
+      });
+
+    // Collect music track
+    const musicAsset = allAssets.find(a => a.assetType === "music_segment");
+    const musicTrack = musicAsset ? {
+      url: musicAsset.url,
+      duration: ((musicAsset.metadata as any)?.duration) || 0,
+      isFallback: ((musicAsset.metadata as any)?.fallback) || false,
+    } : null;
+
+    if (videoClips.length === 0) {
+      console.error("[Pipeline] No video clips found for assembly");
+      throw new Error("No video clips available for assembly");
+    }
+
+    console.log(`[Pipeline] Assembly: ${videoClips.length} video clips, ${voiceClips.length} voice clips, music: ${musicTrack ? (musicTrack.isFallback ? 'fallback' : 'yes') : 'none'}`);
+
+    await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 82, totalCost, nodeCosts);
+
+    // Run the real ffmpeg assembly
+    const episode = await getEpisodeById(episodeId);
+    const result = await assembleVideo({
+      videoClips,
+      voiceClips,
+      musicTrack,
+      episodeTitle: episode?.title || "Untitled Episode",
+    });
+
+    await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 90, totalCost, nodeCosts);
+
+    // Upload assembled video to S3
+    const { url } = await storagePut(finalKey, result.videoBuffer, "video/mp4");
     await createPipelineAsset({
       pipelineRunId: runId,
       episodeId,
       assetType: "final_video",
       url,
-      metadata: { duration: 120, format: "mp4", resolution: "1920x1080" } as any,
+      metadata: {
+        duration: result.totalDuration,
+        format: result.format,
+        resolution: result.resolution,
+        sizeBytes: result.videoBuffer.length,
+        clipCount: videoClips.length,
+        voiceClipCount: voiceClips.length,
+        hasMusic: musicTrack ? !musicTrack.isFallback : false,
+      } as any,
       nodeSource: "assembly",
     });
 
     await updateEpisode(episodeId, { videoUrl: url } as any);
+    console.log(`[Pipeline] Final video assembled: ${result.totalDuration.toFixed(1)}s, ${(result.videoBuffer.length / 1024 / 1024).toFixed(1)}MB`);
 
     // Upload to Cloudflare Stream for CDN delivery (non-blocking)
     try {

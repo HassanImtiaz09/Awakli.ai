@@ -376,7 +376,7 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
           cameraAngle: panel.camera_angle,
           dialogue: panel.dialogue,
           sfx: panel.sfx,
-          transition: panel.transition,
+          transition: panel.transition && ["cut", "fade", "dissolve"].includes(panel.transition) ? panel.transition : undefined,
           status: "draft",
         });
       }

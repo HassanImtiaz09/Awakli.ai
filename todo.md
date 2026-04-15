@@ -1419,3 +1419,34 @@
 - [x] QAReview updated: synced_clip replaces lip_sync_clip in asset summary
 - [x] 4 new V3 Omni tests added to kling.test.ts (all passing)
 - [x] All 397 tests pass across 22 test files — zero placeholders remain
+
+## Pipeline E2E Test — Kaelis Trilogy Episode 1
+- [x] Read manga prompt and plan episode structure (3 min, ~18 panels with dialogue)
+- [x] Create test project via API/DB for "The Kaelis Trilogy"
+- [x] Generate manga panels using Quick Create with Kaelis Trilogy prompt
+- [x] Trigger full pipeline run (video_gen → voice_gen → music_gen → assembly)
+- [x] Monitor pipeline progress through all 4 nodes
+- [x] Verify V3 Omni lip sync quality on dialogue panels
+- [x] Collect and review all generated assets (video clips, voice clips, music, final video)
+- [x] Report findings and quality assessment to user
+- [x] Project "Kaelis: Prime Weapon" (ID=90006) created with 11 panels, 5 dialogue panels
+- [x] Pipeline run #30003 completed in 454s — all 4 nodes successful
+- [x] Final video: 20.25s, 1920×1080, 23.9MB with dialogue + BGM audio
+- [x] Cloudflare Stream upload: UID=42a2a75fb629a7219c62e77c701b0ba4
+- [x] Video analysis confirms: dialogue audio, background music, manga-style visuals
+
+## Pipeline Fixes — Post E2E Test
+- [x] Install ffmpeg in sandbox for video assembly
+- [x] Rewrite assembly agent to use ffmpeg for real video concatenation
+- [x] Add voice overlay: merge ElevenLabs voice clips onto video at correct timestamps
+- [x] Add MiniMax Music retry logic (3 attempts with exponential backoff)
+- [x] Fix Cloudflare Stream upload to accept real assembled video
+- [x] Update V3 Omni strategy: use for video gen + ambient audio, ElevenLabs for dialogue
+- [x] Document Subject Library integration as future enhancement for native lip sync
+- [x] Re-run E2E pipeline test to verify all fixes
+- [x] Fix normalizeClip ffmpeg argument order (anullsrc input before output options)
+- [x] Fix transition enum validation in panel creation (empty strings → null)
+- [x] Fix pipeline_runs userId field (required, not default)
+- [x] video-assembly.ts: normalizeClip, concatenateClips, overlayVoice, mixMusic, assembleVideo
+- [x] 9 video assembly tests (ffmpeg, ffprobe, normalize, concat, audio mix)
+- [x] All 406 tests pass across 23 test files — zero failures
