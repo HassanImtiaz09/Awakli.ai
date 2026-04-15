@@ -19,7 +19,7 @@ describe("ElevenLabs Integration", () => {
     expect(voices[0]).toHaveProperty("voice_id");
     expect(voices[0]).toHaveProperty("name");
     console.log(`Available voices: ${voices.map((v) => v.name).join(", ")}`);
-  });
+  }, 15_000);
 
   it("should get a specific voice by ID", async () => {
     const voices = await listVoices();

@@ -1473,3 +1473,95 @@
 - [x] DB helpers: createCharacterElement, getCharacterElementsByProject, getReadyElementMapForProject, updateCharacterElementStatus, deleteCharacterElement
 - [x] 13 tests for Subject Library (buildLipSyncPrompt, API list, voice clone, element creation, router)
 - [x] All 419 tests pass across 24 test files — zero failures
+
+## Harness Engineering — AI Pipeline QA Framework
+
+### Database & Schema
+- [x] Create harness_results table (layer, check_name, result, score, details, auto_fix, attempt, cost)
+- [x] Create production_bibles table (project_id, bible_data JSONB, version, locked_at)
+- [x] Add harness_score, harness_result, harness_details columns to pipeline_assets table
+- [x] Generate and apply migration SQL
+
+### Production Bible
+- [x] Build Production Bible compiler (assembles from pre-production approvals)
+- [x] tRPC endpoint: getProductionBible
+- [x] tRPC endpoint: compileProductionBible
+- [x] Production Bible is immutable after lock
+
+### Harness Runner Framework
+- [x] Build harness runner with runHarnessCheck() and runHarnessLayer()
+- [x] Implement PASS/WARN/RETRY/BLOCK/HUMAN_REVIEW result handling
+- [x] Auto-retry with max 3 attempts, escalation to human_review
+- [x] Auto-fix strategies for each layer (prompt enhancement, LoRA injection, etc.)
+- [x] Flag for human review after max retries
+
+### Harness Layer 1: Script Validation (5 checks)
+- [x] Check 1A: Schema validation (compute, no AI cost)
+- [x] Check 1B: Character name consistency (LLM text analysis)
+- [x] Check 1C: Panel count & chapter structure (compute)
+- [x] Check 1D: Content moderation (LLM text analysis)
+- [x] Check 1E: Visual description quality with auto-enhance (LLM text analysis)
+
+### Harness Layer 2: Visual Consistency (4 checks — Most Critical)
+- [x] Check 2A: Image quality score (LLM vision)
+- [x] Check 2B: Character identity verification (LLM vision — most important check)
+- [x] Check 2C: Scene consistency (LLM vision)
+- [x] Check 2D: NSFW / content safety (compute + vision)
+
+### Harness Layer 3: Video Quality (5 checks)
+- [x] Check 3A: Source faithfulness — first frame vs source panel (LLM vision)
+- [x] Check 3B: Temporal consistency — first frame vs last frame (LLM vision)
+- [x] Check 3C: Motion quality — frame sampling (LLM vision)
+- [x] Check 3D: Lip sync accuracy — audio extraction + cross-correlation (compute)
+- [x] Check 3E: Animation style compliance (LLM vision)
+
+### Harness Layer 4: Audio Quality (4 checks)
+- [x] Check 4A: Voice consistency — cosine similarity between clips (compute/API)
+- [x] Check 4B: Dialogue-script match — speech-to-text + WER (compute)
+- [x] Check 4C: Music mood alignment (LLM text analysis)
+- [x] Check 4D: Audio technical quality — sample rate, loudness, clipping (compute)
+
+### Harness Layer 5: Integration Validation (4 checks)
+- [x] Check 5A: Asset completeness — all required assets exist and accessible
+- [x] Check 5B: Timing consistency — durations, subtitles, voice clip alignment
+- [x] Check 5C: Format compatibility — H.264, sample rates, aspect ratios
+- [x] Check 5D: Budget/credit verification — actual vs estimated cost
+
+### Pipeline Integration
+- [x] Wire harness between every pipeline stage in pipelineOrchestrator.ts
+- [x] Layer 1 runs pre-flight before video_gen
+- [x] Layers 2+3 run after video_gen
+- [x] Layer 4 runs after voice_gen
+- [x] Layer 5 runs after assembly
+- [x] BLOCK results halt pipeline and notify owner
+- [x] Production Bible compiled at pipeline start, used as reference for all checks
+
+### Dashboard UI
+- [x] Quality Score Panel — overall score + per-layer breakdown (color coded)
+- [x] Harness Log viewer — expandable layer sections with check details
+- [x] Flagged Items Panel — check names, scores, details, result badges
+- [x] Cost tracking — harness check costs displayed per check and total
+- [x] Re-run buttons — per-layer and full re-run
+- [x] Production Bible Viewer — compile, lock, view characters/thresholds
+- [x] Compact mode for inline use in Pipeline Dashboard
+- [x] Integrated into QA Review page
+
+### tRPC Endpoints
+- [x] GET harness results for pipeline run (harness.getRunResults)
+- [x] GET harness results for episode (harness.getEpisodeResults)
+- [x] GET flagged items only (harness.getFlaggedItems)
+- [x] GET overall quality score (harness.getQualityScore)
+- [x] POST re-run single layer (harness.reRunLayer)
+- [x] POST re-run all layers (harness.reRunAll)
+- [x] GET production bible (productionBible.get)
+- [x] POST compile production bible (productionBible.compile)
+- [x] POST lock production bible (productionBible.lock)
+
+### Tests
+- [x] Harness runner: runHarnessCheck PASS/WARN/BLOCK/RETRY/escalation (5 tests)
+- [x] Harness runner: runHarnessLayer summary with shouldBlock (3 tests)
+- [x] Harness checks: all 22 checks across 5 layers validated (7 tests)
+- [x] Production Bible: structure, thresholds, character entries (5 tests)
+- [x] Pipeline integration: imports and exports verified (2 tests)
+- [x] tRPC routers: procedure existence verified (3 tests)
+- [x] All 449 tests passing across 25 test files

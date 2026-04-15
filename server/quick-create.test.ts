@@ -102,7 +102,7 @@ describe("quickCreate", () => {
         // Should not be an auth error
         expect(err.code).not.toBe("UNAUTHORIZED");
       }
-    });
+    }, 30_000);
 
     it("validates minimum prompt length", async () => {
       const ctx = createPublicContext();

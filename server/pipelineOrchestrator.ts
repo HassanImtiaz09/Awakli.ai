@@ -17,6 +17,9 @@ import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import { assembleVideo } from "./video-assembly";
+import { getOrCompileProductionBible, lockProductionBible, type ProductionBibleData } from "./production-bible";
+import { runHarnessLayer, updateAssetHarnessScore, type HarnessContext, type HarnessRunSummary } from "./harness-runner";
+import { scriptChecks, visualChecks, videoChecks, audioChecks, integrationChecks } from "./harness-checks";
 import {
   getPipelineRunById,
   updatePipelineRun,
@@ -85,6 +88,38 @@ async function updateNodeProgress(
     totalCost: cost,
     nodeCosts: nodeCosts as any,
   });
+}
+
+// ─── Harness Gates ──────────────────────────────────────────────────────
+
+/**
+ * Run a harness gate between pipeline stages.
+ * Returns the summary. If shouldBlock is true, the pipeline should halt.
+ */
+async function runHarnessGate(
+  layerName: string,
+  checks: Array<{ config: any; fn: any }>,
+  context: HarnessContext,
+  bible: ProductionBibleData,
+  runId: number,
+): Promise<HarnessRunSummary> {
+  console.log(`[Harness] Running ${layerName} gate (${checks.length} checks)...`);
+  const summary = await runHarnessLayer(checks, context, bible);
+  console.log(`[Harness] ${layerName}: ${summary.passed}/${summary.totalChecks} passed, score=${summary.overallScore}, cost=$${summary.totalCost}`);
+
+  if (summary.shouldBlock) {
+    console.warn(`[Harness] ${layerName}: BLOCKED — pipeline will halt`);
+    await notifyOwner({
+      title: `Pipeline Blocked: ${layerName}`,
+      content: `Pipeline run #${runId} blocked by ${layerName} harness. ${summary.blocked} check(s) returned BLOCK. Flagged items: ${summary.flaggedItems.map(f => f.checkName).join(", ")}`,
+    });
+  }
+
+  if (summary.flaggedItems.length > 0) {
+    console.log(`[Harness] ${layerName}: ${summary.flaggedItems.length} flagged item(s): ${summary.flaggedItems.map(f => `${f.checkName}(${f.score})`).join(", ")}`);
+  }
+
+  return summary;
 }
 
 // ─── Agent Nodes ────────────────────────────────────────────────────────
@@ -587,6 +622,7 @@ export async function runPipeline(runId: number) {
   };
   const nodeCosts: Record<string, number> = {};
   let totalCost = 0;
+  let harnessCost = 0;
 
   await updatePipelineRun(runId, {
     status: "running",
@@ -598,12 +634,98 @@ export async function runPipeline(runId: number) {
   // Update episode status
   await updateEpisode(run.episodeId, { status: "pipeline" } as any);
 
+  // Compile Production Bible for harness checks
+  let bible: ProductionBibleData;
   try {
+    bible = await getOrCompileProductionBible(run.projectId);
+    console.log(`[Pipeline] Production Bible compiled for project ${run.projectId}`);
+  } catch (err) {
+    console.warn(`[Pipeline] Production Bible compilation failed, using defaults:`, err);
+    bible = {
+      version: 1,
+      projectId: run.projectId,
+      projectTitle: "Unknown",
+      genre: ["unknown"],
+      artStyle: "default",
+      compiledAt: new Date().toISOString(),
+      characters: [],
+      characterNameMap: {},
+      animationStyle: "default",
+      styleMixing: null,
+      colorGrading: "neutral",
+      atmosphericEffects: null,
+      aspectRatio: "16:9",
+      voiceAssignments: {},
+      audioConfig: null,
+      musicConfig: null,
+      openingStyle: "standard",
+      endingStyle: "standard",
+      pacing: "normal",
+      subtitleConfig: null,
+      episodes: [],
+      qualityThresholds: {
+        minImageScore: 6.0,
+        minCharacterMatch: 7.0,
+        minVideoScore: 5.5,
+        minAudioScore: 6.0,
+        maxRetries: 3,
+        blockOnNsfw: true,
+      },
+    };
+  }
+
+  const baseContext: HarnessContext = {
+    episodeId: run.episodeId,
+    pipelineRunId: runId,
+  };
+
+  try {
+    // ── Layer 1: Script Validation (pre-flight) ──
+    console.log(`[Pipeline] Running Layer 1: Script Validation...`);
+    const scriptSummary = await runHarnessGate(
+      "Layer 1: Script Validation",
+      scriptChecks,
+      { ...baseContext, targetType: "episode" },
+      bible,
+      runId,
+    );
+    harnessCost += scriptSummary.totalCost;
+    if (scriptSummary.shouldBlock) {
+      throw new Error(`Pipeline blocked by Script Validation harness: ${scriptSummary.flaggedItems.map(f => f.checkName).join(", ")}`);
+    }
+
     // Node 1: Video Generation (with native lip sync via Kling V3 Omni for dialogue panels)
     await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, 5, totalCost, nodeCosts);
     totalCost = await videoGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
     nodeStatuses.video_gen = "complete";
     nodeCosts.video_gen = NODE_COSTS.video_gen;
+    await updateNodeProgress(runId, "video_gen", "complete", nodeStatuses, 22, totalCost, nodeCosts);
+
+    // ── Layer 2+3: Visual + Video Quality (after video_gen) ──
+    console.log(`[Pipeline] Running Layer 2: Visual Consistency + Layer 3: Video Quality...`);
+    const visualSummary = await runHarnessGate(
+      "Layer 2: Visual Consistency",
+      visualChecks,
+      { ...baseContext, targetType: "panel" },
+      bible,
+      runId,
+    );
+    harnessCost += visualSummary.totalCost;
+    if (visualSummary.shouldBlock) {
+      throw new Error(`Pipeline blocked by Visual Consistency harness: ${visualSummary.flaggedItems.map(f => f.checkName).join(", ")}`);
+    }
+
+    const videoSummary = await runHarnessGate(
+      "Layer 3: Video Quality",
+      videoChecks,
+      { ...baseContext, targetType: "clip" },
+      bible,
+      runId,
+    );
+    harnessCost += videoSummary.totalCost;
+    if (videoSummary.shouldBlock) {
+      throw new Error(`Pipeline blocked by Video Quality harness: ${videoSummary.flaggedItems.map(f => f.checkName).join(", ")}`);
+    }
     await updateNodeProgress(runId, "video_gen", "complete", nodeStatuses, 25, totalCost, nodeCosts);
 
     // Node 2: Voice Generation (supplementary high-quality TTS via ElevenLabs)
@@ -611,6 +733,21 @@ export async function runPipeline(runId: number) {
     totalCost = await voiceGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
     nodeStatuses.voice_gen = "complete";
     nodeCosts.voice_gen = NODE_COSTS.voice_gen;
+    await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 47, totalCost, nodeCosts);
+
+    // ── Layer 4: Audio Quality (after voice_gen) ──
+    console.log(`[Pipeline] Running Layer 4: Audio Quality...`);
+    const audioSummary = await runHarnessGate(
+      "Layer 4: Audio Quality",
+      audioChecks,
+      { ...baseContext, targetType: "clip" },
+      bible,
+      runId,
+    );
+    harnessCost += audioSummary.totalCost;
+    if (audioSummary.shouldBlock) {
+      throw new Error(`Pipeline blocked by Audio Quality harness: ${audioSummary.flaggedItems.map(f => f.checkName).join(", ")}`);
+    }
     await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 50, totalCost, nodeCosts);
 
     // Node 3: Music Generation (MiniMax Music 2.6)
@@ -625,6 +762,33 @@ export async function runPipeline(runId: number) {
     totalCost = await assemblyAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.assembly = "complete";
     nodeCosts.assembly = NODE_COSTS.assembly;
+    await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 95, totalCost, nodeCosts);
+
+    // ── Layer 5: Integration Validation (after assembly) ──
+    console.log(`[Pipeline] Running Layer 5: Integration Validation...`);
+    const integrationSummary = await runHarnessGate(
+      "Layer 5: Integration Validation",
+      integrationChecks,
+      { ...baseContext, targetType: "episode" },
+      bible,
+      runId,
+    );
+    harnessCost += integrationSummary.totalCost;
+    // Layer 5 blocks don't stop the pipeline (video is already assembled)
+    // but they flag the episode for human review
+    if (integrationSummary.shouldBlock) {
+      console.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
+    }
+
+    // Compute overall harness score across all layers
+    const allSummaries = [scriptSummary, visualSummary, videoSummary, audioSummary, integrationSummary];
+    const overallHarnessScore = allSummaries.reduce((sum, s) => sum + s.overallScore, 0) / allSummaries.length;
+    const totalFlagged = allSummaries.reduce((sum, s) => sum + s.flaggedItems.length, 0);
+    const totalPassed = allSummaries.reduce((sum, s) => sum + s.passed, 0);
+    const totalChecks = allSummaries.reduce((sum, s) => sum + s.totalChecks, 0);
+
+    console.log(`[Pipeline] Harness complete: ${totalPassed}/${totalChecks} passed, score=${overallHarnessScore.toFixed(1)}, cost=$${harnessCost.toFixed(3)}, flagged=${totalFlagged}`);
+
     await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 100, totalCost, nodeCosts);
 
     // Mark as completed, move to QA review
@@ -640,7 +804,7 @@ export async function runPipeline(runId: number) {
 
     await notifyOwner({
       title: "Pipeline Complete",
-      content: `Episode pipeline run #${runId} completed successfully. Total cost: $${(totalCost / 100).toFixed(2)}. Ready for QA review.`,
+      content: `Episode pipeline run #${runId} completed. Harness: ${totalPassed}/${totalChecks} passed (score: ${overallHarnessScore.toFixed(1)}/10). Cost: $${(totalCost / 100).toFixed(2)} + $${harnessCost.toFixed(3)} harness. ${totalFlagged > 0 ? `${totalFlagged} item(s) flagged for review.` : "No issues found."}`,
     });
 
   } catch (error: any) {

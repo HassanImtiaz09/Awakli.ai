@@ -8,8 +8,9 @@ import { AwakliCard } from "@/components/awakli/AwakliCard";
 import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import {
   CheckCircle, XCircle, AlertTriangle, Play, Loader2,
-  ArrowLeft, Send, Film, Mic, Music, Layers, Clapperboard
+  ArrowLeft, Send, Film, Mic, Music, Layers, Clapperboard, Shield
 } from "lucide-react";
+import { HarnessDashboard, ProductionBibleViewer } from "@/components/awakli/HarnessDashboard";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -37,6 +38,7 @@ export default function QAReview() {
   const [, navigate] = useLocation();
 
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showHarness, setShowHarness] = useState(true);
   const [selectedIssues, setSelectedIssues] = useState<Set<IssueType>>(new Set());
   const [otherDescription, setOtherDescription] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -195,6 +197,29 @@ export default function QAReview() {
           );
         })}
       </div>
+
+      {/* Quality Harness Dashboard */}
+      <div className="space-y-2">
+        <button
+          onClick={() => setShowHarness(!showHarness)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+        >
+          <Shield className="w-4 h-4 text-violet-400" />
+          Quality Harness Results
+          <span className="text-xs text-zinc-500">{showHarness ? "(collapse)" : "(expand)"}</span>
+        </button>
+        {showHarness && run && (
+          <HarnessDashboard
+            pipelineRunId={runId}
+            episodeId={run.episodeId}
+          />
+        )}
+      </div>
+
+      {/* Production Bible */}
+      {run && (
+        <ProductionBibleViewer projectId={projectId} />
+      )}
 
       {/* Action Buttons */}
       <div className="flex items-center gap-4 justify-center py-4">

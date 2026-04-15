@@ -243,6 +243,9 @@ export const pipelineAssets = mysqlTable("pipeline_assets", {
   url: text("url").notNull(),
   metadata: json("metadata"),  // {duration, fileSize, format, characterId, ...}
   nodeSource: mysqlEnum("nodeSource", ["quality_check", "upscale", "content_mod", "video_gen", "voice_gen", "narrator_gen", "lip_sync", "music_gen", "sfx_gen", "assembly"]).notNull(),
+  harnessScore: float("harnessScore"),  // overall quality score from harness (0-10)
+  harnessResult: varchar("harnessResult", { length: 20 }),  // pass/warn/retry/block/human_review
+  harnessDetails: json("harnessDetails"),  // full harness check output for this asset
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -682,3 +685,40 @@ export const characterElements = mysqlTable("character_elements", {
 
 export type CharacterElement = typeof characterElements.$inferSelect;
 export type InsertCharacterElement = typeof characterElements.$inferInsert;
+
+// ─── Production Bibles ─────────────────────────────────────────────────
+
+export const productionBibles = mysqlTable("production_bibles", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  bibleData: json("bibleData").notNull(),  // Full Production Bible JSONB
+  version: int("version").default(1).notNull(),
+  lockedAt: timestamp("lockedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProductionBible = typeof productionBibles.$inferSelect;
+export type InsertProductionBible = typeof productionBibles.$inferInsert;
+
+// ─── Harness Results ───────────────────────────────────────────────────
+
+export const harnessResults = mysqlTable("harness_results", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  pipelineRunId: int("pipelineRunId").references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  layer: mysqlEnum("layer", ["script", "visual", "video", "audio", "integration"]).notNull(),
+  checkName: varchar("checkName", { length: 100 }).notNull(),  // e.g., '2B_character_identity'
+  targetId: int("targetId"),  // panel_id, clip_id, or episode_id depending on layer
+  targetType: varchar("targetType", { length: 50 }),  // 'panel', 'clip', 'episode', 'asset'
+  result: mysqlEnum("result", ["pass", "warn", "retry", "block", "human_review"]).notNull(),
+  score: float("score"),  // overall score for this check (0-10)
+  details: json("details"),  // full check output, scores per criterion, flagged issues
+  autoFixApplied: text("autoFixApplied"),  // description of auto-fix if retry
+  attemptNumber: int("attemptNumber").default(1).notNull(),
+  costCredits: float("costCredits").default(0),  // cost of this harness check in dollars
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type HarnessResult = typeof harnessResults.$inferSelect;
+export type InsertHarnessResult = typeof harnessResults.$inferInsert;
