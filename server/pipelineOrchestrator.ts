@@ -1,14 +1,18 @@
 /**
- * Pipeline Orchestrator — runs the 5-node anime production pipeline:
- *   video_gen → voice_gen → lip_sync → music_gen → assembly
- * Each node is a simulated agent that calls the appropriate AI service.
+ * Pipeline Orchestrator — runs the 4-node anime production pipeline:
+ *   video_gen → voice_gen → music_gen → assembly
+ *
+ * Kling V3 Omni handles video generation WITH native audio + lip sync in a single pass,
+ * eliminating the need for a separate lip_sync node. When panels have dialogue,
+ * the video_gen node uses the Omni endpoint with `sound: "on"` and dialogue-enriched
+ * prompts so characters' mouth movements are natively synced to speech.
  */
 
 import { generateImage } from "./_core/imageGeneration";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
-import { generateVideoFromImage, imageToVideo, queryTask } from "./kling";
+import { imageToVideo, omniVideo, queryTask } from "./kling";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import {
@@ -22,31 +26,28 @@ import {
 } from "./db";
 import { nanoid } from "nanoid";
 
-type NodeName = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "music_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeStatuses {
   video_gen: NodeStatus;
   voice_gen: NodeStatus;
-  lip_sync: NodeStatus;
   music_gen: NodeStatus;
   assembly: NodeStatus;
 }
 
-const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "lip_sync", "music_gen", "assembly"];
+const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "music_gen", "assembly"];
 
 const NODE_COSTS: Record<NodeName, number> = {
-  video_gen: 150,   // cents
+  video_gen: 200,   // cents — higher because V3 Omni includes audio/lip sync
   voice_gen: 80,
-  lip_sync: 60,
   music_gen: 40,
   assembly: 20,
 };
 
 const NODE_DURATIONS: Record<NodeName, number> = {
-  video_gen: 8000,
+  video_gen: 12000,  // longer — Omni generates video + audio together
   voice_gen: 5000,
-  lip_sync: 4000,
   music_gen: 3000,
   assembly: 2000,
 };
@@ -83,39 +84,94 @@ async function updateNodeProgress(
 
 // ─── Agent Nodes ────────────────────────────────────────────────────────
 
+/**
+ * Video Generation Agent — uses Kling V3 Omni for panels with dialogue (native lip sync),
+ * falls back to Kling v2.6 image2video for panels without dialogue.
+ *
+ * When a panel has dialogue, the prompt includes the dialogue text so Kling V3 Omni
+ * generates video with natively lip-synced audio. This eliminates the need for a
+ * separate lip sync step.
+ */
 async function videoGenAgent(runId: number, episodeId: number, projectId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   const panels = await getPanelsByEpisode(episodeId);
   const approvedPanels = panels.filter(p => p.imageUrl);
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
 
-  // Generate video clips from approved panel images using Kling AI image-to-video
   const panelsToProcess = approvedPanels.slice(0, 4);
 
-  // Step 1: Submit all image-to-video tasks in parallel
-  const taskIds: { panelId: number; taskId: string; panelNumber: number | null }[] = [];
+  // Submit all video generation tasks in parallel
+  const taskIds: { panelId: number; taskId: string; panelNumber: number | null; taskType: "image2video" | "omni-video"; hasDialogue: boolean }[] = [];
+
   for (const panel of panelsToProcess) {
     if (!panel.imageUrl) continue;
+
+    // Check if panel has dialogue for lip sync
+    const dialogue = panel.dialogue as any;
+    const hasDialogue = dialogue && (
+      Array.isArray(dialogue) ? dialogue.length > 0 : typeof dialogue === "string" ? dialogue.length > 0 : Object.keys(dialogue).length > 0
+    );
+
+    const dialogueText = hasDialogue
+      ? (Array.isArray(dialogue)
+          ? dialogue.map((d: any) => d.text || d.line || d).join(". ")
+          : typeof dialogue === "string" ? dialogue : "")
+      : "";
+
     try {
-      const result = await imageToVideo({
-        image: panel.imageUrl,
-        prompt: `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`,
-        negativePrompt: "static, still image, blurry, low quality, distorted",
-        duration: "5",
-        mode: "pro",
-        modelName: "kling-v2-6",
-      });
-      if (result.code === 0 && result.data?.task_id) {
-        taskIds.push({ panelId: panel.id, taskId: result.data.task_id, panelNumber: panel.panelNumber });
-        console.log(`[Pipeline] Kling task submitted for panel ${panel.id}: ${result.data.task_id}`);
+      if (hasDialogue && dialogueText) {
+        // Use Kling V3 Omni with native audio + lip sync
+        const omniPrompt = `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. The character says: "${dialogueText.slice(0, 500)}". Anime style, high quality animation, fluid movement, expressive character performance.`;
+
+        const result = await omniVideo({
+          prompt: omniPrompt,
+          imageList: [{ image_url: panel.imageUrl, type: "first_frame" }],
+          sound: "on",
+          duration: "5",
+          mode: "pro",
+          modelName: "kling-video-o1",
+          aspectRatio: "16:9",
+        });
+
+        if (result.code === 0 && result.data?.task_id) {
+          taskIds.push({
+            panelId: panel.id,
+            taskId: result.data.task_id,
+            panelNumber: panel.panelNumber,
+            taskType: "omni-video",
+            hasDialogue: true,
+          });
+          console.log(`[Pipeline] Kling V3 Omni task submitted for panel ${panel.id} (with lip sync): ${result.data.task_id}`);
+        }
+      } else {
+        // No dialogue — use standard image2video (cheaper, no audio needed)
+        const result = await imageToVideo({
+          image: panel.imageUrl,
+          prompt: `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`,
+          negativePrompt: "static, still image, blurry, low quality, distorted",
+          duration: "5",
+          mode: "pro",
+          modelName: "kling-v2-6",
+        });
+
+        if (result.code === 0 && result.data?.task_id) {
+          taskIds.push({
+            panelId: panel.id,
+            taskId: result.data.task_id,
+            panelNumber: panel.panelNumber,
+            taskType: "image2video",
+            hasDialogue: false,
+          });
+          console.log(`[Pipeline] Kling v2.6 task submitted for panel ${panel.id} (no dialogue): ${result.data.task_id}`);
+        }
       }
     } catch (err) {
       console.error(`[Pipeline] Kling submission failed for panel ${panel.id}:`, err);
     }
   }
 
-  // Step 2: Poll all tasks until completion
+  // Poll all tasks until completion
   const completedTasks = new Set<string>();
-  const maxPollTime = 8 * 60 * 1000; // 8 minutes
+  const maxPollTime = 10 * 60 * 1000; // 10 minutes (Omni can take longer)
   const pollStart = Date.now();
   let pollInterval = 5000;
 
@@ -123,7 +179,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     for (const task of taskIds) {
       if (completedTasks.has(task.taskId)) continue;
       try {
-        const status = await queryTask(task.taskId, "image2video");
+        const status = await queryTask(task.taskId, task.taskType);
         if (status.data?.task_status === "succeed") {
           completedTasks.add(task.taskId);
           const video = status.data.task_result?.videos?.[0];
@@ -131,19 +187,30 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             // Upload to our S3 for persistence (Kling URLs may expire)
             const videoRes = await fetch(video.url);
             const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
-            const videoKey = `pipeline/${runId}/clip-panel${task.panelId}-${nanoid(6)}.mp4`;
+            const suffix = task.hasDialogue ? "omni-lipsync" : "clip";
+            const videoKey = `pipeline/${runId}/${suffix}-panel${task.panelId}-${nanoid(6)}.mp4`;
             const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
 
+            // Store as video_clip (or synced_clip if it has lip sync)
+            const assetType = task.hasDialogue ? "synced_clip" : "video_clip";
             await createPipelineAsset({
               pipelineRunId: runId,
               episodeId,
               panelId: task.panelId,
-              assetType: "video_clip",
+              assetType,
               url: storedUrl,
-              metadata: { duration: Number(video.duration) || 5, format: "mp4", panelNumber: task.panelNumber, klingTaskId: task.taskId } as any,
+              metadata: {
+                duration: Number(video.duration) || 5,
+                format: "mp4",
+                panelNumber: task.panelNumber,
+                klingTaskId: task.taskId,
+                klingModel: task.hasDialogue ? "kling-video-o1 (V3 Omni)" : "kling-v2-6",
+                hasNativeAudio: task.hasDialogue,
+                hasLipSync: task.hasDialogue,
+              } as any,
               nodeSource: "video_gen",
             });
-            console.log(`[Pipeline] Video clip stored for panel ${task.panelId}: ${storedUrl}`);
+            console.log(`[Pipeline] ${task.hasDialogue ? "Lip-synced" : "Silent"} video stored for panel ${task.panelId}: ${storedUrl}`);
           }
         } else if (status.data?.task_status === "failed") {
           completedTasks.add(task.taskId);
@@ -155,7 +222,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     }
 
     totalCost += Math.round(NODE_COSTS.video_gen / Math.max(panelsToProcess.length, 1));
-    const progress = Math.round((completedTasks.size / Math.max(taskIds.length, 1)) * 20);
+    const progress = Math.round((completedTasks.size / Math.max(taskIds.length, 1)) * 25);
     await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, progress, totalCost, nodeCosts);
 
     if (completedTasks.size < taskIds.length) {
@@ -172,7 +239,8 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
   const characters = await getCharactersByProject(projectId);
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
 
-  // Generate voice clips for panels with dialogue
+  // Generate standalone voice clips for panels with dialogue
+  // (These supplement the native Omni audio — useful for narration, voiceover, or higher-quality TTS)
   const panelsWithDialogue = panels.filter(p => {
     const dialogue = p.dialogue as any;
     return dialogue && (Array.isArray(dialogue) ? dialogue.length > 0 : Object.keys(dialogue).length > 0);
@@ -185,28 +253,25 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
       ? dialogue.map((d: any) => d.text || d.line || d).join(". ")
       : typeof dialogue === "string" ? dialogue : JSON.stringify(dialogue);
 
-    // Generate voice using ElevenLabs TTS
     const voiceKey = `pipeline/${runId}/voice-${panel.id}-${nanoid(6)}.mp3`;
 
     try {
-      // Pick a voice — use first available voice, or default narrator
       let voiceId: string;
       try {
         const voices = await listVoices();
-        voiceId = voices[0]?.voice_id || "CwhRBWXzGAHq8TQ4Fs17"; // Roger as fallback
+        voiceId = voices[0]?.voice_id || "CwhRBWXzGAHq8TQ4Fs17";
       } catch {
         voiceId = "CwhRBWXzGAHq8TQ4Fs17"; // Roger - Laid-Back, Casual
       }
 
       const audioBuffer = await textToSpeech({
         voiceId,
-        text: dialogueText.slice(0, 5000), // ElevenLabs limit
+        text: dialogueText.slice(0, 5000),
         modelId: MODELS.MULTILINGUAL_V2,
         voiceSettings: VOICE_PRESETS.heroic,
       });
 
       const { url } = await storagePut(voiceKey, audioBuffer, "audio/mpeg");
-      // Estimate duration: ~150 words/min
       const wordCount = dialogueText.split(/\s+/).length;
       const durationEstimate = Math.max(1, Math.round((wordCount / 150) * 60));
 
@@ -225,7 +290,7 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
     }
 
     totalCost += Math.round(NODE_COSTS.voice_gen / panelsWithDialogue.length);
-    const progress = 20 + Math.round(((i + 1) / panelsWithDialogue.length) * 20);
+    const progress = 25 + Math.round(((i + 1) / panelsWithDialogue.length) * 25);
     await updateNodeProgress(runId, "voice_gen", "running", nodeStatuses, progress, totalCost, nodeCosts);
     await sleep(800);
   }
@@ -233,54 +298,23 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
   return totalCost;
 }
 
-async function lipSyncAgent(runId: number, episodeId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
-  let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
-
-  // Simulate lip sync processing
-  await sleep(2000);
-  totalCost += NODE_COSTS.lip_sync;
-
-  const syncKey = `pipeline/${runId}/synced-${nanoid(6)}.mp4`;
-  const placeholderBuffer = Buffer.from("Lip-synced video placeholder");
-
-  try {
-    const { url } = await storagePut(syncKey, placeholderBuffer, "video/mp4");
-    await createPipelineAsset({
-      pipelineRunId: runId,
-      episodeId,
-      assetType: "synced_clip",
-      url,
-      metadata: { duration: 30, format: "mp4" } as any,
-      nodeSource: "lip_sync",
-    });
-  } catch (err) {
-    console.error("[Pipeline] Lip sync failed:", err);
-  }
-
-  await updateNodeProgress(runId, "lip_sync", "running", nodeStatuses, 60, totalCost, nodeCosts);
-  return totalCost;
-}
-
 async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
   totalCost += NODE_COSTS.music_gen;
 
-  // Get episode and project info for contextual music generation
   const episode = await getEpisodeById(episodeId);
   const genre = "cinematic anime";
   const mood = "dramatic, emotional";
   const title = episode?.title || "Untitled Episode";
 
-  const musicKey = `pipeline/${runId}/music-${nanoid(6)}.mp3`;
+  const musicKey = `pipeline/${runId}/bgm-${nanoid(6)}.mp3`;
 
   try {
-    // Generate real background music using MiniMax Music 2.6
     const result = await generateSceneBGM({
       sceneDescription: `anime episode background score for "${title}", orchestral, cinematic`,
       mood,
     });
 
-    // Download from MiniMax temporary URL and upload to S3
     const audioRes = await fetch(result.audioUrl);
     if (!audioRes.ok) throw new Error(`Failed to download music: ${audioRes.status}`);
     const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
@@ -303,7 +337,6 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
     console.log(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
   } catch (err) {
     console.error("[Pipeline] Music gen failed, using silent fallback:", err);
-    // Fallback: store a minimal silent placeholder so pipeline doesn't break
     const silentBuffer = Buffer.alloc(1024, 0);
     try {
       const { url } = await storagePut(musicKey, silentBuffer, "audio/mpeg");
@@ -320,18 +353,16 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
     }
   }
 
-  await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 80, totalCost, nodeCosts);
+  await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 75, totalCost, nodeCosts);
   return totalCost;
 }
 
 async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: NodeStatuses, nodeCosts: Record<string, number>) {
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
 
-  // Simulate final assembly
   await sleep(1500);
   totalCost += NODE_COSTS.assembly;
 
-  // Create final video asset
   const finalKey = `pipeline/${runId}/final-${nanoid(6)}.mp4`;
   const placeholderBuffer = Buffer.from("Final assembled video");
 
@@ -346,7 +377,6 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
       nodeSource: "assembly",
     });
 
-    // Update episode with video URL
     await updateEpisode(episodeId, { videoUrl: url } as any);
 
     // Upload to Cloudflare Stream for CDN delivery (non-blocking)
@@ -401,7 +431,6 @@ export async function runPipeline(runId: number) {
   const nodeStatuses: NodeStatuses = {
     video_gen: "pending",
     voice_gen: "pending",
-    lip_sync: "pending",
     music_gen: "pending",
     assembly: "pending",
   };
@@ -419,36 +448,29 @@ export async function runPipeline(runId: number) {
   await updateEpisode(run.episodeId, { status: "pipeline" } as any);
 
   try {
-    // Node 1: Video Generation
+    // Node 1: Video Generation (with native lip sync via Kling V3 Omni for dialogue panels)
     await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, 5, totalCost, nodeCosts);
     totalCost = await videoGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
     nodeStatuses.video_gen = "complete";
     nodeCosts.video_gen = NODE_COSTS.video_gen;
-    await updateNodeProgress(runId, "video_gen", "complete", nodeStatuses, 20, totalCost, nodeCosts);
+    await updateNodeProgress(runId, "video_gen", "complete", nodeStatuses, 25, totalCost, nodeCosts);
 
-    // Node 2: Voice Generation
-    await updateNodeProgress(runId, "voice_gen", "running", nodeStatuses, 25, totalCost, nodeCosts);
+    // Node 2: Voice Generation (supplementary high-quality TTS via ElevenLabs)
+    await updateNodeProgress(runId, "voice_gen", "running", nodeStatuses, 30, totalCost, nodeCosts);
     totalCost = await voiceGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
     nodeStatuses.voice_gen = "complete";
     nodeCosts.voice_gen = NODE_COSTS.voice_gen;
-    await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 40, totalCost, nodeCosts);
+    await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 50, totalCost, nodeCosts);
 
-    // Node 3: Lip Sync
-    await updateNodeProgress(runId, "lip_sync", "running", nodeStatuses, 45, totalCost, nodeCosts);
-    totalCost = await lipSyncAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
-    nodeStatuses.lip_sync = "complete";
-    nodeCosts.lip_sync = NODE_COSTS.lip_sync;
-    await updateNodeProgress(runId, "lip_sync", "complete", nodeStatuses, 60, totalCost, nodeCosts);
-
-    // Node 4: Music Generation
-    await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 65, totalCost, nodeCosts);
+    // Node 3: Music Generation (MiniMax Music 2.6)
+    await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 55, totalCost, nodeCosts);
     totalCost = await musicGenAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.music_gen = "complete";
     nodeCosts.music_gen = NODE_COSTS.music_gen;
-    await updateNodeProgress(runId, "music_gen", "complete", nodeStatuses, 80, totalCost, nodeCosts);
+    await updateNodeProgress(runId, "music_gen", "complete", nodeStatuses, 75, totalCost, nodeCosts);
 
-    // Node 5: Assembly
-    await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 85, totalCost, nodeCosts);
+    // Node 4: Assembly (final video + Cloudflare Stream + thumbnail)
+    await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 80, totalCost, nodeCosts);
     totalCost = await assemblyAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.assembly = "complete";
     nodeCosts.assembly = NODE_COSTS.assembly;

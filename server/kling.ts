@@ -1,6 +1,7 @@
 /**
  * Kling AI Service Module
- * Provides image-to-video, text-to-video, task polling, and account info.
+ * Provides image-to-video, text-to-video, omni-video (V3 Omni with native lip sync),
+ * task polling, and account info.
  * Uses JWT (HS256) authentication with access key / secret key.
  */
 
@@ -52,6 +53,42 @@ export interface KlingTextToVideoParams {
   sound?: "on" | "off";
   /** Flexibility: 0-1 */
   cfgScale?: number;
+  /** Optional callback URL */
+  callbackUrl?: string;
+  /** Optional external task ID */
+  externalTaskId?: string;
+}
+
+/**
+ * Kling V3 Omni Video parameters.
+ * Uses the unified /v1/videos/omni-video endpoint with native audio + lip sync.
+ * Supports image-to-video, text-to-video, multi-shot storyboard, and element references.
+ */
+export interface KlingOmniVideoParams {
+  /** Text prompt — include character dialogue in quotes for native lip sync */
+  prompt?: string;
+  /** Model: "kling-video-o1" (default) or "kling-v3-omni" */
+  modelName?: "kling-video-o1" | "kling-v3-omni";
+  /** Enable native audio + lip sync generation */
+  sound?: "on" | "off";
+  /** Video duration in seconds: "3" to "15" */
+  duration?: string;
+  /** Generation mode: "std" or "pro" */
+  mode?: "std" | "pro";
+  /** Aspect ratio */
+  aspectRatio?: "16:9" | "9:16" | "1:1";
+  /** Enable multi-shot storyboard narration */
+  multiShot?: boolean;
+  /** Shot type when multiShot is true */
+  shotType?: "customize" | "intelligence";
+  /** Multi-shot prompts: array of {index, prompt, duration} */
+  multiPrompt?: Array<{ index: number; prompt: string; duration: string }>;
+  /** Reference images */
+  imageList?: Array<{ image_url: string; type?: "first_frame" | "end_frame" }>;
+  /** Element references for character consistency */
+  elementList?: Array<{ element_id: number }>;
+  /** Reference videos */
+  videoList?: Array<{ video_url: string; refer_type?: "feature" | "base"; keep_original_sound?: "yes" | "no" }>;
   /** Optional callback URL */
   callbackUrl?: string;
   /** Optional external task ID */
@@ -243,7 +280,7 @@ export async function textToVideo(
  */
 export async function queryTask(
   taskId: string,
-  type: "image2video" | "text2video" = "image2video"
+  type: "image2video" | "text2video" | "omni-video" = "image2video"
 ): Promise<KlingTaskQueryResponse> {
   return klingRequest<KlingTaskQueryResponse>("GET", `/v1/videos/${type}/${taskId}`);
 }
@@ -255,7 +292,7 @@ export async function queryTask(
 export async function pollTaskUntilDone(
   taskId: string,
   options: {
-    type?: "image2video" | "text2video";
+    type?: "image2video" | "text2video" | "omni-video";
     maxWaitMs?: number;
     initialIntervalMs?: number;
     maxIntervalMs?: number;
@@ -380,6 +417,83 @@ export async function generateVideoFromText(
 
   const video = videos[0];
   console.log(`[Kling] Video generated: ${video.url} (${video.duration}s)`);
+
+  return {
+    videoUrl: video.url,
+    videoId: video.id,
+    duration: video.duration,
+    taskId,
+  };
+}
+
+/**
+ * Create an Omni-Video generation task using Kling V3 Omni.
+ * This is the unified endpoint that handles image-to-video, text-to-video,
+ * multi-shot storyboard, and native audio with lip sync — all in one call.
+ *
+ * Key features over image2video/text2video:
+ * - Native audio-visual synchronization (lip sync built in)
+ * - Duration up to 15 seconds (vs 10s on v2.6)
+ * - Multi-shot storyboard narration
+ * - Element/character consistency references
+ */
+export async function omniVideo(
+  params: KlingOmniVideoParams
+): Promise<KlingTaskResponse> {
+  const body: Record<string, unknown> = {
+    model_name: params.modelName ?? "kling-video-o1",
+    sound: params.sound ?? "on",
+    duration: params.duration ?? "5",
+    mode: params.mode ?? "pro",
+  };
+
+  if (params.prompt) body.prompt = params.prompt;
+  if (params.aspectRatio) body.aspect_ratio = params.aspectRatio;
+  if (params.multiShot !== undefined) body.multi_shot = params.multiShot;
+  if (params.shotType) body.shot_type = params.shotType;
+  if (params.multiPrompt) body.multi_prompt = params.multiPrompt;
+  if (params.imageList) body.image_list = params.imageList;
+  if (params.elementList) body.element_list = params.elementList;
+  if (params.videoList) body.video_list = params.videoList;
+  if (params.callbackUrl) body.callback_url = params.callbackUrl;
+  if (params.externalTaskId) body.external_task_id = params.externalTaskId;
+
+  return klingRequest<KlingTaskResponse>("POST", "/v1/videos/omni-video", body);
+}
+
+/**
+ * Full Omni-Video pipeline: submit task → poll → return video URL.
+ * Generates video with native audio and lip sync in a single pass.
+ */
+export async function generateOmniVideo(
+  params: KlingOmniVideoParams & {
+    maxWaitMs?: number;
+    onProgress?: (status: string, elapsed: number) => void;
+  }
+): Promise<{ videoUrl: string; videoId: string; duration: string; taskId: string }> {
+  const { maxWaitMs, onProgress, ...createParams } = params;
+
+  const createResult = await omniVideo(createParams);
+  if (createResult.code !== 0) {
+    throw new Error(`Kling omni-video creation failed: ${createResult.message}`);
+  }
+
+  const taskId = createResult.data.task_id;
+  console.log(`[Kling] Omni-video task created: ${taskId} (sound: ${createParams.sound ?? "on"})`);
+
+  const finalResult = await pollTaskUntilDone(taskId, {
+    type: "omni-video",
+    maxWaitMs: maxWaitMs ?? 12 * 60 * 1000, // 12 min default (longer for omni)
+    onProgress,
+  });
+
+  const videos = finalResult.data?.task_result?.videos;
+  if (!videos || videos.length === 0) {
+    throw new Error(`Kling omni-video task ${taskId} succeeded but returned no videos`);
+  }
+
+  const video = videos[0];
+  console.log(`[Kling] Omni-video generated: ${video.url} (${video.duration}s, with audio)`);
 
   return {
     videoUrl: video.url,

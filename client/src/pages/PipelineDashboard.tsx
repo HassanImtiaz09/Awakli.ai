@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-type NodeName = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "music_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeConfig {
@@ -32,14 +32,13 @@ interface NodeConfig {
 }
 
 const NODES: NodeConfig[] = [
-  { id: "video_gen", label: "Video Gen", icon: Film, x: 80, y: 100 },
-  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 280, y: 100 },
-  { id: "lip_sync", label: "Lip Sync", icon: Layers, x: 480, y: 100 },
-  { id: "music_gen", label: "Music Gen", icon: Music, x: 680, y: 100 },
-  { id: "assembly", label: "Assembly", icon: Clapperboard, x: 880, y: 100 },
+  { id: "video_gen", label: "Video + Lip Sync", icon: Film, x: 80, y: 100 },
+  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 330, y: 100 },
+  { id: "music_gen", label: "Music Gen", icon: Music, x: 580, y: 100 },
+  { id: "assembly", label: "Assembly", icon: Clapperboard, x: 830, y: 100 },
 ];
 
-const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 4]];
+const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3]];
 
 // ─── Node Graph Component ───────────────────────────────────────────────
 
@@ -243,27 +242,22 @@ function VoiceGenDetail({ assets }: { assets: any[] }) {
 }
 
 function LipSyncDetail({ assets }: { assets: any[] }) {
-  const syncAssets = assets.filter((a: any) => a.assetType === "lip_sync" || a.assetType === "synced_clip");
-  if (syncAssets.length === 0) return <p className="text-gray-500 text-sm">No lip-synced clips generated yet.</p>;
+  const syncAssets = assets.filter((a: any) => a.assetType === "synced_clip" || (a.metadata as any)?.hasLipSync);
+  if (syncAssets.length === 0) return <p className="text-gray-500 text-sm">No lip-synced clips yet. Panels with dialogue use Kling V3 Omni for native lip sync.</p>;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {syncAssets.map((asset: any, i: number) => (
         <div key={asset.id || i} className="bg-gray-800/60 rounded-lg p-4 border border-gray-700/50">
-          <p className="text-sm text-white mb-2">Clip {i + 1} — Before / After</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="aspect-video bg-gray-900 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-700">
-              <span>Original</span>
-            </div>
-            <div className="aspect-video bg-gray-900 rounded flex items-center justify-center border border-accent-cyan/30 relative overflow-hidden">
-              {asset.url ? (
-                <video src={asset.url} className="w-full h-full object-cover" preload="metadata" />
-              ) : (
-                <span className="text-xs text-accent-cyan">Synced</span>
-              )}
-            </div>
+          <p className="text-sm text-white mb-2">Lip-Synced Clip {i + 1} — Kling V3 Omni</p>
+          <div className="aspect-video bg-gray-900 rounded flex items-center justify-center border border-accent-cyan/30 relative overflow-hidden">
+            {asset.url ? (
+              <video src={asset.url} className="w-full h-full object-cover" preload="metadata" controls />
+            ) : (
+              <span className="text-xs text-accent-cyan">Processing...</span>
+            )}
           </div>
-          {(asset.metadata as any)?.syncAccuracy && (
-            <p className="text-xs text-gray-400 mt-2">Sync accuracy: {(asset.metadata as any).syncAccuracy}%</p>
+          {(asset.metadata as any)?.klingModel && (
+            <p className="text-xs text-gray-400 mt-2">Model: {(asset.metadata as any).klingModel}</p>
           )}
         </div>
       ))}
@@ -374,9 +368,8 @@ function NodeDetailPanel({
   const nodeAssets = assets.filter((a: any) => {
     const source = a.nodeSource || a.assetType;
     const nodeTypeMap: Record<NodeName, string[]> = {
-      video_gen: ["video_clip", "video"],
+      video_gen: ["video_clip", "video", "synced_clip"],
       voice_gen: ["voice_clip", "voice"],
-      lip_sync: ["lip_sync", "synced_clip"],
       music_gen: ["music", "bgm"],
       assembly: ["final_video", "assembled", "subtitle", "srt", "thumbnail"],
     };
@@ -388,18 +381,23 @@ function NodeDetailPanel({
   const nodeErrors = errors.filter((e: any) => e.node === node);
 
   const nodeLabels: Record<NodeName, string> = {
-    video_gen: "Video Generation",
+    video_gen: "Video + Lip Sync (Kling V3 Omni)",
     voice_gen: "Voice Generation",
-    lip_sync: "Lip Sync",
     music_gen: "Background Music",
     assembly: "Final Assembly",
   };
 
   const renderNodeContent = () => {
     switch (node) {
-      case "video_gen": return <VideoGenDetail assets={nodeAssets} />;
+      case "video_gen": {
+        const videoOnly = nodeAssets.filter((a: any) => a.assetType === "video_clip");
+        const lipSynced = nodeAssets.filter((a: any) => a.assetType === "synced_clip" || (a.metadata as any)?.hasLipSync);
+        return <>
+          <VideoGenDetail assets={videoOnly} />
+          {lipSynced.length > 0 && <div className="mt-4"><h4 className="text-sm font-semibold text-accent-cyan mb-2">Lip-Synced Clips (Native Audio)</h4><LipSyncDetail assets={lipSynced} /></div>}
+        </>;
+      }
       case "voice_gen": return <VoiceGenDetail assets={nodeAssets} />;
-      case "lip_sync": return <LipSyncDetail assets={nodeAssets} />;
       case "music_gen": return <MusicGenDetail assets={nodeAssets} />;
       case "assembly": return <AssemblyDetail assets={nodeAssets} runId={runId} />;
     }
@@ -691,7 +689,7 @@ export default function PipelineDashboard() {
   const activeRun = activeRunQuery.data;
   const nodeStatuses: Record<NodeName, NodeStatus> = useMemo(() => {
     if (!activeRun?.nodeStatuses) {
-      return { video_gen: "pending", voice_gen: "pending", lip_sync: "pending", music_gen: "pending", assembly: "pending" };
+      return { video_gen: "pending", voice_gen: "pending", music_gen: "pending", assembly: "pending" };
     }
     return activeRun.nodeStatuses as Record<NodeName, NodeStatus>;
   }, [activeRun]);

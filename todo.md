@@ -1400,3 +1400,22 @@
 - [x] Fix getDemoVideo endpoint to use correct DEMO_CONFIG_KEYS
 - [x] Add stream_video to pipeline_assets assetType enum + migration
 - [x] 18 new Cloudflare Stream tests (credentials, service module, admin endpoints, pipeline integration, config keys)
+
+## Kling V3 Omni Lip Sync Integration
+- [x] Verify Kling API is using V3 Omni model with built-in lip sync
+- [x] Research Kling V3 Omni capabilities (lip sync, audio-driven video)
+- [x] Restructure pipeline: merge video_gen + lip_sync nodes (Kling handles both)
+- [x] Remove D-ID placeholder from lip_sync agent
+- [x] Update pipeline orchestrator to pass audio to Kling for lip-synced video
+- [x] Update tests to reflect merged pipeline
+- [x] Update EXTERNAL_SERVICES.md to remove D-ID as a dependency
+- [x] Add omniVideo() and generateOmniVideo() functions to server/kling.ts
+- [x] Add KlingOmniVideoParams interface with all V3 Omni parameters
+- [x] Update queryTask() and pollTaskUntilDone() to support omni-video task type
+- [x] Pipeline now 4-node: video_gen → voice_gen → music_gen → assembly
+- [x] video_gen uses V3 Omni (sound:on) for panels with dialogue, v2.6 for silent panels
+- [x] Synced clips stored as assetType "synced_clip" with hasLipSync metadata
+- [x] PipelineDashboard updated: 4-node graph, lip-synced clips shown under video_gen
+- [x] QAReview updated: synced_clip replaces lip_sync_clip in asset summary
+- [x] 4 new V3 Omni tests added to kling.test.ts (all passing)
+- [x] All 397 tests pass across 22 test files — zero placeholders remain

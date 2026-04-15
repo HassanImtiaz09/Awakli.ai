@@ -44,23 +44,33 @@ These external services have been fully integrated with real API calls replacing
 
 ---
 
-### 2. Kling AI — Manga-to-Anime Video Generation (ACTIVE)
+### 2. Kling AI — Manga-to-Anime Video Generation + Native Lip Sync (ACTIVE)
 
-**Status:** Fully integrated. JWT auth, image-to-video, text-to-video, and task polling all working.
+**Status:** Fully integrated. JWT auth, image-to-video (v2.6), text-to-video (v2.6), **omni-video (V3 Omni with native lip sync)**, and task polling all working.
 
-**Used for:** Converting static manga panels into animated anime clips, style previews, sneak peeks
+**Used for:** Converting static manga panels into animated anime clips with native audio/lip sync, style previews, sneak peeks
 
 **Service module:** `server/kling.ts`
 
-**Endpoints replaced:**
-- `server/pipelineOrchestrator.ts` — Real Kling image-to-video with polling for panel animation
+**Key functions:**
+- `imageToVideo()` — Kling v2.6 image-to-video for silent panels (no dialogue)
+- `textToVideo()` — Kling v2.6 text-to-video
+- `omniVideo()` — **Kling V3 Omni** unified endpoint with native audio + lip sync (`sound: "on"`)
+- `generateOmniVideo()` — Full pipeline: submit omni task → poll → return video URL
+- `queryTask()` — Supports `image2video`, `text2video`, and `omni-video` task types
+- `pollTaskUntilDone()` — Exponential backoff polling for all task types
+
+**Endpoints using Kling:**
+- `server/pipelineOrchestrator.ts` — **V3 Omni** for panels with dialogue (native lip sync), v2.6 for silent panels
 - `server/routers-freemium.ts` — Async Kling generation with S3 storage for anime previews
 - `server/routers-phase13.ts` — Async Kling generation for sneak peek clips
 - `server/routers-preproduction.ts` — Kling image-to-video for style previews, real image generation for character sheets and environment concept art
 
+**Lip sync strategy:** Panels with dialogue use V3 Omni (`sound: "on"`) with dialogue-enriched prompts, generating video with natively lip-synced audio in a single pass. This eliminates the need for a separate lip sync service (D-ID, SadTalker, etc.).
+
 **Env variables:** `KLING_ACCESS_KEY`, `KLING_SECRET_KEY` — Set and validated
 
-**Pricing:** ~$0.10-0.30 per 5s clip.
+**Pricing:** ~$0.10-0.30 per 5s clip (v2.6), ~$0.20-0.50 per 5s clip (V3 Omni with audio).
 
 ---
 
@@ -122,21 +132,13 @@ pnpm add -D puppeteer
 
 These services enhance the platform but are not blocking core functionality.
 
-### 6. Lip Sync Service (SadTalker / Wav2Lip)
+### 6. Lip Sync — Handled by Kling V3 Omni (NO SEPARATE SERVICE NEEDED)
 
-**Used for:** Syncing character mouth movements to voice audio
+**Status:** Fully handled by Kling V3 Omni. No separate lip sync service required.
 
-**Where it's referenced:**
-- `server/pipelineOrchestrator.ts` — Lip sync step in pipeline
+**How it works:** The pipeline's `video_gen` node automatically uses Kling V3 Omni with `sound: "on"` for panels that have dialogue. The Omni endpoint generates video with natively lip-synced audio in a single pass, eliminating the need for D-ID, SadTalker, Wav2Lip, or any other lip sync service.
 
-**Current state:** Returns placeholder video buffers (lip sync is the only remaining placeholder in the pipeline)
-
-**Options:**
-- Self-hosted SadTalker/Wav2Lip (requires GPU server)
-- [D-ID](https://www.d-id.com) — Talking head API (`DID_API_KEY`)
-- [Synthesia](https://www.synthesia.io) — Video generation with lip sync
-
-**Pricing:** D-ID: $5.90/mo for 5 minutes. Self-hosted: GPU server costs.
+**Previous state:** Was a placeholder returning dummy buffers. Now fully replaced by Kling V3 Omni.
 
 ---
 
@@ -164,14 +166,18 @@ These services enhance the platform but are not blocking core functionality.
 | `MINIMAX_API_KEY` | MiniMax Music | P1 | **Active** — Music & BGM generation |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | P1 | **Active** — Video hosting & CDN delivery |
 | `CLOUDFLARE_STREAM_TOKEN` | Cloudflare | P1 | **Active** — Video hosting & CDN delivery |
-| `DID_API_KEY` | D-ID (optional) | P3 | Optional — Lip sync |
+| ~~`DID_API_KEY`~~ | ~~D-ID~~ | ~~P3~~ | **Not needed** — Lip sync handled by Kling V3 Omni |
 
 ---
 
 ## Remaining Placeholders
 
-Only **one placeholder** remains in the entire pipeline:
+**No placeholders remain.** All pipeline nodes now use real API calls:
 
-1. **Lip sync** (`server/pipelineOrchestrator.ts` — `lipSyncAgent`) — Returns placeholder video. Requires D-ID API key or self-hosted SadTalker/Wav2Lip.
+- **Video generation + lip sync** — Kling V3 Omni (panels with dialogue) / Kling v2.6 (silent panels)
+- **Voice generation** — ElevenLabs TTS
+- **Music generation** — MiniMax Music 2.6
+- **Assembly** — S3 storage + Cloudflare Stream CDN
+- **Image generation** — Manus built-in image generation
 
-All other pipeline nodes (video generation, voice generation, music generation, image generation) now use real API calls.
+The pipeline runs as a 4-node flow: `video_gen → voice_gen → music_gen → assembly`

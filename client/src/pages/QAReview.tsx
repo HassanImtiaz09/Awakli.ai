@@ -181,7 +181,7 @@ export default function QAReview() {
         {[
           { type: "video_clip", label: "Video Clips", icon: Film, color: "cyan" },
           { type: "voice_clip", label: "Voice Clips", icon: Mic, color: "pink" },
-          { type: "lip_sync_clip", label: "Lip Sync", icon: Layers, color: "gold" },
+          { type: "synced_clip", label: "Lip Sync", icon: Layers, color: "gold" },
           { type: "music_segment", label: "Music", icon: Music, color: "success" },
           { type: "final_video", label: "Final", icon: Clapperboard, color: "cyan" },
         ].map(({ type, label, icon: Icon, color }) => {
