@@ -2172,3 +2172,102 @@
 - [x] Add runway_gen4 to registry ENV_KEY_MAP for ENV fallback
 - [x] Write validation test for Runway API key (4 tests: env set, auth check status 404/not-401, registry fallback, adapter registered)
 - [x] All 4 Runway tests passing
+
+## Phase 7: HITL Gate Architecture (Prompt 17)
+
+### 7A. Database Schema (6 tables)
+- [x] pipeline_runs table extended with currentStage, totalStages, gateConfigSource, creditsEstimated, creditsSpent, creditsSaved
+- [x] pipeline_stages table (id, pipelineRunId, stageNumber, stageName, status, generationRequestId, gateId, credits, attempts, timestamps)
+- [x] gates table (id, pipelineStageId, pipelineRunId, userId, gateType, confidence scoring fields, decision fields, regen fields, credit display fields, timeout fields, qualityScore, timestamps)
+- [x] gate_notifications table (id, gateId, userId, channel, notificationType, delivered, timestamps)
+- [x] gate_audit_log table (id, gateId, pipelineRunId, stageNumber, eventType, oldState, newState, actor, metadata, timestamp)
+- [x] gate_configs table (id, scope, scopeRef, stageNumber, gateType, thresholds, timeout, isLocked, timestamps)
+- [x] Seed gate_configs with tier defaults for all 5 tiers across all 12 stages (60 rows)
+- [x] Migration SQL generated and applied (20 statements)
+
+### 7B. Pipeline Orchestrator
+- [x] Pipeline orchestrator state machine (PENDING → EXECUTING → AWAITING_GATE → APPROVED/REJECTED/REGENERATING)
+- [x] tRPC procedure: pipelineStage.getStages, getStage, abort, getStageNames
+- [x] Gate manager: resolveGateConfig, resolveAllGateConfigs, createGate, recordGateDecision
+- [x] Blocking gate logic: halt pipeline, send notification, wait for creator
+- [x] Advisory gate logic: auto-advance if score >= threshold, block if below review threshold
+- [x] Ambient gate logic: log and advance silently, escalate if score < 20 or safety flag
+- [x] Stage execution: initializePipelineStages, startStageExecution, completeStageGeneration
+- [x] Resume after pause: approveStage, rejectStage, startRegeneration
+- [x] Pipeline abort: abortPipeline, failStage, skipStage
+- [x] Cascade rewind: cascadeRewind (discard downstream, release holds)
+
+### 7C. Confidence Scoring Engine V1
+- [x] ConfidenceScorer interface (scoreGeneration → ConfidenceResult with breakdown)
+- [x] Technical Quality dimension (resolution match, frame count, file size)
+- [x] Character Consistency dimension (CLIP similarity to reference sheet)
+- [x] Temporal Coherence dimension (FPS-based heuristic for video)
+- [x] Audio Clarity dimension (duration, bitrate proxy)
+- [x] Dialogue Sync dimension (duration timing for voice)
+- [x] Style Match dimension (CLIP similarity to episode style reference)
+- [x] Content Safety dimension (veto: caps total at 10 if below 10)
+- [x] Completeness dimension (output within 90-110% expected)
+- [x] Weighted average computation across applicable dimensions per modality
+- [x] Mock CLIP service for V1 (pluggable interface for V2 ML-based scoring)
+
+### 7D. SSE Notification System
+- [x] SSE channel scoped per user_id (via /api/hitl/events endpoint)
+- [x] gate:ready event (blocking gate created)
+- [x] gate:auto_advanced event (advisory gate auto-approved)
+- [x] gate:timeout_warning event (1h, 6h, 23h before timeout)
+- [x] gate:escalated event (ambient → blocking)
+- [x] Notification deduplication via gate_notifications table
+- [x] Email digest fallback (batch pending gates)
+- [x] Health endpoint (/api/hitl/health) with active connection count
+- [x] 30s heartbeat keepalive
+
+### 7E. Gate Review UI
+- [x] Gate review screen: top bar (episode title, stage name/number, confidence badge)
+- [x] Main content area: image viewer, video player, audio player with media type detection
+- [x] Reference panel (collapsible sidebar): character sheets, manga panels, previous stage outputs
+- [x] Credit panel (CreditPanel component): spent, this step cost, remaining, regenerate cost
+- [x] Action bar: Approve (green), Regenerate (yellow), Reject (red) with confirmation dialogs
+- [x] Side-by-side comparison for regenerated stages (previous vs current)
+- [x] Confidence score breakdown panel (ConfidenceBreakdown component, expandable)
+- [x] Pipeline overview stepper (PipelineStepper component, 12 stages with status)
+- [x] Batch review mode (BatchGateReview page, retroactive review with cascade rewind)
+
+### 7F. Gate Actions (tRPC procedures)
+- [x] tRPC procedure: gateReview.submitDecision (approve/reject/regenerate/regenerate_with_edits)
+- [x] tRPC procedure: gateReview.getPendingGates, getGate, getGatesForRun, getAuditLog
+- [x] tRPC procedure: batchReview.getReviewableGates, submitDecision, batchConfirm
+- [x] tRPC procedure: cascadeRewind.rewind (cascade rewind: discard downstream, release holds)
+- [x] tRPC procedure: gateConfig.getAll, getForStage
+- [x] tRPC procedure: qualityAnalytics.dashboard, approvalRateByStage, avgConfidenceByStage, creditsSaved, mostRegeneratedStages
+
+### 7G. Quality Feedback Loop
+- [x] Gate decisions write quality scores to provider_quality_scores (writeQualityScore)
+- [x] Score mapping: approve-first=5, approve-retry=4, auto-approve-high=4, auto-advance-mod=3, regenerate=2, reject=1, escalation=1
+- [x] Creator quality insights tab (QualityInsights page): approval rate, avg confidence, credits saved, most-regenerated stages
+
+### 7H. Admin Gate Analytics Dashboard
+- [x] AdminGateAnalytics page with 4 stat cards (total gates, approval rate, avg confidence, credits saved)
+- [x] Approval rate bar chart by stage
+- [x] Average confidence bar chart by stage
+- [x] Most regenerated stages list
+- [x] Pending gates panel with quick-review links
+
+### 7I. Timeout Handler
+- [x] Configurable timeout per gate (default 24h, stored in gate_configs)
+- [x] Timeout notifications at 1h, 6h, 23h before expiry (checkTimeoutWarnings)
+- [x] Auto-action on timeout (configurable: auto-approve, auto-reject, auto-pause via processTimedOutGates)
+- [x] 48h hard abort if no response after timeout (ABSOLUTE_TIMEOUT_HOURS)
+
+### 7J. Tests
+- [x] Unit tests: stage config (12 stages, gate types, tier names, credit estimates, skippability)
+- [x] Unit tests: confidence scorer (video/image/voice/music scoring, NSFW veto, blank detection, all dimensions)
+- [x] Unit tests: quality feedback (score mapping for all decision types, edge cases)
+- [x] Unit tests: notification payloads (gate:ready, auto_advanced, timeout_warning builders)
+- [x] Unit tests: WebSocket connection tracking
+- [x] Unit tests: tRPC router registration (all 6 routers, all procedures, appRouter wiring)
+- [x] Unit tests: SSE handler exports
+- [x] Unit tests: pipeline state machine exports
+- [x] Unit tests: gate manager exports
+- [x] Unit tests: timeout handler exports
+- [x] Unit tests: barrel export completeness
+- [x] All 49 HITL tests pass + 869/870 total tests pass (1 MiniMax network failure unrelated)

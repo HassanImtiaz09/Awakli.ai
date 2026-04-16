@@ -251,8 +251,150 @@ export const pipelineRuns = mysqlTable("pipeline_runs", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// New HITL columns (added via ALTER TABLE, not changing existing columns)
+// currentStageNumber, totalStages, gateConfig, totalCreditsSpent, totalCreditsHeld, abortedAt, abortReason
+
 export type PipelineRun = typeof pipelineRuns.$inferSelect;
 export type InsertPipelineRun = typeof pipelineRuns.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMPT 17: HITL Gate Architecture Tables
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Pipeline Stages (one row per stage per pipeline run) ─────────────────
+export const pipelineStages = mysqlTable("pipeline_stages", {
+  id: int("id").autoincrement().primaryKey(),
+  pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  stageNumber: int("stageNumber").notNull(),
+  stageName: varchar("stageName", { length: 128 }).notNull(),
+  status: mysqlEnum("status", [
+    "pending", "executing", "awaiting_gate", "approved", "rejected",
+    "regenerating", "skipped", "failed", "timed_out"
+  ]).default("pending").notNull(),
+  generationRequestId: int("generationRequestId"),  // references generation_requests.id
+  gateId: int("gateId"),  // references gates.id (FK added after gates table)
+  creditsEstimated: decimal("creditsEstimated", { precision: 10, scale: 4 }),
+  creditsActual: decimal("creditsActual", { precision: 10, scale: 4 }),
+  holdId: varchar("holdId", { length: 64 }),  // credit ledger hold ID
+  attempts: int("attempts").notNull().default(0),
+  maxAttempts: int("maxAttempts").notNull().default(3),
+  resultUrl: text("resultUrl"),  // URL to the generated output
+  resultMetadata: json("resultMetadata"),  // provider metadata, dimensions, duration, etc.
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PipelineStage = typeof pipelineStages.$inferSelect;
+export type InsertPipelineStage = typeof pipelineStages.$inferInsert;
+
+// ─── Gates (one per gate checkpoint) ──────────────────────────────────────
+export const gates = mysqlTable("gates", {
+  id: int("id").autoincrement().primaryKey(),
+  pipelineStageId: int("pipelineStageId").notNull(),  // references pipeline_stages.id
+  pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  gateType: mysqlEnum("gateType", ["blocking", "advisory", "ambient"]).notNull(),
+  stageNumber: int("stageNumber").notNull(),
+  stageName: varchar("stageName", { length: 128 }).notNull(),
+
+  // Confidence scoring
+  confidenceScore: int("confidenceScore"),  // 0-100
+  confidenceDetails: json("confidenceDetails"),  // SubScore[] breakdown
+  autoAdvanceThreshold: int("autoAdvanceThreshold").default(85),
+  reviewThreshold: int("reviewThreshold").default(60),
+
+  // Decision
+  decision: mysqlEnum("decision", [
+    "pending", "approved", "rejected", "regenerate", "regenerate_with_edits",
+    "auto_approved", "auto_rejected", "escalated", "timed_out"
+  ]).default("pending").notNull(),
+  decisionSource: mysqlEnum("decisionSource", ["creator", "auto", "escalation", "timeout"]),
+  decisionReason: text("decisionReason"),
+  decisionAt: timestamp("decisionAt"),
+
+  // Regeneration
+  regenParamsDiff: json("regenParamsDiff"),  // what the creator changed
+  regenGenerationRequestId: int("regenGenerationRequestId"),  // new request after regen
+
+  // Credit display
+  creditsSpentSoFar: decimal("creditsSpentSoFar", { precision: 10, scale: 4 }),
+  creditsToProceed: decimal("creditsToProceed", { precision: 10, scale: 4 }),
+  creditsToRegenerate: decimal("creditsToRegenerate", { precision: 10, scale: 4 }),
+  creditsSavedIfReject: decimal("creditsSavedIfReject", { precision: 10, scale: 4 }),
+
+  // Timeout
+  timeoutAt: timestamp("timeoutAt"),
+  timeoutAction: mysqlEnum("timeoutAction", ["auto_approve", "auto_reject", "auto_pause"]).default("auto_pause"),
+  timeoutNotified1h: int("timeoutNotified1h").default(0),  // MySQL boolean
+  timeoutNotified6h: int("timeoutNotified6h").default(0),
+  timeoutNotified23h: int("timeoutNotified23h").default(0),
+
+  // Quality feedback
+  qualityScore: int("qualityScore"),  // 1-5
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Gate = typeof gates.$inferSelect;
+export type InsertGate = typeof gates.$inferInsert;
+
+// ─── Gate Notifications ───────────────────────────────────────────────────
+export const gateNotifications = mysqlTable("gate_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  gateId: int("gateId").notNull(),  // references gates.id
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  channel: mysqlEnum("channel", ["websocket", "email", "push"]).notNull(),
+  notificationType: mysqlEnum("notificationType", [
+    "gate_ready", "review_recommended", "review_required",
+    "timeout_warning_1h", "timeout_warning_6h", "timeout_warning_23h",
+    "timeout_fired", "escalation"
+  ]).notNull(),
+  delivered: int("delivered").default(0).notNull(),  // MySQL boolean
+  deliveredAt: timestamp("deliveredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GateNotification = typeof gateNotifications.$inferSelect;
+export type InsertGateNotification = typeof gateNotifications.$inferInsert;
+
+// ─── Gate Audit Log (immutable append-only) ───────────────────────────────
+export const gateAuditLog = mysqlTable("gate_audit_log", {
+  id: int("id").autoincrement().primaryKey(),
+  gateId: int("gateId").notNull(),  // references gates.id
+  pipelineRunId: int("pipelineRunId").notNull(),
+  stageNumber: int("stageNumber").notNull(),
+  eventType: varchar("eventType", { length: 64 }).notNull(),  // created, confidence_scored, auto_advanced, creator_approved, etc.
+  oldState: json("oldState"),
+  newState: json("newState"),
+  actor: varchar("actor", { length: 128 }).notNull(),  // 'system', 'creator:{userId}', 'timeout'
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GateAuditLogEntry = typeof gateAuditLog.$inferSelect;
+export type InsertGateAuditLogEntry = typeof gateAuditLog.$inferInsert;
+
+// ─── Gate Configs (per-tier defaults and per-user overrides) ──────────────
+export const gateConfigs = mysqlTable("gate_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  scope: mysqlEnum("scope", ["tier_default", "user_override"]).notNull(),
+  scopeRef: varchar("scopeRef", { length: 128 }).notNull(),  // tier name or user_id
+  stageNumber: int("stageNumber").notNull(),
+  gateType: mysqlEnum("gateType", ["blocking", "advisory", "ambient"]).notNull(),
+  autoAdvanceThreshold: int("autoAdvanceThreshold").default(85),
+  reviewThreshold: int("reviewThreshold").default(60),
+  timeoutHours: int("timeoutHours").default(24),
+  timeoutAction: mysqlEnum("timeoutAction", ["auto_approve", "auto_reject", "auto_pause"]).default("auto_pause"),
+  isLocked: int("isLocked").default(0),  // 1 = cannot be overridden (Episode Publish)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GateConfig = typeof gateConfigs.$inferSelect;
+export type InsertGateConfig = typeof gateConfigs.$inferInsert;
 
 // ─── Pipeline Assets ───────────────────────────────────────────────────
 
@@ -281,6 +423,20 @@ export const pipelineAssets = mysqlTable("pipeline_assets", {
 
 export type PipelineAsset = typeof pipelineAssets.$inferSelect;
 export type InsertPipelineAsset = typeof pipelineAssets.$inferInsert;
+
+// ─── CLIP Embeddings (for confidence scoring) ─────────────────────────────
+export const clipEmbeddings = mysqlTable("clip_embeddings", {
+  id: int("id").autoincrement().primaryKey(),
+  referenceType: mysqlEnum("referenceType", ["character_sheet", "style_reference", "keyframe", "generated_output"]).notNull(),
+  referenceId: int("referenceId").notNull(),  // character_id, project_id, etc.
+  imageUrl: text("imageUrl").notNull(),
+  embedding: json("embedding").notNull(),  // float[] (512-dim CLIP vector)
+  modelVersion: varchar("modelVersion", { length: 64 }).default("clip-vit-base-patch32"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ClipEmbedding = typeof clipEmbeddings.$inferSelect;
+export type InsertClipEmbedding = typeof clipEmbeddings.$inferInsert;
 
 // ─── Votes ──────────────────────────────────────────────────────────────
 

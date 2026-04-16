@@ -26,6 +26,10 @@ import Leaderboard from "./pages/Leaderboard";
 import UserProfile from "./pages/UserProfile";
 import PipelineDashboard from "./pages/PipelineDashboard";
 import QAReview from "./pages/QAReview";
+import GateReview from "./pages/GateReview";
+import BatchGateReview from "./pages/BatchGateReview";
+import AdminGateAnalytics from "./pages/AdminGateAnalytics";
+import QualityInsights from "./pages/QualityInsights";
 import VoiceCloning from "./pages/VoiceCloning";
 import Pricing from "./pages/Pricing";
 import UsageDashboard from "./pages/UsageDashboard";
@@ -91,6 +95,8 @@ function Router() {
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/providers" component={ProviderAdmin} />
+        <Route path="/admin/gates" component={AdminGateAnalytics} />
+        <Route path="/studio/quality-insights" component={QualityInsights} />
         <Route path="/demo-recording" component={DemoRecording} />
 
         {/* Studio */}
@@ -148,6 +154,20 @@ function Router() {
           {(params) => (
             <StudioLayout>
               <QAReview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/pipeline/:runId/gate/:gateId">
+          {(params) => (
+            <StudioLayout>
+              <GateReview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/pipeline/:runId/batch-review">
+          {(params) => (
+            <StudioLayout>
+              <BatchGateReview />
             </StudioLayout>
           )}
         </Route>

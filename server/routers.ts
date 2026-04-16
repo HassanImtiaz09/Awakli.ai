@@ -70,6 +70,10 @@ import { transitionsRouter } from "./routers-transitions";
 import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./routers-public-content";
 import { uploadRouter } from "./routers-upload";
 import { providerAdminRouter } from "./routers-provider-admin";
+import {
+  gateReviewRouter, pipelineStageRouter, batchReviewRouter,
+  gateConfigRouter, qualityAnalyticsRouter, cascadeRewindRouter,
+} from "./routers-hitl";
 import { authorizeAndHold, commitTicket, releaseTicket, canAfford, canAffordBatch, getCreditCost, getAllCreditCosts, type GenerationAction } from "./credit-gateway";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
@@ -1971,6 +1975,14 @@ export const appRouter = router({
   publicContent: publicContentRouter,
   publish: publishRouter,
   creatorAnalytics: creatorAnalyticsRouter,
+
+  // Phase 7: HITL Gate Architecture (Prompt 17)
+  gateReview: gateReviewRouter,
+  pipelineStage: pipelineStageRouter,
+  batchReview: batchReviewRouter,
+  gateConfig: gateConfigRouter,
+  qualityAnalytics: qualityAnalyticsRouter,
+  cascadeRewind: cascadeRewindRouter,
 
   // Prompt 15: Credit Gateway (pre-flight affordability)
   providerAdmin: providerAdminRouter,

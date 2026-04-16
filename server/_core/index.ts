@@ -85,6 +85,10 @@ async function startServer() {
     res.send(`User-agent: *\nAllow: /\nDisallow: /studio/\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${origin}/sitemap.xml\n`);
   });
 
+  // HITL Gate SSE endpoint (before OAuth to avoid conflicts)
+  const { registerHitlSseRoutes } = await import("../hitl/sse-handler");
+  registerHitlSseRoutes(app);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
