@@ -48,6 +48,43 @@ async function startServer() {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     next();
   });
+  // SEO: sitemap.xml
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      const { getPublishedProjects } = await import("../db");
+      const projects = await getPublishedProjects({ limit: 500, offset: 0, sort: "newest" });
+      const origin = `${req.protocol}://${req.get("host")}`;
+      const now = new Date().toISOString().split("T")[0];
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      // Static pages
+      for (const path of ["/", "/discover", "/trending", "/leaderboard", "/pricing", "/create"]) {
+        xml += `  <url><loc>${origin}${path}</loc><changefreq>daily</changefreq><priority>${path === "/" ? "1.0" : "0.8"}</priority><lastmod>${now}</lastmod></url>\n`;
+      }
+      // Published projects
+      for (const p of projects) {
+        if (p.slug) {
+          xml += `  <url><loc>${origin}/watch/${p.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>\n`;
+        }
+      }
+      xml += `</urlset>`;
+      res.set("Content-Type", "application/xml");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    } catch (err) {
+      console.error("[Sitemap] Error generating sitemap:", err);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // SEO: robots.txt
+  app.get("/robots.txt", (req, res) => {
+    const origin = `${req.protocol}://${req.get("host")}`;
+    res.set("Content-Type", "text/plain");
+    res.send(`User-agent: *\nAllow: /\nDisallow: /studio/\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${origin}/sitemap.xml\n`);
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

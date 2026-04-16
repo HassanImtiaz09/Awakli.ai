@@ -1726,3 +1726,110 @@
 - [x] Stress test: 20 panels across 5 scenes (1 test)
 - [x] tRPC endpoint registration (2 tests)
 - [x] All 526 tests passing across 28 test files (1 flaky MiniMax network failure excluded)
+
+## Free-Viewing YouTube Model (Corrective Prompt 13)
+
+### Database Schema Changes
+- [x] Add publication_status enum (draft, private, published, archived) to projects table
+- [x] Add published_at timestamp to projects table
+- [x] Create content_views table (content_type, content_id, viewer_hash, session_id, viewed_at, duration_seconds, source)
+- [x] Generate and apply migration SQL (0021_free_viewing_model.sql)
+
+### Backend: Public Content Access (No Auth Required)
+- [x] Create publicContent tRPC router with public procedures (server/routers-public-content.ts)
+- [x] Public: discover (with category, sort, time filters, pagination)
+- [x] Public: trending (weighted score algorithm)
+- [x] Public: newReleases (chronological with pagination)
+- [x] Public: categories list with counts
+- [x] Public: categoryContent (filtered by genre)
+- [x] Public: getProject by slug (only published content, 404 for private, owner can see own)
+- [x] Public: creatorProfile (public profile + published content)
+- [x] Public: search (full-text search across published content)
+- [x] Public: recordView (anonymous view counting)
+- [x] Public: getViewCount (view count for any content)
+
+### Backend: Publish/Unpublish Workflow
+- [x] Publish mutation: requires Creator/Studio subscription, sets publication_status to published
+- [x] Unpublish mutation: sets publication_status to private
+- [x] checkEligibility endpoint: checks subscription tier for publish access
+- [x] Free users clicking publish see upgrade prompt (handled in frontend)
+
+### Backend: Anonymous View Counting
+- [x] Record view endpoint (public, no auth): accepts content_type, content_id, viewer_hash, source
+- [x] Fingerprint hash: IP + user-agent SHA-256 (no cookies, no personal data)
+- [x] Unique view deduplication (same viewer_hash + content_id within 24h)
+- [x] Increment denormalized viewCount on projects table
+- [x] View count formatting utility (1.0K, 45.0K, 1.0M)
+
+### Backend: Trending Algorithm
+- [x] Weighted score: views_7d * 1.0 + votes_7d * 3.0 + recency_bonus
+- [x] Compute on query (no Redis needed for MVP)
+
+### Frontend: Navigation for Anonymous Visitors
+- [x] Update TopNav: PUBLIC_NAV_LINKS (Discover, Trending, Road to Anime) for anonymous
+- [x] AUTH_NAV_LINKS adds Studio, My Projects for logged-in users
+- [x] TopNav right side for anonymous: Create (accent) | Sign In
+- [x] TopNav right side for logged in: Create (accent) | Notifications | Profile
+- [x] Trending added to More dropdown menu
+
+### Frontend: Content Pages (Free Access)
+- [x] WatchProject: accessible without auth for published content
+- [x] Vote buttons: visible to all, clicking as anonymous shows sign-up prompt
+- [x] Comment section: read free for all, posting requires account
+- [x] Follow/watchlist buttons: show sign-up prompt for anonymous
+
+### Frontend: Discover Page Restructure
+- [x] Category filter pills (horizontal scroll): All, Action, Romance, Sci-Fi, Fantasy, Horror, Comedy, Drama, Thriller, Slice of Life, Sports, Mecha, Isekai
+- [x] Sort options: Trending | Newest | Most Viewed | Most Liked | Rising Stars
+- [x] Responsive grid (5 cols desktop, 3 tablet, 2 mobile)
+- [x] Content cards: cover image, title, creator, genre badges, view count, vote count
+- [x] Infinite scroll with skeleton loading
+- [x] Hero section with featured content and stats
+- [x] Category showcase section with genre cards
+- [x] Search input for filtering (client-side)
+
+### Frontend: Browse Pages
+- [x] Trending page (/trending) with tabs: Trending, Most Viewed, Most Liked, New Releases
+- [x] Time period filter: Today | This Week | This Month | All Time
+- [x] Responsive grid with content cards
+- [x] Infinite scroll with load more
+
+### Frontend: Publish Upgrade Modal
+- [x] PublishUpgradeModal component with Creator ($19/mo) and Studio ($49/mo) tiers
+- [x] Feature comparison lists for each tier
+- [x] Primary CTA: Upgrade to Creator, Secondary: Upgrade to Studio, Ghost: Maybe Later
+- [x] Animated gradient border and tier highlights
+
+### Frontend: Soft Sign-Up Prompts
+- [x] SignUpBanner: persistent bottom banner with CTA
+- [x] FloatingSignUpPrompt: floating card with dismiss button
+- [x] Session tracking via sessionStorage (max 1 prompt per session)
+- [x] All prompts are dismissable, non-blocking
+- [x] Configurable trigger (page count threshold)
+
+### SEO Optimization
+- [x] SEOHead component: dynamic meta tags, OG tags, Twitter cards per page
+- [x] buildMangaJsonLd: JSON-LD CreativeWork for manga/project pages
+- [x] buildEpisodeJsonLd: JSON-LD VideoObject for episode pages
+- [x] Sitemap.xml generation: static pages + all published content URLs (cached 1hr)
+- [x] robots.txt: allow all, disallow /studio/ and /api/, include sitemap link
+- [x] Existing OG tags in index.html for default sharing
+
+### Creator Analytics Dashboard (client/src/pages/CreatorAnalytics.tsx)
+- [x] Overview: total views, votes, published content count with trend indicators
+- [x] Per-content breakdown table: title, views, votes, published date, status
+- [x] Views over time chart (last 30 days line chart)
+- [x] Top performing content section
+- [x] Route registered at /studio/analytics
+
+### Tests (server/free-viewing.test.ts — 33 tests)
+- [x] formatViewCount: 0, under 1K, thousands, millions, large numbers (5 tests)
+- [x] publicContentRouter: discover, trending, newReleases, categories, categoryContent, getProject, creatorProfile, recordView, search (10 tests)
+- [x] publishRouter: publish, unpublish, checkEligibility (4 tests)
+- [x] creatorAnalyticsRouter: overview, contentBreakdown (3 tests)
+- [x] appRouter integration: publicContent, publish, creatorAnalytics registered (3 tests)
+- [x] Schema: contentViews table, projects publication fields (2 tests)
+- [x] SEO: SEOHead, buildMangaJsonLd, buildEpisodeJsonLd (3 tests)
+- [x] Navigation: PUBLIC_NAV_LINKS with /trending (1 test)
+- [x] SignUpPrompt: SignUpBanner, FloatingSignUpPrompt, PublishUpgradeModal exports (1 test)
+- [x] All 559 tests passing across 29 test files

@@ -1,29 +1,38 @@
-import { motion } from "framer-motion";
-import { Sparkles, TrendingUp, Clock, Star, Wand2, ArrowRight, Flame, Trophy, Film } from "lucide-react";
-import React, { useRef } from "react";
-import { useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { Sparkles, TrendingUp, Clock, Wand2, ArrowRight, Flame, Trophy, Film, Eye, Heart, Search, SlidersHorizontal, ChevronDown, Loader2 } from "lucide-react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "wouter";
 import { AwakliCard } from "@/components/awakli/AwakliCard";
 import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
-import { AwakliPosterSkeleton } from "@/components/awakli/AwakliSkeleton";
 import { PlatformLayout } from "@/components/awakli/Layouts";
 import { trpc } from "@/lib/trpc";
 import { VoteProgressBar } from "@/components/awakli/VoteProgressBar";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { SignUpBanner, FloatingSignUpPrompt } from "@/components/awakli/SignUpPrompt";
+import { cn } from "@/lib/utils";
 
-// Mock featured content
-const FEATURED = [
-  { id: 1, title: "Void Chronicles", genre: "scifi", style: "Seinen", frames: 48, rating: 4.9 },
-  { id: 2, title: "Cherry Storm", genre: "action", style: "Shonen", frames: 32, rating: 4.7 },
-  { id: 3, title: "Lunar Petals", genre: "romance", style: "Shoujo", frames: 24, rating: 4.8 },
-  { id: 4, title: "Iron Colossus", genre: "fantasy", style: "Mecha", frames: 56, rating: 4.6 },
-  { id: 5, title: "Midnight Bloom", genre: "romance", style: "Shoujo", frames: 18, rating: 4.5 },
-  { id: 6, title: "Neon Samurai", genre: "action", style: "Seinen", frames: 40, rating: 4.8 },
+const GENRES = [
+  { value: "", label: "All Genres" },
+  { value: "action", label: "Action" },
+  { value: "romance", label: "Romance" },
+  { value: "fantasy", label: "Fantasy" },
+  { value: "scifi", label: "Sci-Fi" },
+  { value: "horror", label: "Horror" },
+  { value: "comedy", label: "Comedy" },
+  { value: "drama", label: "Drama" },
+  { value: "slice_of_life", label: "Slice of Life" },
+  { value: "mystery", label: "Mystery" },
+  { value: "thriller", label: "Thriller" },
 ];
 
-const GENRE_COLORS: Record<string, string> = {
-  scifi: "#00D4FF", action: "#FF4444", romance: "#FF69B4",
-  fantasy: "#9B59B6", horror: "#E74C3C", comedy: "#F39C12",
-};
+const SORT_OPTIONS = [
+  { value: "trending", label: "Trending" },
+  { value: "newest", label: "Newest" },
+  { value: "most_viewed", label: "Most Viewed" },
+  { value: "most_liked", label: "Most Liked" },
+];
+
+const PAGE_SIZE = 20;
 
 function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -40,6 +49,7 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
   );
 }
 
+// ─── Just Created Row (quick-create content) ────────────────────────────────
 function JustCreatedRow() {
   const { data: justCreated, isLoading } = trpc.quickCreate.justCreated.useQuery({ limit: 8 });
 
@@ -61,34 +71,7 @@ function JustCreatedRow() {
     );
   }
 
-  if (!justCreated || justCreated.length === 0) {
-    return (
-      <section>
-        <ScrollReveal>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Wand2 size={20} className="text-[#E94560]" />
-              <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
-            </div>
-            <Link href="/create">
-              <span className="text-sm text-[#E94560] hover:underline cursor-pointer flex items-center gap-1">
-                Create yours <ArrowRight size={14} />
-              </span>
-            </Link>
-          </div>
-        </ScrollReveal>
-        <div className="text-center py-12 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
-          <Wand2 size={32} className="text-white/20 mx-auto mb-3" />
-          <p className="text-white/40 mb-4">No manga created yet. Be the first!</p>
-          <Link href="/create">
-            <span className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-medium cursor-pointer">
-              <Wand2 size={16} /> Create Manga
-            </span>
-          </Link>
-        </div>
-      </section>
-    );
-  }
+  if (!justCreated || justCreated.length === 0) return null;
 
   return (
     <section>
@@ -137,6 +120,7 @@ function JustCreatedRow() {
   );
 }
 
+// ─── Rising Stars Row ───────────────────────────────────────────────────────
 function RisingStarsRow() {
   const { data: rising, isLoading } = trpc.discoverVoting.rising.useQuery({ limit: 8 });
 
@@ -216,6 +200,7 @@ function RisingStarsRow() {
   );
 }
 
+// ─── Becoming Anime Row ─────────────────────────────────────────────────────
 function BecomingAnimeRow() {
   const { data: becoming, isLoading } = trpc.discoverVoting.becomingAnime.useQuery({ limit: 6 });
 
@@ -264,7 +249,7 @@ function BecomingAnimeRow() {
         {becoming.map((item, i) => (
           <ScrollReveal key={item.id} delay={i * 0.08}>
             <Link href={`/watch/${item.slug}`}>
-              <AwakliCard variant="elevated" className="p-4 flex gap-4 cursor-pointer group border-cyan-500/20">
+              <AwakliCard variant="elevated" glow="cyan" className="p-4 flex gap-4 cursor-pointer group">
                 <div className="w-20 h-28 rounded-lg overflow-hidden shrink-0 relative">
                   <img
                     src={item.coverImageUrl || `https://picsum.photos/seed/${item.id}/120/170`}
@@ -307,7 +292,230 @@ function BecomingAnimeRow() {
   );
 }
 
+// ─── Browse All Section with filters + infinite scroll ──────────────────────
+function BrowseAllSection() {
+  const [genre, setGenre] = useState("");
+  const [sort, setSort] = useState<"trending" | "newest" | "most_viewed" | "most_liked" | "rising">("trending");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [items, setItems] = useState<any[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const loadMoreInView = useInView(loadMoreRef, { margin: "200px" });
+
+  const stableGenre = useMemo(() => genre, [genre]);
+  const stableSort = useMemo(() => sort, [sort]);
+  const stableSearch = useMemo(() => searchQuery, [searchQuery]);
+
+  const { data, isLoading, isFetching } = trpc.publicContent.discover.useQuery(
+    {
+      sort: stableSort,
+      genre: stableGenre || undefined,
+      limit: PAGE_SIZE,
+      offset,
+    },
+    { placeholderData: (prev) => prev }
+  );
+
+  // Reset when filters change
+  useEffect(() => {
+    setItems([]);
+    setOffset(0);
+    setHasMore(true);
+  }, [stableGenre, stableSort, stableSearch]);
+
+  // Append new items
+  useEffect(() => {
+    if (data?.items) {
+      if (offset === 0) {
+        setItems(data.items);
+      } else {
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const newItems = data.items.filter((item: any) => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+      }
+      setHasMore(data.items.length === PAGE_SIZE);
+    }
+  }, [data, offset]);
+
+  // Infinite scroll trigger
+  useEffect(() => {
+    if (loadMoreInView && hasMore && !isFetching) {
+      setOffset((prev) => prev + PAGE_SIZE);
+    }
+  }, [loadMoreInView, hasMore, isFetching]);
+
+  const handleGenreChange = useCallback((g: string) => {
+    setGenre(g);
+  }, []);
+
+  const handleSortChange = useCallback((s: "trending" | "newest" | "most_viewed" | "most_liked" | "rising") => {
+    setSort(s);
+  }, []);
+
+  return (
+    <section>
+      <ScrollReveal>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Search size={20} className="text-[#9B59B6]" />
+            <h2 className="text-h3 text-[#F0F0F5]">Browse All</h2>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        {/* Genre chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {GENRES.map((g) => (
+            <button
+              key={g.value}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all",
+                genre === g.value
+                  ? "bg-[#E94560]/20 text-[#E94560] border border-[#E94560]/30"
+                  : "text-[#9494B8] hover:text-[#F0F0F5] bg-[#1C1C35]/50 border border-white/5 hover:border-white/10"
+              )}
+              onClick={() => handleGenreChange(g.value)}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort dropdown */}
+        <div className="relative ml-auto">
+          <select
+            value={sort}
+            onChange={(e) => handleSortChange(e.target.value as typeof sort)}
+            className="appearance-none bg-[#1C1C35] border border-white/10 rounded-lg px-3 py-1.5 pr-8 text-xs text-[#F0F0F5] focus:outline-none focus:border-[#E94560]/30"
+          >
+            {SORT_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#5C5C7A] pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-6">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5C5C7A]" />
+        <input
+          type="text"
+          placeholder="Search manga & anime..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-[#1C1C35]/50 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#F0F0F5] placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#E94560]/20"
+        />
+      </div>
+
+      {/* Results grid */}
+      {isLoading && items.length === 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="animate-pulse">
+              <div className="aspect-[3/4] rounded-xl bg-[#1C1C35]" />
+              <div className="mt-2 h-4 bg-[#1C1C35] rounded w-3/4" />
+              <div className="mt-1 h-3 bg-[#1C1C35] rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+          <Search size={32} className="text-white/20 mx-auto mb-3" />
+          <p className="text-white/40 mb-2">No content found matching your filters.</p>
+          <button
+            className="text-sm text-[#E94560] hover:underline"
+            onClick={() => { setGenre(""); setSort("trending"); setSearchQuery(""); }}
+          >
+            Clear all filters
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {items.map((item: any) => (
+              <Link key={item.id} href={`/watch/${item.slug}`}>
+                <motion.div
+                  className="group cursor-pointer"
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#E94560]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#E94560]/10">
+                    {item.coverImageUrl ? (
+                      <img
+                        src={item.coverImageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#5C5C7A]">
+                        <Sparkles size={32} />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="flex items-center gap-1">
+                        <Eye size={12} />
+                        {item.viewCount ?? 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart size={12} />
+                        {item.voteScore ?? 0}
+                      </span>
+                    </div>
+                    {item.animeStatus === "completed" && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#E94560]/90 text-[10px] font-bold text-white uppercase tracking-wide">
+                        Anime
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 px-0.5">
+                    <h3 className="text-sm font-medium text-[#F0F0F5] line-clamp-1 group-hover:text-[#E94560] transition-colors">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-[#5C5C7A]">{item.userName ?? "Anonymous"}</span>
+                      {item.genre && (
+                        <>
+                          <span className="text-[#5C5C7A]">·</span>
+                          <span className="text-xs text-[#5C5C7A]">{item.genre.split(",")[0]}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Infinite scroll trigger */}
+          <div ref={loadMoreRef} className="py-8 flex justify-center">
+            {isFetching && (
+              <div className="flex items-center gap-2 text-[#5C5C7A] text-sm">
+                <Loader2 size={16} className="animate-spin" />
+                Loading more...
+              </div>
+            )}
+            {!hasMore && items.length > 0 && (
+              <p className="text-[#5C5C7A] text-sm">You've reached the end</p>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+// ─── Main Discover Page ─────────────────────────────────────────────────────
 export default function Discover() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <PlatformLayout>
       <div className="container py-12 space-y-16">
@@ -319,52 +527,27 @@ export default function Discover() {
               style={{ background: "radial-gradient(ellipse at 30% 50%, rgba(233,69,96,0.3) 0%, transparent 60%)" }} />
             <div className="relative z-10 max-w-2xl">
               <AwakliiBadge variant="pink" size="md" className="mb-4">
-                <Sparkles size={12} className="mr-1" /> Featured This Week
+                <Sparkles size={12} className="mr-1" /> Discover
               </AwakliiBadge>
-              <h1 className="text-h1 text-[#F0F0F5] mb-3">Void Chronicles</h1>
+              <h1 className="text-h1 text-[#F0F0F5] mb-3">Explore Manga & Anime</h1>
               <p className="text-body-lg text-[#9494B8] mb-6">
-                A sci-fi epic transformed from manga to stunning anime frames. 48 panels, Seinen style.
+                Watch AI-generated anime for free. Vote for your favorites and help decide what gets animated next.
               </p>
               <div className="flex items-center gap-3">
-                <AwakliiBadge variant="scifi">Sci-Fi</AwakliiBadge>
-                <AwakliiBadge variant="default">Seinen</AwakliiBadge>
-                <span className="text-sm text-[#5C5C7A]">48 frames</span>
+                <Link href="/trending">
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-medium cursor-pointer text-sm hover:shadow-lg hover:shadow-[#E94560]/20 transition-shadow">
+                    <Flame size={16} /> Trending Now
+                  </span>
+                </Link>
+                <Link href="/create">
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10 text-[#F0F0F5] font-medium cursor-pointer text-sm hover:bg-white/5 transition-colors">
+                    <Wand2 size={16} /> Create Yours
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
         </ScrollReveal>
-
-        {/* Trending */}
-        <section>
-          <ScrollReveal>
-            <div className="flex items-center gap-2 mb-6">
-              <TrendingUp size={20} className="text-[#E94560]" />
-              <h2 className="text-h3 text-[#F0F0F5]">Trending Now</h2>
-            </div>
-          </ScrollReveal>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {FEATURED.map((item, i) => (
-              <ScrollReveal key={item.id} delay={i * 0.06}>
-                <AwakliCard
-                  variant="poster"
-                  glow="pink"
-                  imageUrl={`https://picsum.photos/seed/${item.id + 10}/300/450`}
-                  imageAlt={item.title}
-                  className="cursor-pointer"
-                  style={{ aspectRatio: "2/3" }}
-                >
-                  <h3 className="text-sm font-semibold text-[#F0F0F5] truncate">{item.title}</h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <AwakliiBadge variant={item.genre as any} size="sm">{item.genre}</AwakliiBadge>
-                    <span className="text-xs text-[#5C5C7A]">
-                      <Star size={10} className="inline mr-0.5 text-[#FFB800]" />{item.rating}
-                    </span>
-                  </div>
-                </AwakliCard>
-              </ScrollReveal>
-            ))}
-          </div>
-        </section>
 
         {/* Just Created — real data from quick create */}
         <JustCreatedRow />
@@ -375,44 +558,19 @@ export default function Discover() {
         {/* Becoming Anime — in production */}
         <BecomingAnimeRow />
 
-        {/* Recently Added */}
-        <section>
+        {/* Sign-up prompt for anonymous users */}
+        {!isAuthenticated && (
           <ScrollReveal>
-            <div className="flex items-center gap-2 mb-6">
-              <Clock size={20} className="text-[#00D4FF]" />
-              <h2 className="text-h3 text-[#F0F0F5]">Recently Added</h2>
-            </div>
+            <SignUpBanner action="vote" />
           </ScrollReveal>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURED.slice().reverse().map((item, i) => (
-              <ScrollReveal key={item.id} delay={i * 0.07}>
-                <AwakliCard variant="elevated" glow="cyan" className="p-4 flex gap-4 cursor-pointer">
-                  <div className="w-16 h-20 rounded-lg overflow-hidden shrink-0">
-                    <img
-                      src={`https://picsum.photos/seed/${item.id + 20}/100/140`}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-[#F0F0F5] truncate">{item.title}</h3>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <AwakliiBadge variant={item.genre as any} size="sm">{item.genre}</AwakliiBadge>
-                      <span className="text-xs text-[#5C5C7A]">{item.frames} frames</span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-2 text-xs text-[#FFB800]">
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <Star key={j} size={10} fill={j < Math.floor(item.rating) ? "#FFB800" : "none"} />
-                      ))}
-                      <span className="text-[#5C5C7A] ml-1">{item.rating}</span>
-                    </div>
-                  </div>
-                </AwakliCard>
-              </ScrollReveal>
-            ))}
-          </div>
-        </section>
+        )}
+
+        {/* Browse All with filters + infinite scroll */}
+        <BrowseAllSection />
       </div>
+
+      {/* Floating sign-up prompt for anonymous visitors */}
+      {!isAuthenticated && <FloatingSignUpPrompt />}
     </PlatformLayout>
   );
 }

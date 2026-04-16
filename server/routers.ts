@@ -67,6 +67,7 @@ import { subjectLibraryRouter } from "./routers-subjects";
 import { harnessRouter, productionBibleRouter } from "./routers-harness";
 import { modelRoutingRouter } from "./routers-model-routing";
 import { transitionsRouter } from "./routers-transitions";
+import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./routers-public-content";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1961,6 +1962,11 @@ export const appRouter = router({
   // Phase 19: Smart Kling Model Router
   modelRouting: modelRoutingRouter,
   transitions: transitionsRouter,
+
+  // Phase 20: Free-Viewing YouTube Model
+  publicContent: publicContentRouter,
+  publish: publishRouter,
+  creatorAnalytics: creatorAnalyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;

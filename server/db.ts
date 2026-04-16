@@ -948,3 +948,267 @@ export async function getRoutingDataByRun(pipelineRunId: number) {
     ))
     .orderBy(pipelineAssets.createdAt);
 }
+
+// ─── Content Views & Free-Viewing Model ─────────────────────────────────────
+import { contentViews, InsertContentView, subscriptions } from "../drizzle/schema";
+import { gte } from "drizzle-orm";
+
+export async function recordView(data: InsertContentView) {
+  const db = await getDb();
+  if (!db) return null;
+  // Deduplicate: same viewer_hash + content_id within 24h
+  const existing = await db.select({ id: contentViews.id }).from(contentViews)
+    .where(and(
+      eq(contentViews.viewerHash, data.viewerHash),
+      eq(contentViews.contentId, data.contentId),
+      eq(contentViews.contentType, data.contentType),
+      gte(contentViews.viewedAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
+    ))
+    .limit(1);
+  if (existing.length > 0) return null; // Already counted
+  
+  const [result] = await db.insert(contentViews).values(data);
+  // Increment denormalized viewCount on projects table
+  if (data.projectId) {
+    await db.update(projects)
+      .set({ viewCount: sql`${projects.viewCount} + 1` })
+      .where(eq(projects.id, data.projectId));
+  }
+  return result.insertId;
+}
+
+export async function getViewCount(contentType: string, contentId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(contentViews)
+    .where(and(
+      eq(contentViews.contentType, contentType as any),
+      eq(contentViews.contentId, contentId)
+    ));
+  return result[0]?.cnt ?? 0;
+}
+
+export async function getViewsByProject(projectId: number, days?: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const conditions = [eq(contentViews.projectId, projectId)];
+  if (days) {
+    conditions.push(gte(contentViews.viewedAt, new Date(Date.now() - days * 24 * 60 * 60 * 1000)));
+  }
+  const result = await db.select({ cnt: count() }).from(contentViews)
+    .where(and(...conditions));
+  return result[0]?.cnt ?? 0;
+}
+
+// ─── Publish / Unpublish ────────────────────────────────────────────────────
+
+export async function publishProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.update(projects)
+    .set({
+      publicationStatus: "published",
+      publishedAt: new Date(),
+      visibility: "public",
+    })
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+  return true;
+}
+
+export async function unpublishProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.update(projects)
+    .set({
+      publicationStatus: "private",
+      visibility: "private",
+    })
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+  return true;
+}
+
+export async function getUserSubscriptionTier(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) return "free";
+  const result = await db.select({ tier: subscriptions.tier })
+    .from(subscriptions)
+    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active")))
+    .limit(1);
+  return result[0]?.tier ?? "free";
+}
+
+// ─── Trending & Discovery ───────────────────────────────────────────────────
+
+export async function getPublishedProjects(opts: {
+  limit?: number;
+  offset?: number;
+  genre?: string;
+  sort?: "trending" | "newest" | "most_viewed" | "most_liked" | "rising";
+  contentType?: "all" | "manga" | "anime";
+  timePeriod?: "today" | "week" | "month" | "all";
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  const { limit: lim = 20, offset = 0, genre, sort = "trending", contentType = "all" } = opts;
+  
+  const conditions: any[] = [
+    or(
+      eq(projects.publicationStatus, "published"),
+      eq(projects.visibility, "public")
+    )
+  ];
+  if (genre) conditions.push(like(projects.genre, `%${genre}%`));
+  if (contentType === "anime") conditions.push(eq(projects.animeStatus, "completed"));
+  
+  let query = db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    totalVotes: projects.totalVotes,
+    animeStyle: projects.animeStyle,
+    animeStatus: projects.animeStatus,
+    createdAt: projects.createdAt,
+    publishedAt: projects.publishedAt,
+    userId: projects.userId,
+    userName: users.name,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(and(...conditions))
+    .limit(lim)
+    .offset(offset);
+
+  if (sort === "newest") query = query.orderBy(desc(projects.publishedAt), desc(projects.createdAt)) as any;
+  else if (sort === "most_viewed") query = query.orderBy(desc(projects.viewCount)) as any;
+  else if (sort === "most_liked") query = query.orderBy(desc(projects.voteScore)) as any;
+  else if (sort === "rising") query = query.orderBy(desc(projects.voteScore), desc(projects.createdAt)) as any;
+  else query = query.orderBy(desc(projects.voteScore), desc(projects.viewCount)) as any; // trending
+
+  return query;
+}
+
+export async function getTrendingProjects(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  // Weighted trending: voteScore * 3 + viewCount * 1 + recency bonus
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    totalVotes: projects.totalVotes,
+    animeStyle: projects.animeStyle,
+    animeStatus: projects.animeStatus,
+    createdAt: projects.createdAt,
+    publishedAt: projects.publishedAt,
+    userId: projects.userId,
+    userName: users.name,
+    trendingScore: sql<number>`(${projects.voteScore} * 3 + ${projects.viewCount} + DATEDIFF(NOW(), ${projects.createdAt}) * -0.5)`.as("trendingScore"),
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(or(
+      eq(projects.publicationStatus, "published"),
+      eq(projects.visibility, "public")
+    ))
+    .orderBy(sql`trendingScore DESC`)
+    .limit(limit);
+}
+
+export async function getNewReleases(limit = 20, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    description: projects.description,
+    genre: projects.genre,
+    coverImageUrl: projects.coverImageUrl,
+    slug: projects.slug,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    totalVotes: projects.totalVotes,
+    animeStyle: projects.animeStyle,
+    animeStatus: projects.animeStatus,
+    createdAt: projects.createdAt,
+    publishedAt: projects.publishedAt,
+    userId: projects.userId,
+    userName: users.name,
+  }).from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(or(
+      eq(projects.publicationStatus, "published"),
+      eq(projects.visibility, "public")
+    ))
+    .orderBy(desc(projects.publishedAt), desc(projects.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select({
+    genre: projects.genre,
+    cnt: count(),
+  }).from(projects)
+    .where(or(
+      eq(projects.publicationStatus, "published"),
+      eq(projects.visibility, "public")
+    ))
+    .groupBy(projects.genre)
+    .orderBy(sql`cnt DESC`);
+  return result.filter(r => r.genre);
+}
+
+export async function getCreatorAnalytics(userId: number) {
+  const db = await getDb();
+  if (!db) return { totalViews: 0, totalVotes: 0, totalProjects: 0, publishedProjects: 0 };
+  
+  const projectStats = await db.select({
+    totalViews: sql<number>`COALESCE(SUM(${projects.viewCount}), 0)`,
+    totalVotes: sql<number>`COALESCE(SUM(${projects.voteScore}), 0)`,
+    totalProjects: count(),
+    publishedProjects: sql<number>`SUM(CASE WHEN ${projects.publicationStatus} = 'published' OR ${projects.visibility} = 'public' THEN 1 ELSE 0 END)`,
+  }).from(projects)
+    .where(eq(projects.userId, userId));
+  
+  return {
+    totalViews: Number(projectStats[0]?.totalViews ?? 0),
+    totalVotes: Number(projectStats[0]?.totalVotes ?? 0),
+    totalProjects: Number(projectStats[0]?.totalProjects ?? 0),
+    publishedProjects: Number(projectStats[0]?.publishedProjects ?? 0),
+  };
+}
+
+export async function getCreatorContentBreakdown(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: projects.id,
+    title: projects.title,
+    slug: projects.slug,
+    coverImageUrl: projects.coverImageUrl,
+    viewCount: projects.viewCount,
+    voteScore: projects.voteScore,
+    totalVotes: projects.totalVotes,
+    publicationStatus: projects.publicationStatus,
+    publishedAt: projects.publishedAt,
+    createdAt: projects.createdAt,
+  }).from(projects)
+    .where(eq(projects.userId, userId))
+    .orderBy(desc(projects.viewCount));
+}
+
+export function formatViewCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toString();
+}

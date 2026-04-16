@@ -64,12 +64,30 @@ export const projects = mysqlTable("projects", {
   chapterLengthPreset: mysqlEnum("chapter_length_preset", ["short", "standard", "long"]).default("standard"),
   pacingStyle: mysqlEnum("pacing_style", ["action_heavy", "dialogue_heavy", "balanced"]).default("balanced"),
   chapterEndingStyle: mysqlEnum("chapter_ending_style", ["cliffhanger", "resolution", "serialized"]).default("cliffhanger"),
+  publicationStatus: mysqlEnum("publication_status", ["draft", "private", "published", "archived"]).default("draft").notNull(),
+  publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = typeof projects.$inferInsert;
+
+// ─── Content Views (anonymous + authenticated) ──────────────────────────────
+export const contentViews = mysqlTable("content_views", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  contentType: mysqlEnum("content_type", ["manga_chapter", "anime_episode", "project"]).notNull(),
+  contentId: int("content_id").notNull(),
+  projectId: int("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  viewerHash: varchar("viewer_hash", { length: 64 }).notNull(),
+  sessionId: varchar("session_id", { length: 64 }),
+  userId: int("user_id").references(() => users.id, { onDelete: "set null" }),
+  durationSeconds: int("duration_seconds"),
+  source: mysqlEnum("source", ["direct", "search", "social", "internal", "embed"]).default("direct"),
+  viewedAt: timestamp("viewed_at").defaultNow().notNull(),
+});
+export type ContentView = typeof contentViews.$inferSelect;
+export type InsertContentView = typeof contentViews.$inferInsert;
 
 // ─── Manga Uploads ────────────────────────────────────────────────────────
 

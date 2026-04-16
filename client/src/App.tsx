@@ -39,6 +39,8 @@ import VocalRecordingStudio from "./pages/VocalRecordingStudio";
 import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
 import DemoRecording from "./pages/DemoRecording";
+import Trending from "./pages/Trending";
+import CreatorAnalytics from "./pages/CreatorAnalytics";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -64,6 +66,7 @@ function Router() {
         <Route path="/explore" component={Explore} />
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/pricing" component={Pricing} />
+        <Route path="/trending" component={Trending} />
         <Route path="/onboarding" component={Onboarding} />
 
         {/* Public creation flow */}
@@ -81,6 +84,7 @@ function Router() {
         {/* Account / billing */}
         <Route path="/usage" component={UsageDashboard} />
         <Route path="/earnings" component={CreatorEarnings} />
+        <Route path="/analytics" component={CreatorAnalytics} />
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />

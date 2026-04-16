@@ -10,9 +10,13 @@ import { cn } from "@/lib/utils";
 import SearchOverlay from "./SearchOverlay";
 import { NotificationBell } from "./NotificationCenter";
 
-const NAV_LINKS = [
+const PUBLIC_NAV_LINKS = [
   { href: "/discover", label: "Discover" },
+  { href: "/trending", label: "Trending" },
   { href: "/leaderboard", label: "Leaderboard" },
+];
+
+const AUTH_NAV_LINKS = [
   { href: "/studio", label: "Studio" },
 ];
 
@@ -106,7 +110,12 @@ export function TopNav() {
               </motion.span>
             </Link>
 
-            {NAV_LINKS.map((link) => (
+            {PUBLIC_NAV_LINKS.map((link) => (
+              <NavLink key={link.href} href={link.href} active={location.startsWith(link.href)}>
+                {link.label}
+              </NavLink>
+            ))}
+            {isAuthenticated && AUTH_NAV_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} active={location.startsWith(link.href)}>
                 {link.label}
               </NavLink>
@@ -244,7 +253,19 @@ export function TopNav() {
                     Create Manga
                   </span>
                 </Link>
-                {NAV_LINKS.map((link) => (
+                {PUBLIC_NAV_LINKS.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    <span className={cn(
+                      "flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      location.startsWith(link.href)
+                        ? "bg-[#1C1C35] text-[#F0F0F5] font-medium"
+                        : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]"
+                    )}>
+                      {link.label}
+                    </span>
+                  </Link>
+                ))}
+                {isAuthenticated && AUTH_NAV_LINKS.map((link) => (
                   <Link key={link.href} href={link.href}>
                     <span className={cn(
                       "flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors",
