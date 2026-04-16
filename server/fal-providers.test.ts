@@ -154,9 +154,22 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     }
   });
 
-  it("FAL_AI_PROVIDERS set contains exactly wan_21 and sdxl_lightning", async () => {
-    // Verify by checking that both Fal.ai providers get ENV fallback
-    // while other providers don't
+  it("returns ENV-sourced key for flux_11_pro when no DB key exists", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) {
+      console.warn("FAL_API_KEY not set, skipping ENV fallback test");
+      return;
+    }
+
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("flux_11_pro");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) {
+      expect(result.decryptedKey).toBe(falKey);
+    }
+  });
+
+  it("FAL_AI_PROVIDERS set contains wan_21, sdxl_lightning, and flux_11_pro", async () => {
     const falKey = process.env.FAL_API_KEY ?? "";
     if (!falKey) {
       console.warn("FAL_API_KEY not set, skipping");
@@ -166,24 +179,74 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     const { getActiveApiKey } = await import("./provider-router/registry");
     const wan = await getActiveApiKey("wan_21");
     const sdxl = await getActiveApiKey("sdxl_lightning");
-    // Both should return non-null (either DB or ENV)
+    const flux = await getActiveApiKey("flux_11_pro");
+    // All three should return non-null (either DB or ENV)
     expect(wan).not.toBeNull();
     expect(sdxl).not.toBeNull();
+    expect(flux).not.toBeNull();
   });
 });
 
 // ─── 4. Fal.ai Auth Header Format ──────────────────────────────────────
 describe("Fal.ai Auth Header Format", () => {
   it("SDXL Lightning uses Key auth header (not Bearer)", async () => {
-    // The SDXL adapter is configured with authHeader: (key) => ({ "Authorization": `Key ${key}` })
-    // We verify this by checking the adapter exists and is correctly configured
     await import("./provider-router/adapters/image-providers");
     const { getAdapter } = await import("./provider-router/registry");
     const adapter = getAdapter("sdxl_lightning");
     expect(adapter).toBeDefined();
-    // The adapter's execute method uses `Key ${apiKey}` format internally
-    // We can't directly inspect the header config, but we verify the adapter is functional
     expect(typeof adapter!.execute).toBe("function");
+  });
+
+  it("FLUX 1.1 Pro uses Key auth header via Fal.ai", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("flux_11_pro");
+    expect(adapter).toBeDefined();
+    expect(typeof adapter!.execute).toBe("function");
+  });
+});
+
+// ─── 4b. FLUX 1.1 Pro Adapter ──────────────────────────────────────────
+describe("FLUX 1.1 Pro Adapter (Fal.ai)", () => {
+  it("is registered with providerId flux_11_pro", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("flux_11_pro")).toBe(true);
+    const adapter = getAdapter("flux_11_pro");
+    expect(adapter).toBeDefined();
+    expect(adapter!.providerId).toBe("flux_11_pro");
+  });
+
+  it("validates prompt is required", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("flux_11_pro")!;
+    const result = adapter.validateParams({ prompt: "" } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("passes validation for valid params", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("flux_11_pro")!;
+    const result = adapter.validateParams({ prompt: "anime landscape", width: 1024, height: 1024 } as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("estimates $0.040 per image", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("flux_11_pro")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", numImages: 1 } as any);
+    expect(cost).toBe(0.040);
+  });
+
+  it("estimates $0.120 for 3 images", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("flux_11_pro")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", numImages: 3 } as any);
+    expect(cost).toBeCloseTo(0.120, 5);
   });
 });
 

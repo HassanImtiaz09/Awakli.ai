@@ -89,28 +89,29 @@ function createImageAdapter(config: {
   };
 }
 
-// ─── FLUX 1.1 Pro (via BFL API) ─────────────────────────────────────────
+// ─── FLUX 1.1 Pro (via Fal.ai) ──────────────────────────────────────────
 registerAdapter(createImageAdapter({
   providerId: "flux_11_pro",
   modelName: "flux-pro-1.1",
-  baseUrl: "https://api.bfl.ml/v1",
+  baseUrl: "https://fal.run",
   costPerImage: 0.040,
   maxWidth: 2048,
   maxHeight: 2048,
-  submitEndpoint: "/flux-pro-1.1",
-  isSync: false,
-  pollEndpoint: "/get_result?id={taskId}",
+  submitEndpoint: "/fal-ai/flux-pro/v1.1",
+  isSync: true,
   buildBody: (i) => ({
-    prompt: i.prompt, width: i.width ?? 1024, height: i.height ?? 1024,
-    guidance: i.guidanceScale ?? 3.5, seed: i.seed,
+    prompt: i.prompt,
+    image_size: { width: i.width ?? 1024, height: i.height ?? 1024 },
+    num_images: i.numImages ?? 1,
+    guidance_scale: i.guidanceScale ?? 3.5,
+    seed: i.seed,
+    sync_mode: true,
   }),
-  extractImageUrl: () => null,
-  isComplete: (t) => (t as Record<string, unknown>).status === "Ready",
-  extractPollResult: (t) => {
-    const result = (t as Record<string, unknown>).result as Record<string, unknown> | undefined;
-    return result?.sample ? String(result.sample) : null;
+  extractImageUrl: (r) => {
+    const images = (r as Record<string, unknown>).images as Array<Record<string, unknown>> | undefined;
+    return images?.[0]?.url ? String(images[0].url) : null;
   },
-  authHeader: (key) => ({ "x-key": key }),
+  authHeader: (key) => ({ "Authorization": `Key ${key}` }),
 }));
 
 // ─── SDXL Lightning (via Fal.ai) ────────────────────────────────────────

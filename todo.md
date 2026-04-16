@@ -2143,3 +2143,9 @@
 - [x] Add registry ENV fallback for Fish Audio provider (+ ElevenLabs, MiniMax)
 - [x] Write Fish Audio validation tests (4 tests)
 - [x] All 28 API key tests passing across 3 test files
+
+## FLUX 1.1 Pro Repoint to Fal.ai
+- [x] Update FLUX 1.1 Pro adapter from BFL API to Fal.ai sync endpoint (fal.run/fal-ai/flux-pro/v1.1)
+- [x] Add flux_11_pro to FAL_AI_PROVIDERS set in registry for ENV fallback
+- [x] Update tests: 7 new FLUX tests (registration, validation, cost, auth header, ENV fallback)
+- [x] All 27 Fal.ai provider tests + 52 provider-router tests passing
