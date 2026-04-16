@@ -118,7 +118,7 @@ export async function getProviderHealth(providerId: string): Promise<{
  * Providers that are hosted on Fal.ai and share the FAL_API_KEY env variable.
  * When no DB-stored key exists, these providers fall back to the ENV key.
  */
-const FAL_AI_PROVIDERS = new Set(["wan_21", "sdxl_lightning", "flux_11_pro"]);
+const FAL_AI_PROVIDERS = new Set(["wan_21", "sdxl_lightning", "flux_11_pro", "pika_22"]);
 
 /**
  * Get an active, non-cap-exceeded API key for a provider.

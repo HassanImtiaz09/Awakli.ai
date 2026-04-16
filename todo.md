@@ -2149,3 +2149,10 @@
 - [x] Add flux_11_pro to FAL_AI_PROVIDERS set in registry for ENV fallback
 - [x] Update tests: 7 new FLUX tests (registration, validation, cost, auth header, ENV fallback)
 - [x] All 27 Fal.ai provider tests + 52 provider-router tests passing
+
+## Pika 2.2 Repoint to Fal.ai
+- [x] Research Fal.ai Pika 2.2 API schema (image_url + prompt required, duration enum "5"|"10", output: video.url)
+- [x] Update Pika 2.2 adapter from Pika native API to Fal.ai queue endpoint (fal-ai/pika/v2.2/image-to-video)
+- [x] Add pika_22 to FAL_AI_PROVIDERS set in registry for ENV fallback
+- [x] Add Pika 2.2 Fal.ai tests (9 new tests: registration, validation, cost, auth header, ENV fallback)
+- [x] All 36 Fal.ai provider tests + 52 provider-router tests passing

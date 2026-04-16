@@ -169,7 +169,22 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     }
   });
 
-  it("FAL_AI_PROVIDERS set contains wan_21, sdxl_lightning, and flux_11_pro", async () => {
+  it("returns ENV-sourced key for pika_22 when no DB key exists", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) {
+      console.warn("FAL_API_KEY not set, skipping ENV fallback test");
+      return;
+    }
+
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("pika_22");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) {
+      expect(result.decryptedKey).toBe(falKey);
+    }
+  });
+
+  it("FAL_AI_PROVIDERS set contains wan_21, sdxl_lightning, flux_11_pro, and pika_22", async () => {
     const falKey = process.env.FAL_API_KEY ?? "";
     if (!falKey) {
       console.warn("FAL_API_KEY not set, skipping");
@@ -180,10 +195,11 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     const wan = await getActiveApiKey("wan_21");
     const sdxl = await getActiveApiKey("sdxl_lightning");
     const flux = await getActiveApiKey("flux_11_pro");
-    // All three should return non-null (either DB or ENV)
+    const pika = await getActiveApiKey("pika_22");
     expect(wan).not.toBeNull();
     expect(sdxl).not.toBeNull();
     expect(flux).not.toBeNull();
+    expect(pika).not.toBeNull();
   });
 });
 
@@ -204,9 +220,79 @@ describe("Fal.ai Auth Header Format", () => {
     expect(adapter).toBeDefined();
     expect(typeof adapter!.execute).toBe("function");
   });
+
+  it("Pika 2.2 uses Key auth header via Fal.ai", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22");
+    expect(adapter).toBeDefined();
+    expect(typeof adapter!.execute).toBe("function");
+  });
 });
 
-// ─── 4b. FLUX 1.1 Pro Adapter ──────────────────────────────────────────
+// ─── 4c. Pika 2.2 Adapter ──────────────────────────────────────────────
+describe("Pika 2.2 Adapter (Fal.ai)", () => {
+  it("is registered with providerId pika_22", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("pika_22")).toBe(true);
+    const adapter = getAdapter("pika_22");
+    expect(adapter).toBeDefined();
+    expect(adapter!.providerId).toBe("pika_22");
+  });
+
+  it("validates prompt and image_url are required", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const result = adapter.validateParams({ prompt: "" } as any);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toBeDefined();
+  });
+
+  it("validates image_url is required", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const result = adapter.validateParams({ prompt: "test" } as any);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("image_url required for Pika 2.2");
+  });
+
+  it("passes validation with prompt and imageUrl", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const result = adapter.validateParams({ prompt: "anime scene", imageUrl: "https://example.com/img.png" } as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejects duration > 10s", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const result = adapter.validateParams({ prompt: "test", imageUrl: "https://example.com/img.png", durationSeconds: 15 } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("estimates $0.20 for 5s video", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", imageUrl: "https://example.com/img.png", durationSeconds: 5 } as any);
+    expect(cost).toBe(0.20);
+  });
+
+  it("estimates $0.30 for 10s video", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("pika_22")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", imageUrl: "https://example.com/img.png", durationSeconds: 10 } as any);
+    expect(cost).toBe(0.30);
+  });
+});
+
+// ─── 4b. FLUX 1.1 Pro Adapter ──────────────────────────────────────────────
 describe("FLUX 1.1 Pro Adapter (Fal.ai)", () => {
   it("is registered with providerId flux_11_pro", async () => {
     await import("./provider-router/adapters/image-providers");

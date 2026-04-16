@@ -80,30 +80,132 @@ function createVideoAdapter(config: {
   };
 }
 
-// ─── Pika 2.2 ───────────────────────────────────────────────────────────
-registerAdapter(createVideoAdapter({
+// ─── Pika 2.2 (via Fal.ai) ──────────────────────────────────────────────
+// Queue pattern: POST queue.fal.run/{model} → poll status → GET result
+// Pricing: $0.20 (5s) / $0.30 (10s) per video
+// Auth: Authorization: Key {FAL_API_KEY}
+const PIKA_FAL_MODEL = "fal-ai/pika/v2.2/image-to-video";
+
+registerAdapter({
   providerId: "pika_22",
-  modelName: "pika-2.2",
-  baseUrl: "https://api.pika.art/v1",
-  maxDuration: 10,
-  costPer5s: 0.050,
-  submitEndpoint: "/generate",
-  pollEndpoint: "/tasks/{taskId}",
-  buildSubmitBody: (v, model) => ({
-    model, prompt: v.prompt, image_url: v.imageUrl, duration: v.durationSeconds ?? 5,
-    aspect_ratio: v.aspectRatio ?? "16:9", negative_prompt: v.negativePrompt,
-  }),
-  extractTaskId: (r) => String((r as Record<string, unknown>).id ?? (r as Record<string, unknown>).task_id ?? ""),
-  extractResult: (t) => {
-    const output = (t as Record<string, unknown>).output as Record<string, unknown> | undefined;
-    const url = output?.video_url ?? output?.url;
-    return url ? { url: String(url) } : null;
+
+  validateParams(p: GenerationParams) {
+    const v = p as VideoParams;
+    const errors: string[] = [];
+    if (!v.prompt) errors.push("prompt required");
+    if (!v.imageUrl) errors.push("image_url required for Pika 2.2");
+    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for pika_22");
+    return { valid: !errors.length, errors: errors.length ? errors : undefined };
   },
-  isComplete: (t) => (t as Record<string, unknown>).status === "completed",
-  isFailed: (t) => (t as Record<string, unknown>).status === "failed",
-  getError: (t) => String((t as Record<string, unknown>).error ?? "Pika task failed"),
-  authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
-}));
+
+  estimateCostUsd(p: GenerationParams) {
+    const v = p as VideoParams;
+    const duration = v.durationSeconds ?? 5;
+    return duration > 5 ? 0.30 : 0.20;
+  },
+
+  async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
+    const v = p as VideoParams;
+    const keyInfo = await getActiveApiKey("pika_22");
+    if (!keyInfo) throw new ProviderError("UNKNOWN", "No API key for pika_22", "pika_22", false, false);
+    const apiKey = keyInfo.decryptedKey;
+
+    const queueUrl = `https://queue.fal.run/${PIKA_FAL_MODEL}`;
+
+    // Build request body per Fal.ai Pika 2.2 API schema
+    const body: Record<string, unknown> = {
+      image_url: v.imageUrl,
+      prompt: v.prompt,
+      duration: String(v.durationSeconds ?? 5), // Fal.ai Pika expects string enum "5" | "10"
+    };
+
+    // Submit to Fal.ai queue
+    const submitResp = await fetch(queueUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: ctx.timeout ? AbortSignal.timeout(Math.min(ctx.timeout, 30_000)) : undefined,
+    });
+
+    if (!submitResp.ok) {
+      const errBody = await submitResp.text().catch(() => "");
+      if (submitResp.status === 429) throw new ProviderError("RATE_LIMITED", errBody, "pika_22");
+      if (submitResp.status === 422) throw new ProviderError("CONTENT_VIOLATION", errBody, "pika_22", false, false);
+      throw new ProviderError("TRANSIENT", `pika_22 ${submitResp.status}: ${errBody}`, "pika_22");
+    }
+
+    const submitData = await submitResp.json() as Record<string, unknown>;
+    const requestId = String(submitData.request_id ?? "");
+    const statusUrl = String(submitData.status_url ?? `${queueUrl}/requests/${requestId}/status`);
+    const responseUrl = String(submitData.response_url ?? `${queueUrl}/requests/${requestId}`);
+
+    if (!requestId) {
+      throw new ProviderError("TRANSIENT", "No request_id in Fal.ai queue response", "pika_22");
+    }
+
+    // Poll for completion
+    const maxWait = ctx.timeout ?? 300_000;
+    const start = Date.now();
+    const pollInterval = 5_000;
+
+    while (Date.now() - start < maxWait) {
+      await new Promise(r => setTimeout(r, pollInterval));
+
+      try {
+        const statusResp = await fetch(statusUrl, {
+          headers: { "Authorization": `Key ${apiKey}` },
+        });
+
+        if (!statusResp.ok) continue;
+        const statusData = await statusResp.json() as Record<string, unknown>;
+        const status = String(statusData.status ?? "");
+
+        if (status === "COMPLETED") {
+          const resultResp = await fetch(responseUrl, {
+            headers: { "Authorization": `Key ${apiKey}` },
+          });
+
+          if (!resultResp.ok) {
+            throw new ProviderError("TRANSIENT", `Failed to fetch Pika result: ${resultResp.status}`, "pika_22");
+          }
+
+          const resultData = await resultResp.json() as Record<string, unknown>;
+          const video = resultData.video as Record<string, unknown> | undefined;
+          const videoUrl = video?.url ? String(video.url) : null;
+
+          if (!videoUrl) {
+            throw new ProviderError("TRANSIENT", "No video URL in Pika result", "pika_22");
+          }
+
+          return {
+            storageUrl: videoUrl,
+            mimeType: "video/mp4",
+            durationSeconds: v.durationSeconds ?? 5,
+            metadata: {
+              requestId,
+              model: PIKA_FAL_MODEL,
+            },
+          };
+        }
+
+        if (status === "FAILED") {
+          const errorMsg = String(statusData.error ?? "Pika task failed on Fal.ai");
+          throw new ProviderError("TRANSIENT", errorMsg, "pika_22");
+        }
+
+        // IN_QUEUE or IN_PROGRESS — continue polling
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
+        // Network errors during polling — continue
+      }
+    }
+
+    throw new ProviderError("TIMEOUT", "pika_22 task timed out on Fal.ai", "pika_22");
+  },
+});
 
 // ─── Minimax Video-02 ───────────────────────────────────────────────────
 registerAdapter(createVideoAdapter({
