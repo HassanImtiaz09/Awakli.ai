@@ -2301,3 +2301,15 @@
 - [x] Add /health endpoint for CLIP service (model, device, safety concepts status)
 - [x] Write 30 tests for CLIP client and updated scorer (clip-client.test.ts)
 - [x] Verify all existing HITL tests still pass (936 total tests passing across 39 files)
+
+## HITL Timeout Cron Scheduler
+- [x] Create server/hitl/cron-scheduler.ts with setInterval-based recurring timer
+- [x] Call checkTimeoutWarnings() and processTimedOutGates() every 5 minutes
+- [x] Add structured logging with run counts, durations, and error tracking (heartbeat every 60 min, per-tick summary when gates processed)
+- [x] Prevent overlapping runs (mutex/lock flag via _isRunning)
+- [x] Graceful shutdown on process exit (SIGTERM/SIGINT handlers, clearInterval, .unref())
+- [x] Wire cron scheduler into server startup (server/_core/index.ts — runs first tick immediately)
+- [x] Add Express routes: POST /api/hitl/cron/trigger (manual), GET /api/hitl/cron/stats
+- [x] Barrel exports added to server/hitl/index.ts
+- [x] Write 18 tests for cron scheduler (start, stop, overlap prevention, stats accumulation, reset, routes, exports)
+- [x] Verify all existing tests still pass (953 passed, 1 pre-existing Fish Audio timeout)

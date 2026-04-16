@@ -124,6 +124,20 @@ export {
   type ClipHealthStatus,
 } from "./clip-client";
 
+// Cron scheduler
+export {
+  runTimeoutTick,
+  startCronScheduler,
+  stopCronScheduler,
+  isCronSchedulerRunning,
+  getCronStats,
+  resetCronStats,
+  registerShutdownHandlers,
+  registerCronRoutes,
+  type CronRunResult,
+  type CronStats,
+} from "./cron-scheduler";
+
 // Orchestrator bridge
 export {
   initializeHitlForRun,

@@ -89,6 +89,12 @@ async function startServer() {
   const { registerHitlSseRoutes } = await import("../hitl/sse-handler");
   registerHitlSseRoutes(app);
 
+  // HITL Timeout Cron Scheduler (every 5 minutes)
+  const { startCronScheduler, registerShutdownHandlers, registerCronRoutes } = await import("../hitl/cron-scheduler");
+  registerCronRoutes(app);
+  registerShutdownHandlers();
+  startCronScheduler(); // 5-min interval, runs first tick immediately
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
