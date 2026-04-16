@@ -2124,3 +2124,14 @@
 - [x] AC8: Failed generation releases hold fully via credit-executor catch→releaseTicket
 - [x] AC9: Admin UI shows provider health, spend, events, circuit state, API key management
 - [x] AC10: API keys encrypted at rest via AES-256-CBC, decryptApiKey only called at execution time
+
+## Fal.ai API Key Integration
+- [x] Store FAL_API_KEY as project secret
+- [x] Add FAL_API_KEY to server env configuration (ENV.falApiKey)
+- [x] Update Wan 2.1 adapter to use Fal.ai queue API (fal-ai/wan-i2v + fal-ai/wan-t2v)
+- [x] Update SDXL Lightning adapter to use Fal.ai sync API (fal-ai/fast-lightning-sdxl)
+- [x] Add registry ENV fallback: FAL_API_KEY auto-resolves for wan_21 and sdxl_lightning
+- [x] Write validation test for Fal.ai API key configuration (4 tests)
+- [x] Write Fal.ai provider integration tests (20 tests: adapter registration, validation, cost estimation, ENV fallback)
+- [x] Verify all 775 tests pass across 34 test files
+- [x] Pika 2.2 adapter remains generic REST pattern (Pika has its own API, not Fal.ai-hosted)

@@ -15,4 +15,5 @@ export const ENV = {
   minimaxApiKey: process.env.MINIMAX_API_KEY ?? "",
   cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
   cloudflareStreamToken: process.env.CLOUDFLARE_STREAM_TOKEN ?? "",
+  falApiKey: process.env.FAL_API_KEY ?? "",
 };

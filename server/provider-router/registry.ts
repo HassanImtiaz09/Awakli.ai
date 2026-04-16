@@ -115,8 +115,17 @@ export async function getProviderHealth(providerId: string): Promise<{
 }
 
 /**
+ * Providers that are hosted on Fal.ai and share the FAL_API_KEY env variable.
+ * When no DB-stored key exists, these providers fall back to the ENV key.
+ */
+const FAL_AI_PROVIDERS = new Set(["wan_21", "sdxl_lightning"]);
+
+/**
  * Get an active, non-cap-exceeded API key for a provider.
  * Returns decrypted key + metadata. Keys are AES encrypted at rest.
+ *
+ * For Fal.ai-hosted providers (wan_21, sdxl_lightning), falls back to
+ * the FAL_API_KEY environment variable when no DB key is found.
  */
 export async function getActiveApiKey(providerId: string): Promise<{
   id: number;
@@ -125,26 +134,43 @@ export async function getActiveApiKey(providerId: string): Promise<{
   dailySpendCapUsd: number | null;
 } | null> {
   const db = await getDb();
-  if (!db) return null;
-  const rows = await db
-    .select()
-    .from(providerApiKeys)
-    .where(
-      and(
-        eq(providerApiKeys.providerId, providerId),
-        eq(providerApiKeys.isActive, 1),
-      ),
-    )
-    .limit(1);
+  if (db) {
+    const rows = await db
+      .select()
+      .from(providerApiKeys)
+      .where(
+        and(
+          eq(providerApiKeys.providerId, providerId),
+          eq(providerApiKeys.isActive, 1),
+        ),
+      )
+      .limit(1);
 
-  if (rows.length === 0) return null;
-  const row = rows[0];
-  return {
-    id: row.id,
-    decryptedKey: decryptApiKey(row.encryptedKey),
-    rateLimitRpm: row.rateLimitRpm,
-    dailySpendCapUsd: row.dailySpendCapUsd ? Number(row.dailySpendCapUsd) : null,
-  };
+    if (rows.length > 0) {
+      const row = rows[0];
+      return {
+        id: row.id,
+        decryptedKey: decryptApiKey(row.encryptedKey),
+        rateLimitRpm: row.rateLimitRpm,
+        dailySpendCapUsd: row.dailySpendCapUsd ? Number(row.dailySpendCapUsd) : null,
+      };
+    }
+  }
+
+  // Fallback: Fal.ai-hosted providers can use the shared FAL_API_KEY from env
+  if (FAL_AI_PROVIDERS.has(providerId)) {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (falKey) {
+      return {
+        id: -1, // Sentinel: ENV-sourced key, not from DB
+        decryptedKey: falKey,
+        rateLimitRpm: 60, // Conservative default for ENV keys
+        dailySpendCapUsd: null,
+      };
+    }
+  }
+
+  return null;
 }
 
 // ─── Encryption Helpers ──────────────────────────────────────────────────

@@ -203,26 +203,149 @@ registerAdapter(createVideoAdapter({
   authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
 }));
 
-// ─── Wan 2.1 ────────────────────────────────────────────────────────────
-registerAdapter(createVideoAdapter({
+// ─── Wan 2.1 (via Fal.ai Queue API) ────────────────────────────────────
+// Fal.ai model: fal-ai/wan-i2v (image-to-video) or fal-ai/wan-t2v (text-to-video)
+// Queue pattern: POST queue.fal.run/{model} → poll status → GET result
+// Pricing: $0.20 (480p) / $0.40 (720p) per video (~5s)
+// Auth: Authorization: Key {FAL_API_KEY}
+const WAN_FAL_MODEL_I2V = "fal-ai/wan-i2v";
+const WAN_FAL_MODEL_T2V = "fal-ai/wan-t2v";
+
+registerAdapter({
   providerId: "wan_21",
-  modelName: "wan-2.1",
-  baseUrl: "https://api.wan.video/v1",
-  maxDuration: 10,
-  costPer5s: 0.035,
-  submitEndpoint: "/generations",
-  pollEndpoint: "/generations/{taskId}",
-  buildSubmitBody: (v, model) => ({
-    model, prompt: v.prompt, image: v.imageUrl,
-    duration: v.durationSeconds ?? 5, resolution: "1080p",
-  }),
-  extractTaskId: (r) => String((r as Record<string, unknown>).task_id ?? ""),
-  extractResult: (t) => {
-    const url = (t as Record<string, unknown>).output_url;
-    return url ? { url: String(url) } : null;
+
+  validateParams(p: GenerationParams) {
+    const v = p as VideoParams;
+    const errors: string[] = [];
+    if (!v.prompt) errors.push("prompt required");
+    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for wan_21");
+    return { valid: !errors.length, errors: errors.length ? errors : undefined };
   },
-  isComplete: (t) => (t as Record<string, unknown>).status === "success",
-  isFailed: (t) => (t as Record<string, unknown>).status === "failed",
-  getError: (t) => String((t as Record<string, unknown>).error ?? "Wan task failed"),
-  authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
-}));
+
+  estimateCostUsd(p: GenerationParams) {
+    // Wan 2.1 on Fal.ai: $0.40 per video at 720p, $0.20 at 480p
+    const v = p as VideoParams;
+    const resolution = v.resolution ?? "720p";
+    return resolution === "480p" ? 0.20 : 0.40;
+  },
+
+  async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
+    const v = p as VideoParams;
+    const keyInfo = await getActiveApiKey("wan_21");
+    if (!keyInfo) throw new ProviderError("UNKNOWN", "No API key for wan_21", "wan_21", false, false);
+    const apiKey = keyInfo.decryptedKey;
+
+    // Choose model based on whether an image is provided
+    const model = v.imageUrl ? WAN_FAL_MODEL_I2V : WAN_FAL_MODEL_T2V;
+    const queueUrl = `https://queue.fal.run/${model}`;
+
+    // Build request body per Fal.ai Wan API schema
+    const body: Record<string, unknown> = {
+      prompt: v.prompt,
+      resolution: v.resolution ?? "720p",
+      aspect_ratio: v.aspectRatio ?? "16:9",
+      num_frames: 81, // ~5s at 16fps
+      frames_per_second: 16,
+      enable_safety_checker: true,
+      enable_prompt_expansion: true,
+    };
+    if (v.imageUrl) {
+      body.image_url = v.imageUrl;
+    }
+    if (v.negativePrompt) {
+      body.negative_prompt = v.negativePrompt;
+    }
+    if (v.seed !== undefined) {
+      body.seed = v.seed;
+    }
+
+    // Submit to Fal.ai queue
+    const submitResp = await fetch(queueUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: ctx.timeout ? AbortSignal.timeout(Math.min(ctx.timeout, 30_000)) : undefined,
+    });
+
+    if (!submitResp.ok) {
+      const errBody = await submitResp.text().catch(() => "");
+      if (submitResp.status === 429) throw new ProviderError("RATE_LIMITED", errBody, "wan_21");
+      if (submitResp.status === 422) throw new ProviderError("CONTENT_VIOLATION", errBody, "wan_21", false, false);
+      throw new ProviderError("TRANSIENT", `wan_21 ${submitResp.status}: ${errBody}`, "wan_21");
+    }
+
+    const submitData = await submitResp.json() as Record<string, unknown>;
+    const requestId = String(submitData.request_id ?? "");
+    const statusUrl = String(submitData.status_url ?? `${queueUrl}/requests/${requestId}/status`);
+    const responseUrl = String(submitData.response_url ?? `${queueUrl}/requests/${requestId}`);
+
+    if (!requestId) {
+      throw new ProviderError("TRANSIENT", "No request_id in Fal.ai queue response", "wan_21");
+    }
+
+    // Poll for completion
+    const maxWait = ctx.timeout ?? 300_000;
+    const start = Date.now();
+    const pollInterval = 5_000; // 5 seconds
+
+    while (Date.now() - start < maxWait) {
+      await new Promise(r => setTimeout(r, pollInterval));
+
+      try {
+        const statusResp = await fetch(statusUrl, {
+          headers: { "Authorization": `Key ${apiKey}` },
+        });
+
+        if (!statusResp.ok) continue;
+        const statusData = await statusResp.json() as Record<string, unknown>;
+        const status = String(statusData.status ?? "");
+
+        if (status === "COMPLETED") {
+          // Fetch the result
+          const resultResp = await fetch(responseUrl, {
+            headers: { "Authorization": `Key ${apiKey}` },
+          });
+
+          if (!resultResp.ok) {
+            throw new ProviderError("TRANSIENT", `Failed to fetch Wan result: ${resultResp.status}`, "wan_21");
+          }
+
+          const resultData = await resultResp.json() as Record<string, unknown>;
+          const video = resultData.video as Record<string, unknown> | undefined;
+          const videoUrl = video?.url ? String(video.url) : null;
+
+          if (!videoUrl) {
+            throw new ProviderError("TRANSIENT", "No video URL in Wan result", "wan_21");
+          }
+
+          return {
+            storageUrl: videoUrl,
+            mimeType: "video/mp4",
+            durationSeconds: v.durationSeconds ?? 5,
+            metadata: {
+              requestId,
+              model,
+              seed: resultData.seed,
+              timings: resultData.timings,
+            },
+          };
+        }
+
+        if (status === "FAILED") {
+          const errorMsg = String(statusData.error ?? "Wan task failed on Fal.ai");
+          throw new ProviderError("TRANSIENT", errorMsg, "wan_21");
+        }
+
+        // IN_QUEUE or IN_PROGRESS — continue polling
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
+        // Network errors during polling — continue
+      }
+    }
+
+    throw new ProviderError("TIMEOUT", "wan_21 task timed out on Fal.ai", "wan_21");
+  },
+});
