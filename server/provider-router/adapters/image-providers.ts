@@ -159,48 +159,54 @@ registerAdapter(createImageAdapter({
   authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
 }));
 
-// ─── Ideogram 3 ─────────────────────────────────────────────────────────
+// ─── Ideogram 3 (via Fal.ai) ───────────────────────────────────────────────
+// Sync pattern: POST fal.run/fal-ai/ideogram/v3
+// Pricing: ~$0.06/image
+// Auth: Authorization: Key {FAL_API_KEY}
 registerAdapter(createImageAdapter({
   providerId: "ideogram_3",
   modelName: "ideogram-v3",
-  baseUrl: "https://api.ideogram.ai",
+  baseUrl: "https://fal.run",
   costPerImage: 0.060,
   maxWidth: 2048,
   maxHeight: 2048,
-  submitEndpoint: "/generate",
+  submitEndpoint: "/fal-ai/ideogram/v3",
   isSync: true,
   buildBody: (i) => ({
-    image_request: {
-      prompt: i.prompt, negative_prompt: i.negativePrompt,
-      aspect_ratio: "ASPECT_16_9", model: "V_3",
-      magic_prompt_option: "AUTO",
-    },
+    prompt: i.prompt,
+    image_size: i.width && i.height ? { width: i.width, height: i.height } : "square_hd",
+    num_images: i.numImages ?? 1,
+    expand_prompt: true,
+    rendering_speed: "BALANCED",
   }),
   extractImageUrl: (r) => {
-    const data = (r as Record<string, unknown>).data as Array<Record<string, unknown>> | undefined;
-    return data?.[0]?.url ? String(data[0].url) : null;
+    const images = (r as Record<string, unknown>).images as Array<Record<string, unknown>> | undefined;
+    return images?.[0]?.url ? String(images[0].url) : null;
   },
-  authHeader: (key) => ({ "Api-Key": key }),
+  authHeader: (key) => ({ "Authorization": `Key ${key}` }),
 }));
 
-// ─── Recraft v3 ─────────────────────────────────────────────────────────
+// ─── Recraft v3 (via Fal.ai) ───────────────────────────────────────────────
+// Sync pattern: POST fal.run/fal-ai/recraft/v3/text-to-image
+// Pricing: ~$0.04/image
+// Auth: Authorization: Key {FAL_API_KEY}
 registerAdapter(createImageAdapter({
   providerId: "recraft_v3",
   modelName: "recraft-v3",
-  baseUrl: "https://external.api.recraft.ai/v1",
+  baseUrl: "https://fal.run",
   costPerImage: 0.040,
   maxWidth: 2048,
   maxHeight: 2048,
-  submitEndpoint: "/images/generations",
+  submitEndpoint: "/fal-ai/recraft/v3/text-to-image",
   isSync: true,
   buildBody: (i) => ({
-    prompt: i.prompt, model: "recraftv3",
-    n: i.numImages ?? 1, size: `${i.width ?? 1024}x${i.height ?? 1024}`,
+    prompt: i.prompt,
+    image_size: i.width && i.height ? { width: i.width, height: i.height } : "square_hd",
     style: "digital_illustration",
   }),
   extractImageUrl: (r) => {
-    const data = (r as Record<string, unknown>).data as Array<Record<string, unknown>> | undefined;
-    return data?.[0]?.url ? String(data[0].url) : null;
+    const images = (r as Record<string, unknown>).images as Array<Record<string, unknown>> | undefined;
+    return images?.[0]?.url ? String(images[0].url) : null;
   },
-  authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
+  authHeader: (key) => ({ "Authorization": `Key ${key}` }),
 }));

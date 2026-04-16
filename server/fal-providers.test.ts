@@ -143,14 +143,12 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     }
   });
 
-  it("does NOT return ENV fallback for non-Fal.ai providers", async () => {
+  it("does NOT return ENV fallback for non-Fal.ai providers like midjourney_v7", async () => {
     const { getActiveApiKey } = await import("./provider-router/registry");
-    // For a non-Fal.ai provider with no DB key, should return null
-    const result = await getActiveApiKey("pika_22");
-    // pika_22 is not in FAL_AI_PROVIDERS, so if no DB key exists, result is null
-    // (We can't guarantee DB state, but we can verify the logic path)
+    // midjourney_v7 is NOT in FAL_AI_PROVIDERS, so if no DB key exists, result is null
+    const result = await getActiveApiKey("midjourney_v7");
     if (result === null) {
-      expect(result).toBeNull(); // No ENV fallback for non-Fal providers
+      expect(result).toBeNull();
     }
   });
 
@@ -184,7 +182,7 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     }
   });
 
-  it("FAL_AI_PROVIDERS set contains wan_21, sdxl_lightning, flux_11_pro, and pika_22", async () => {
+  it("FAL_AI_PROVIDERS set contains all 8 Fal.ai providers", async () => {
     const falKey = process.env.FAL_API_KEY ?? "";
     if (!falKey) {
       console.warn("FAL_API_KEY not set, skipping");
@@ -192,14 +190,50 @@ describe("Registry FAL_API_KEY ENV Fallback", () => {
     }
 
     const { getActiveApiKey } = await import("./provider-router/registry");
-    const wan = await getActiveApiKey("wan_21");
-    const sdxl = await getActiveApiKey("sdxl_lightning");
-    const flux = await getActiveApiKey("flux_11_pro");
-    const pika = await getActiveApiKey("pika_22");
-    expect(wan).not.toBeNull();
-    expect(sdxl).not.toBeNull();
-    expect(flux).not.toBeNull();
-    expect(pika).not.toBeNull();
+    const providers = ["wan_21", "sdxl_lightning", "flux_11_pro", "pika_22", "hailuo_director", "ideogram_3", "recraft_v3", "elevenlabs_turbo_v25"];
+    for (const pid of providers) {
+      const result = await getActiveApiKey(pid);
+      expect(result).not.toBeNull();
+      if (result && result.id === -1) {
+        expect(result.decryptedKey).toBe(falKey);
+      }
+    }
+  });
+
+  it("returns ENV-sourced key for hailuo_director", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) return;
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("hailuo_director");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) expect(result.decryptedKey).toBe(falKey);
+  });
+
+  it("returns ENV-sourced key for ideogram_3", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) return;
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("ideogram_3");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) expect(result.decryptedKey).toBe(falKey);
+  });
+
+  it("returns ENV-sourced key for recraft_v3", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) return;
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("recraft_v3");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) expect(result.decryptedKey).toBe(falKey);
+  });
+
+  it("returns ENV-sourced key for elevenlabs_turbo_v25 via Fal.ai", async () => {
+    const falKey = process.env.FAL_API_KEY ?? "";
+    if (!falKey) return;
+    const { getActiveApiKey } = await import("./provider-router/registry");
+    const result = await getActiveApiKey("elevenlabs_turbo_v25");
+    expect(result).not.toBeNull();
+    if (result && result.id === -1) expect(result.decryptedKey).toBe(falKey);
   });
 });
 
@@ -336,7 +370,162 @@ describe("FLUX 1.1 Pro Adapter (Fal.ai)", () => {
   });
 });
 
-// ─── 5. Cost Estimator Integration ──────────────────────────────────────
+// ─── 5. Hailuo Director Adapter (Fal.ai) ──────────────────────────────────
+describe("Hailuo Director Adapter (Fal.ai)", () => {
+  it("is registered with providerId hailuo_director", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("hailuo_director")).toBe(true);
+    expect(getAdapter("hailuo_director")!.providerId).toBe("hailuo_director");
+  });
+
+  it("validates prompt and image_url are required", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("hailuo_director")!;
+    const r1 = adapter.validateParams({ prompt: "" } as any);
+    expect(r1.valid).toBe(false);
+    const r2 = adapter.validateParams({ prompt: "test" } as any);
+    expect(r2.valid).toBe(false);
+    expect(r2.errors).toContain("image_url required for hailuo_director");
+  });
+
+  it("passes validation with prompt and imageUrl", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("hailuo_director")!;
+    const result = adapter.validateParams({ prompt: "anime", imageUrl: "https://example.com/img.png" } as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejects duration > 10s", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("hailuo_director")!;
+    const result = adapter.validateParams({ prompt: "test", imageUrl: "https://example.com/img.png", durationSeconds: 15 } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("estimates $0.04 for 6s video (default)", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("hailuo_director")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", imageUrl: "https://example.com/img.png" } as any);
+    expect(cost).toBe(0.04);
+  });
+
+  it("estimates $0.06 for 10s video", async () => {
+    await import("./provider-router/adapters/video-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("hailuo_director")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", imageUrl: "https://example.com/img.png", durationSeconds: 10 } as any);
+    expect(cost).toBe(0.06);
+  });
+});
+
+// ─── 6. Ideogram 3 Adapter (Fal.ai) ──────────────────────────────────────
+describe("Ideogram 3 Adapter (Fal.ai)", () => {
+  it("is registered with providerId ideogram_3", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("ideogram_3")).toBe(true);
+    expect(getAdapter("ideogram_3")!.providerId).toBe("ideogram_3");
+  });
+
+  it("validates prompt is required", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("ideogram_3")!;
+    const result = adapter.validateParams({ prompt: "" } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("passes validation for valid params", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("ideogram_3")!;
+    const result = adapter.validateParams({ prompt: "manga panel", width: 1024, height: 1024 } as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("estimates $0.060 per image", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("ideogram_3")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", numImages: 1 } as any);
+    expect(cost).toBe(0.060);
+  });
+});
+
+// ─── 7. Recraft V3 Adapter (Fal.ai) ──────────────────────────────────────
+describe("Recraft V3 Adapter (Fal.ai)", () => {
+  it("is registered with providerId recraft_v3", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("recraft_v3")).toBe(true);
+    expect(getAdapter("recraft_v3")!.providerId).toBe("recraft_v3");
+  });
+
+  it("validates prompt is required", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("recraft_v3")!;
+    const result = adapter.validateParams({ prompt: "" } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("estimates $0.040 per image", async () => {
+    await import("./provider-router/adapters/image-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("recraft_v3")!;
+    const cost = adapter.estimateCostUsd({ prompt: "test", numImages: 1 } as any);
+    expect(cost).toBe(0.040);
+  });
+});
+
+// ─── 8. ElevenLabs Turbo v2.5 Adapter (Fal.ai) ──────────────────────────
+describe("ElevenLabs Turbo v2.5 Adapter (Fal.ai)", () => {
+  it("is registered with providerId elevenlabs_turbo_v25", async () => {
+    await import("./provider-router/adapters/voice-providers");
+    const { hasAdapter, getAdapter } = await import("./provider-router/registry");
+    expect(hasAdapter("elevenlabs_turbo_v25")).toBe(true);
+    expect(getAdapter("elevenlabs_turbo_v25")!.providerId).toBe("elevenlabs_turbo_v25");
+  });
+
+  it("validates text is required", async () => {
+    await import("./provider-router/adapters/voice-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("elevenlabs_turbo_v25")!;
+    const result = adapter.validateParams({ text: "" } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("validates max 5000 chars", async () => {
+    await import("./provider-router/adapters/voice-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("elevenlabs_turbo_v25")!;
+    const result = adapter.validateParams({ text: "a".repeat(5001) } as any);
+    expect(result.valid).toBe(false);
+  });
+
+  it("passes validation for valid text", async () => {
+    await import("./provider-router/adapters/voice-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("elevenlabs_turbo_v25")!;
+    const result = adapter.validateParams({ text: "Hello world" } as any);
+    expect(result.valid).toBe(true);
+  });
+
+  it("estimates cost at $0.05/1000 chars", async () => {
+    await import("./provider-router/adapters/voice-providers");
+    const { getAdapter } = await import("./provider-router/registry");
+    const adapter = getAdapter("elevenlabs_turbo_v25")!;
+    const cost = adapter.estimateCostUsd({ text: "a".repeat(1000) } as any);
+    expect(cost).toBeCloseTo(0.05, 5);
+  });
+});
+
+// ─── 9. Cost Estimator Integration ──────────────────────────────────────
 describe("Fal.ai Cost Estimator Integration", () => {
   it("estimateCost works for wan_21", async () => {
     await import("./provider-router/index");

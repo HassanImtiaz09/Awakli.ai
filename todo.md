@@ -2156,3 +2156,12 @@
 - [x] Add pika_22 to FAL_AI_PROVIDERS set in registry for ENV fallback
 - [x] Add Pika 2.2 Fal.ai tests (9 new tests: registration, validation, cost, auth header, ENV fallback)
 - [x] All 36 Fal.ai provider tests + 52 provider-router tests passing
+
+## Redirect 4 Adapters to Fal.ai (Batch)
+- [x] Redirect hailuo_director from Hailuo API to Fal.ai queue (fal-ai/minimax/hailuo-02/standard/image-to-video)
+- [x] Redirect ideogram_3 from Ideogram API to Fal.ai sync (fal-ai/ideogram/v3)
+- [x] Redirect recraft_v3 from Recraft API to Fal.ai sync (fal-ai/recraft/v3/text-to-image)
+- [x] Redirect elevenlabs_turbo_v25 from ElevenLabs API to Fal.ai queue (fal-ai/elevenlabs/tts/turbo-v2.5)
+- [x] Add all 4 to FAL_AI_PROVIDERS set (now 8 total), removed ElevenLabs from ENV_KEY_MAP
+- [x] Write 31 new tests for all 4 redirected adapters + ENV fallback
+- [x] All 58 Fal.ai tests + 52 provider-router tests + 815 total tests passing

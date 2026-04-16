@@ -95,21 +95,88 @@ function createVoiceAdapter(config: {
   };
 }
 
-// ─── ElevenLabs Turbo v2.5 ──────────────────────────────────────────────
-registerAdapter(createVoiceAdapter({
+//// ─── ElevenLabs Turbo v2.5 (via Fal.ai) ──────────────────────────────
+// Queue pattern: POST queue.fal.run/fal-ai/elevenlabs/tts/turbo-v2.5
+// Pricing: $0.05/1000 chars
+// Auth: Authorization: Key {FAL_API_KEY}
+const ELEVENLABS_FAL_MODEL = "fal-ai/elevenlabs/tts/turbo-v2.5";
+
+registerAdapter({
   providerId: "elevenlabs_turbo_v25",
-  modelName: "eleven_turbo_v2_5",
-  baseUrl: "https://api.elevenlabs.io/v1",
-  costPerChar: 0.00003,
-  maxChars: 5000,
-  submitEndpoint: "/text-to-speech/{voiceId}",
-  isStreaming: true,
-  buildBody: (v, model) => ({
-    text: v.text, model_id: model,
-    voice_settings: { stability: v.stability ?? 0.5, similarity_boost: v.similarityBoost ?? 0.75 },
-  }),
-  authHeader: (key) => ({ "xi-api-key": key }),
-}));
+
+  validateParams(p: GenerationParams) {
+    const v = p as VoiceParams;
+    const errors: string[] = [];
+    if (!v.text && !v.ssml) errors.push("text or ssml required");
+    const len = (v.text ?? v.ssml ?? "").length;
+    if (len > 5000) errors.push("max 5000 chars for elevenlabs_turbo_v25");
+    return { valid: !errors.length, errors: errors.length ? errors : undefined };
+  },
+
+  estimateCostUsd(p: GenerationParams) {
+    const v = p as VoiceParams;
+    return (v.text ?? v.ssml ?? "").length * 0.00005; // $0.05/1000 chars via Fal.ai
+  },
+
+  async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
+    const v = p as VoiceParams;
+    const keyInfo = await getActiveApiKey("elevenlabs_turbo_v25");
+    if (!keyInfo) throw new ProviderError("UNKNOWN", "No API key for elevenlabs_turbo_v25", "elevenlabs_turbo_v25", false, false);
+    const apiKey = keyInfo.decryptedKey;
+
+    const queueUrl = `https://queue.fal.run/${ELEVENLABS_FAL_MODEL}`;
+    const body: Record<string, unknown> = {
+      text: v.text ?? v.ssml ?? "",
+      voice: v.voiceId ?? "Rachel",
+    };
+
+    // Submit to Fal.ai queue
+    const submitResp = await fetch(queueUrl, {
+      method: "POST",
+      headers: { "Authorization": `Key ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctx.timeout ? AbortSignal.timeout(Math.min(ctx.timeout, 30_000)) : undefined,
+    });
+
+    if (!submitResp.ok) {
+      const errBody = await submitResp.text().catch(() => "");
+      if (submitResp.status === 429) throw new ProviderError("RATE_LIMITED", errBody, "elevenlabs_turbo_v25");
+      throw new ProviderError("TRANSIENT", `elevenlabs_turbo_v25 ${submitResp.status}: ${errBody}`, "elevenlabs_turbo_v25");
+    }
+
+    const submitData = await submitResp.json() as Record<string, unknown>;
+    const requestId = String(submitData.request_id ?? "");
+    const statusUrl = String(submitData.status_url ?? `${queueUrl}/requests/${requestId}/status`);
+    const responseUrl = String(submitData.response_url ?? `${queueUrl}/requests/${requestId}`);
+    if (!requestId) throw new ProviderError("TRANSIENT", "No request_id in Fal.ai queue response", "elevenlabs_turbo_v25");
+
+    // Poll for completion
+    const maxWait = ctx.timeout ?? 60_000;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const statusResp = await fetch(statusUrl, { headers: { "Authorization": `Key ${apiKey}` } });
+        if (!statusResp.ok) continue;
+        const statusData = await statusResp.json() as Record<string, unknown>;
+        const status = String(statusData.status ?? "");
+        if (status === "COMPLETED") {
+          const resultResp = await fetch(responseUrl, { headers: { "Authorization": `Key ${apiKey}` } });
+          if (!resultResp.ok) throw new ProviderError("TRANSIENT", `Failed to fetch ElevenLabs result: ${resultResp.status}`, "elevenlabs_turbo_v25");
+          const resultData = await resultResp.json() as Record<string, unknown>;
+          const audio = resultData.audio as Record<string, unknown> | undefined;
+          const audioUrl = audio?.url ? String(audio.url) : null;
+          if (!audioUrl) throw new ProviderError("TRANSIENT", "No audio URL in ElevenLabs result", "elevenlabs_turbo_v25");
+          return { storageUrl: audioUrl, mimeType: "audio/mpeg", metadata: { requestId, model: ELEVENLABS_FAL_MODEL, chars: (v.text ?? "").length } };
+        }
+        if (status === "FAILED") throw new ProviderError("TRANSIENT", String(statusData.error ?? "ElevenLabs task failed on Fal.ai"), "elevenlabs_turbo_v25");
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
+      }
+    }
+    throw new ProviderError("TIMEOUT", "elevenlabs_turbo_v25 task timed out on Fal.ai", "elevenlabs_turbo_v25");
+  },
+});
 
 // ─── PlayHT 3.0 ────────────────────────────────────────────────────────
 registerAdapter(createVoiceAdapter({

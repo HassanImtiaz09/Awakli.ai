@@ -256,30 +256,90 @@ registerAdapter(createVideoAdapter({
   authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
 }));
 
-// ─── Hailuo Director ────────────────────────────────────────────────────
-registerAdapter(createVideoAdapter({
+// ─── Hailuo Director (via Fal.ai) ──────────────────────────────────────
+// Queue pattern: POST queue.fal.run/{model} → poll status → GET result
+// Pricing: ~$0.04/5s
+// Auth: Authorization: Key {FAL_API_KEY}
+const HAILUO_FAL_MODEL = "fal-ai/minimax/hailuo-02/standard/image-to-video";
+
+registerAdapter({
   providerId: "hailuo_director",
-  modelName: "hailuo-director",
-  baseUrl: "https://api.hailuo.ai/v1",
-  maxDuration: 10,
-  costPer5s: 0.040,
-  submitEndpoint: "/video/generations",
-  pollEndpoint: "/video/generations/{taskId}",
-  buildSubmitBody: (v, model) => ({
-    model, prompt: v.prompt, image: v.imageUrl,
-    duration: v.durationSeconds ?? 5,
-  }),
-  extractTaskId: (r) => String(((r as Record<string, unknown>).data as Record<string, unknown>)?.id ?? ""),
-  extractResult: (t) => {
-    const data = (t as Record<string, unknown>).data as Record<string, unknown> | undefined;
-    const url = data?.video_url;
-    return url ? { url: String(url) } : null;
+
+  validateParams(p: GenerationParams) {
+    const v = p as VideoParams;
+    const errors: string[] = [];
+    if (!v.prompt) errors.push("prompt required");
+    if (!v.imageUrl) errors.push("image_url required for hailuo_director");
+    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for hailuo_director");
+    return { valid: !errors.length, errors: errors.length ? errors : undefined };
   },
-  isComplete: (t) => ((t as Record<string, unknown>).data as Record<string, unknown>)?.status === "completed",
-  isFailed: (t) => ((t as Record<string, unknown>).data as Record<string, unknown>)?.status === "failed",
-  getError: (t) => String(((t as Record<string, unknown>).data as Record<string, unknown>)?.error ?? "Hailuo task failed"),
-  authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
-}));
+
+  estimateCostUsd(p: GenerationParams) {
+    const v = p as VideoParams;
+    const duration = v.durationSeconds ?? 6;
+    return duration > 6 ? 0.06 : 0.04;
+  },
+
+  async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
+    const v = p as VideoParams;
+    const keyInfo = await getActiveApiKey("hailuo_director");
+    if (!keyInfo) throw new ProviderError("UNKNOWN", "No API key for hailuo_director", "hailuo_director", false, false);
+    const apiKey = keyInfo.decryptedKey;
+
+    const queueUrl = `https://queue.fal.run/${HAILUO_FAL_MODEL}`;
+    const body: Record<string, unknown> = {
+      image_url: v.imageUrl,
+      prompt: v.prompt,
+      duration: String(v.durationSeconds ?? 6), // "6" | "10"
+      resolution: "768P",
+    };
+
+    const submitResp = await fetch(queueUrl, {
+      method: "POST",
+      headers: { "Authorization": `Key ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctx.timeout ? AbortSignal.timeout(Math.min(ctx.timeout, 30_000)) : undefined,
+    });
+
+    if (!submitResp.ok) {
+      const errBody = await submitResp.text().catch(() => "");
+      if (submitResp.status === 429) throw new ProviderError("RATE_LIMITED", errBody, "hailuo_director");
+      if (submitResp.status === 422) throw new ProviderError("CONTENT_VIOLATION", errBody, "hailuo_director", false, false);
+      throw new ProviderError("TRANSIENT", `hailuo_director ${submitResp.status}: ${errBody}`, "hailuo_director");
+    }
+
+    const submitData = await submitResp.json() as Record<string, unknown>;
+    const requestId = String(submitData.request_id ?? "");
+    const statusUrl = String(submitData.status_url ?? `${queueUrl}/requests/${requestId}/status`);
+    const responseUrl = String(submitData.response_url ?? `${queueUrl}/requests/${requestId}`);
+    if (!requestId) throw new ProviderError("TRANSIENT", "No request_id in Fal.ai queue response", "hailuo_director");
+
+    const maxWait = ctx.timeout ?? 300_000;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      await new Promise(r => setTimeout(r, 5000));
+      try {
+        const statusResp = await fetch(statusUrl, { headers: { "Authorization": `Key ${apiKey}` } });
+        if (!statusResp.ok) continue;
+        const statusData = await statusResp.json() as Record<string, unknown>;
+        const status = String(statusData.status ?? "");
+        if (status === "COMPLETED") {
+          const resultResp = await fetch(responseUrl, { headers: { "Authorization": `Key ${apiKey}` } });
+          if (!resultResp.ok) throw new ProviderError("TRANSIENT", `Failed to fetch Hailuo result: ${resultResp.status}`, "hailuo_director");
+          const resultData = await resultResp.json() as Record<string, unknown>;
+          const video = resultData.video as Record<string, unknown> | undefined;
+          const videoUrl = video?.url ? String(video.url) : null;
+          if (!videoUrl) throw new ProviderError("TRANSIENT", "No video URL in Hailuo result", "hailuo_director");
+          return { storageUrl: videoUrl, mimeType: "video/mp4", durationSeconds: v.durationSeconds ?? 6, metadata: { requestId, model: HAILUO_FAL_MODEL } };
+        }
+        if (status === "FAILED") throw new ProviderError("TRANSIENT", String(statusData.error ?? "Hailuo task failed on Fal.ai"), "hailuo_director");
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
+      }
+    }
+    throw new ProviderError("TIMEOUT", "hailuo_director task timed out on Fal.ai", "hailuo_director");
+  },
+});
 
 // ─── Vidu 2.5 ───────────────────────────────────────────────────────────
 registerAdapter(createVideoAdapter({
