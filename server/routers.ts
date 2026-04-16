@@ -66,6 +66,7 @@ import {
 import { subjectLibraryRouter } from "./routers-subjects";
 import { harnessRouter, productionBibleRouter } from "./routers-harness";
 import { modelRoutingRouter } from "./routers-model-routing";
+import { transitionsRouter } from "./routers-transitions";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -882,7 +883,8 @@ const panelsRouter = router({
       cameraAngle: z.enum(["wide", "medium", "close-up", "extreme-close-up", "birds-eye"]).optional(),
       dialogue: z.any().optional(),
       sfx: z.string().nullable().optional(),
-      transition: z.enum(["cut", "fade", "dissolve"]).nullable().optional(),
+      transition: z.enum(["cut", "fade", "dissolve", "cross-dissolve"]).nullable().optional(),
+      transitionDuration: z.number().min(0.2).max(2.0).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const panel = await getPanelById(input.id);
@@ -1958,6 +1960,7 @@ export const appRouter = router({
 
   // Phase 19: Smart Kling Model Router
   modelRouting: modelRoutingRouter,
+  transitions: transitionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

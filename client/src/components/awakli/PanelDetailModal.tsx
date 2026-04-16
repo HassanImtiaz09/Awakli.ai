@@ -449,13 +449,56 @@ export default function PanelDetailModal({
           <span className="text-sm text-white/80 capitalize">{String(panel.cameraAngle)}</span>
         </div>
 
-        {/* Transition */}
-        {panel.transition && (
-          <div className="mb-4">
-            <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">Transition</label>
-            <span className="text-sm text-white/80 capitalize">{String(panel.transition)}</span>
+        {/* Transition Editor */}
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">Transition (to next panel)</label>
+          <div className="flex items-center gap-2 mt-1">
+            <select
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/90 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 appearance-none cursor-pointer"
+              value={panel.transition || "cut"}
+              onChange={(e) => {
+                updateMut.mutate({
+                  id: panel.id,
+                  transition: e.target.value as any,
+                });
+              }}
+            >
+              <option value="cut">Hard Cut</option>
+              <option value="fade">Fade (through black)</option>
+              <option value="dissolve">Dissolve</option>
+              <option value="cross-dissolve">Cross-Dissolve</option>
+            </select>
+            {panel.transition && panel.transition !== "cut" && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-white/40">Duration</span>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="2.0"
+                  step="0.1"
+                  defaultValue={String((panel as any).transitionDuration ?? 0.5)}
+                  className="w-20 h-1 accent-cyan-500"
+                  onMouseUp={(e) => {
+                    const val = parseFloat((e.target as HTMLInputElement).value);
+                    updateMut.mutate({
+                      id: panel.id,
+                      transitionDuration: val,
+                    });
+                  }}
+                />
+                <span className="text-[10px] text-cyan-400 font-mono w-8">
+                  {((panel as any).transitionDuration ?? 0.5).toFixed(1)}s
+                </span>
+              </div>
+            )}
           </div>
-        )}
+          <p className="text-[10px] text-white/30 mt-1">
+            {panel.transition === "fade" && "Fades out to black, then fades in. Good for scene changes."}
+            {panel.transition === "dissolve" && "Pixel dissolve effect. Artistic for dream sequences."}
+            {panel.transition === "cross-dissolve" && "Smooth blend between panels. Most cinematic."}
+            {(!panel.transition || panel.transition === "cut") && "Instant switch. Default for action scenes."}
+          </p>
+        </div>
       </div>
     </motion.div>
   );

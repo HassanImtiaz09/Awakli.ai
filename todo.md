@@ -1638,3 +1638,53 @@
 - [x] tRPC router: registered in main appRouter
 - [x] Edge cases: empty description, undefined camera, empty dialogue, mixed case
 - [x] All 479 tests passing across 26 test files
+
+## Panel-to-Panel Transitions — FFmpeg Assembly
+
+### Database Schema
+- [x] Add transition_duration column to panels table (default 0.5s)
+- [x] Add cross-dissolve to transition enum (cut, fade, dissolve, cross-dissolve)
+- [x] Generate and apply migration SQL (0020_panel_transitions.sql)
+
+### FFmpeg Transition Engine (server/video-assembly.ts)
+- [x] Replace concat demuxer with xfade filter chain for transitions
+- [x] Map panel transition types to FFmpeg xfade transitions: cut→none, fade→fadeblack, dissolve→dissolve, cross-dissolve→fade
+- [x] Handle audio crossfade with acrossfade filter in parallel
+- [x] Support configurable transition duration (default 0.5s, range 0.2–2.0s)
+- [x] Preserve correct total duration accounting (transitions overlap clips)
+- [x] Fallback to concat demuxer when all transitions are "cut" (performance optimization)
+- [x] Handle edge cases: single clip (no transitions), first/last clip fade-in/out
+
+### Pipeline Integration
+- [x] Pass panel transition data from orchestrator to assembleVideo()
+- [x] Read transition field from panels table in assembly agent
+- [x] Update voice clip timestamp calculation to account for transition overlaps (calculateClipStartTimes)
+- [x] Update total duration reporting to reflect transition-shortened output (calculateTotalDuration)
+
+### tRPC Endpoints (server/routers-transitions.ts — 6 endpoints)
+- [x] getByEpisode — get all panel transitions for an episode
+- [x] updatePanel — update transition for a single panel
+- [x] batchUpdate — batch update transitions for multiple panels
+- [x] applyToAll — apply same transition to all panels in an episode
+- [x] previewDuration — estimated duration with current transitions
+- [x] getTypes — available transition types with descriptions
+
+### UI Updates
+- [x] Transition selector dropdown in PanelDetailModal (cut/fade/dissolve/cross-dissolve)
+- [x] Transition duration slider in PanelDetailModal (0.2–2.0s range)
+- [x] TransitionTimeline component showing transitions between panels visually
+- [x] Bulk transition setter (apply same transition to all panels)
+- [x] Click-to-cycle transition type on timeline chips
+- [x] Duration preview with overlap savings display
+- [x] Integrated into ScriptEditor page (compact mode)
+- [x] Updated panels.update mutation to accept cross-dissolve and transitionDuration
+
+### Tests (server/transitions.test.ts — 33 tests)
+- [x] mapTransitionToXfade: all 4 types + unknown (5 tests)
+- [x] clampDuration: below min, above max, valid values (3 tests)
+- [x] calculateClipStartTimes: single clip, all cuts, cross-dissolve, mixed, long durations (5 tests)
+- [x] calculateTotalDuration: empty, single, all cuts, cross-dissolve, fade, comparison (6 tests)
+- [x] buildXfadeFilterGraph: 2 clips, cross-dissolve, fade, dissolve, cut, 3+ clips, output labels, codecs (8 tests)
+- [x] Edge cases: short clips, many clips (12), alternating types (3 tests)
+- [x] tRPC router: procedure registration, appRouter integration (2 tests)
+- [x] All 513 tests passing across 27 test files

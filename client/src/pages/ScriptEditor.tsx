@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import TransitionTimeline from "@/components/awakli/TransitionTimeline";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -439,6 +440,13 @@ export default function ScriptEditor() {
             {script.synopsis && (
               <div className="px-6 py-3 border-b border-white/5 bg-[var(--bg-base)]">
                 <p className="text-sm text-[var(--text-secondary)] italic">{script.synopsis}</p>
+              </div>
+            )}
+
+            {/* Transition Timeline */}
+            {activeEpisodeId && (
+              <div className="px-6 pt-4">
+                <TransitionTimeline episodeId={activeEpisodeId} compact />
               </div>
             )}
 

@@ -18,7 +18,7 @@ import { createModelRoutingStat, updatePipelineAssetRouting } from "./db";
 import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
-import { assembleVideo } from "./video-assembly";
+import { assembleVideo, type TransitionSpec, type TransitionType } from "./video-assembly";
 import { getOrCompileProductionBible, lockProductionBible, type ProductionBibleData } from "./production-bible";
 import { runHarnessLayer, updateAssetHarnessScore, type HarnessContext, type HarnessRunSummary } from "./harness-runner";
 import { scriptChecks, visualChecks, videoChecks, audioChecks, integrationChecks } from "./harness-checks";
@@ -631,7 +631,24 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
       throw new Error("No video clips available for assembly");
     }
 
-    console.log(`[Pipeline] Assembly: ${videoClips.length} video clips, ${voiceClips.length} voice clips, music: ${musicTrack ? (musicTrack.isFallback ? 'fallback' : 'yes') : 'none'}`);
+    // ── Read panel transition data from DB ──
+    const episodePanels = await getPanelsByEpisode(episodeId);
+    const panelTransitionMap = new Map<number, { type: TransitionType; duration: number }>();
+    for (const p of episodePanels) {
+      panelTransitionMap.set(p.id, {
+        type: (p.transition as TransitionType) || "cut",
+        duration: p.transitionDuration ?? 0.5,
+      });
+    }
+
+    // Build transitions array matching videoClips order (by panelId)
+    const transitions: TransitionSpec[] = videoClips.map(vc => {
+      const t = panelTransitionMap.get(vc.panelId);
+      return t ? { type: t.type, duration: t.duration } : { type: "cut" as TransitionType, duration: 0.5 };
+    });
+
+    const nonCutCount = transitions.filter(t => t.type !== "cut").length;
+    console.log(`[Pipeline] Assembly: ${videoClips.length} video clips, ${voiceClips.length} voice clips, music: ${musicTrack ? (musicTrack.isFallback ? 'fallback' : 'yes') : 'none'}, transitions: ${nonCutCount} non-cut`);
 
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 82, totalCost, nodeCosts);
 
@@ -642,6 +659,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
       voiceClips,
       musicTrack,
       episodeTitle: episode?.title || "Untitled Episode",
+      transitions,
     });
 
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 90, totalCost, nodeCosts);

@@ -161,7 +161,8 @@ export const panels = mysqlTable("panels", {
   cameraAngle: mysqlEnum("cameraAngle", ["wide", "medium", "close-up", "extreme-close-up", "birds-eye"]).default("medium"),
   dialogue: json("dialogue"),  // [{character, text, emotion}]
   sfx: varchar("sfx", { length: 255 }),
-  transition: mysqlEnum("transition", ["cut", "fade", "dissolve"]),
+  transition: mysqlEnum("transition", ["cut", "fade", "dissolve", "cross-dissolve"]).default("cut"),
+  transitionDuration: float("transition_duration").default(0.5),  // seconds (0.2–2.0)
   imageUrl: text("imageUrl"),
   compositeImageUrl: text("compositeImageUrl"),  // Image with dialogue/SFX overlay
   fluxPrompt: text("fluxPrompt"),  // The actual prompt sent to image generation
