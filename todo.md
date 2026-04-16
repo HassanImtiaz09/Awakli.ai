@@ -2313,3 +2313,13 @@
 - [x] Barrel exports added to server/hitl/index.ts
 - [x] Write 18 tests for cron scheduler (start, stop, overlap prevention, stats accumulation, reset, routes, exports)
 - [x] Verify all existing tests still pass (953 passed, 1 pre-existing Fish Audio timeout)
+
+## Gate Status Indicator on Studio Dashboard
+- [x] Add tRPC endpoint gateReview.getPendingGateSummary returning pending gates with project/pipeline context (joins gates → pipeline_runs → projects, sorted by priority)
+- [x] Create PendingGatesBanner component for Studio dashboard (blocking gate alert with pulse animation, collapsible gate list)
+- [x] Add notification badge to StudioSidebar Dashboard nav item showing pending gate count (red for blocking, amber for advisory)
+- [x] Add notification badge to Pipeline nav item in project-scoped sidebar
+- [x] Link each gate alert to the GateReview page (/studio/project/:id/pipeline/:runId/gate/:gateId)
+- [x] Show timeout countdown for gates approaching expiry (days/hours/minutes, urgent styling < 1 hour)
+- [x] Write 8 tests for the new tRPC endpoint (auth, shape, counts, consistency, DB function, barrel exports)
+- [x] Verify all existing tests still pass (961 passed, 1 pre-existing Fish Audio network timeout)

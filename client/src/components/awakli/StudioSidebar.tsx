@@ -7,15 +7,17 @@ import {
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { PendingGateCount } from "./PendingGatesBanner";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  badge?: React.ReactNode;
 }
 
 const MAIN_NAV: NavItem[] = [
-  { href: "/studio",          label: "Dashboard",  icon: <LayoutDashboard size={18} /> },
+  { href: "/studio",          label: "Dashboard",  icon: <LayoutDashboard size={18} />, badge: <PendingGateCount /> },
   { href: "/studio/new",      label: "New Project", icon: <PlusCircle size={18} /> },
   { href: "/studio/upload",   label: "Upload",     icon: <Upload size={18} /> },
   { href: "/studio/byo-upload", label: "BYO Manga", icon: <BookOpen size={18} /> },
@@ -29,7 +31,7 @@ function getProjectNav(projectId: string): NavItem[] {
     { href: `/studio/project/${projectId}/upload`,     label: "Upload",     icon: <Upload size={18} /> },
     { href: `/studio/project/${projectId}/panels`,     label: "Panels",     icon: <Grid3X3 size={18} /> },
     { href: `/studio/project/${projectId}/storyboard`, label: "Storyboard", icon: <BookOpen size={18} /> },
-    { href: `/studio/project/${projectId}/pipeline`,   label: "Pipeline",   icon: <Clapperboard size={18} /> },
+    { href: `/studio/project/${projectId}/pipeline`,   label: "Pipeline",   icon: <Clapperboard size={18} />, badge: <PendingGateCount /> },
   ];
 }
 
@@ -180,12 +182,18 @@ function SidebarItem({ item, active, collapsed }: { item: NavItem; active: boole
               animate={{ opacity: 1, width: "auto" }}
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden"
+              className="overflow-hidden flex-1"
             >
               {item.label}
             </motion.span>
           )}
         </AnimatePresence>
+        {/* Notification badge */}
+        {item.badge && (
+          <span className={cn("shrink-0", collapsed && "absolute -top-0.5 -right-0.5")}>
+            {item.badge}
+          </span>
+        )}
       </motion.span>
     </Link>
   );

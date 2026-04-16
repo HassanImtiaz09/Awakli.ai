@@ -318,6 +318,54 @@ export async function getPendingGatesForUser(userId: number): Promise<GateRow[]>
 }
 
 /**
+ * Pending gate summary for the Studio dashboard.
+ * Joins gates → pipeline_runs → projects to provide project context.
+ */
+export interface PendingGateSummaryItem {
+  gateId: number;
+  pipelineRunId: number;
+  projectId: number;
+  projectTitle: string;
+  stageNumber: number;
+  stageName: string;
+  gateType: GateType;
+  confidenceScore: number | null;
+  timeoutAt: Date | null;
+  timeoutAction: string;
+  createdAt: Date;
+}
+
+export async function getPendingGateSummary(userId: number): Promise<PendingGateSummaryItem[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const [rows] = await db.execute(sql`
+    SELECT
+      g.id AS gateId,
+      g.pipelineRunId,
+      pr.projectId,
+      p.title AS projectTitle,
+      g.stageNumber,
+      g.stageName,
+      g.gateType,
+      g.confidenceScore,
+      g.timeoutAt,
+      g.timeoutAction,
+      g.createdAt
+    FROM gates g
+    JOIN pipeline_runs pr ON pr.id = g.pipelineRunId
+    JOIN projects p ON p.id = pr.projectId
+    WHERE g.userId = ${userId}
+      AND g.decision = 'pending'
+    ORDER BY
+      CASE g.gateType WHEN 'blocking' THEN 0 WHEN 'advisory' THEN 1 ELSE 2 END ASC,
+      g.timeoutAt ASC,
+      g.createdAt ASC
+  `);
+  return (rows as unknown as any[]) as PendingGateSummaryItem[];
+}
+
+/**
  * Get all gates for a pipeline run.
  */
 export async function getGatesForPipelineRun(pipelineRunId: number): Promise<GateRow[]> {

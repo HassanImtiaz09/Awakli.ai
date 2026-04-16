@@ -16,6 +16,7 @@ import {
   resolveAllGateConfigs,
   getGateById,
   getPendingGatesForUser,
+  getPendingGateSummary,
   getGatesForPipelineRun,
   recordGateDecision,
   getAuditLogForGate,
@@ -61,6 +62,24 @@ export const gateReviewRouter = router({
    */
   getPendingGates: protectedProcedure.query(async ({ ctx }) => {
     return getPendingGatesForUser(ctx.user.id);
+  }),
+
+  /**
+   * Get pending gate summary with project context for the Studio dashboard.
+   * Returns gates sorted by priority: blocking first, then by timeout urgency.
+   */
+  getPendingGateSummary: protectedProcedure.query(async ({ ctx }) => {
+    const gates = await getPendingGateSummary(ctx.user.id);
+    const blockingCount = gates.filter(g => g.gateType === "blocking").length;
+    const advisoryCount = gates.filter(g => g.gateType === "advisory").length;
+    const ambientCount = gates.filter(g => g.gateType === "ambient").length;
+    return {
+      gates,
+      totalCount: gates.length,
+      blockingCount,
+      advisoryCount,
+      ambientCount,
+    };
   }),
 
   /**

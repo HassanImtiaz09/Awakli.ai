@@ -3,6 +3,7 @@ import {
   Plus, Upload, Layers, Zap, Film, Clock, CheckCircle2, XCircle, Loader2,
   FolderOpen, ArrowRight, Sparkles, Wand2, PenTool, Trophy, Flame
 } from "lucide-react";
+import { PendingGatesBanner } from "@/components/awakli/PendingGatesBanner";
 import React, { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -183,6 +184,9 @@ export default function StudioDashboard() {
             </div>
           </section>
         )}
+
+        {/* Gate Status Indicator */}
+        <PendingGatesBanner />
 
         {/* Anime Promotion Status */}
         <AnimePromotionStatus projects={projects ?? []} />
