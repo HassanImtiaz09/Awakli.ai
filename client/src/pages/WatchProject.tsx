@@ -1,8 +1,9 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { SEOHead, buildMangaJsonLd } from "@/components/awakli/SEOHead";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import {
@@ -46,6 +47,21 @@ export default function WatchProject() {
 
   const [showDownload, setShowDownload] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+
+  // Record view on page load
+  const recordView = trpc.publicContent.recordView.useMutation();
+  const [viewRecorded, setViewRecorded] = useState(false);
+  const projectData = project.data;
+  useEffect(() => {
+    if (projectData?.id && !viewRecorded) {
+      recordView.mutate({
+        contentType: "project",
+        contentId: projectData.id,
+        source: "direct",
+      });
+      setViewRecorded(true);
+    }
+  }, [projectData?.id, viewRecorded]);
 
   const p = project.data;
 
@@ -95,8 +111,34 @@ export default function WatchProject() {
     setShowShareSheet(true);
   };
 
+  // Build JSON-LD structured data for this project
+  const jsonLd = useMemo(() => {
+    if (!p) return undefined;
+    return buildMangaJsonLd({
+      title: p.title,
+      description: p.description,
+      coverImageUrl: p.coverImageUrl,
+      slug: slug,
+      userName: p.userName ?? null,
+      genre: p.genre,
+      createdAt: typeof p.createdAt === 'object' ? (p.createdAt as Date).toISOString() : p.createdAt,
+    });
+  }, [p, slug]);
+
   return (
     <div className="min-h-screen bg-bg-void text-white">
+      {/* SEO: Dynamic meta tags for social sharing */}
+      {p && (
+        <SEOHead
+          title={p.title}
+          description={p.description || `Watch ${p.title} on Awakli — AI-powered manga-to-anime platform`}
+          image={p.coverImageUrl || undefined}
+          url={`${window.location.origin}/watch/${slug}`}
+          type="article"
+          jsonLd={jsonLd}
+        />
+      )}
+
       {/* Hero Banner */}
       <section className="relative h-[55vh] md:h-[65vh] overflow-hidden">
         {p.coverImageUrl ? (

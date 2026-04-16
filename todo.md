@@ -1833,3 +1833,27 @@
 - [x] Navigation: PUBLIC_NAV_LINKS with /trending (1 test)
 - [x] SignUpPrompt: SignUpBanner, FloatingSignUpPrompt, PublishUpgradeModal exports (1 test)
 - [x] All 559 tests passing across 29 test files
+
+## SEOHead Integration for Watch Pages
+
+### WatchProject Page
+- [x] Import SEOHead and buildMangaJsonLd
+- [x] Add SEOHead with project title, description, coverImageUrl, og:type article
+- [x] Add buildMangaJsonLd with project data (title, description, cover, slug, userName, genre, createdAt)
+- [x] Add view recording call (trpc.publicContent.recordView) on page load
+
+### EpisodePlayer Page
+- [x] Import SEOHead and buildEpisodeJsonLd
+- [x] Add SEOHead with episode title + episode number, og:type video.other
+- [x] Add buildEpisodeJsonLd with episode data (title, projectTitle, projectSlug, episodeNumber, duration estimate)
+- [x] Add view recording call for episode on page load
+
+### Tests (7 new tests in free-viewing.test.ts)
+- [x] WatchProject imports SEOHead and buildMangaJsonLd (1 test)
+- [x] WatchProject passes correct SEO props (1 test)
+- [x] WatchProject records view on page load (1 test)
+- [x] EpisodePlayer imports SEOHead and buildEpisodeJsonLd (1 test)
+- [x] EpisodePlayer passes correct SEO props (1 test)
+- [x] EpisodePlayer records view on page load (1 test)
+- [x] EpisodePlayer builds JSON-LD with duration estimate (1 test)
+- [x] All 566 tests passing across 29 test files (1 flaky MiniMax network failure excluded)

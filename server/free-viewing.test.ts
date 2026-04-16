@@ -270,3 +270,73 @@ describe("SignUpPrompt components", () => {
     expect(mod.PublishUpgradeModal).toBeDefined();
   });
 });
+
+// ─── SEOHead Integration in Watch Pages ────────────────────────────────────
+describe("SEOHead integration in WatchProject", () => {
+  it("WatchProject imports SEOHead and buildMangaJsonLd", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/WatchProject.tsx", "utf-8");
+    expect(content).toContain('import { SEOHead, buildMangaJsonLd }');
+    expect(content).toContain('<SEOHead');
+    expect(content).toContain('type="article"');
+    expect(content).toContain('buildMangaJsonLd');
+  });
+
+  it("WatchProject passes correct SEO props", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/WatchProject.tsx", "utf-8");
+    // Verify title, description, image, url, type, and jsonLd are passed
+    expect(content).toContain("title={p.title}");
+    expect(content).toContain("image={p.coverImageUrl");
+    expect(content).toContain("jsonLd={jsonLd}");
+    expect(content).toContain('type="article"');
+  });
+
+  it("WatchProject records view on page load", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/WatchProject.tsx", "utf-8");
+    expect(content).toContain("trpc.publicContent.recordView.useMutation");
+    expect(content).toContain('contentType: "project"');
+    expect(content).toContain('source: "direct"');
+    expect(content).toContain("setViewRecorded(true)");
+  });
+});
+
+describe("SEOHead integration in EpisodePlayer", () => {
+  it("EpisodePlayer imports SEOHead and buildEpisodeJsonLd", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/EpisodePlayer.tsx", "utf-8");
+    expect(content).toContain('import { SEOHead, buildEpisodeJsonLd }');
+    expect(content).toContain('<SEOHead');
+    expect(content).toContain('type="video.other"');
+    expect(content).toContain('buildEpisodeJsonLd');
+  });
+
+  it("EpisodePlayer passes correct SEO props", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/EpisodePlayer.tsx", "utf-8");
+    // Verify episode-specific meta tags
+    expect(content).toContain("project.title");
+    expect(content).toContain("episodeNumber");
+    expect(content).toContain("jsonLd={episodeJsonLd}");
+    expect(content).toContain('type="video.other"');
+  });
+
+  it("EpisodePlayer records view on page load", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/EpisodePlayer.tsx", "utf-8");
+    expect(content).toContain("trpc.publicContent.recordView.useMutation");
+    expect(content).toContain('contentType: "anime_episode"');
+    expect(content).toContain('source: "direct"');
+    expect(content).toContain("setViewRecorded(true)");
+  });
+
+  it("EpisodePlayer builds JSON-LD with duration estimate", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("client/src/pages/EpisodePlayer.tsx", "utf-8");
+    expect(content).toContain("panels.length * 4"); // ~4 seconds per panel estimate
+    expect(content).toContain("buildEpisodeJsonLd({");
+    expect(content).toContain("projectTitle: project.title");
+    expect(content).toContain("projectSlug: slug");
+  });
+});

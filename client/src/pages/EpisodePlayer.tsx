@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import DOMPurify from "dompurify";
@@ -11,6 +11,7 @@ import {
   ThumbsUp, ThumbsDown, MessageSquare, Share2, Maximize, Minimize,
   ArrowLeft, Film, Clock, Eye, BookOpen, Send, Trash2, ChevronDown
 } from "lucide-react";
+import { SEOHead, buildEpisodeJsonLd } from "@/components/awakli/SEOHead";
 
 // ─── Typewriter Effect ─────────────────────────────────────────────────────
 function TypewriterText({ text, speed = 40 }: { text: string; speed?: number }) {
@@ -64,6 +65,34 @@ export default function EpisodePlayer() {
   );
 
   const panels: PanelData[] = (storyboard.data?.panels ?? []) as PanelData[];
+
+  // Record view on page load
+  const recordView = trpc.publicContent.recordView.useMutation();
+  const [viewRecorded, setViewRecorded] = useState(false);
+  useEffect(() => {
+    if (currentEpisode?.id && !viewRecorded) {
+      recordView.mutate({
+        contentType: "anime_episode",
+        contentId: currentEpisode.id,
+        source: "direct",
+      });
+      setViewRecorded(true);
+    }
+  }, [currentEpisode?.id, viewRecorded]);
+
+  // Build JSON-LD for this episode
+  const episodeJsonLd = useMemo(() => {
+    if (!project || !currentEpisode) return undefined;
+    return buildEpisodeJsonLd({
+      title: currentEpisode.title || `Episode ${episodeNumber}`,
+      description: currentEpisode.synopsis,
+      thumbnailUrl: project.coverImageUrl,
+      projectTitle: project.title,
+      projectSlug: slug,
+      episodeNumber,
+      duration: panels.length * 4, // ~4 seconds per panel estimate
+    });
+  }, [project, currentEpisode, slug, episodeNumber, panels.length]);
 
   // Player state
   const [currentPanel, setCurrentPanel] = useState(0);
@@ -160,6 +189,18 @@ export default function EpisodePlayer() {
 
   return (
     <div className="min-h-screen bg-bg-void text-white">
+      {/* SEO: Dynamic meta tags for social sharing */}
+      {project && currentEpisode && (
+        <SEOHead
+          title={`${project.title} - Ep ${episodeNumber}: ${currentEpisode.title || `Episode ${episodeNumber}`}`}
+          description={currentEpisode.synopsis || `Watch Episode ${episodeNumber} of ${project.title} on Awakli`}
+          image={project.coverImageUrl || undefined}
+          url={`${window.location.origin}/watch/${slug}/${episodeNumber}`}
+          type="video.other"
+          jsonLd={episodeJsonLd}
+        />
+      )}
+
       {/* Player */}
       <div
         ref={playerRef}
