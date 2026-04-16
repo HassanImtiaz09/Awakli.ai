@@ -7,6 +7,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getPanelsByEpisode, updatePanel } from "./db";
+import { computeAutoTransitions } from "./auto-transitions";
 import {
   calculateTotalDuration,
   calculateClipStartTimes,
@@ -150,6 +151,56 @@ export const transitionsRouter = router({
   /**
    * Get available transition types with descriptions
    */
+  /**
+   * Preview auto-transition assignments without applying them.
+   * Returns what transitions would be assigned based on scene structure.
+   */
+  autoAssignPreview: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ input }) => {
+      const panels = await getPanelsByEpisode(input.episodeId);
+      const sorted = [...panels].sort((a, b) => a.panelNumber - b.panelNumber);
+      const panelsForAuto = sorted.map(p => ({
+        id: p.id,
+        panelNumber: p.panelNumber,
+        sceneNumber: p.sceneNumber,
+      }));
+      return computeAutoTransitions(panelsForAuto);
+    }),
+
+  /**
+   * Apply scene-aware auto-transitions to all panels in an episode.
+   * Scene boundaries → fade (0.8s), within scene → cross-dissolve (0.5s), last panel → cut.
+   */
+  autoAssign: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .mutation(async ({ input }) => {
+      const panels = await getPanelsByEpisode(input.episodeId);
+      if (panels.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No panels found for this episode" });
+      }
+      const sorted = [...panels].sort((a, b) => a.panelNumber - b.panelNumber);
+      const panelsForAuto = sorted.map(p => ({
+        id: p.id,
+        panelNumber: p.panelNumber,
+        sceneNumber: p.sceneNumber,
+      }));
+      const summary = computeAutoTransitions(panelsForAuto);
+
+      // Apply all assignments
+      for (const a of summary.assignments) {
+        await updatePanel(a.panelId, {
+          transition: a.transition,
+          transitionDuration: a.transitionDuration,
+        } as any);
+      }
+
+      return {
+        success: true,
+        ...summary,
+      };
+    }),
+
   getTypes: protectedProcedure.query(() => {
     return [
       {

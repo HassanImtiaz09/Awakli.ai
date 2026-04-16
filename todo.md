@@ -1688,3 +1688,41 @@
 - [x] Edge cases: short clips, many clips (12), alternating types (3 tests)
 - [x] tRPC router: procedure registration, appRouter integration (2 tests)
 - [x] All 513 tests passing across 27 test files
+
+## Scene-Aware Auto-Transitions
+
+### Auto-Transition Logic (server/auto-transitions.ts)
+- [x] Detect scene boundaries by comparing sceneNumber between adjacent panels
+- [x] Assign fade (0.8s) at scene boundaries (different sceneNumber)
+- [x] Assign cross-dissolve (0.5s) within scenes (same sceneNumber)
+- [x] Keep last panel of episode as cut (no transition after final panel)
+- [x] Return summary of assignments (scene boundary count, within-scene count)
+
+### tRPC Endpoints
+- [x] GET transitions.autoAssignPreview — preview assignments without applying
+- [x] POST transitions.autoAssign — apply scene-aware auto-transitions
+- [x] Returns summary with boundary/within-scene/last-panel counts
+
+### UI Updates
+- [x] "Auto-Assign Transitions" button in TransitionTimeline (sparkle icon)
+- [x] Preview panel showing per-panel assignments color-coded by reason
+- [x] Confirm/cancel before applying
+- [x] Toast notification with summary after applying
+- [x] Scene boundary markers ("SCENE" label + amber ring) on timeline chips
+- [x] Scene number labels (S1, S2...) under each panel chip
+- [x] Legend updated with scene boundary indicator
+
+### Tests (server/auto-transitions.test.ts — 13 tests)
+- [x] Empty panels → empty summary (1 test)
+- [x] Single panel → cut as last panel (1 test)
+- [x] Same scene panels → cross-dissolve within scene (1 test)
+- [x] Scene boundary → fade (1 test)
+- [x] Mixed scenes: 3 scenes, 6 panels — correct boundary/within classification (1 test)
+- [x] All different scenes → all fades (1 test)
+- [x] Default duration values (1 test)
+- [x] Panel metadata preserved in assignments (1 test)
+- [x] Summary counts add up correctly (1 test)
+- [x] Two panels same scene (1 test)
+- [x] Stress test: 20 panels across 5 scenes (1 test)
+- [x] tRPC endpoint registration (2 tests)
+- [x] All 526 tests passing across 28 test files (1 flaky MiniMax network failure excluded)
