@@ -2165,3 +2165,10 @@
 - [x] Add all 4 to FAL_AI_PROVIDERS set (now 8 total), removed ElevenLabs from ENV_KEY_MAP
 - [x] Write 31 new tests for all 4 redirected adapters + ENV fallback
 - [x] All 58 Fal.ai tests + 52 provider-router tests + 815 total tests passing
+
+## Runway Gen-4 API Key Integration
+- [x] Store RUNWAY_API_KEY as project secret
+- [x] Add RUNWAY_API_KEY to server env configuration (ENV.runwayApiKey)
+- [x] Add runway_gen4 to registry ENV_KEY_MAP for ENV fallback
+- [x] Write validation test for Runway API key (4 tests: env set, auth check status 404/not-401, registry fallback, adapter registered)
+- [x] All 4 Runway tests passing

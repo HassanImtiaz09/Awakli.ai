@@ -175,6 +175,7 @@ export async function getActiveApiKey(providerId: string): Promise<{
     fish_audio: "FISH_AUDIO_API_KEY",
     minimax_video02: "MINIMAX_API_KEY",
     minimax_music01: "MINIMAX_API_KEY",
+    runway_gen4: "RUNWAY_API_KEY",
   };
   const envVarName = ENV_KEY_MAP[providerId];
   if (envVarName) {

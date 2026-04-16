@@ -17,4 +17,5 @@ export const ENV = {
   cloudflareStreamToken: process.env.CLOUDFLARE_STREAM_TOKEN ?? "",
   falApiKey: process.env.FAL_API_KEY ?? "",
   fishAudioApiKey: process.env.FISH_AUDIO_API_KEY ?? "",
+  runwayApiKey: process.env.RUNWAY_API_KEY ?? "",
 };
