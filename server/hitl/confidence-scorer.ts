@@ -85,14 +85,13 @@ export interface ClipService {
   cosineSimilarity(a: number[], b: number[]): number;
 }
 
-// Default mock CLIP service for V1 (returns reasonable placeholder scores)
+// Default mock CLIP service (fallback when real service is unavailable)
 const mockClipService: ClipService = {
   async getEmbedding(_imageUrl: string): Promise<number[]> {
-    // Return a normalized random-ish vector for V1
+    // Return a normalized random-ish vector as fallback
     return new Array(512).fill(0).map(() => Math.random() * 0.1);
   },
   cosineSimilarity(a: number[], b: number[]): number {
-    // Placeholder: return a moderate similarity
     let dot = 0, magA = 0, magB = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i] * b[i];
@@ -103,6 +102,26 @@ const mockClipService: ClipService = {
     return mag === 0 ? 0 : dot / mag;
   },
 };
+
+// ─── CLIP-Enhanced Safety Check ────────────────────────────────────────
+
+/**
+ * Check content safety using the CLIP service's /safety endpoint.
+ * Returns null if the service is unavailable (falls back to metadata-only check).
+ */
+async function clipSafetyCheck(imageUrl: string): Promise<{ isSafe: boolean; safetyScore: number; flaggedConcepts: string[] } | null> {
+  try {
+    const { checkSafety } = await import("./clip-client");
+    const result = await checkSafety(imageUrl);
+    return {
+      isSafe: result.isSafe,
+      safetyScore: result.safetyScore,
+      flaggedConcepts: result.flaggedConcepts,
+    };
+  } catch {
+    return null; // Service unavailable, fall back to metadata-only
+  }
+}
 
 // ─── Individual Dimension Scorers ───────────────────────────────────────
 
@@ -327,13 +346,11 @@ async function scoreStyleMatch(
   };
 }
 
-function scoreContentSafety(result: GenerateResult, _context: ScoreContext): SubScore {
-  // V1: check provider metadata for safety flags
+async function scoreContentSafety(result: GenerateResult, _context: ScoreContext): Promise<SubScore> {
+  // First: check provider metadata for explicit safety flags
   const metadata = result.providerMetadata || {};
-  const flags: string[] = [];
 
   if (metadata.nsfw === true || metadata.content_violation === true) {
-    flags.push("nsfw_detected");
     return {
       dimension: "content_safety",
       score: 0,
@@ -353,11 +370,29 @@ function scoreContentSafety(result: GenerateResult, _context: ScoreContext): Sub
     }
   }
 
+  // Second: use CLIP-based safety check for image/video outputs
+  if (result.requestType === "image" || result.requestType === "video") {
+    const clipResult = await clipSafetyCheck(result.outputUrl);
+    if (clipResult) {
+      const clipScore = Math.round(clipResult.safetyScore * 100);
+      const reasoning = clipResult.isSafe
+        ? `CLIP safety check passed (score: ${clipScore})`
+        : `CLIP safety flagged: ${clipResult.flaggedConcepts.join(", ")} (score: ${clipScore})`;
+
+      return {
+        dimension: "content_safety",
+        score: clipResult.isSafe ? Math.max(clipScore, 80) : Math.min(clipScore, 15),
+        weight: DIMENSION_WEIGHTS.content_safety,
+        reasoning,
+      };
+    }
+  }
+
   return {
     dimension: "content_safety",
     score: 95,
     weight: DIMENSION_WEIGHTS.content_safety,
-    reasoning: "No safety flags detected",
+    reasoning: "No safety flags detected (metadata-only check)",
   };
 }
 
@@ -405,7 +440,18 @@ export async function scoreGeneration(
   context: ScoreContext,
   clipService?: ClipService
 ): Promise<ConfidenceResult> {
-  const clip = clipService || mockClipService;
+  // Auto-resolve CLIP service: use provided, or try real service, or fall back to mock
+  let clip: ClipService;
+  if (clipService) {
+    clip = clipService;
+  } else {
+    try {
+      const { getClipService } = await import("./clip-client");
+      clip = await getClipService();
+    } catch {
+      clip = mockClipService;
+    }
+  }
   const applicableDimensions = Object.entries(DIMENSION_APPLICABILITY)
     .filter(([_, types]) => types.includes(result.requestType))
     .map(([dim]) => dim);
@@ -436,7 +482,7 @@ export async function scoreGeneration(
         subScore = await scoreStyleMatch(result, context, clip);
         break;
       case "content_safety":
-        subScore = scoreContentSafety(result, context);
+        subScore = await scoreContentSafety(result, context);
         if (subScore.score < 10) {
           flags.push("nsfw_detected");
         }

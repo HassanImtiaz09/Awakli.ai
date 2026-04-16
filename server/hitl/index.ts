@@ -106,6 +106,24 @@ export {
   processBatchReviewDecision,
 } from "./timeout-handler";
 
+// CLIP client
+export {
+  realClipService,
+  getClipService,
+  getTextEmbedding,
+  imageSimilarity,
+  batchSimilarity,
+  textImageSimilarity,
+  checkSafety,
+  checkClipHealth,
+  clearEmbeddingCache,
+  resetHealthState,
+  type SimilarityResult,
+  type BatchSimilarityResult,
+  type SafetyResult,
+  type ClipHealthStatus,
+} from "./clip-client";
+
 // Orchestrator bridge
 export {
   initializeHitlForRun,

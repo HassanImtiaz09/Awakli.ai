@@ -2288,3 +2288,16 @@
 - [x] Process pre-flight stages (1, 2) and secondary stages automatically
 - [x] Integration tests: 36 tests covering node-to-stage mapping, bridge exports, pipeline resume, SSE handler, end-to-end flow
 - [x] All 85 HITL tests pass (49 unit + 36 integration)
+
+## CLIP Inference Endpoint
+- [x] Build FastAPI service wrapping openai/clip-vit-base-patch32 (server/clip-service/main.py, ViT-B/32 on CPU)
+- [x] Implement /similarity endpoint (image-to-image cosine similarity)
+- [x] Implement /text-similarity endpoint (text-to-image cosine similarity)
+- [x] Implement /safety endpoint (NSFW/content safety classification with 10 unsafe + 5 safe concepts)
+- [x] Implement /batch-similarity endpoint for multiple comparisons in one call
+- [x] Implement /embed endpoint for individual image/text embeddings
+- [x] Create CLIP client module in server/hitl/clip-client.ts (ClipService interface, embedding cache, auto-fallback)
+- [x] Wire CLIP client into confidence-scorer.ts (getClipService auto-resolve, async scoreContentSafety with CLIP safety)
+- [x] Add /health endpoint for CLIP service (model, device, safety concepts status)
+- [x] Write 30 tests for CLIP client and updated scorer (clip-client.test.ts)
+- [x] Verify all existing HITL tests still pass (936 total tests passing across 39 files)
