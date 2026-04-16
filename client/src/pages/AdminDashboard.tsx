@@ -563,6 +563,24 @@ export default function AdminDashboard() {
             <CreditAnalytics />
           </div>
 
+          {/* Provider Router Admin */}
+          <div className="mb-8">
+            <a href="/admin/providers" className="block p-6 rounded-2xl border border-white/5 bg-[#0D0D1A] hover:border-accent-cyan/30 transition-colors group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-lg flex items-center justify-center bg-accent-cyan/10">
+                    <Zap className="w-5 h-5 text-accent-cyan" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-heading font-semibold text-white">Provider Router</h3>
+                    <p className="text-sm text-gray-500">Manage AI providers, API keys, circuit breakers, and health monitoring</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-accent-cyan transition-colors" />
+              </div>
+            </a>
+          </div>
+
           {/* Demo Video Pipeline */}
           <div className="mb-8">
             <DemoVideoCard />

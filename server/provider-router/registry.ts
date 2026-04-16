@@ -1,0 +1,203 @@
+/**
+ * Provider Registry — In-memory adapter registry + DB-backed provider info.
+ *
+ * Adapters register themselves at import time. The registry resolves
+ * a provider ID to its adapter instance and DB-sourced metadata.
+ */
+import { getDb } from "../db";
+import { eq, and } from "drizzle-orm";
+import {
+  providers as providersTable,
+  providerApiKeys,
+  providerHealth as providerHealthTable,
+} from "../../drizzle/schema";
+import type {
+  ProviderAdapter,
+  ProviderInfo,
+  Modality,
+  ProviderTier,
+  CircuitState,
+} from "./types";
+
+// ─── In-Memory Adapter Map ───────────────────────────────────────────────
+
+const adapterMap = new Map<string, ProviderAdapter>();
+
+export function registerAdapter(adapter: ProviderAdapter): void {
+  if (adapterMap.has(adapter.providerId)) {
+    console.warn(`[Registry] Overwriting adapter for ${adapter.providerId}`);
+  }
+  adapterMap.set(adapter.providerId, adapter);
+}
+
+export function getAdapter(providerId: string): ProviderAdapter | undefined {
+  return adapterMap.get(providerId);
+}
+
+export function listAdapters(): ProviderAdapter[] {
+  return Array.from(adapterMap.values());
+}
+
+export function hasAdapter(providerId: string): boolean {
+  return adapterMap.has(providerId);
+}
+
+// ─── DB-backed Provider Queries ──────────────────────────────────────────
+
+export async function getProviderInfo(providerId: string): Promise<ProviderInfo | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(providersTable)
+    .where(eq(providersTable.id, providerId))
+    .limit(1);
+  if (rows.length === 0) return null;
+  return rowToProviderInfo(rows[0]);
+}
+
+export async function listProviders(filters?: {
+  modality?: Modality;
+  tier?: ProviderTier;
+  status?: "active" | "disabled" | "deprecated";
+}): Promise<ProviderInfo[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [];
+  if (filters?.modality) conditions.push(eq(providersTable.modality, filters.modality));
+  if (filters?.tier) conditions.push(eq(providersTable.tier, filters.tier));
+  if (filters?.status) conditions.push(eq(providersTable.status, filters.status));
+
+  const rows = conditions.length > 0
+    ? await db.select().from(providersTable).where(and(...conditions))
+    : await db.select().from(providersTable);
+
+  return rows.map(rowToProviderInfo);
+}
+
+export async function getProvidersByModality(modality: Modality): Promise<ProviderInfo[]> {
+  return listProviders({ modality, status: "active" });
+}
+
+export async function getProviderHealth(providerId: string): Promise<{
+  circuitState: CircuitState;
+  consecutiveFailures: number;
+  lastSuccessAt: Date | null;
+  lastFailureAt: Date | null;
+  latencyP50Ms: number | null;
+  latencyP95Ms: number | null;
+  successRate1h: number | null;
+  requestCount1h: number | null;
+  openedAt: Date | null;
+  nextRetryAt: Date | null;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(providerHealthTable)
+    .where(eq(providerHealthTable.providerId, providerId))
+    .limit(1);
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    circuitState: r.circuitState as CircuitState,
+    consecutiveFailures: r.consecutiveFailures,
+    lastSuccessAt: r.lastSuccessAt,
+    lastFailureAt: r.lastFailureAt,
+    latencyP50Ms: r.latencyP50Ms,
+    latencyP95Ms: r.latencyP95Ms,
+    successRate1h: r.successRate1h ? Number(r.successRate1h) : null,
+    requestCount1h: r.requestCount1h,
+    openedAt: r.openedAt,
+    nextRetryAt: r.nextRetryAt,
+  };
+}
+
+/**
+ * Get an active, non-cap-exceeded API key for a provider.
+ * Returns decrypted key + metadata. Keys are AES encrypted at rest.
+ */
+export async function getActiveApiKey(providerId: string): Promise<{
+  id: number;
+  decryptedKey: string;
+  rateLimitRpm: number;
+  dailySpendCapUsd: number | null;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(providerApiKeys)
+    .where(
+      and(
+        eq(providerApiKeys.providerId, providerId),
+        eq(providerApiKeys.isActive, 1),
+      ),
+    )
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    id: row.id,
+    decryptedKey: decryptApiKey(row.encryptedKey),
+    rateLimitRpm: row.rateLimitRpm,
+    dailySpendCapUsd: row.dailySpendCapUsd ? Number(row.dailySpendCapUsd) : null,
+  };
+}
+
+// ─── Encryption Helpers ──────────────────────────────────────────────────
+
+import crypto from "crypto";
+
+const ENCRYPTION_KEY = process.env.JWT_SECRET?.slice(0, 32).padEnd(32, "0") ?? "0".repeat(32);
+const ALGORITHM = "aes-256-gcm";
+
+export function encryptApiKey(plaintext: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "utf8"), iv);
+  let encrypted = cipher.update(plaintext, "utf8", "base64");
+  encrypted += cipher.final("base64");
+  const tag = cipher.getAuthTag();
+  // Format: iv:tag:ciphertext (all base64)
+  return `${iv.toString("base64")}:${tag.toString("base64")}:${encrypted}`;
+}
+
+export function decryptApiKey(encrypted: string): string {
+  try {
+    const [ivB64, tagB64, ciphertext] = encrypted.split(":");
+    if (!ivB64 || !tagB64 || !ciphertext) {
+      // Fallback: assume plaintext (for migration from unencrypted keys)
+      return encrypted;
+    }
+    const iv = Buffer.from(ivB64, "base64");
+    const tag = Buffer.from(tagB64, "base64");
+    const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "utf8"), iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(ciphertext, "base64", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch {
+    // If decryption fails, return as-is (plaintext fallback)
+    return encrypted;
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
+
+function rowToProviderInfo(row: typeof providersTable.$inferSelect): ProviderInfo {
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    vendor: row.vendor,
+    modality: row.modality as Modality,
+    tier: row.tier as ProviderTier,
+    capabilities: (row.capabilities ?? {}) as ProviderInfo["capabilities"],
+    pricing: (row.pricing ?? {}) as ProviderInfo["pricing"],
+    endpointUrl: row.endpointUrl,
+    authScheme: row.authScheme as ProviderInfo["authScheme"],
+    adapterClass: row.adapterClass,
+    status: row.status as ProviderInfo["status"],
+  };
+}

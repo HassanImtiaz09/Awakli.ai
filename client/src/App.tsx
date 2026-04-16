@@ -31,6 +31,7 @@ import Pricing from "./pages/Pricing";
 import UsageDashboard from "./pages/UsageDashboard";
 import CreatorEarnings from "./pages/CreatorEarnings";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProviderAdmin from "./pages/ProviderAdmin";
 import Onboarding from "./pages/Onboarding";
 import Create from "./pages/Create";
 import PreProduction from "./pages/PreProduction";
@@ -89,6 +90,7 @@ function Router() {
 
         {/* Admin */}
         <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/providers" component={ProviderAdmin} />
         <Route path="/demo-recording" component={DemoRecording} />
 
         {/* Studio */}

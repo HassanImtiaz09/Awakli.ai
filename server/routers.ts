@@ -69,6 +69,7 @@ import { modelRoutingRouter } from "./routers-model-routing";
 import { transitionsRouter } from "./routers-transitions";
 import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./routers-public-content";
 import { uploadRouter } from "./routers-upload";
+import { providerAdminRouter } from "./routers-provider-admin";
 import { authorizeAndHold, commitTicket, releaseTicket, canAfford, canAffordBatch, getCreditCost, getAllCreditCosts, type GenerationAction } from "./credit-gateway";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
@@ -1972,6 +1973,7 @@ export const appRouter = router({
   creatorAnalytics: creatorAnalyticsRouter,
 
   // Prompt 15: Credit Gateway (pre-flight affordability)
+  providerAdmin: providerAdminRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

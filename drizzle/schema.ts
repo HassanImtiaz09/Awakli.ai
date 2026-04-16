@@ -925,3 +925,168 @@ export const stripeEventsLog = mysqlTable("stripe_events_log", {
 
 export type StripeEventLog = typeof stripeEventsLog.$inferSelect;
 export type InsertStripeEventLog = typeof stripeEventsLog.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMPT 16: Multi-Provider Router Tables
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Providers Registry ──────────────────────────────────────────────────
+export const providers = mysqlTable("providers", {
+  id: varchar("id", { length: 64 }).primaryKey(),  // e.g. 'kling_21', 'wan_26'
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+  vendor: varchar("vendor", { length: 64 }).notNull(),  // 'kling_ai', 'alibaba', 'tencent', 'fal_ai', etc.
+  modality: mysqlEnum("modality", ["video", "voice", "music", "image"]).notNull(),
+  tier: mysqlEnum("tier", ["budget", "standard", "premium", "flagship"]).notNull(),
+  capabilities: json("capabilities").notNull(),  // resolution range, max duration, streaming, voice cloning, etc.
+  pricing: json("pricing").notNull(),  // unit, rate, currency, effective_date
+  endpointUrl: text("endpointUrl").notNull(),
+  authScheme: mysqlEnum("authScheme", ["bearer", "api_key_header", "signed_request"]).notNull(),
+  adapterClass: varchar("adapterClass", { length: 128 }).notNull(),  // code reference
+  status: mysqlEnum("status", ["active", "disabled", "deprecated"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Provider = typeof providers.$inferSelect;
+export type InsertProvider = typeof providers.$inferInsert;
+
+// ─── Provider API Keys ───────────────────────────────────────────────────
+export const providerApiKeys = mysqlTable("provider_api_keys", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  encryptedKey: text("encryptedKey").notNull(),  // AES-256-GCM encrypted, base64 encoded
+  keyLabel: varchar("keyLabel", { length: 64 }).notNull(),  // 'primary', 'fallback', 'dev'
+  rateLimitRpm: int("rateLimitRpm").default(60).notNull(),
+  dailySpendCapUsd: decimal("dailySpendCapUsd", { precision: 10, scale: 2 }),
+  isActive: int("isActive").default(1).notNull(),  // 1=true, 0=false (MySQL boolean)
+  rotatedAt: timestamp("rotatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProviderApiKey = typeof providerApiKeys.$inferSelect;
+export type InsertProviderApiKey = typeof providerApiKeys.$inferInsert;
+
+// ─── Provider Health ─────────────────────────────────────────────────────
+export const providerHealth = mysqlTable("provider_health", {
+  providerId: varchar("providerId", { length: 64 }).primaryKey(),
+  circuitState: mysqlEnum("circuitState", ["closed", "open", "half_open"]).default("closed").notNull(),
+  consecutiveFailures: int("consecutiveFailures").default(0).notNull(),
+  lastSuccessAt: timestamp("lastSuccessAt"),
+  lastFailureAt: timestamp("lastFailureAt"),
+  latencyP50Ms: int("latencyP50Ms"),
+  latencyP95Ms: int("latencyP95Ms"),
+  latencyP99Ms: int("latencyP99Ms"),
+  successRate1h: decimal("successRate1h", { precision: 5, scale: 4 }),  // 0.0000 to 1.0000
+  successRate24h: decimal("successRate24h", { precision: 5, scale: 4 }),
+  successRate7d: decimal("successRate7d", { precision: 5, scale: 4 }),
+  requestCount1h: int("requestCount1h").default(0),
+  openedAt: timestamp("openedAt"),  // when circuit opened
+  nextRetryAt: timestamp("nextRetryAt"),  // when to try half-open
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProviderHealth = typeof providerHealth.$inferSelect;
+export type InsertProviderHealth = typeof providerHealth.$inferInsert;
+
+// ─── Generation Requests (append-only log) ───────────────────────────────
+export const generationRequests = mysqlTable("generation_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestUid: varchar("requestUid", { length: 32 }).notNull().unique(),  // nanoid for external reference
+  userId: int("userId").notNull(),
+  episodeId: int("episodeId"),
+  sceneId: int("sceneId"),
+  requestType: mysqlEnum("requestType", ["video", "voice", "music", "image"]).notNull(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  providerHint: varchar("providerHint", { length: 64 }),
+  fallbackChain: json("fallbackChain"),  // ordered list of providers considered
+  tier: mysqlEnum("tier", ["budget", "standard", "premium", "flagship"]).notNull(),
+  params: json("params").notNull(),  // sanitized, no secrets
+  holdId: varchar("holdId", { length: 64 }),  // reference to credit_ledger hold
+  estimatedCostCredits: decimal("estimatedCostCredits", { precision: 10, scale: 4 }).notNull(),
+  estimatedCostUsd: decimal("estimatedCostUsd", { precision: 10, scale: 4 }).notNull(),
+  actualCostCredits: decimal("actualCostCredits", { precision: 10, scale: 4 }),
+  actualCostUsd: decimal("actualCostUsd", { precision: 10, scale: 4 }),
+  status: mysqlEnum("requestStatus", ["pending", "executing", "succeeded", "failed", "cancelled"]).default("pending").notNull(),
+  errorCode: varchar("errorCode", { length: 64 }),  // TRANSIENT, RATE_LIMITED, etc.
+  errorDetail: text("errorDetail"),  // short, no PII
+  latencyMs: int("latencyMs"),
+  retryCount: int("retryCount").default(0),
+  parentRequestId: int("parentRequestId"),  // for fallback chain tracking
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+export type GenerationRequest = typeof generationRequests.$inferSelect;
+export type InsertGenerationRequest = typeof generationRequests.$inferInsert;
+
+// ─── Generation Results ──────────────────────────────────────────────────
+export const generationResults = mysqlTable("generation_results", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: int("requestId").notNull().unique(),
+  storageUrl: text("storageUrl").notNull(),
+  storageSizeBytes: bigint("storageSizeBytes", { mode: "number" }),
+  mimeType: varchar("mimeType", { length: 128 }),
+  durationSeconds: decimal("durationSeconds", { precision: 8, scale: 3 }),
+  metadata: json("metadata"),  // provider-returned metadata
+  isDraft: int("isDraft").default(0).notNull(),  // 1=draft, 0=final
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GenerationResult = typeof generationResults.$inferSelect;
+export type InsertGenerationResult = typeof generationResults.$inferInsert;
+
+// ─── Provider Rate Limits ────────────────────────────────────────────────
+export const providerRateLimits = mysqlTable("provider_rate_limits", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  apiKeyId: int("apiKeyId").notNull(),
+  windowStart: timestamp("windowStart").notNull(),
+  requestCount: int("requestCount").default(0).notNull(),
+  spendUsd: decimal("spendUsd", { precision: 10, scale: 4 }).default("0").notNull(),
+});
+export type ProviderRateLimit = typeof providerRateLimits.$inferSelect;
+export type InsertProviderRateLimit = typeof providerRateLimits.$inferInsert;
+
+// ─── Provider Quality Scores ─────────────────────────────────────────────
+export const providerQualityScores = mysqlTable("provider_quality_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  sceneType: varchar("sceneType", { length: 64 }).notNull(),
+  qualityScore: decimal("qualityScore", { precision: 4, scale: 2 }).notNull(),
+  sampleCount: int("sampleCount").default(0).notNull(),
+  ratingSource: mysqlEnum("ratingSource", ["creator", "auto_clip", "admin"]).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProviderQualityScore = typeof providerQualityScores.$inferSelect;
+export type InsertProviderQualityScore = typeof providerQualityScores.$inferInsert;
+
+// ─── Provider Events (operational log) ───────────────────────────────────
+export const providerEvents = mysqlTable("provider_events", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  eventType: varchar("eventType", { length: 64 }).notNull(),  // circuit_opened, circuit_closed, fallback_triggered, key_rotated, daily_cap_reached
+  severity: mysqlEnum("severity", ["info", "warn", "error", "critical"]).notNull(),
+  detail: json("detail"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProviderEvent = typeof providerEvents.$inferSelect;
+export type InsertProviderEvent = typeof providerEvents.$inferInsert;
+
+// ─── Provider Spend Summary (refreshed periodically, replaces materialized view) ──
+export const providerSpend24h = mysqlTable("provider_spend_24h", {
+  providerId: varchar("providerId", { length: 64 }).primaryKey(),
+  requests: int("requests").default(0).notNull(),
+  spendUsd: decimal("spendUsd", { precision: 10, scale: 4 }).default("0").notNull(),
+  avgLatencyMs: int("avgLatencyMs"),
+  successRate: decimal("successRate", { precision: 5, scale: 4 }),
+  refreshedAt: timestamp("refreshedAt").defaultNow().notNull(),
+});
+export type ProviderSpend24h = typeof providerSpend24h.$inferSelect;
+
+// ─── Creator Provider Mix (refreshed periodically, replaces materialized view) ──
+export const creatorProviderMix7d = mysqlTable("creator_provider_mix_7d", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),
+  requests: int("requests").default(0).notNull(),
+  creditsSpent: decimal("creditsSpent", { precision: 10, scale: 4 }).default("0").notNull(),
+  platformCogsUsd: decimal("platformCogsUsd", { precision: 10, scale: 4 }).default("0").notNull(),
+  refreshedAt: timestamp("refreshedAt").defaultNow().notNull(),
+});
+export type CreatorProviderMix7d = typeof creatorProviderMix7d.$inferSelect;

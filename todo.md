@@ -2014,3 +2014,113 @@
 - [x] AC10: Admin dashboard shows MRR, COGS, margin, per-creator breakdown
 - [x] AC11: All 699 tests pass across 31 files
 - [x] AC12: Hold/commit/release prevents double-spend; releaseStaleHolds cleans orphans
+
+## Prompt 16: Multi-Provider API Router & Generation Abstraction Layer
+
+### Stage 1: Database Schema (10 tables + seed data)
+- [x] providers table (id, display_name, vendor, modality, tier, capabilities JSON, pricing JSON, endpoint_url, auth_scheme, adapter_class, status)
+- [x] provider_api_keys table (id, provider_id, encrypted_key, key_label, rate_limit_rpm, daily_spend_cap_usd, is_active, rotated_at)
+- [x] provider_health table (provider_id PK, circuit_state, consecutive_failures, latency percentiles, success rates, circuit timing)
+- [x] generation_requests table (append-only: user_id, episode_id, scene_id, request_type, provider_id, tier, params, hold_id, costs, status, error, latency, retries)
+- [x] generation_results table (request_id UNIQUE, storage_url, mime_type, duration, metadata, is_draft)
+- [x] provider_rate_limits table (provider_id, api_key_id, window_start, request_count, spend_usd)
+- [x] provider_quality_scores table (provider_id, scene_type, quality_score, sample_count, rating_source)
+- [x] provider_events table (provider_id, event_type, severity, detail JSON)
+- [x] provider_spend_24h summary table (replaces materialized view)
+- [x] creator_provider_mix_7d summary table (replaces materialized view)
+- [x] Seed data: 23 providers (10 video, 5 voice, 3 music, 5 image) with capabilities and pricing
+- [x] Migration SQL generated and applied (19 SQL statements)
+
+### Stage 2: Provider Router Package Skeleton
+- [x] TypeScript interfaces: GenerateRequest, GenerateResult, ProviderAdapter, Capabilities, Pricing, ExecutionContext
+- [x] Error taxonomy: 8 canonical error codes (TRANSIENT, RATE_LIMITED, TIMEOUT, CONTENT_VIOLATION, INVALID_PARAMS, UNSUPPORTED, INSUFFICIENT_CREDITS, UNKNOWN)
+- [x] Provider registry: register/get/list/getByModality/getActiveApiKey/encryptApiKey/decryptApiKey
+- [x] Type-safe param interfaces: VideoParams, VoiceParams, MusicParams, ImageParams
+
+### Stage 3: Reference Adapter + Router + Executor + Cost Estimator
+- [x] Kling 2.1 adapter (reference implementation wrapping existing kling.ts)
+- [x] Router: scoring function with per-modality weights (cost/latency/quality/freshness)
+- [x] Router: tier filtering (hard filter), capability matching, health awareness
+- [x] Router: provider hint handling (strict vs preferred modes)
+- [x] Executor: retry logic (2x exponential backoff for TRANSIENT/TIMEOUT, 1x for RATE_LIMITED)
+- [x] Executor: fallback chain (up to 3 total attempts across providers)
+- [x] Executor: never-fallback rules (CONTENT_VIOLATION, INVALID_PARAMS, INSUFFICIENT_CREDITS)
+- [x] Cost estimator: per-provider cost calculation, credit conversion, 0.25 credit rounding
+- [x] Cost estimator: estimateBatch for full episode cost
+
+### Stage 4: Credit Ledger Integration
+- [x] Executor creates hold before any provider call (unless holdId passed)
+- [x] Executor commits hold on success (actual cost reconciled)
+- [x] Executor releases hold on failure
+- [x] Usage event recorded on every successful generation
+- [x] Episode costs updated on commit
+- [x] No provider call possible without successful hold (enforced at executor layer)
+- [x] checkAffordability() pre-check for UI
+
+### Stage 5: Circuit Breaker + Rate Limiter + Health Monitor
+- [x] Circuit breaker: closed→open (5 failures), open→half_open (cooldown), half_open→closed/open
+- [x] Sliding-window rate limiter per (provider, api_key) with per-minute tracking
+- [x] Daily spend cap enforcement per API key
+- [x] Health monitor: updates provider_health metrics, refreshes spend_24h and creator_mix_7d
+- [x] Provider events logging (circuit state changes, fallbacks, key rotations, cap hits)
+
+### Stage 6: Remaining Provider Adapters (24 total)
+- [x] Kling 2.1 adapter (standard video, reference implementation)
+- [x] Kling 1.6 adapter (budget video)
+- [x] Kling 2.6 adapter (premium video)
+- [x] Kling 3 Omni adapter (flagship video)
+- [x] Runway Gen-4 adapter (flagship video)
+- [x] Pika 2.2 adapter (standard video)
+- [x] MiniMax Video-02 adapter (standard video)
+- [x] Luma Ray3 adapter (premium video)
+- [x] Hailuo Director adapter (standard video)
+- [x] Vidu 2.5 adapter (standard video)
+- [x] Wan 2.1 adapter (budget video)
+- [x] ElevenLabs Turbo v2.5 adapter (voice)
+- [x] PlayHT 3.0 adapter (voice)
+- [x] LMNT adapter (voice)
+- [x] Fish Audio adapter (voice)
+- [x] Azure TTS adapter (voice)
+- [x] Suno v4 adapter (music)
+- [x] Udio v2 adapter (music)
+- [x] MiniMax Music-01 adapter (music)
+- [x] FLUX 1.1 Pro adapter (image)
+- [x] SDXL Lightning adapter (image)
+- [x] Midjourney v7 adapter (image)
+- [x] Ideogram 3 adapter (image)
+- [x] Recraft v3 adapter (image)
+
+### Stage 7: Admin UI
+- [x] Provider list view (/admin/providers): filterable table with modality, tier, status, circuit state, 24h stats
+- [x] Provider detail view: 24h stats, circuit breaker reset, API key management (add/toggle), event timeline
+- [x] Global provider dashboard: KPIs (total providers, active, circuit open, total spend), modality breakdown, top spenders, critical events
+- [x] Provider enable/disable toggle
+- [x] API key management UI (add new, enable/disable existing)
+- [x] Request history log with pagination
+- [x] Creator provider mix view
+- [x] Link from Admin Dashboard to Provider Admin page
+
+### Stage 8: Tests
+- [x] 52 provider-router tests covering all modules
+- [x] Types & error taxonomy: NEVER_FALLBACK, RETRYABLE, FALLBACK error sets, ProviderError class
+- [x] Cost estimator: video/voice/music/image estimation, batch estimation, unknown provider fallback
+- [x] Registry: register/get/list adapters, encryptApiKey/decryptApiKey roundtrip
+- [x] Adapters: all 24 adapters registered with unique IDs, correct modality, positive cost estimates
+- [x] Credit executor: mapToAction for all 4 modalities, generateWithCredits/checkAffordability exports
+- [x] Schema validation: all 10 tables importable with correct columns
+- [x] Admin router: 9 procedures (listProviders, getProvider, toggleProvider, resetCircuitBreaker, addApiKey, toggleApiKey, getDashboard, getRequestHistory, getCreatorMix)
+- [x] Barrel export: all core modules exported from index
+- [x] USD to credits conversion: zero handling, 0.25 credit rounding
+- [x] Full suite: 751 tests passing across 32 files, zero failures
+
+### Acceptance Criteria
+- [x] AC1: generate() routes through selectProviders→execute with scoring-based provider selection
+- [x] AC2: providerHint strict mode enforced; preferred mode falls back if hint unavailable
+- [x] AC3: Insufficient balance fails with INSUFFICIENT_CREDITS before any provider call (credit-executor layer)
+- [x] AC4: 5 consecutive failures opens circuit breaker (circuit-breaker.ts threshold=5)
+- [x] AC5: Circuit half-open recovery: single probe request, success→closed, failure→open with doubled cooldown
+- [x] AC6: Daily spend cap enforced via rate-limiter checkRateLimit()
+- [x] AC7: Successful generation creates rows in generation_requests, generation_results, usage_events, credit_ledger
+- [x] AC8: Failed generation releases hold fully via credit-executor catch→releaseTicket
+- [x] AC9: Admin UI shows provider health, spend, events, circuit state, API key management
+- [x] AC10: API keys encrypted at rest via AES-256-CBC, decryptApiKey only called at execution time
