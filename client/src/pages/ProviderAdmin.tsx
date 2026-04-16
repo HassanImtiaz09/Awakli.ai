@@ -14,9 +14,10 @@ import { toast } from "sonner";
 import {
   Activity, Zap, Shield, AlertTriangle, Server, DollarSign,
   Clock, CheckCircle, XCircle, RotateCcw, ChevronRight,
-  Video, Mic, Music, Image, ArrowLeft,
+  Video, Mic, Music, Image, ArrowLeft, Cpu,
 } from "lucide-react";
 import { Link } from "wouter";
+import LocalInfraPanel from "./LocalInfraPanel";
 
 const MODALITY_ICONS: Record<string, React.ReactNode> = {
   video: <Video className="h-4 w-4" />,
@@ -434,11 +435,13 @@ export default function ProviderAdmin() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="providers">Providers</TabsTrigger>
             <TabsTrigger value="requests">Request Log</TabsTrigger>
+            <TabsTrigger value="local-infra" className="gap-1"><Cpu className="h-3.5 w-3.5" /> Local GPU</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard"><GlobalDashboard /></TabsContent>
           <TabsContent value="providers"><ProviderList /></TabsContent>
           <TabsContent value="requests"><RequestHistory /></TabsContent>
+          <TabsContent value="local-infra"><LocalInfraPanel /></TabsContent>
         </Tabs>
       </div>
     </div>

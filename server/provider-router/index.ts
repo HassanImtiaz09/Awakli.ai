@@ -64,6 +64,9 @@ export {
   getRecentEvents,
 } from "./health-monitor";
 
+// Local Infrastructure (Prompt 19)
+export * from "./local-infra";
+
 // Adapters (self-registering on import)
 import "./adapters/kling-21";
 import "./adapters/kling-variants";
@@ -72,3 +75,4 @@ import "./adapters/video-providers";
 import "./adapters/voice-providers";
 import "./adapters/music-providers";
 import "./adapters/image-providers";
+import "./adapters/local-providers";

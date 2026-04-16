@@ -2323,3 +2323,68 @@
 - [x] Show timeout countdown for gates approaching expiry (days/hours/minutes, urgent styling < 1 hour)
 - [x] Write 8 tests for the new tRPC endpoint (auth, shape, counts, consistency, DB function, barrel exports)
 - [x] Verify all existing tests still pass (961 passed, 1 pre-existing Fish Audio network timeout)
+
+## Prompt 19: Hybrid Local/API Inference Infrastructure
+### Database Schema
+- [x] Add model_artifacts table (model_name, version, artifact_path, size_bytes, checksum_sha256, is_active)
+- [x] Add local_endpoints table (provider_id, platform, endpoint_id, endpoint_url, gpu_type, model_artifact_id, scaling_config, status, warm_workers, queue_depth)
+- [x] Add gpu_usage_log table (generation_request_id, endpoint_id, gpu_type, gpu_seconds, cost_usd, was_cold_start, cold_start_seconds, model_name, model_version)
+- [x] Generate and apply migration SQL (0026_hybrid_local_api_infra.sql)
+
+### GPU Infrastructure Client
+- [x] Create RunPod Serverless client (submit job, poll status, health check, metrics) — runpod-client.ts
+- [x] Create Modal client as fallback (same GpuPlatformClient interface) — modal-client.ts
+- [x] Implement GPU cost model (per-second billing, 30% margin, credit conversion) — gpu-cost-model.ts
+- [x] Implement model artifact manager (version resolution, activation, deployment verification) — model-artifact-manager.ts
+- [x] Implement GPU usage logger (append-only log, 24h summary, cold start tracking) — gpu-usage-logger.ts
+
+### Local Provider Adapters (6 adapters implementing ProviderAdapter interface)
+- [x] LocalAnimateDiffAdapter — draft video generation (AnimateDiff v3, 768p, 8fps, 3-5s clips)
+- [x] LocalSvdAdapter — video interpolation (SVD XT 1.1, 1024p, 4s, 14fps)
+- [x] LocalRifeAdapter — frame interpolation (RIFE v4.22, 8fps→24fps, upscale 2x/3x/4x)
+- [x] LocalControlNetAdapter — structural conditioning (ControlNet v1.1, canny/lineart/depth, 1024x1024)
+- [x] LocalIpAdapterAdapter — character consistency (IP-Adapter FaceID, embedding mode + image mode)
+- [x] LocalRealesrganAdapter — image/frame upscaling (Real-ESRGAN x4plus anime, up to 4K)
+- [x] Base local adapter factory with shared RunPod/Modal execution logic (base-local-adapter.ts)
+- [x] Self-register all 6 adapters in provider-router registry (import in index.ts)
+
+### Fallback & Graceful Degradation
+- [x] Implement fallback mapping (local→API fallback chains per provider) — fallback-map.ts
+- [x] Wire local providers into existing circuit breaker (5 consecutive failures → open) — via base-local-adapter.ts ProviderError fallbackable flag
+- [x] Handle post-processing fallback (RIFE/Real-ESRGAN degrade by skipping, not falling back) — canSkipOnFailure()
+
+### Provider Registration & Seed Data
+- [x] Register all 6 local providers in providers table with correct capabilities and pricing — seed-local-providers.ts
+- [x] Create initial model_artifacts records for all 6 models — seedModelArtifacts()
+- [x] Create local_endpoints records for RunPod endpoints — registerEndpoint() available
+- [x] Initialize provider_health records for all local providers — seedLocalProviders()
+
+### Observability & Monitoring
+- [x] GPU utilization polling (RunPod/Modal health check every 60s → endpoint metrics) — gpu-health-monitor.ts
+- [x] Queue depth monitoring (prefer APIs when queue_depth > 10 and warm_workers = 0) — MONITOR_CONFIG.queueOverloadThreshold
+- [x] Cold start rate tracking (target < 20%, alert when exceeded) — coldStartRateThreshold
+- [x] GPU cost burn rate alerts (daily threshold $50 USD) — dailyCostAlertUsd
+- [x] Model version drift detection (running version != active version) — checkVersionDrift()
+- [x] Add admin tRPC endpoints for local infrastructure data — routers-local-infra.ts (overview, endpoints, artifacts, cost, drift, monitor, seed, fallback)
+
+### Admin Dashboard Extensions
+- [x] Add "Local GPU" tab to ProviderAdmin page (LocalInfraPanel.tsx with 6 sub-tabs)
+- [x] Per-endpoint cards: warm workers, queue depth, status toggle (active/draining/disabled), scaling config
+- [x] Aggregate view: total daily GPU spend, spend by model, cost savings vs API, 7-day totals
+- [x] Model registry view: grouped by model, active versions, artifact sizes, one-click activate
+- [x] Fallback map visualization: local → API chains with skip behavior
+- [x] Seed data panel: one-click idempotent provider + artifact registration
+- [x] GPU monitor status bar with manual trigger and 60s auto-refresh
+- [x] Alert panel: cold start rate, cost burn rate, version drift detection
+
+### Tests
+- [x] 75 unit tests in prompt19-local-infra.test.ts covering all modules
+- [x] Unit tests for each adapter (validateParams, estimateCost — 6 adapters × 3+ validation cases each)
+- [x] Unit tests for GPU cost model (seconds * rate * margin = expected credits, inference time scaling, compareCosts)
+- [x] Unit tests for model artifact seed data (6 providers, 6 artifacts, field validation)
+- [x] Unit tests for RunPod/Modal client interface compliance (platform, submitJob, getJobStatus, runSync, healthCheck, getMetrics)
+- [x] Unit tests for fallback mapping (all 6 chains, skip behavior, isLocalProvider, getFallbackProviderIds)
+- [x] Unit tests for barrel exports (cost model, fallback, artifact manager, usage logger, health monitor, platform clients, seed data)
+- [x] Unit tests for tRPC admin router auth guards (8 endpoints × unauth + non-admin)
+- [x] Unit tests for tRPC admin router data shapes (overview, endpoints, artifacts, costComparison, fallbackMap)
+- [x] Verify all existing tests still pass (1034 passed, 3 transient timeouts in full suite — all pass individually)

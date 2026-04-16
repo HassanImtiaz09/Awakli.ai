@@ -1246,3 +1246,58 @@ export const creatorProviderMix7d = mysqlTable("creator_provider_mix_7d", {
   refreshedAt: timestamp("refreshedAt").defaultNow().notNull(),
 });
 export type CreatorProviderMix7d = typeof creatorProviderMix7d.$inferSelect;
+
+
+// ─── Prompt 19: Hybrid Local/API Inference Infrastructure ────────────────
+
+// ─── Model Artifacts — Versioned model weights in object storage ─────────
+export const modelArtifacts = mysqlTable("model_artifacts", {
+  id: int("id").autoincrement().primaryKey(),
+  modelName: varchar("modelName", { length: 64 }).notNull(),  // e.g. 'animatediff_v3', 'rife_v422'
+  version: varchar("version", { length: 32 }).notNull(),  // semver-ish: '1.0.0', '1.1.0'
+  artifactPath: text("artifactPath").notNull(),  // S3 path: awakli-model-artifacts/animatediff/v1.0.0/
+  sizeBytes: bigint("sizeBytes", { mode: "number" }).notNull(),
+  checksumSha256: varchar("checksumSha256", { length: 64 }).notNull(),
+  isActive: int("isActive").default(0).notNull(),  // 1=active, 0=inactive; only one active per model
+  metadata: json("metadata"),  // additional info: base_model, dependencies, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ModelArtifact = typeof modelArtifacts.$inferSelect;
+export type InsertModelArtifact = typeof modelArtifacts.$inferInsert;
+
+// ─── Local Endpoints — RunPod/Modal serverless endpoints per model ──────
+export const localEndpoints = mysqlTable("local_endpoints", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: varchar("providerId", { length: 64 }).notNull(),  // refs providers.id (e.g. 'local_animatediff')
+  platform: mysqlEnum("platform", ["runpod", "modal"]).notNull(),
+  endpointId: varchar("endpointId", { length: 128 }).notNull(),  // RunPod endpoint ID or Modal function name
+  endpointUrl: text("endpointUrl").notNull(),
+  gpuType: varchar("gpuType", { length: 32 }).notNull(),  // 'h100_sxm', 'a100_80gb', 'rtx_4090'
+  modelArtifactId: int("modelArtifactId"),  // refs model_artifacts.id
+  scalingConfig: json("scalingConfig").notNull(),  // { min_workers, max_workers, idle_timeout, max_queue_depth, cold_start_budget, warm_pool }
+  status: mysqlEnum("endpointStatus", ["active", "draining", "disabled"]).default("active").notNull(),
+  warmWorkers: int("warmWorkers").default(0).notNull(),
+  queueDepth: int("queueDepth").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LocalEndpoint = typeof localEndpoints.$inferSelect;
+export type InsertLocalEndpoint = typeof localEndpoints.$inferInsert;
+
+// ─── GPU Usage Log — Append-only log for cost reconciliation ────────────
+export const gpuUsageLog = mysqlTable("gpu_usage_log", {
+  id: int("id").autoincrement().primaryKey(),
+  generationRequestId: int("generationRequestId"),  // refs generation_requests.id (nullable for standalone ops)
+  endpointId: int("endpointId").notNull(),  // refs local_endpoints.id
+  gpuType: varchar("gpuType", { length: 32 }).notNull(),
+  gpuSeconds: decimal("gpuSeconds", { precision: 10, scale: 3 }).notNull(),
+  costUsd: decimal("costUsd", { precision: 10, scale: 6 }).notNull(),
+  wasColdStart: int("wasColdStart").default(0).notNull(),  // 1=cold start, 0=warm
+  coldStartSeconds: decimal("coldStartSeconds", { precision: 6, scale: 2 }),
+  modelName: varchar("modelName", { length: 64 }).notNull(),
+  modelVersion: varchar("modelVersion", { length: 32 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GpuUsageLogEntry = typeof gpuUsageLog.$inferSelect;
+export type InsertGpuUsageLogEntry = typeof gpuUsageLog.$inferInsert;
