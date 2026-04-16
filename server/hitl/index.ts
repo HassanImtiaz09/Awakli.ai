@@ -105,3 +105,22 @@ export {
   getBatchReviewableGates,
   processBatchReviewDecision,
 } from "./timeout-handler";
+
+// Orchestrator bridge
+export {
+  initializeHitlForRun,
+  processPreFlightStages,
+  completeNodeWithGate,
+  resumePipelineAfterApproval,
+  resumePipelineAfterRegeneration,
+  pausePipelineForGate,
+  processTimeouts,
+  getUserTierForRun,
+  NODE_TO_PRIMARY_STAGE,
+  PRE_FLIGHT_STAGES,
+  SECONDARY_STAGES,
+  STAGE_TO_NODE,
+  type OrchestratorNode,
+  type NodeCompletionParams,
+  type ResumeResult,
+} from "./orchestrator-bridge";

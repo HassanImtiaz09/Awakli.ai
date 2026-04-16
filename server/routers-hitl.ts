@@ -8,6 +8,8 @@
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { resumePipeline } from "./pipelineOrchestrator";
+import { STAGE_TO_NODE } from "./hitl/orchestrator-bridge";
 import {
   // Gate manager
   resolveGateConfig,
@@ -138,6 +140,18 @@ export const gateReviewRouter = router({
         confidenceScore: gate.confidenceScore || 0,
         isFirstAttempt: true, // Will be resolved from stage attempts
       });
+
+      // Resume pipeline after approve or regenerate (fire-and-forget)
+      if (input.decision === "approved" || input.decision === "regenerate" || input.decision === "regenerate_with_edits") {
+        const node = STAGE_TO_NODE[gate.stageNumber];
+        if (node) {
+          const action = input.decision === "approved" ? "continue" : "regenerate";
+          // Fire-and-forget: don't await so the response returns immediately
+          resumePipeline(gate.pipelineRunId, node, action).catch((err) => {
+            console.error(`[HITL] Failed to resume pipeline ${gate.pipelineRunId} after ${input.decision}:`, err);
+          });
+        }
+      }
 
       return { success: true, decision: input.decision };
     }),

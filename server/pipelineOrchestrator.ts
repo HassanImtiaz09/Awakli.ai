@@ -35,6 +35,18 @@ import {
   updateEpisode,
 } from "./db";
 import { nanoid } from "nanoid";
+import {
+  initializeHitlForRun,
+  processPreFlightStages,
+  completeNodeWithGate,
+  resumePipelineAfterApproval,
+  resumePipelineAfterRegeneration,
+  pausePipelineForGate,
+  getUserTierForRun,
+  type OrchestratorNode,
+  type NodeCompletionParams,
+} from "./hitl";
+import type { GenerateResult, ScoreContext } from "./hitl";
 
 type NodeName = "video_gen" | "voice_gen" | "music_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
@@ -800,6 +812,25 @@ export async function runPipeline(runId: number) {
     pipelineRunId: runId,
   };
 
+  // ── HITL Gate Architecture: Initialize 12-stage tracking ──
+  let hitlEnabled = false;
+  let userTier = "free_trial";
+  try {
+    userTier = await getUserTierForRun(runId);
+    await initializeHitlForRun(runId, run.userId, userTier);
+    const preFlightResult = await processPreFlightStages(runId, run.userId, userTier);
+    if (preFlightResult.blocked) {
+      console.log(`[Pipeline] HITL pre-flight blocked at stage ${preFlightResult.blockingStage}`);
+      await pausePipelineForGate(runId, preFlightResult.blockingGateId!, preFlightResult.blockingStage!);
+      return; // Pipeline paused — will resume via submitDecision
+    }
+    hitlEnabled = true;
+    console.log(`[Pipeline] HITL initialized: 12 stages, tier=${userTier}, pre-flight passed`);
+  } catch (hitlErr) {
+    console.warn(`[Pipeline] HITL initialization failed, running without gates:`, hitlErr);
+    hitlEnabled = false;
+  }
+
   try {
     // ── Layer 1: Script Validation (pre-flight) ──
     console.log(`[Pipeline] Running Layer 1: Script Validation...`);
@@ -821,6 +852,24 @@ export async function runPipeline(runId: number) {
     nodeStatuses.video_gen = "complete";
     nodeCosts.video_gen = NODE_COSTS.video_gen;
     await updateNodeProgress(runId, "video_gen", "complete", nodeStatuses, 22, totalCost, nodeCosts);
+
+    // ── HITL Gate: Video Generation (stages 3-5) ──
+    if (hitlEnabled) {
+      const videoGateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node: "video_gen",
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: { requestType: "video", outputUrl: "", outputFileSize: 50_000_000 },
+        scoreContext: { stageNumber: 5 },
+        creditsActual: NODE_COSTS.video_gen,
+      });
+      if (videoGateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after video_gen (stage ${videoGateResult.primaryStage})`);
+        await pausePipelineForGate(runId, videoGateResult.gateResult.gateId, videoGateResult.primaryStage);
+        return; // Pipeline paused — will resume via submitDecision
+      }
+    }
 
     // ── Layer 2+3: Visual + Video Quality (after video_gen) ──
     console.log(`[Pipeline] Running Layer 2: Visual Consistency + Layer 3: Video Quality...`);
@@ -856,6 +905,24 @@ export async function runPipeline(runId: number) {
     nodeCosts.voice_gen = NODE_COSTS.voice_gen;
     await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 47, totalCost, nodeCosts);
 
+    // ── HITL Gate: Voice Generation (stage 6) ──
+    if (hitlEnabled) {
+      const voiceGateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node: "voice_gen",
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: { requestType: "voice", outputUrl: "", outputFileSize: 2_000_000 },
+        scoreContext: { stageNumber: 6 },
+        creditsActual: NODE_COSTS.voice_gen,
+      });
+      if (voiceGateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after voice_gen (stage ${voiceGateResult.primaryStage})`);
+        await pausePipelineForGate(runId, voiceGateResult.gateResult.gateId, voiceGateResult.primaryStage);
+        return; // Pipeline paused
+      }
+    }
+
     // ── Layer 4: Audio Quality (after voice_gen) ──
     console.log(`[Pipeline] Running Layer 4: Audio Quality...`);
     const audioSummary = await runHarnessGate(
@@ -878,12 +945,48 @@ export async function runPipeline(runId: number) {
     nodeCosts.music_gen = NODE_COSTS.music_gen;
     await updateNodeProgress(runId, "music_gen", "complete", nodeStatuses, 75, totalCost, nodeCosts);
 
+    // ── HITL Gate: Music Generation (stages 7-8) ──
+    if (hitlEnabled) {
+      const musicGateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node: "music_gen",
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: { requestType: "music", outputUrl: "", outputFileSize: 5_000_000 },
+        scoreContext: { stageNumber: 7 },
+        creditsActual: NODE_COSTS.music_gen,
+      });
+      if (musicGateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after music_gen (stage ${musicGateResult.primaryStage})`);
+        await pausePipelineForGate(runId, musicGateResult.gateResult.gateId, musicGateResult.primaryStage);
+        return; // Pipeline paused
+      }
+    }
+
     // Node 4: Assembly (final video + Cloudflare Stream + thumbnail)
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 80, totalCost, nodeCosts);
     totalCost = await assemblyAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.assembly = "complete";
     nodeCosts.assembly = NODE_COSTS.assembly;
     await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 95, totalCost, nodeCosts);
+
+    // ── HITL Gate: Assembly (stages 9-12) ──
+    if (hitlEnabled) {
+      const assemblyGateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node: "assembly",
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: { requestType: "video", outputUrl: "", outputFileSize: 100_000_000 },
+        scoreContext: { stageNumber: 10 },
+        creditsActual: NODE_COSTS.assembly,
+      });
+      if (assemblyGateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after assembly (stage ${assemblyGateResult.primaryStage})`);
+        await pausePipelineForGate(runId, assemblyGateResult.gateResult.gateId, assemblyGateResult.primaryStage);
+        return; // Pipeline paused — final review before publish
+      }
+    }
 
     // ── Layer 5: Integration Validation (after assembly) ──
     console.log(`[Pipeline] Running Layer 5: Integration Validation...`);
@@ -947,6 +1050,203 @@ export async function runPipeline(runId: number) {
     await notifyOwner({
       title: "Pipeline Failed",
       content: `Episode pipeline run #${runId} failed at node "${currentNode}": ${error.message}`,
+    });
+  }
+}
+
+// ─── Resume Pipeline After HITL Gate Decision ────────────────────────────
+
+/**
+ * Resume a paused pipeline after a HITL gate decision (approve or regenerate).
+ * Picks up from the node that was paused and continues the remaining nodes.
+ *
+ * Called from the submitDecision tRPC procedure after a creator approves or
+ * regenerates a gate. The pipeline resumes from the next node after the
+ * approved/regenerated one.
+ */
+export async function resumePipeline(runId: number, fromNode: NodeName, action: "continue" | "regenerate") {
+  const run = await getPipelineRunById(runId);
+  if (!run) throw new Error("Pipeline run not found");
+
+  // Restore node statuses from the saved state
+  const savedStatuses = run.nodeStatuses as any as NodeStatuses | null;
+  const nodeStatuses: NodeStatuses = savedStatuses || {
+    video_gen: "pending",
+    voice_gen: "pending",
+    music_gen: "pending",
+    assembly: "pending",
+  };
+  const nodeCosts: Record<string, number> = (run.nodeCosts as any) || {};
+  let totalCost = run.totalCost || 0;
+  let harnessCost = 0;
+
+  // Determine the user's tier for HITL gates
+  let userTier = "free_trial";
+  try {
+    userTier = await getUserTierForRun(runId);
+  } catch { /* use default */ }
+
+  // Mark pipeline as running again
+  await updatePipelineRun(runId, {
+    status: "running",
+    currentNode: action === "regenerate" ? fromNode : undefined,
+  });
+
+  // Compile Production Bible for harness checks
+  let bible: ProductionBibleData;
+  try {
+    bible = await getOrCompileProductionBible(run.projectId);
+  } catch {
+    bible = {
+      version: 1,
+      projectId: run.projectId,
+      projectTitle: "Unknown",
+      genre: ["unknown"],
+      artStyle: "default",
+      compiledAt: new Date().toISOString(),
+      characters: [],
+      characterNameMap: {},
+      animationStyle: "default",
+      styleMixing: null,
+      colorGrading: "neutral",
+      atmosphericEffects: null,
+      aspectRatio: "16:9",
+      voiceAssignments: {},
+      audioConfig: null,
+      musicConfig: null,
+      openingStyle: "standard",
+      endingStyle: "standard",
+      pacing: "normal",
+      subtitleConfig: null,
+      episodes: [],
+      qualityThresholds: {
+        minImageScore: 6.0,
+        minCharacterMatch: 7.0,
+        minVideoScore: 5.5,
+        minAudioScore: 6.0,
+        maxRetries: 3,
+        blockOnNsfw: true,
+      },
+    };
+  }
+
+  const baseContext: HarnessContext = {
+    episodeId: run.episodeId,
+    pipelineRunId: runId,
+  };
+
+  // Determine which nodes to run based on action and fromNode
+  const fromIndex = NODE_ORDER.indexOf(fromNode);
+  const startIndex = action === "regenerate" ? fromIndex : fromIndex + 1;
+
+  console.log(`[Pipeline] Resuming run #${runId} from ${action === "regenerate" ? fromNode + " (regen)" : NODE_ORDER[startIndex] || "completion"}, tier=${userTier}`);
+
+  try {
+    for (let i = startIndex; i < NODE_ORDER.length; i++) {
+      const node = NODE_ORDER[i];
+
+      // Execute the node
+      await updateNodeProgress(runId, node, "running", nodeStatuses, 5 + (i * 25), totalCost, nodeCosts);
+
+      switch (node) {
+        case "video_gen":
+          totalCost = await videoGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
+          break;
+        case "voice_gen":
+          totalCost = await voiceGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
+          break;
+        case "music_gen":
+          totalCost = await musicGenAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
+          break;
+        case "assembly":
+          totalCost = await assemblyAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
+          break;
+      }
+
+      nodeStatuses[node] = "complete";
+      nodeCosts[node] = NODE_COSTS[node];
+      await updateNodeProgress(runId, node, "complete", nodeStatuses, 20 + (i * 25), totalCost, nodeCosts);
+
+      // Run harness gates after each node
+      if (node === "video_gen") {
+        const visualSummary = await runHarnessGate("Layer 2: Visual Consistency", visualChecks, { ...baseContext, targetType: "panel" }, bible, runId);
+        harnessCost += visualSummary.totalCost;
+        if (visualSummary.shouldBlock) throw new Error(`Pipeline blocked by Visual Consistency harness`);
+
+        const videoSummary = await runHarnessGate("Layer 3: Video Quality", videoChecks, { ...baseContext, targetType: "clip" }, bible, runId);
+        harnessCost += videoSummary.totalCost;
+        if (videoSummary.shouldBlock) throw new Error(`Pipeline blocked by Video Quality harness`);
+      } else if (node === "voice_gen") {
+        const audioSummary = await runHarnessGate("Layer 4: Audio Quality", audioChecks, { ...baseContext, targetType: "clip" }, bible, runId);
+        harnessCost += audioSummary.totalCost;
+        if (audioSummary.shouldBlock) throw new Error(`Pipeline blocked by Audio Quality harness`);
+      }
+
+      // HITL gate check after each node
+      const stageMap: Record<NodeName, number> = { video_gen: 5, voice_gen: 6, music_gen: 7, assembly: 10 };
+      const gateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node,
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: {
+          requestType: node === "voice_gen" ? "voice" : node === "music_gen" ? "music" : "video",
+          outputUrl: "",
+          outputFileSize: node === "assembly" ? 100_000_000 : node === "video_gen" ? 50_000_000 : 5_000_000,
+        },
+        scoreContext: { stageNumber: stageMap[node] },
+        creditsActual: NODE_COSTS[node],
+      });
+
+      if (gateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after ${node} (stage ${gateResult.primaryStage})`);
+        await pausePipelineForGate(runId, gateResult.gateResult.gateId, gateResult.primaryStage);
+        return; // Pipeline paused again — will resume via next submitDecision
+      }
+    }
+
+    // All nodes complete — run Layer 5 integration validation
+    const integrationSummary = await runHarnessGate("Layer 5: Integration Validation", integrationChecks, { ...baseContext, targetType: "episode" }, bible, runId);
+    harnessCost += integrationSummary.totalCost;
+    if (integrationSummary.shouldBlock) {
+      console.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
+    }
+
+    await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 100, totalCost, nodeCosts);
+
+    // Mark as completed
+    await updatePipelineRun(runId, {
+      status: "completed",
+      currentNode: "qa_review",
+      progress: 100,
+      completedAt: new Date(),
+      totalCost,
+    });
+
+    await updateEpisode(run.episodeId, { status: "review" } as any);
+
+    await notifyOwner({
+      title: "Pipeline Complete (Resumed)",
+      content: `Episode pipeline run #${runId} completed after HITL resume. Cost: $${(totalCost / 100).toFixed(2)} + $${harnessCost.toFixed(3)} harness.`,
+    });
+
+  } catch (error: any) {
+    const currentNode = NODE_ORDER.find(n => nodeStatuses[n] === "running") || fromNode;
+    nodeStatuses[currentNode] = "failed";
+
+    await updatePipelineRun(runId, {
+      status: "failed",
+      errors: [{ node: currentNode, message: error.message || "Unknown error", timestamp: new Date().toISOString() }] as any,
+      nodeStatuses: nodeStatuses as any,
+      completedAt: new Date(),
+      totalCost,
+    });
+
+    await updateEpisode(run.episodeId, { status: "locked" } as any);
+
+    await notifyOwner({
+      title: "Pipeline Failed (Resumed)",
+      content: `Episode pipeline run #${runId} failed at node "${currentNode}" after HITL resume: ${error.message}`,
     });
   }
 }

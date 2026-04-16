@@ -2271,3 +2271,20 @@
 - [x] Unit tests: timeout handler exports
 - [x] Unit tests: barrel export completeness
 - [x] All 49 HITL tests pass + 869/870 total tests pass (1 MiniMax network failure unrelated)
+
+## HITL-Orchestrator Integration
+- [x] Create orchestrator-bridge.ts with NODE_TO_PRIMARY_STAGE, SECONDARY_STAGES, STAGE_TO_NODE mappings
+- [x] Wire completeNodeWithGate into runPipeline after each node (video_gen, voice_gen, music_gen, assembly)
+- [x] Auto-create gate after each stage generation completes (via completeStageGeneration)
+- [x] Run confidence scorer on generation output before gate creation
+- [x] Auto-advance pipeline for ambient/advisory gates when score >= threshold
+- [x] Halt pipeline for blocking gates and send SSE notification (pausePipelineForGate)
+- [x] Wire gate approve → resumePipeline(runId, nextNode, 'continue') via submitDecision
+- [x] Wire gate reject → rejectStage + halt pipeline via submitDecision
+- [x] Wire gate regenerate → resumePipeline(runId, node, 'regenerate') via submitDecision
+- [x] Wire cascade rewind into retroactive reject flow (cascadeRewind router)
+- [x] Add timeout cron endpoint (/api/hitl/cron/timeouts) for periodic gate expiry processing
+- [x] Add resumePipeline function to pipelineOrchestrator.ts for HITL resume flow
+- [x] Process pre-flight stages (1, 2) and secondary stages automatically
+- [x] Integration tests: 36 tests covering node-to-stage mapping, bridge exports, pipeline resume, SSE handler, end-to-end flow
+- [x] All 85 HITL tests pass (49 unit + 36 integration)

@@ -97,6 +97,25 @@ export function registerHitlSseRoutes(app: Express): void {
       connectedUsers: sseConnections.size,
     });
   });
+
+  // Timeout cron endpoint — call every 5 minutes from a scheduler
+  // POST /api/hitl/process-timeouts (internal, no auth required for cron)
+  app.post("/api/hitl/process-timeouts", async (_req: Request, res: Response) => {
+    try {
+      const { processTimeouts } = await import("./orchestrator-bridge");
+      const result = await processTimeouts();
+      console.log(`[HITL Cron] Processed timeouts: ${result.warningsSent} warnings, ${result.gatesProcessed} gates processed, ${result.pipelinesResumed} pipelines resumed`);
+      res.json({
+        success: true,
+        warningsSent: result.warningsSent,
+        gatesProcessed: result.gatesProcessed,
+        pipelinesResumed: result.pipelinesResumed,
+      });
+    } catch (err) {
+      console.error("[HITL Cron] Timeout processing failed:", err);
+      res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  });
 }
 
 /**
