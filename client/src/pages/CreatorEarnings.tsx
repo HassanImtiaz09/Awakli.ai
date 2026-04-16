@@ -284,7 +284,7 @@ export default function CreatorEarnings() {
           </div>
 
           {/* Upgrade CTA for free users */}
-          {tier?.tier === "free" && (
+          {tier?.tier === "free_trial" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

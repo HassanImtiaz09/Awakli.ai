@@ -2,9 +2,54 @@ import { Request, Response } from "express";
 import { getStripe } from "./client";
 import { ENV } from "../_core/env";
 import { getDb } from "../db";
-import { subscriptions } from "../../drizzle/schema";
+import { subscriptions, stripeEventsLog, creditPacks } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
-import type { TierKey } from "./products";
+import { normalizeTier, TIERS, CREDIT_PACKS, isUpgrade, isDowngrade, type TierKey } from "./products";
+import { grantSubscriptionCredits, grantPackCredits, processRollover, getBalance } from "../credit-ledger";
+
+// ─── Event Deduplication ─────────────────────────────────────────────
+
+async function isEventProcessed(stripeEventId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const existing = await db.select().from(stripeEventsLog)
+    .where(eq(stripeEventsLog.stripeEventId, stripeEventId)).limit(1);
+  return existing.length > 0;
+}
+
+async function logEvent(stripeEventId: string, eventType: string, payload: any): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.insert(stripeEventsLog).values({
+      stripeEventId,
+      eventType,
+      payload,
+    });
+  } catch (err: any) {
+    // Duplicate key = already processed, safe to ignore
+    if (err.code === "ER_DUP_ENTRY") return;
+    throw err;
+  }
+}
+
+// ─── Subscription Defaults Helper ────────────────────────────────────
+
+function getSubscriptionDefaults(tier: TierKey) {
+  const config = TIERS[tier];
+  return {
+    monthlyCreditGrant: config.credits,
+    rolloverPercentage: String(config.rolloverPercentage),
+    rolloverCap: config.rolloverCap,
+    episodeLengthCapSeconds: config.episodeLengthCapSeconds,
+    allowedModelTiers: config.allowedModelTiers,
+    concurrentGenerationLimit: config.concurrentGenerationLimit,
+    teamSeats: config.teamSeats,
+    queuePriority: config.queuePriority,
+  };
+}
+
+// ─── Main Webhook Handler ────────────────────────────────────────────
 
 export async function handleStripeWebhook(req: Request, res: Response) {
   const stripe = getStripe();
@@ -30,8 +75,65 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
   console.log(`[Stripe Webhook] Received event: ${event.type} (${event.id})`);
 
+  // ── Idempotency check ──
+  if (await isEventProcessed(event.id)) {
+    console.log(`[Stripe Webhook] Event ${event.id} already processed, skipping`);
+    return res.json({ received: true, deduplicated: true });
+  }
+
   try {
     switch (event.type) {
+      // ── Subscription Created ──
+      case "customer.subscription.created": {
+        const sub = event.data.object as any;
+        const db = await getDb();
+        if (!db) break;
+
+        const customerId = sub.customer as string;
+        // Find user by existing stripe customer ID or metadata
+        const metadata = sub.metadata || {};
+        const userId = parseInt(metadata.user_id || "0");
+        if (!userId) {
+          console.warn("[Stripe Webhook] No user_id in subscription metadata");
+          break;
+        }
+
+        const tier = normalizeTier(metadata.tier || "creator");
+        const defaults = getSubscriptionDefaults(tier);
+        const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+
+        const existing = await db.select().from(subscriptions)
+          .where(eq(subscriptions.userId, userId)).limit(1);
+
+        if (existing.length > 0) {
+          await db.update(subscriptions).set({
+            tier,
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: sub.id,
+            status: sub.status === "trialing" ? "trialing" : "active",
+            billingInterval: interval === "year" ? "annual" : "monthly",
+            currentPeriodStart: new Date(sub.current_period_start * 1000),
+            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            ...defaults,
+          }).where(eq(subscriptions.userId, userId));
+        } else {
+          await db.insert(subscriptions).values({
+            userId,
+            tier,
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: sub.id,
+            status: sub.status === "trialing" ? "trialing" : "active",
+            billingInterval: interval === "year" ? "annual" : "monthly",
+            currentPeriodStart: new Date(sub.current_period_start * 1000),
+            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            ...defaults,
+          });
+        }
+        console.log(`[Stripe Webhook] Subscription created for user ${userId}: ${tier}`);
+        break;
+      }
+
+      // ── Checkout Completed ──
       case "checkout.session.completed": {
         const session = event.data.object as any;
         const userId = parseInt(session.metadata?.user_id || session.client_reference_id || "0");
@@ -41,15 +143,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         if (userId && subscriptionId) {
           const db = await getDb();
           if (db) {
-            // Fetch subscription details from Stripe
             const sub = await stripe.subscriptions.retrieve(subscriptionId);
-            const priceId = sub.items.data[0]?.price?.id;
             const interval = sub.items.data[0]?.price?.recurring?.interval;
+            const tier = normalizeTier(session.metadata?.tier || "creator");
+            const defaults = getSubscriptionDefaults(tier);
 
-            // Determine tier from metadata or price
-            const tier = (session.metadata?.tier || "pro") as TierKey;
-
-            // Upsert subscription record
             const existing = await db.select().from(subscriptions)
               .where(eq(subscriptions.userId, userId)).limit(1);
 
@@ -62,6 +160,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 billingInterval: interval === "year" ? "annual" : "monthly",
                 currentPeriodStart: new Date((sub as any).current_period_start * 1000),
                 currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+                ...defaults,
               }).where(eq(subscriptions.userId, userId));
             } else {
               await db.insert(subscriptions).values({
@@ -73,64 +172,200 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 billingInterval: interval === "year" ? "annual" : "monthly",
                 currentPeriodStart: new Date((sub as any).current_period_start * 1000),
                 currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+                ...defaults,
               });
             }
-            console.log(`[Stripe Webhook] Subscription activated for user ${userId}: ${tier}`);
+            console.log(`[Stripe Webhook] Checkout completed for user ${userId}: ${tier}`);
           }
         }
         break;
       }
 
+      // ── Subscription Updated (tier change, status change) ──
       case "customer.subscription.updated": {
         const sub = event.data.object as any;
         const db = await getDb();
-        if (db) {
-          const subId = sub.id as string;
-          const status = sub.status;
-          const cancelAtPeriodEnd = sub.cancel_at_period_end ? 1 : 0;
+        if (!db) break;
 
-          await db.update(subscriptions).set({
-            status: status === "active" ? "active" :
-                    status === "past_due" ? "past_due" :
-                    status === "canceled" ? "canceled" :
-                    status === "trialing" ? "trialing" : "incomplete",
-            cancelAtPeriodEnd,
-            currentPeriodStart: new Date(sub.current_period_start * 1000),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
-          }).where(eq(subscriptions.stripeSubscriptionId, subId));
+        const subId = sub.id as string;
+        const status = sub.status;
+        const cancelAtPeriodEnd = sub.cancel_at_period_end ? 1 : 0;
+
+        // Determine if tier changed
+        const metadata = sub.metadata || {};
+        const tierUpdate: Record<string, any> = {
+          status: status === "active" ? "active" :
+                  status === "past_due" ? "past_due" :
+                  status === "canceled" ? "canceled" :
+                  status === "trialing" ? "trialing" :
+                  status === "paused" ? "paused" : "incomplete",
+          cancelAtPeriodEnd,
+          currentPeriodStart: new Date(sub.current_period_start * 1000),
+          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        };
+
+        // If tier metadata changed, update tier and its defaults
+        if (metadata.tier) {
+          const newTier = normalizeTier(metadata.tier);
+          const defaults = getSubscriptionDefaults(newTier);
+          Object.assign(tierUpdate, { tier: newTier, ...defaults });
         }
+
+        await db.update(subscriptions).set(tierUpdate)
+          .where(eq(subscriptions.stripeSubscriptionId, subId));
+
+        console.log(`[Stripe Webhook] Subscription updated: ${subId} → ${status}`);
         break;
       }
 
+      // ── Subscription Deleted ──
       case "customer.subscription.deleted": {
         const sub = event.data.object as any;
         const db = await getDb();
-        if (db) {
-          await db.update(subscriptions).set({
-            tier: "free",
-            status: "canceled",
-            stripeSubscriptionId: null,
-          }).where(eq(subscriptions.stripeSubscriptionId, sub.id));
+        if (!db) break;
+
+        const defaults = getSubscriptionDefaults("free_trial");
+        await db.update(subscriptions).set({
+          tier: "free_trial",
+          status: "canceled",
+          stripeSubscriptionId: null,
+          ...defaults,
+        }).where(eq(subscriptions.stripeSubscriptionId, sub.id));
+
+        console.log(`[Stripe Webhook] Subscription deleted: ${sub.id}`);
+        break;
+      }
+
+      // ── Invoice Payment Succeeded (monthly credit grant trigger) ──
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as any;
+        const db = await getDb();
+        if (!db || !invoice.subscription) break;
+
+        // Update subscription status to active
+        await db.update(subscriptions).set({
+          status: "active",
+        }).where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
+
+        // Find the subscription to get userId and tier
+        const [subRecord] = await db.select().from(subscriptions)
+          .where(eq(subscriptions.stripeSubscriptionId, invoice.subscription)).limit(1);
+
+        if (subRecord) {
+          const tier = subRecord.tier as TierKey;
+          const tierConfig = TIERS[tier];
+
+          // Process rollover from previous period before granting new credits
+          await processRollover(subRecord.userId);
+
+          // Grant monthly credits via ledger
+          const periodLabel = new Date(invoice.period_start * 1000).toISOString().slice(0, 7);
+          await grantSubscriptionCredits(
+            subRecord.userId,
+            tierConfig.credits,
+            periodLabel
+          );
+
+          console.log(`[Stripe Webhook] Invoice paid: granted ${tierConfig.credits} credits to user ${subRecord.userId} (${tier})`);
         }
         break;
       }
 
+      // ── Invoice Payment Failed (dunning) ──
       case "invoice.payment_failed": {
         const invoice = event.data.object as any;
         const db = await getDb();
-        if (db && invoice.subscription) {
-          await db.update(subscriptions).set({
-            status: "past_due",
-          }).where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
+        if (!db || !invoice.subscription) break;
+
+        await db.update(subscriptions).set({
+          status: "past_due",
+        }).where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
+
+        console.log(`[Stripe Webhook] Payment failed for subscription: ${invoice.subscription}`);
+        break;
+      }
+
+      // ── Payment Intent Succeeded (credit pack purchase) ──
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as any;
+        const db = await getDb();
+        if (!db) break;
+
+        const metadata = pi.metadata || {};
+        if (metadata.type === "credit_pack") {
+          // Find the credit pack record
+          const [pack] = await db.select().from(creditPacks)
+            .where(eq(creditPacks.stripePaymentIntentId, pi.id)).limit(1);
+
+          if (pack && pack.status !== "completed") {
+            // Update credit pack status
+            await db.update(creditPacks).set({
+              status: "completed",
+            }).where(eq(creditPacks.stripePaymentIntentId, pi.id));
+
+            // Grant credits via ledger
+            const { ledgerEntryId } = await grantPackCredits(
+              pack.userId,
+              pack.creditsGranted,
+              pack.id,
+              pi.id
+            );
+
+            // Link ledger entry back to pack
+            await db.update(creditPacks).set({
+              ledgerEntryId,
+            }).where(eq(creditPacks.id, pack.id));
+
+            console.log(`[Stripe Webhook] Credit pack fulfilled: ${pack.creditsGranted} credits to user ${pack.userId}`);
+          }
         }
+        break;
+      }
+
+      // ── Payment Intent Failed (credit pack) ──
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as any;
+        const db = await getDb();
+        if (!db) break;
+
+        const metadata = pi.metadata || {};
+        if (metadata.type === "credit_pack") {
+          await db.update(creditPacks).set({
+            status: "failed",
+          }).where(eq(creditPacks.stripePaymentIntentId, pi.id));
+
+          console.log(`[Stripe Webhook] Credit pack payment failed: ${pi.id}`);
+        }
+        break;
+      }
+
+      // ── Charge Disputed ──
+      case "charge.dispute.created": {
+        const dispute = event.data.object as any;
+        console.warn(`[Stripe Webhook] DISPUTE created: ${dispute.id} for charge ${dispute.charge}`);
+        // TODO: Freeze account, alert admin via notification
+        break;
+      }
+
+      // ── Charge Refunded ──
+      case "charge.refunded": {
+        const charge = event.data.object as any;
+        console.log(`[Stripe Webhook] Charge refunded: ${charge.id}`);
+        // TODO: Reverse proportional credit grant via ledger
         break;
       }
 
       default:
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
+
+    // Log event as processed (idempotency)
+    await logEvent(event.id, event.type, { id: event.id, type: event.type });
+
   } catch (err: any) {
     console.error(`[Stripe Webhook] Error processing ${event.type}:`, err.message);
+    // Still log the event to prevent infinite retries on permanent failures
+    await logEvent(event.id, event.type, { id: event.id, type: event.type, error: err.message });
   }
 
   res.json({ received: true });

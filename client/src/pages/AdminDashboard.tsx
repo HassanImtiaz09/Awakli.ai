@@ -165,7 +165,7 @@ function UserList() {
                 <td className="p-4">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                     u.tier === "studio" ? "bg-accent-cyan/10 text-accent-cyan" :
-                    u.tier === "pro" ? "bg-accent-pink/10 text-accent-pink" :
+                    u.tier === "creator_pro" ? "bg-accent-pink/10 text-accent-pink" :
                     "bg-white/5 text-gray-400"
                   }`}>
                     {u.tier || "free"}
@@ -210,10 +210,12 @@ function SubscriptionOverview() {
   const subs = trpc.admin.getSubscriptions.useQuery();
   const data = subs.data ?? [];
 
-  const tierCounts = { free: 0, pro: 0, studio: 0 };
+  const tierCounts: Record<string, number> = { free_trial: 0, creator: 0, creator_pro: 0, studio: 0 };
   data.forEach((s: any) => {
-    const t = s.tier as keyof typeof tierCounts;
+    const t = s.tier as string;
     if (t in tierCounts) tierCounts[t]++;
+    else if (t === "free") tierCounts.free_trial++;
+    else if (t === "pro") tierCounts.creator++;
   });
 
   const total = data.length || 1;
@@ -226,12 +228,13 @@ function SubscriptionOverview() {
       </div>
 
       <div className="space-y-4">
-        {(["free", "pro", "studio"] as const).map((tier) => {
+        {(["free_trial", "creator", "creator_pro", "studio"] as const).map((tier) => {
           const count = tierCounts[tier];
           const pct = (count / total) * 100;
-          const colors = {
-            free: { bar: "#6B7280", label: "text-gray-400" },
-            pro: { bar: "#E94560", label: "text-accent-pink" },
+          const colors: Record<string, { bar: string; label: string }> = {
+            free_trial: { bar: "#6B7280", label: "text-gray-400" },
+            creator: { bar: "#E94560", label: "text-accent-pink" },
+            creator_pro: { bar: "#F59E0B", label: "text-amber-400" },
             studio: { bar: "#00D4FF", label: "text-accent-cyan" },
           };
           return (
@@ -346,6 +349,167 @@ function DemoVideoCard() {
   );
 }
 
+// ─── Credit Analytics Panel ───────────────────────────────────────────────
+function CreditAnalytics() {
+  const analytics = trpc.admin.getCreditAnalytics.useQuery();
+  const topConsumers = trpc.admin.getCreatorCostBreakdown.useQuery({ limit: 10 });
+  const [promoUserId, setPromoUserId] = useState("");
+  const [promoAmount, setPromoAmount] = useState("");
+  const [promoReason, setPromoReason] = useState("");
+
+  const issuePromo = trpc.admin.issuePromoCredits.useMutation({
+    onSuccess: () => {
+      toast.success("Promotional credits issued!");
+      setPromoUserId(""); setPromoAmount(""); setPromoReason("");
+      analytics.refetch();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const a = analytics.data;
+
+  return (
+    <div className="space-y-6">
+      {/* Revenue & Economics */}
+      <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <BarChart3 className="w-5 h-5 text-green-400" />
+          <h2 className="text-lg font-heading font-semibold text-white">Credit Economics</h2>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">MRR</p>
+            <p className="text-2xl font-display font-bold text-green-400">${((a?.mrr?.totalCents || 0) / 100).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">{a?.mrr?.activeSubscriptions || 0} active subs</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Pack Revenue</p>
+            <p className="text-2xl font-display font-bold text-accent-cyan">${((a?.packs?.revenueCents || 0) / 100).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">{a?.packs?.count || 0} packs sold</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">COGS</p>
+            <p className="text-2xl font-display font-bold text-red-400">${((a?.economics?.cogsUsdCents || 0) / 100).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">{a?.credits?.consumedThisMonth || 0} credits consumed</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Margin</p>
+            <p className={`text-2xl font-display font-bold ${
+              (a?.economics?.marginPct || 0) >= (a?.economics?.targetMarginPct || 33) ? "text-green-400" : "text-amber-400"
+            }`}>{a?.economics?.marginPct?.toFixed(1) || 0}%</p>
+            <p className="text-xs text-gray-500">target: {a?.economics?.targetMarginPct || 33}%</p>
+          </div>
+        </div>
+
+        {/* Credit Flow */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/10 text-center">
+            <p className="text-lg font-bold text-green-400">{a?.credits?.grantedThisMonth?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-500">Granted This Month</p>
+          </div>
+          <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/10 text-center">
+            <p className="text-lg font-bold text-red-400">{a?.credits?.consumedThisMonth?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-500">Consumed This Month</p>
+          </div>
+          <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10 text-center">
+            <p className="text-lg font-bold text-amber-400">{a?.credits?.activeHolds?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-500">Active Holds</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Consumers */}
+      <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
+        <div className="p-6 border-b border-white/5 flex items-center gap-3">
+          <TrendingUp className="w-5 h-5 text-accent-pink" />
+          <h2 className="text-lg font-heading font-semibold text-white">Top Consumers (This Month)</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="text-left text-xs text-gray-500 font-medium p-4">Creator</th>
+                <th className="text-left text-xs text-gray-500 font-medium p-4">Tier</th>
+                <th className="text-right text-xs text-gray-500 font-medium p-4">Credits Used</th>
+                <th className="text-right text-xs text-gray-500 font-medium p-4">COGS Est.</th>
+                <th className="text-right text-xs text-gray-500 font-medium p-4">API Calls</th>
+                <th className="text-right text-xs text-gray-500 font-medium p-4">Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {(topConsumers.data ?? []).map((c: any) => (
+                <tr key={c.userId} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="p-4">
+                    <p className="text-sm text-white font-medium">{c.name}</p>
+                    <p className="text-xs text-gray-500">{c.email}</p>
+                  </td>
+                  <td className="p-4">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      c.tier === "studio" ? "bg-accent-cyan/10 text-accent-cyan" :
+                      c.tier === "creator_pro" ? "bg-accent-pink/10 text-accent-pink" :
+                      c.tier === "creator" ? "bg-purple-400/10 text-purple-400" :
+                      "bg-white/5 text-gray-400"
+                    }`}>{c.tier}</span>
+                  </td>
+                  <td className="p-4 text-right text-sm text-white font-mono">{c.creditsConsumed}</td>
+                  <td className="p-4 text-right text-sm text-red-400 font-mono">${(c.cogsEstimateCents / 100).toFixed(2)}</td>
+                  <td className="p-4 text-right text-sm text-gray-400">{c.apiCalls}</td>
+                  <td className="p-4 text-right text-sm text-green-400 font-mono">{c.currentBalance}</td>
+                </tr>
+              ))}
+              {(!topConsumers.data || topConsumers.data.length === 0) && (
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500 text-sm">No usage data yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Issue Promo Credits */}
+      <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Zap className="w-5 h-5 text-amber-400" />
+          <h2 className="text-lg font-heading font-semibold text-white">Issue Promotional Credits</h2>
+        </div>
+        <div className="grid md:grid-cols-4 gap-3">
+          <input
+            type="number"
+            placeholder="User ID"
+            value={promoUserId}
+            onChange={(e) => setPromoUserId(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+          />
+          <input
+            type="number"
+            placeholder="Credits"
+            value={promoAmount}
+            onChange={(e) => setPromoAmount(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Reason code"
+            value={promoReason}
+            onChange={(e) => setPromoReason(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+          />
+          <button
+            onClick={() => {
+              if (!promoUserId || !promoAmount || !promoReason) return toast.error("Fill all fields");
+              issuePromo.mutate({ userId: parseInt(promoUserId), amount: parseInt(promoAmount), reasonCode: promoReason });
+            }}
+            disabled={issuePromo.isPending}
+            className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium hover:bg-amber-500/20 disabled:opacity-50 transition-colors"
+          >
+            {issuePromo.isPending ? "Issuing..." : "Issue Credits"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Admin Dashboard ──────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { user, isAuthenticated } = useAuth();
@@ -392,6 +556,11 @@ export default function AdminDashboard() {
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
             <SubscriptionOverview />
             <ModerationQueue />
+          </div>
+
+          {/* Credit Analytics */}
+          <div className="mb-8">
+            <CreditAnalytics />
           </div>
 
           {/* Demo Video Pipeline */}

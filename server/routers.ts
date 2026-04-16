@@ -69,6 +69,7 @@ import { modelRoutingRouter } from "./routers-model-routing";
 import { transitionsRouter } from "./routers-transitions";
 import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./routers-public-content";
 import { uploadRouter } from "./routers-upload";
+import { authorizeAndHold, commitTicket, releaseTicket, canAfford, canAffordBatch, getCreditCost, getAllCreditCosts, type GenerationAction } from "./credit-gateway";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1969,6 +1970,39 @@ export const appRouter = router({
   publicContent: publicContentRouter,
   publish: publishRouter,
   creatorAnalytics: creatorAnalyticsRouter,
+
+  // Prompt 15: Credit Gateway (pre-flight affordability)
+  creditGateway: router({
+    // Check if user can afford an action (no hold placed)
+    canAfford: protectedProcedure
+      .input(z.object({
+        action: z.string(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return canAfford(ctx.user.id, input.action as GenerationAction);
+      }),
+
+    // Batch affordability check
+    canAffordBatch: protectedProcedure
+      .input(z.object({
+        actions: z.array(z.string()),
+      }))
+      .query(async ({ ctx, input }) => {
+        return canAffordBatch(ctx.user.id, input.actions as GenerationAction[]);
+      }),
+
+    // Get all credit costs
+    getCosts: publicProcedure.query(() => {
+      return getAllCreditCosts();
+    }),
+
+    // Get cost for a specific action
+    getCost: publicProcedure
+      .input(z.object({ action: z.string() }))
+      .query(({ input }) => {
+        return { action: input.action, cost: getCreditCost(input.action as GenerationAction) };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

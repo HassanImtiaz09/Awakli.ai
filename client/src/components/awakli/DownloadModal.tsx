@@ -270,7 +270,7 @@ export default function DownloadModal({ isOpen, onClose, projectId, projectTitle
             <p className="text-white/30 text-xs">
               Downloads expire after 24 hours
             </p>
-            {formats && formats.userTier === "free" && (
+            {formats && formats.userTier === "free_trial" && (
               <button
                 onClick={() => navigate("/pricing")}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white text-xs font-medium hover:shadow-lg hover:shadow-[#E94560]/20 transition-all"

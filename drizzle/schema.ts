@@ -8,6 +8,7 @@ import {
   json,
   bigint,
   float,
+  decimal,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ────────────────────────────────────────────────────────────────
@@ -356,18 +357,27 @@ export type InsertNotification = typeof notifications.$inferInsert;
 
 // ─── Notification Types Update ──────────────────────────────────────────
 
-// ─── Subscriptions ─────────────────────────────────────────────────────
+// ─── Subscriptions (Prompt 15) ────────────────────────────────────────
 
 export const subscriptions = mysqlTable("subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tier: mysqlEnum("tier", ["free", "pro", "creator", "studio"]).default("free").notNull(),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
-  status: mysqlEnum("status", ["active", "past_due", "canceled", "trialing", "incomplete"]).default("active").notNull(),
-  currentPeriodStart: timestamp("currentPeriodStart"),
-  currentPeriodEnd: timestamp("currentPeriodEnd"),
-  cancelAtPeriodEnd: int("cancelAtPeriodEnd").default(0),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  tier: mysqlEnum("tier", ["free_trial", "creator", "creator_pro", "studio", "enterprise"]).default("free_trial").notNull(),
+  status: mysqlEnum("status", ["trialing", "active", "past_due", "canceled", "incomplete", "paused"]).default("trialing").notNull(),
+  currentPeriodStart: timestamp("currentPeriodStart").notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd").notNull(),
+  cancelAtPeriodEnd: int("cancelAtPeriodEnd").default(0).notNull(),
+  monthlyCreditGrant: int("monthlyCreditGrant").notNull().default(15),
+  rolloverPercentage: decimal("rolloverPercentage", { precision: 3, scale: 2 }).default("0.00").notNull(),
+  rolloverCap: int("rolloverCap"),
+  episodeLengthCapSeconds: int("episodeLengthCapSeconds").notNull().default(300),
+  allowedModelTiers: json("allowedModelTiers").notNull(),  // string[] e.g. ["budget"]
+  concurrentGenerationLimit: int("concurrentGenerationLimit").notNull().default(1),
+  teamSeats: int("teamSeats").notNull().default(1),
+  queuePriority: int("queuePriority").notNull().default(5),
+  lastDowngradeAt: timestamp("lastDowngradeAt"),  // for 30-day cooling-off enforcement
   billingInterval: mysqlEnum("billingInterval", ["monthly", "annual"]).default("monthly"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -792,3 +802,126 @@ export const uploadedAssets = mysqlTable("uploaded_assets", {
 });
 export type UploadedAsset = typeof uploadedAssets.$inferSelect;
 export type InsertUploadedAsset = typeof uploadedAssets.$inferInsert;
+
+// ─── Credit Ledger (Prompt 15) ──────────────────────────────────────────
+
+export const creditLedger = mysqlTable("credit_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transactionType: mysqlEnum("transactionType", [
+    "grant_subscription",
+    "grant_pack_purchase",
+    "grant_promotional",
+    "hold_preauth",
+    "commit_consumption",
+    "release_hold",
+    "refund_generation",
+    "rollover",
+    "expiry",
+    "admin_adjustment",
+  ]).notNull(),
+  amountCredits: int("amountCredits").notNull(),  // signed: + for grants, - for consumption/expiry
+  holdId: varchar("holdId", { length: 64 }),  // UUID string for hold lifecycle tracking
+  referenceType: varchar("referenceType", { length: 50 }),  // e.g. 'subscription', 'credit_pack', 'episode', 'admin'
+  referenceId: varchar("referenceId", { length: 255 }),  // ID of the referenced entity
+  description: text("description"),
+  metadata: json("metadata"),  // arbitrary JSON for audit (reason_code, admin_id, etc.)
+  balanceAfter: int("balanceAfter").notNull(),  // committed balance after this txn
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdBy: int("createdBy").references(() => users.id),  // null for system, set for admin actions
+});
+
+export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
+export type InsertCreditLedgerEntry = typeof creditLedger.$inferInsert;
+
+// ─── Credit Balances (Materialized Projection, Prompt 15) ───────────────
+
+export const creditBalances = mysqlTable("credit_balances", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  committedBalance: int("committedBalance").notNull().default(0),
+  activeHolds: int("activeHolds").notNull().default(0),
+  // available_balance = committedBalance - activeHolds (computed in app layer for MySQL)
+  lifetimeGrants: int("lifetimeGrants").notNull().default(0),
+  lifetimeConsumption: int("lifetimeConsumption").notNull().default(0),
+  lastTransactionAt: timestamp("lastTransactionAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreditBalance = typeof creditBalances.$inferSelect;
+export type InsertCreditBalance = typeof creditBalances.$inferInsert;
+
+// ─── Credit Packs (Prompt 15) ───────────────────────────────────────────
+
+export const creditPacks = mysqlTable("credit_packs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }).notNull(),
+  packSize: mysqlEnum("packSize", ["small", "medium", "large", "custom"]).notNull(),
+  creditsGranted: int("creditsGranted").notNull(),
+  pricePaidCents: int("pricePaidCents").notNull(),
+  appliedDiscountPercentage: decimal("appliedDiscountPercentage", { precision: 3, scale: 2 }).default("0.00"),
+  ledgerEntryId: int("ledgerEntryId"),  // references credit_ledger.id
+  status: mysqlEnum("status", ["pending", "completed", "failed", "refunded"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreditPack = typeof creditPacks.$inferSelect;
+export type InsertCreditPack = typeof creditPacks.$inferInsert;
+
+// ─── Usage Events (Prompt 15) ───────────────────────────────────────────
+
+export const usageEvents = mysqlTable("usage_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").references(() => episodes.id, { onDelete: "set null" }),
+  provider: varchar("provider", { length: 100 }).notNull(),  // kling, fal, elevenlabs, minimax, anthropic
+  modelName: varchar("modelName", { length: 100 }).notNull(),
+  modelTier: varchar("modelTier", { length: 50 }).notNull(),  // budget, standard, premium, ultra
+  apiCallType: varchar("apiCallType", { length: 100 }).notNull(),  // video_generation, voice_synthesis, etc.
+  usdCostCents: int("usdCostCents").notNull(),  // actual USD cost in cents
+  creditsConsumed: int("creditsConsumed").notNull(),
+  durationSeconds: int("durationSeconds"),
+  success: int("success").notNull().default(1),  // 1=true, 0=false
+  holdLedgerId: int("holdLedgerId"),  // references credit_ledger.id for the HOLD_PREAUTH entry
+  commitLedgerId: int("commitLedgerId"),  // references credit_ledger.id for the COMMIT entry
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
+export type InsertUsageEvent = typeof usageEvents.$inferInsert;
+
+// ─── Episode Costs (Prompt 15) ──────────────────────────────────────────
+
+export const episodeCosts = mysqlTable("episode_costs", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  totalCredits: int("totalCredits").notNull().default(0),
+  totalUsdCents: int("totalUsdCents").notNull().default(0),
+  videoCostCredits: int("videoCostCredits").notNull().default(0),
+  voiceCostCredits: int("voiceCostCredits").notNull().default(0),
+  musicCostCredits: int("musicCostCredits").notNull().default(0),
+  postProcessingCostCredits: int("postProcessingCostCredits").notNull().default(0),
+  scriptCostCredits: int("scriptCostCredits").notNull().default(0),
+  imageCostCredits: int("imageCostCredits").notNull().default(0),
+  status: mysqlEnum("status", ["in_progress", "completed", "refunded"]).default("in_progress").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EpisodeCost = typeof episodeCosts.$inferSelect;
+export type InsertEpisodeCost = typeof episodeCosts.$inferInsert;
+
+// ─── Stripe Events Log (Idempotency, Prompt 15) ────────────────────────
+
+export const stripeEventsLog = mysqlTable("stripe_events_log", {
+  id: int("id").autoincrement().primaryKey(),
+  stripeEventId: varchar("stripeEventId", { length: 255 }).notNull().unique(),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  processedAt: timestamp("processedAt").defaultNow().notNull(),
+  payload: json("payload"),  // full event payload for audit
+});
+
+export type StripeEventLog = typeof stripeEventsLog.$inferSelect;
+export type InsertStripeEventLog = typeof stripeEventsLog.$inferInsert;

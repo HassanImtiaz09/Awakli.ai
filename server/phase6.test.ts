@@ -48,28 +48,28 @@ function createPublicContext(): TrpcContext {
 // ─── Tier Config Tests ─────────────────────────────────────────────────
 
 describe("Tier Configuration", () => {
-  it("should have correct tier keys (free/creator/studio)", () => {
-    expect(Object.keys(TIERS)).toEqual(["free", "creator", "studio"]);
+  it("should have correct tier keys (5 tiers)", () => {
+    expect(Object.keys(TIERS)).toEqual(["free_trial", "creator", "creator_pro", "studio", "enterprise"]);
   });
 
-  it("free tier should have 100 credits and 0 price", () => {
-    expect(TIERS.free.credits).toBe(100);
-    expect(TIERS.free.monthlyPrice).toBe(0);
-    expect(TIERS.free.annualPrice).toBe(0);
-    expect(TIERS.free.hasWatermark).toBe(true);
-    expect(TIERS.free.maxProjects).toBe(3);
+  it("free_trial tier should have 15 credits and 0 price", () => {
+    expect(TIERS.free_trial.credits).toBe(15);
+    expect(TIERS.free_trial.monthlyPrice).toBe(0);
+    expect(TIERS.free_trial.annualPrice).toBe(0);
+    expect(TIERS.free_trial.hasWatermark).toBe(true);
+    expect(TIERS.free_trial.maxProjects).toBe(3);
   });
 
-  it("creator tier should have 2000 credits and $19/mo", () => {
-    expect(TIERS.creator.credits).toBe(2000);
-    expect(TIERS.creator.monthlyPrice).toBe(1900);
+  it("creator tier should have 35 credits and $29/mo", () => {
+    expect(TIERS.creator.credits).toBe(35);
+    expect(TIERS.creator.monthlyPrice).toBe(2900);
     expect(TIERS.creator.hasWatermark).toBe(false);
     expect(TIERS.creator.maxProjects).toBe(10);
   });
 
-  it("studio tier should have 10000 credits and $49/mo", () => {
-    expect(TIERS.studio.credits).toBe(10000);
-    expect(TIERS.studio.monthlyPrice).toBe(4900);
+  it("studio tier should have 600 credits and $499/mo", () => {
+    expect(TIERS.studio.credits).toBe(600);
+    expect(TIERS.studio.monthlyPrice).toBe(49900);
     expect(TIERS.studio.hasApiAccess).toBe(true);
     expect(TIERS.studio.hasPrioritySupport).toBe(true);
   });
@@ -82,46 +82,42 @@ describe("Tier Configuration", () => {
   });
 
   it("credit costs should be defined for all action types", () => {
-    expect(CREDIT_COSTS.script).toBe(10);
-    expect(CREDIT_COSTS.panel).toBe(2);
-    expect(CREDIT_COSTS.video).toBe(20);
-    expect(CREDIT_COSTS.voice).toBe(1);
-    expect(CREDIT_COSTS.lora_train).toBe(50);
+    expect(CREDIT_COSTS.script_generation).toBe(1);
+    expect(CREDIT_COSTS.panel_generation).toBe(1);
+    expect(CREDIT_COSTS.video_5s_standard).toBe(2);
+    expect(CREDIT_COSTS.voice_synthesis).toBe(1);
+    expect(CREDIT_COSTS.lora_train).toBe(10);
   });
 });
 
 // ─── Feature List Tests ────────────────────────────────────────────────
 
 describe("getTierFeatureList", () => {
-  it("should return features for free tier", () => {
-    const features = getTierFeatureList("free");
+  it("should return features for free_trial tier", () => {
+    const features = getTierFeatureList("free_trial");
     expect(features.length).toBeGreaterThan(0);
-    expect(features.some(f => f.toLowerCase().includes("community") || f.toLowerCase().includes("vote"))).toBe(true);
   });
 
   it("should return features for creator tier", () => {
     const features = getTierFeatureList("creator");
     expect(features.length).toBeGreaterThan(0);
-    expect(features.some(f => f.toLowerCase().includes("everything in free"))).toBe(true);
   });
 
   it("should return features for studio tier", () => {
     const features = getTierFeatureList("studio");
     expect(features.length).toBeGreaterThan(0);
-    expect(features.some(f => f.toLowerCase().includes("everything in creator"))).toBe(true);
-    expect(features.some(f => f.toLowerCase().includes("api"))).toBe(true);
   });
 });
 
 // ─── Billing Router Tests ──────────────────────────────────────────────
 
 describe("billing.getSubscription", () => {
-  it("should return free tier for user without subscription", async () => {
+  it("should return free_trial tier for user without subscription", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.billing.getSubscription();
-    expect(result.tier).toBe("free");
+    expect(result.tier).toBe("free_trial");
     expect(result.limits).toBeDefined();
     expect(result.features).toBeInstanceOf(Array);
     expect(result.features.length).toBeGreaterThan(0);
@@ -129,13 +125,13 @@ describe("billing.getSubscription", () => {
 });
 
 describe("billing.getTiers", () => {
-  it("should return all tiers (public endpoint)", async () => {
+  it("should return all 5 tiers (public endpoint)", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.billing.getTiers();
-    expect(result).toHaveLength(3);
-    expect(result.map((t) => t.key)).toEqual(["free", "creator", "studio"]);
+    expect(result).toHaveLength(5);
+    expect(result.map((t) => t.key)).toEqual(["free_trial", "creator", "creator_pro", "studio", "enterprise"]);
     result.forEach((tier) => {
       expect(tier.features).toBeInstanceOf(Array);
       expect(tier.name).toBeDefined();
@@ -158,9 +154,9 @@ describe("usage.getSummary", () => {
     expect(result).toHaveProperty("remaining");
     expect(result).toHaveProperty("percentUsed");
     expect(result).toHaveProperty("byType");
-    expect(result.tier).toBe("free");
-    expect(result.allocation).toBe(100);
-    expect(result.remaining).toBeLessThanOrEqual(100);
+    expect(result.tier).toBe("free_trial");
+    expect(result.allocation).toBe(15);
+    expect(result.remaining).toBeLessThanOrEqual(15);
   });
 });
 

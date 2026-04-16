@@ -191,7 +191,7 @@ export const publishRouter = router({
     .input(z.object({ projectId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const tier = await getUserSubscriptionTier(ctx.user.id);
-      if (tier === "free") {
+      if (tier === "free_trial") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "UPGRADE_REQUIRED",
@@ -213,9 +213,9 @@ export const publishRouter = router({
   checkEligibility: protectedProcedure.query(async ({ ctx }) => {
     const tier = await getUserSubscriptionTier(ctx.user.id);
     return {
-      canPublish: tier !== "free",
+      canPublish: tier !== "free_trial",
       tier,
-      upgradeRequired: tier === "free",
+      upgradeRequired: tier === "free_trial",
     };
   }),
 });

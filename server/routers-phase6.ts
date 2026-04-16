@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure, adminProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getStripe } from "./stripe/client";
-import { TIERS, CREDIT_COSTS, getTierFeatureList, normalizeTier, type TierKey } from "./stripe/products";
+import { TIERS, CREDIT_COSTS, CREDIT_PACKS, TIER_ORDER, getTierFeatureList, normalizeTier, isUpgrade, isDowngrade, type TierKey } from "./stripe/products";
 import {
   getSubscriptionByUserId, upsertSubscription,
   createUsageRecord, getUsageRecordsByUser, getMonthlyUsageSummary,
@@ -10,10 +10,17 @@ import {
   createModerationItem, getModerationQueue, updateModerationItem,
   getAdminMetrics, getAdminUserList, getAllSubscriptions,
 } from "./db-phase6";
-import { getPlatformConfig, getPlatformConfigMulti, setPlatformConfig } from "./db";
+import { getPlatformConfig, getPlatformConfigMulti, setPlatformConfig, getDb } from "./db";
 import { DEMO_CONFIG_KEYS } from "../shared/demo-scenario";
 import { generateAllDemoAssets } from "./demo-assets";
 import * as cfStream from "./cloudflare-stream";
+import {
+  getBalance, getLedgerHistory, grantSubscriptionCredits,
+  grantPromotionalCredits, adminAdjustment, reconcileBalance,
+  releaseStaleHolds, getUsageSummary,
+} from "./credit-ledger";
+import { creditPacks, subscriptions, creditLedger, creditBalances, usageEvents, episodeCosts, users } from "../drizzle/schema";
+import { eq, sql, and, gte, lte, count, sum, desc } from "drizzle-orm";
 
 // ─── Billing Router ────────────────────────────────────────────────────
 
@@ -23,16 +30,16 @@ export const billingRouter = router({
     const sub = await getSubscriptionByUserId(ctx.user.id);
     if (!sub) {
       return {
-        tier: "free" as TierKey,
+        tier: "free_trial" as TierKey,
         status: "active",
-        limits: TIERS.free,
-        features: getTierFeatureList("free"),
+        limits: TIERS.free_trial,
+        features: getTierFeatureList("free_trial"),
       };
     }
     return {
       ...sub,
-      limits: TIERS[sub.tier as TierKey] || TIERS.free,
-      features: getTierFeatureList(sub.tier as TierKey || "free"),
+      limits: TIERS[sub.tier as TierKey] || TIERS.free_trial,
+      features: getTierFeatureList(sub.tier as TierKey || "free_trial"),
     };
   }),
 
@@ -45,17 +52,97 @@ export const billingRouter = router({
     }));
   }),
 
-  // Create checkout session
+  // Create checkout session for subscription
   createCheckout: protectedProcedure
     .input(z.object({
-      tier: z.enum(["creator", "studio"]),
+      tier: z.enum(["creator", "creator_pro", "studio"]),
       interval: z.enum(["monthly", "annual"]).default("monthly"),
     }))
     .mutation(async ({ ctx, input }) => {
       const stripe = getStripe();
-      const tierConfig = TIERS[normalizeTier(input.tier)];
-      const priceInCents = input.interval === "annual" ? tierConfig.annualPrice : tierConfig.monthlyPrice;
+      const tierConfig = TIERS[input.tier];
 
+      // Check for existing subscription (upgrade path)
+      const existingSub = await getSubscriptionByUserId(ctx.user.id);
+      if (existingSub?.stripeSubscriptionId && existingSub.status === "active") {
+        const currentTier = existingSub.tier as TierKey;
+        if (isUpgrade(currentTier, input.tier)) {
+          // Upgrade: modify existing subscription with proration
+          const stripeSub = await stripe.subscriptions.retrieve(existingSub.stripeSubscriptionId);
+          // Create a new price for the upgrade tier
+          const newPrice = await stripe.prices.create({
+            currency: "usd",
+            product_data: {
+              name: `Awakli ${tierConfig.name}`,
+            },
+            unit_amount: input.interval === "annual"
+              ? Math.round(tierConfig.annualPrice / 12)
+              : tierConfig.monthlyPrice,
+            recurring: {
+              interval: input.interval === "annual" ? "year" : "month",
+            },
+          });
+          await stripe.subscriptions.update(existingSub.stripeSubscriptionId, {
+            items: [{
+              id: stripeSub.items.data[0].id,
+              price: newPrice.id,
+            }],
+            proration_behavior: "create_prorations",
+            metadata: {
+              user_id: ctx.user.id.toString(),
+              tier: input.tier,
+            },
+          });
+          return { url: null, upgraded: true, newTier: input.tier };
+        } else if (isDowngrade(currentTier, input.tier)) {
+          // Downgrade: check 30-day cooling-off
+          if (existingSub.lastDowngradeAt) {
+            const daysSinceLastDowngrade = (Date.now() - new Date(existingSub.lastDowngradeAt).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceLastDowngrade < 30) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Downgrade cooling-off: please wait ${Math.ceil(30 - daysSinceLastDowngrade)} more days before downgrading again.`,
+              });
+            }
+          }
+          // Schedule downgrade at period end
+          const stripeSubForDowngrade = await stripe.subscriptions.retrieve(existingSub.stripeSubscriptionId);
+          const downgradePrice = await stripe.prices.create({
+            currency: "usd",
+            product_data: {
+              name: `Awakli ${tierConfig.name}`,
+            },
+            unit_amount: input.interval === "annual"
+              ? Math.round(tierConfig.annualPrice / 12)
+              : tierConfig.monthlyPrice,
+            recurring: {
+              interval: input.interval === "annual" ? "year" : "month",
+            },
+          });
+          await stripe.subscriptions.update(existingSub.stripeSubscriptionId, {
+            cancel_at_period_end: false,
+            items: [{
+              id: stripeSubForDowngrade.items.data[0].id,
+              price: downgradePrice.id,
+            }],
+            proration_behavior: "none",
+            metadata: {
+              user_id: ctx.user.id.toString(),
+              tier: input.tier,
+            },
+          });
+          // Record downgrade timestamp
+          const db = await getDb();
+          if (db) {
+            await db.update(subscriptions).set({
+              lastDowngradeAt: new Date(),
+            }).where(eq(subscriptions.userId, ctx.user.id));
+          }
+          return { url: null, downgraded: true, newTier: input.tier };
+        }
+      }
+
+      // New subscription checkout
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -104,6 +191,104 @@ export const billingRouter = router({
     });
     return { url: session.url };
   }),
+
+  // Get credit balance
+  getBalance: protectedProcedure.query(async ({ ctx }) => {
+    return getBalance(ctx.user.id);
+  }),
+
+  // Get ledger history
+  getLedgerHistory: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(200).default(50),
+      offset: z.number().min(0).default(0),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      return getLedgerHistory(ctx.user.id, input?.limit || 50, input?.offset || 0);
+    }),
+
+  // Create credit pack checkout
+  createPackCheckout: protectedProcedure
+    .input(z.object({
+      packSize: z.enum(["small", "medium", "large"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const stripe = getStripe();
+      const packConfig = CREDIT_PACKS[input.packSize];
+      if (!packConfig) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid pack size" });
+      }
+
+      // Check tier-based discount
+      const sub = await getSubscriptionByUserId(ctx.user.id);
+      const tier = (sub?.tier || "free_trial") as TierKey;
+      const tierConfig = TIERS[tier];
+      const discountPct = tierConfig.packDiscount;
+      const discountedPrice = Math.round(packConfig.basePriceCents * (1 - discountPct));
+
+      // Create Stripe checkout session for one-time payment
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        allow_promotion_codes: true,
+        client_reference_id: ctx.user.id.toString(),
+        customer_email: ctx.user.email || undefined,
+        metadata: {
+          user_id: ctx.user.id.toString(),
+          type: "credit_pack",
+          pack_size: input.packSize,
+          credits: packConfig.credits.toString(),
+          customer_name: ctx.user.name || "",
+        },
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Awakli ${packConfig.name} (${packConfig.credits} credits)`,
+              description: discountPct > 0
+                ? `${packConfig.credits} credits with ${Math.round(discountPct * 100)}% ${tierConfig.name} discount`
+                : `${packConfig.credits} credits`,
+            },
+            unit_amount: discountedPrice,
+          },
+          quantity: 1,
+        }],
+        success_url: `${ctx.req.headers.origin}/studio/billing?pack=success`,
+        cancel_url: `${ctx.req.headers.origin}/studio/billing?pack=canceled`,
+      });
+
+      // Create pending credit pack record
+      const db = await getDb();
+      if (db && session.payment_intent) {
+        await db.insert(creditPacks).values({
+          userId: ctx.user.id,
+          stripePaymentIntentId: session.payment_intent as string,
+          packSize: input.packSize,
+          creditsGranted: packConfig.credits,
+          pricePaidCents: discountedPrice,
+          appliedDiscountPercentage: String(discountPct),
+          status: "pending",
+        });
+      }
+
+      return { url: session.url };
+    }),
+
+  // Get credit packs info (public)
+  getCreditPacks: publicProcedure.query(() => {
+    return Object.entries(CREDIT_PACKS).map(([key, config]) => ({
+      key,
+      ...config,
+    }));
+  }),
+
+  // Get usage summary for current billing period
+  getUsageSummary: protectedProcedure.query(async ({ ctx }) => {
+    const sub = await getSubscriptionByUserId(ctx.user.id);
+    const periodStart = sub?.currentPeriodStart || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const periodEnd = sub?.currentPeriodEnd || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+    return getUsageSummary(ctx.user.id, periodStart, periodEnd);
+  }),
 });
 
 // ─── Usage Router ──────────────────────────────────────────────────────
@@ -113,7 +298,7 @@ export const usageRouter = router({
   getSummary: protectedProcedure.query(async ({ ctx }) => {
     const summary = await getMonthlyUsageSummary(ctx.user.id);
     const sub = await getSubscriptionByUserId(ctx.user.id);
-    const tier = (sub?.tier || "free") as TierKey;
+    const tier = (sub?.tier || "free_trial") as TierKey;
     const allocation = TIERS[tier].credits;
 
     return {
@@ -147,11 +332,11 @@ export const usageRouter = router({
 
       // Check tier limits
       const sub = await getSubscriptionByUserId(ctx.user.id);
-      const tier = (sub?.tier || "free") as TierKey;
+      const tier = (sub?.tier || "free_trial") as TierKey;
       const summary = await getMonthlyUsageSummary(ctx.user.id);
       const allocation = TIERS[tier].credits;
 
-      if (summary.total + credits > allocation && tier === "free") {
+      if (summary.total + credits > allocation && tier === "free_trial") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: `Monthly credit limit reached (${allocation} credits). Upgrade to Pro for more.`,
@@ -376,6 +561,210 @@ export const adminRouter = router({
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message || "Failed to list videos" });
     }
   }),
+
+  // ─── Prompt 15: Admin Credit Analytics ──────────────────────────────
+
+  // Issue promotional credits to a user
+  issuePromoCredits: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      amount: z.number().min(1).max(10000),
+      reasonCode: z.string().min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await grantPromotionalCredits(
+        input.userId,
+        input.amount,
+        input.reasonCode
+      );
+      return { success: true, ...result };
+    }),
+
+  // Admin adjustment (positive or negative)
+  adminCreditAdjustment: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      amount: z.number(),
+      reason: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await adminAdjustment(
+        input.userId,
+        input.amount,
+        input.reason,
+        ctx.user.id
+      );
+      return { success: true, ...result };
+    }),
+
+  // Run reconciliation
+  runReconciliation: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ input }) => {
+      return reconcileBalance(input.userId);
+    }),
+
+  // Release stale holds
+  releaseStaleHolds: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ input }) => {
+      return releaseStaleHolds(input.userId);
+    }),
+
+  // Get platform-wide credit analytics
+  getCreditAnalytics: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // MRR from active subscriptions
+    const [mrrResult] = await db.select({
+      totalMrr: sql<number>`COALESCE(SUM(
+        CASE
+          WHEN ${subscriptions.tier} = 'creator' THEN 2900
+          WHEN ${subscriptions.tier} = 'creator_pro' THEN 9900
+          WHEN ${subscriptions.tier} = 'studio' THEN 49900
+          ELSE 0
+        END
+      ), 0)`.as("totalMrr"),
+      activeCount: count(),
+    }).from(subscriptions)
+      .where(eq(subscriptions.status, "active"));
+
+    // Credits granted this month
+    const [grantsResult] = await db.select({
+      totalGranted: sql<number>`COALESCE(SUM(${creditLedger.amountCredits}), 0)`.as("totalGranted"),
+    }).from(creditLedger)
+      .where(and(
+        sql`${creditLedger.transactionType} IN ('grant_subscription', 'grant_pack_purchase', 'grant_promotional')`,
+        gte(creditLedger.createdAt, monthStart)
+      ));
+
+    // Credits consumed this month
+    const [consumedResult] = await db.select({
+      totalConsumed: sql<number>`COALESCE(SUM(ABS(${creditLedger.amountCredits})), 0)`.as("totalConsumed"),
+    }).from(creditLedger)
+      .where(and(
+        eq(creditLedger.transactionType, "commit_consumption"),
+        gte(creditLedger.createdAt, monthStart)
+      ));
+
+    // Pack revenue this month
+    const [packRevenue] = await db.select({
+      totalPackRevenue: sql<number>`COALESCE(SUM(${creditPacks.pricePaidCents}), 0)`.as("totalPackRevenue"),
+      packCount: count(),
+    }).from(creditPacks)
+      .where(and(
+        eq(creditPacks.status, "completed"),
+        gte(creditPacks.createdAt, monthStart)
+      ));
+
+    // COGS estimate (credits consumed * $0.55 per credit)
+    const cogsUsdCents = Math.round((consumedResult?.totalConsumed || 0) * 55);
+    const totalRevenueCents = (mrrResult?.totalMrr || 0) + (packRevenue?.totalPackRevenue || 0);
+    const marginPct = totalRevenueCents > 0 ? ((totalRevenueCents - cogsUsdCents) / totalRevenueCents * 100) : 0;
+
+    // Tier distribution
+    const tierDist = await db.select({
+      tier: subscriptions.tier,
+      count: count(),
+    }).from(subscriptions)
+      .where(eq(subscriptions.status, "active"))
+      .groupBy(subscriptions.tier);
+
+    // Active holds
+    const [holdsResult] = await db.select({
+      totalHolds: sql<number>`COALESCE(SUM(${creditBalances.activeHolds}), 0)`.as("totalHolds"),
+    }).from(creditBalances);
+
+    return {
+      mrr: {
+        totalCents: mrrResult?.totalMrr || 0,
+        activeSubscriptions: Number(mrrResult?.activeCount) || 0,
+      },
+      credits: {
+        grantedThisMonth: grantsResult?.totalGranted || 0,
+        consumedThisMonth: consumedResult?.totalConsumed || 0,
+        activeHolds: holdsResult?.totalHolds || 0,
+      },
+      packs: {
+        revenueCents: packRevenue?.totalPackRevenue || 0,
+        count: Number(packRevenue?.packCount) || 0,
+      },
+      economics: {
+        totalRevenueCents,
+        cogsUsdCents,
+        marginPct: Math.round(marginPct * 100) / 100,
+        targetMarginPct: 33,
+      },
+      tierDistribution: tierDist.map(t => ({
+        tier: t.tier,
+        count: Number(t.count),
+      })),
+    };
+  }),
+
+  // Get per-creator cost breakdown (top consumers)
+  getCreatorCostBreakdown: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(20),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Top consumers by credits used this month
+      const topConsumers = await db.select({
+        userId: usageEvents.userId,
+        totalCredits: sql<number>`COALESCE(SUM(${usageEvents.creditsConsumed}), 0)`.as("totalCredits"),
+        totalUsdCents: sql<number>`COALESCE(SUM(${usageEvents.usdCostCents}), 0)`.as("totalUsdCents"),
+        callCount: count(),
+      }).from(usageEvents)
+        .where(gte(usageEvents.createdAt, monthStart))
+        .groupBy(usageEvents.userId)
+        .orderBy(desc(sql`totalCredits`))
+        .limit(input?.limit || 20);
+
+      // Enrich with user info and subscription tier
+      const enriched = await Promise.all(topConsumers.map(async (c) => {
+        const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, c.userId)).limit(1);
+        const sub = await getSubscriptionByUserId(c.userId);
+        const balance = await getBalance(c.userId);
+        return {
+          userId: c.userId,
+          name: user?.name || "Unknown",
+          email: user?.email || "",
+          tier: sub?.tier || "free_trial",
+          creditsConsumed: c.totalCredits,
+          usdCostCents: c.totalUsdCents,
+          apiCalls: Number(c.callCount),
+          currentBalance: balance.availableBalance,
+          cogsEstimateCents: Math.round(c.totalCredits * 55),
+        };
+      }));
+
+      return enriched;
+    }),
+
+  // Get user's detailed credit info (for admin)
+  getUserCreditInfo: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      const balance = await getBalance(input.userId);
+      const sub = await getSubscriptionByUserId(input.userId);
+      const history = await getLedgerHistory(input.userId, 20, 0);
+
+      return {
+        balance,
+        subscription: sub,
+        recentLedger: history,
+      };
+    }),
 
   // Delete a video from Cloudflare Stream
   deleteStreamVideo: adminProcedure

@@ -773,32 +773,34 @@ const FORMAT_TIERS: Record<string, { minTier: string; description: string; estim
 
 // DPI by tier
 const DPI_BY_TIER: Record<string, number> = {
-  free: 72,
+  free_trial: 72,
   creator: 150,
+  creator_pro: 150,
   studio: 300,
+  enterprise: 300,
 };
 
 // Resolution by tier for panels
 const PANEL_RESOLUTION_BY_TIER: Record<string, number> = {
-  free: 1024,
+  free_trial: 1024,
   creator: 2048,
+  creator_pro: 2048,
   studio: 2048,
+  enterprise: 2048,
 };
 
 async function getUserTier(userId: number): Promise<string> {
   const db = await getDb();
-  if (!db) return "free";
+  if (!db) return "free_trial";
   const sub = await db.select().from(subscriptions)
     .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active")))
     .limit(1);
-  if (!sub[0]) return "free";
+  if (!sub[0]) return "free_trial";
   const tier = sub[0].tier;
-  // Normalize: "pro" -> "creator"
-  if (tier === "pro") return "creator";
-  return tier || "free";
+  return tier || "free_trial";
 }
 
-const TIER_HIERARCHY = ["free", "creator", "studio"];
+const TIER_HIERARCHY = ["free_trial", "creator", "creator_pro", "studio", "enterprise"];
 
 function tierMeetsMinimum(userTier: string, minTier: string): boolean {
   return TIER_HIERARCHY.indexOf(userTier) >= TIER_HIERARCHY.indexOf(minTier);
@@ -839,7 +841,7 @@ export const downloadsRouter = router({
           estimatedSizeMb,
           dpi: format === "pdf" ? DPI_BY_TIER[userTier] : undefined,
           resolution: format === "png_zip" ? `${PANEL_RESOLUTION_BY_TIER[userTier]}px` : undefined,
-          watermarked: userTier === "free",
+          watermarked: userTier === "free_trial",
         };
       });
 
@@ -903,7 +905,7 @@ export const downloadsRouter = router({
         episodeId: input.episodeId || null,
         format: input.format,
         status: "generating",
-        watermarked: userTier === "free" ? 1 : 0,
+        watermarked: userTier === "free_trial" ? 1 : 0,
         resolution: resolution || null,
         dpi: dpi || null,
         chapterNumber: input.chapterNumber || null,
@@ -1011,7 +1013,7 @@ export const downloadsRouter = router({
         minTier: formatInfo.minTier,
         userTier,
         dpi: input.format === "pdf" ? DPI_BY_TIER[userTier] : undefined,
-        watermarked: userTier === "free",
+        watermarked: userTier === "free_trial",
       };
     }),
 });
@@ -1116,7 +1118,7 @@ export const sharingRouter = router({
         imageUrl: panel[0].imageUrl || panel[0].compositeImageUrl,
         projectTitle: project[0].title,
         projectSlug: project[0].slug,
-        watermarked: userTier === "free",
+        watermarked: userTier === "free_trial",
         shareText: `From "${project[0].title}" on Awakli`,
       };
     }),

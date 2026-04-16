@@ -1924,3 +1924,93 @@
 - [x] Type export verification (SourceType, StyleTransferOption, DetectionResult, etc.)
 - [x] All 44 upload pipeline tests passing
 - [x] Full suite: 610 tests passing across 30 test files
+
+## Prompt 15: Creator Tier Pricing & Credit Ledger Foundation
+
+### Stage 1: Database Schema (7 tables)
+- [x] subscriptions table (updated: 5 tiers, credit grant config, model tiers, rollover, concurrent limits, team seats, queue priority)
+- [x] credit_ledger table (append-only: transaction_type, amount_credits, hold_id, balance_after)
+- [x] credit_balances table (materialized projection: committed_balance, active_holds, available_balance computed)
+- [x] credit_packs table (stripe_payment_intent_id, pack_size, credits_granted, price_paid_cents)
+- [x] usage_events table (provider, model_name, model_tier, usd_cost_cents, credits_consumed, hold/commit refs)
+- [x] episode_costs table (episode_id, total_credits, total_usd_cents, breakdown by category)
+- [x] stripe_events_log table (stripe_event_id UNIQUE, event_type, processed_at, payload for idempotency)
+- [x] Migration SQL generated and applied (30 SQL statements)
+
+### Stage 2: Ledger Service
+- [x] Credit constants module (COGS_VALUE_USD=0.55, SUBSCRIPTION_RATE_USD=0.82, MARGIN_TARGET=0.33)
+- [x] Tier configuration (Free Trial: 15 credits/$0, Creator: 35/$29, Creator Pro: 120/$99, Studio: 600/$499)
+- [x] Credit pack pricing (Small: 50/$35, Medium: 150/$95, Large: 500/$275, Studio 20% discount)
+- [x] Credit Ledger Service: append-only writes with 10 transaction types
+- [x] Materialized balance projection: updated transactionally with every ledger insert
+- [x] Hold/Commit/Release functions with row-level locking
+- [x] Hold TTL reaper (1h default, auto-release stale holds via releaseStaleHolds)
+- [x] Reconciliation job (verify materialized balance vs ledger replay)
+- [x] Rollover logic per tier (Creator: 0%, Creator Pro: 20% cap 240, Studio: 50% cap 1800)
+- [x] Admin adjustment with audit trail
+
+### Stage 3: Stripe Integration
+- [x] Stripe product catalog config (5 subscriptions + 3 credit packs with CREDIT_ECONOMICS)
+- [x] Webhook handler with stripe_events_log deduplication
+- [x] customer.subscription.created handler (create subscription, assign tier)
+- [x] customer.subscription.updated handler (tier changes with proration)
+- [x] customer.subscription.deleted handler (mark canceled, freeze grants)
+- [x] invoice.payment_succeeded handler (trigger rollover + monthly credit grant via ledger)
+- [x] invoice.payment_failed handler (dunning: past_due status)
+- [x] payment_intent.succeeded handler (credit pack purchase → grant credits via ledger)
+- [x] payment_intent.payment_failed handler (log failed pack)
+- [x] charge.dispute.created handler (freeze account, alert admin)
+- [x] charge.refunded handler (reverse proportional credit grant)
+- [x] Proration on mid-cycle upgrades (Stripe proration_behavior: create_prorations)
+- [x] Downgrade with 30-day cooling-off period enforcement
+- [x] Credit pack checkout with tier-based discount (Studio 20% off)
+
+### Stage 4: Pre-flight Affordability Check
+- [x] Pre-Authorization Gateway: subscription status check
+- [x] Available balance lookup from credit_balances
+- [x] Estimated credit cost computation (CREDIT_COSTS for all 12 action types)
+- [x] Model tier access verification (allowed_model_tiers)
+- [x] HOLD_PREAUTH ledger entry on success, denial with reason code on failure
+- [x] Commit vs Release decision (actual cost ≤ hold → commit + release diff; >15% over → absorb excess)
+- [x] Usage Accounting Service: record API call outcomes, update episode_costs
+- [x] tRPC endpoints: canAfford, canAffordBatch, getCosts, getCost
+
+### Stage 5: Dashboards
+- [x] Creator billing dashboard: available balance with animated ring progress
+- [x] Creator dashboard: subscription tier, renewal date, manage link
+- [x] Creator dashboard: paginated ledger entries with color-coded transaction types
+- [x] Creator dashboard: credit pack purchase CTAs
+- [x] Creator dashboard: tier upgrade CTA for free users
+- [x] Creator dashboard: consumption breakdown by category (video, voice, music, script, image)
+- [x] Creator dashboard: credit cost reference table
+- [x] Admin analytics: MRR by tier with revenue breakdown
+- [x] Admin analytics: pack revenue and COGS estimate
+- [x] Admin analytics: blended gross margin percentage with target indicator
+- [x] Admin analytics: credit flow (granted/consumed/holds)
+- [x] Admin analytics: top consumers table with per-creator cost breakdown
+- [x] Admin analytics: promotional credit issuance form
+
+### Stage 6: Tests
+- [x] 89 credit-ledger tests: tier config, credit economics, pack pricing, gateway, schema validation
+- [x] Tier normalization: legacy free→free_trial, pro→creator mapping
+- [x] Credit costs: all 12 action types with correct values
+- [x] Pack pricing: per-credit rates decrease with size
+- [x] Gateway: canAfford/authorizeAndHold/commitTicket/releaseTicket logic
+- [x] Schema tables: all 7 new tables importable with correct columns
+- [x] Phase6 tests updated: 5-tier structure, new credit values
+- [x] Phase13 tests updated: free_trial tier references, DPI maps
+- [x] Full suite: 699 tests passing across 31 test files, zero failures
+
+### Acceptance Criteria
+- [x] AC1: New user gets 15 Free Trial credits (TIERS.free_trial.credits=15)
+- [x] AC2: Upgrade Free→Creator grants 35 credits (grantSubscriptionCredits), enables Standard model access
+- [x] AC3: Generation consumes credits via hold/commit/release lifecycle
+- [x] AC4: Exceeding balance → canAfford returns false with reason code, UI shows purchase CTA
+- [x] AC5: Credit pack purchase grants credits via payment_intent.succeeded webhook → grantPackCredits
+- [x] AC6: Tier upgrades prorated (Stripe proration_behavior); downgrades enforce 30-day cooling-off
+- [x] AC7: Payment failure sets subscription status to past_due
+- [x] AC8: Canceled sub (subscription.deleted) marks status canceled, no further grants
+- [x] AC9: Admin can issue promo credits via adminAdjustment with reason_code
+- [x] AC10: Admin dashboard shows MRR, COGS, margin, per-creator breakdown
+- [x] AC11: All 699 tests pass across 31 files
+- [x] AC12: Hold/commit/release prevents double-spend; releaseStaleHolds cleans orphans

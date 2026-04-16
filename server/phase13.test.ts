@@ -413,7 +413,7 @@ describe("Download & Export System", () => {
     it("returns correct tier for free user", async () => {
       const caller = appRouter.createCaller(createAuthContext());
       const result = await caller.downloads.estimate({ projectId: 99999, format: "pdf" });
-      expect(result.userTier).toBe("free");
+      expect(result.userTier).toBe("free_trial");
       expect(result.unlocked).toBe(true); // PDF is free tier
     });
 

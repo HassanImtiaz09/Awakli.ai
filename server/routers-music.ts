@@ -362,7 +362,7 @@ export const musicGenerationRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      const tier = (user as any)?.tier || "free";
+      const tier = (user as any)?.tier || "free_trial";
       const limits = getTierLimits(tier);
 
       const maxVariations = input.themeType === "opening" ? limits.opVariations : limits.edVariations;
@@ -455,7 +455,7 @@ export const musicGenerationRouter = router({
 
       // Check refinement limits
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      const tier = (user as any)?.tier || "free";
+      const tier = (user as any)?.tier || "free_trial";
       const limits = getTierLimits(tier);
       const maxRefinements = track.trackType === "opening" ? limits.opRefinements : limits.edRefinements;
 
@@ -601,7 +601,7 @@ export const musicOstRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      const tier = (user as any)?.tier || "free";
+      const tier = (user as any)?.tier || "free_trial";
       const limits = getTierLimits(tier);
       if (limits.bgmTracks === 0) throw new Error("BGM generation not available on free tier");
 
@@ -679,7 +679,7 @@ export const musicOstRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      const tier = (user as any)?.tier || "free";
+      const tier = (user as any)?.tier || "free_trial";
       const limits = getTierLimits(tier);
 
       // Count existing custom tracks
@@ -1047,7 +1047,7 @@ export const musicTrackRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-      const tier = (user as any)?.tier || "free";
+      const tier = (user as any)?.tier || "free_trial";
       const limits = getTierLimits(tier);
       if (!limits.upload) throw new Error("Music upload not available on free tier");
 
@@ -1101,7 +1101,7 @@ export const musicTrackRouter = router({
   getMusicTierLimits: protectedProcedure.query(async ({ ctx }) => {
     const db = (await getDb())!;
     const [user] = await db.select().from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    const tier = (user as any)?.tier || "free";
+    const tier = (user as any)?.tier || "free_trial";
     return { tier, limits: getTierLimits(tier) };
   }),
 });

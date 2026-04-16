@@ -36,7 +36,7 @@ async function requireCreatorOrStudio(userId: number) {
     .where(eq(subscriptions.userId, userId))
     .limit(1);
   const tier = sub?.tier ?? "free";
-  if (tier === "free" || tier === "pro") {
+  if (tier === "free_trial") {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Subject Library requires Creator or Studio tier",

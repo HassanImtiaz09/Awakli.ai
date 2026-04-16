@@ -36,7 +36,7 @@ interface TierCheckResult {
 
 async function getUserTier(userId: number): Promise<TierKey> {
   const sub = await getSubscriptionByUserId(userId);
-  return normalizeTier(sub?.tier || "free");
+  return normalizeTier(sub?.tier || "free_trial");
 }
 
 async function checkTierLimit(
@@ -61,8 +61,8 @@ async function checkTierLimit(
           reason: `You've reached the ${config.maxProjects} project limit on the ${config.name} plan.`,
           currentCount: current,
           limit: config.maxProjects,
-          upgradeTier: tier === "free" ? "creator" : "studio",
-          upgradeBenefit: tier === "free"
+          upgradeTier: tier === "free_trial" ? "creator" : "studio",
+          upgradeBenefit: tier === "free_trial"
             ? "Upgrade to Creator for up to 10 projects"
             : "Upgrade to Studio for unlimited projects",
         };
@@ -83,8 +83,8 @@ async function checkTierLimit(
           reason: `You've reached ${config.maxChaptersPerProject} chapters per project on the ${config.name} plan.`,
           currentCount: current,
           limit: config.maxChaptersPerProject,
-          upgradeTier: tier === "free" ? "creator" : "studio",
-          upgradeBenefit: tier === "free"
+          upgradeTier: tier === "free_trial" ? "creator" : "studio",
+          upgradeBenefit: tier === "free_trial"
             ? "Upgrade to Creator for 12 chapters per project"
             : "Upgrade to Studio for unlimited chapters",
         };
@@ -349,7 +349,7 @@ export const animePreviewRouter = router({
       .where(eq(users.id, ctx.user.id));
 
     const tier = await getUserTier(ctx.user.id);
-    const hasFullAccess = tier !== "free";
+    const hasFullAccess = tier !== "free_trial";
 
     return {
       canGenerate: !user?.animePreviewUsed && !hasFullAccess,
@@ -372,7 +372,7 @@ export const animePreviewRouter = router({
         .where(eq(users.id, ctx.user.id));
 
       const tier = await getUserTier(ctx.user.id);
-      if (tier !== "free") {
+      if (tier !== "free_trial") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "You already have full anime access with your plan.",
@@ -629,7 +629,7 @@ export const exportRouter = router({
       if (!allowed) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `${input.type} export requires a ${tier === "free" ? "Creator" : "Studio"} plan.`,
+          message: `${input.type} export requires a ${tier === "free_trial" ? "Creator" : "Studio"} plan.`,
         });
       }
 

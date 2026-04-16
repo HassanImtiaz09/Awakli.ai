@@ -1030,12 +1030,12 @@ export async function unpublishProject(projectId: number, userId: number) {
 
 export async function getUserSubscriptionTier(userId: number): Promise<string> {
   const db = await getDb();
-  if (!db) return "free";
+  if (!db) return "free_trial";
   const result = await db.select({ tier: subscriptions.tier })
     .from(subscriptions)
     .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active")))
     .limit(1);
-  return result[0]?.tier ?? "free";
+  return result[0]?.tier ?? "free_trial";
 }
 
 // ─── Trending & Discovery ───────────────────────────────────────────────────
