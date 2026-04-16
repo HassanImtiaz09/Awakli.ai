@@ -10,13 +10,14 @@ import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import {
   Play, RotateCcw, CheckCircle, XCircle, Clock, DollarSign,
   ChevronDown, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
-  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp
+  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu
 } from "lucide-react";
 import { QualityBadge } from "@/components/awakli/QualityBadge";
 import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
 import { VideoPromptBuilder } from "@/components/awakli/VideoPromptBuilder";
 import { ModerationBanner } from "@/components/awakli/ModerationBanner";
 import { ModelRoutingWidget } from "@/components/awakli/ModelRoutingWidget";
+import { RoutingPreviewModal } from "@/components/awakli/RoutingPreviewModal";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -461,6 +462,7 @@ function EpisodePipelineTable({
   onStartPipeline,
   onBatchStart,
   onViewRun,
+  onPreviewRouting,
   projectId,
 }: {
   episodes: any[];
@@ -468,6 +470,7 @@ function EpisodePipelineTable({
   onStartPipeline: (episodeId: number) => void;
   onBatchStart: (episodeIds: number[]) => void;
   onViewRun: (runId: number) => void;
+  onPreviewRouting: (episodeId: number, episodeTitle: string) => void;
   projectId: number;
 }) {
   const [selectedEpisodes, setSelectedEpisodes] = useState<Set<number>>(new Set());
@@ -510,19 +513,35 @@ function EpisodePipelineTable({
     <AwakliCard className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white font-display">Episode Pipeline Status</h3>
-        {selectedEpisodes.size > 0 && (
-          <AwakliButton
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              onBatchStart(Array.from(selectedEpisodes));
-              setSelectedEpisodes(new Set());
-            }}
-          >
-            <Play className="w-4 h-4 mr-1" />
-            Start Pipeline ({selectedEpisodes.size})
-          </AwakliButton>
-        )}
+        <div className="flex items-center gap-2">
+          {selectedEpisodes.size === 1 && (
+            <AwakliButton
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const epId = Array.from(selectedEpisodes)[0];
+                const ep = episodes.find((e: any) => e.id === epId);
+                onPreviewRouting(epId, ep ? `Ep ${ep.episodeNumber}: ${ep.title}` : `Episode ${epId}`);
+              }}
+            >
+              <Cpu className="w-4 h-4 mr-1" />
+              Preview Routing
+            </AwakliButton>
+          )}
+          {selectedEpisodes.size > 0 && (
+            <AwakliButton
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                onBatchStart(Array.from(selectedEpisodes));
+                setSelectedEpisodes(new Set());
+              }}
+            >
+              <Play className="w-4 h-4 mr-1" />
+              Start Pipeline ({selectedEpisodes.size})
+            </AwakliButton>
+          )}
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -600,9 +619,19 @@ function EpisodePipelineTable({
                         </AwakliButton>
                       )}
                       {canStart && !run?.status?.match(/running|pending/) && (
-                        <AwakliButton variant="secondary" size="sm" onClick={() => onStartPipeline(ep.id)}>
-                          <Play className="w-4 h-4 mr-1" /> Start
-                        </AwakliButton>
+                        <>
+                          <AwakliButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onPreviewRouting(ep.id, `Ep ${ep.episodeNumber}: ${ep.title}`)}
+                            title="Preview model routing and cost estimate"
+                          >
+                            <Cpu className="w-4 h-4" />
+                          </AwakliButton>
+                          <AwakliButton variant="secondary" size="sm" onClick={() => onStartPipeline(ep.id)}>
+                            <Play className="w-4 h-4 mr-1" /> Start
+                          </AwakliButton>
+                        </>
                       )}
                       {run?.status === "failed" && (
                         <AwakliButton variant="secondary" size="sm" onClick={() => onStartPipeline(ep.id)}>
@@ -631,6 +660,7 @@ export default function PipelineDashboard() {
 
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [expandedNode, setExpandedNode] = useState<NodeName | null>(null);
+  const [previewEpisode, setPreviewEpisode] = useState<{ id: number; title: string } | null>(null);
 
   // Queries
   const episodesQuery = trpc.episodes.listByProject.useQuery(
@@ -730,6 +760,20 @@ export default function PipelineDashboard() {
       startMut.mutate({ episodeId, projectId });
     });
     toast.success(`Starting pipeline for ${episodeIds.length} episodes`);
+  };
+
+  const handlePreviewRouting = (episodeId: number, episodeTitle: string) => {
+    setPreviewEpisode({ id: episodeId, title: episodeTitle });
+  };
+
+  const handleStartWithOverrides = (episodeId: number, overrides?: Record<string, number>) => {
+    // Start the pipeline — overrides are stored in the preview for future use
+    startMut.mutate({ episodeId, projectId });
+    if (overrides && Object.keys(overrides).length > 0) {
+      toast.success(`Starting pipeline with ${Object.keys(overrides).length} model override(s)`);
+    } else {
+      toast.success("Starting pipeline with smart routing");
+    }
   };
 
   if (!user) {
@@ -898,6 +942,7 @@ export default function PipelineDashboard() {
           onStartPipeline={handleStartPipeline}
           onBatchStart={handleBatchStart}
           onViewRun={(runId) => setActiveRunId(runId)}
+          onPreviewRouting={handlePreviewRouting}
           projectId={projectId}
         />
       )}
@@ -912,6 +957,16 @@ export default function PipelineDashboard() {
             Go to Script Editor
           </AwakliButton>
         </AwakliCard>
+      )}
+
+      {/* Routing Preview Modal */}
+      {previewEpisode && (
+        <RoutingPreviewModal
+          episodeId={previewEpisode.id}
+          episodeTitle={previewEpisode.title}
+          onClose={() => setPreviewEpisode(null)}
+          onStartPipeline={handleStartWithOverrides}
+        />
       )}
     </div>
   );

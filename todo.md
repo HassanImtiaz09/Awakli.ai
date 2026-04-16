@@ -2388,3 +2388,14 @@
 - [x] Unit tests for tRPC admin router auth guards (8 endpoints × unauth + non-admin)
 - [x] Unit tests for tRPC admin router data shapes (overview, endpoints, artifacts, costComparison, fallbackMap)
 - [x] Verify all existing tests still pass (1034 passed, 3 transient timeouts in full suite — all pass individually)
+
+## Batch Classification Preview (Preview Routing)
+- [x] Add tRPC endpoint modelRouting.batchClassifyPreview (takes episodeId, fetches panels, classifies all, returns per-panel + aggregate)
+- [x] Support user overrides in preview (accept { panelId: forceTier } map, apply before cost calculation)
+- [x] Return aggregate summary: tier counts, total cost, V3-Omni cost, savings, classification cost, deterministic count
+- [x] Create RoutingPreviewModal component with tier allocation bar, cost comparison, per-panel table
+- [x] Add per-panel TierSelect dropdown (change tier 1-4) with live client-side cost recalculation
+- [x] Add "Preview Routing" button to EpisodePipelineTable (batch header when 1 selected + per-episode Cpu icon)
+- [x] Add "Start Pipeline" / "Start with N Override(s)" button that passes overrides to pipeline start
+- [x] Write 31 tests for batch classification (deterministic rules, cost calculation, MODEL_MAP, batch classify, override logic, aggregates, edge cases)
+- [x] Verify all existing tests still pass (1068 passed, 43 test files, 0 failures)

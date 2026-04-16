@@ -3,6 +3,7 @@
  *
  * Provides:
  *   - classifyPanel: classify a single panel (preview, no side effects)
+ *   - batchClassifyPreview: classify all panels in an episode with optional overrides
  *   - getRoutingStats: get model routing stats for an episode or pipeline run
  *   - getRoutingBreakdown: get per-panel routing details for a pipeline run
  *   - overrideModel: force a specific model for a panel (user override)
@@ -15,19 +16,144 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
   classifyScene,
+  classifyPanelsBatch,
   calculateCost,
   calculateV3OmniCost,
   MODEL_MAP,
   type PanelScriptData,
+  type SceneClassification,
 } from "./scene-classifier";
 import {
   getModelRoutingStatsByEpisode,
   getModelRoutingStatsByRun,
   getRoutingDataByRun,
   updatePipelineAssetRouting,
+  getPanelsByEpisode,
 } from "./db";
 
 export const modelRoutingRouter = router({
+  /**
+   * Batch classify all panels in an episode — preview only, no database side effects.
+   * Returns per-panel classification, cost estimates, and aggregate summary.
+   * Supports user overrides: pass { panelId: forceTier } to override specific panels.
+   */
+  batchClassifyPreview: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      durationSec: z.number().min(1).max(30).default(5),
+      mode: z.enum(["std", "pro"]).default("pro"),
+      overrides: z.record(z.string(), z.number().min(1).max(4)).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { episodeId, durationSec, mode, overrides } = input;
+
+      // Fetch all panels for the episode
+      const episodePanels = await getPanelsByEpisode(episodeId);
+      if (!episodePanels || episodePanels.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No panels found for this episode. Generate panels first.",
+        });
+      }
+
+      // Convert DB panels to PanelScriptData
+      const panelDataList: PanelScriptData[] = episodePanels.map(p => ({
+        panelId: p.id,
+        visualDescription: p.visualDescription || "",
+        cameraAngle: p.cameraAngle || undefined,
+        dialogue: p.dialogue as PanelScriptData["dialogue"],
+        sceneType: p.transition === "fade" || p.transition === "dissolve" ? "transition" : undefined,
+        characterCount: undefined,
+      }));
+
+      // Classify all panels
+      const classifications = await classifyPanelsBatch(panelDataList);
+
+      // Apply user overrides
+      const overrideMap = overrides || {};
+      const finalClassifications: Array<SceneClassification & { overridden: boolean }> = classifications.map((c, i) => {
+        const panelId = panelDataList[i].panelId;
+        const forceTier = overrideMap[String(panelId)];
+        if (forceTier && forceTier >= 1 && forceTier <= 4) {
+          const m = MODEL_MAP[forceTier as 1 | 2 | 3 | 4];
+          return {
+            ...c,
+            tier: forceTier as 1 | 2 | 3 | 4,
+            model: m.model,
+            modelName: m.modelName,
+            reasoning: `User override → Tier ${forceTier} (original: Tier ${c.tier} — ${c.reasoning})`,
+            overridden: true,
+          };
+        }
+        return { ...c, overridden: false };
+      });
+
+      // Build per-panel results
+      const perPanel = finalClassifications.map((c, i) => {
+        const panel = episodePanels[i];
+        const cost = calculateCost(c.tier, durationSec, mode);
+        const v3Cost = calculateV3OmniCost(durationSec, mode);
+        return {
+          panelId: panel.id,
+          sceneNumber: panel.sceneNumber,
+          panelNumber: panel.panelNumber,
+          visualDescription: (panel.visualDescription || "").slice(0, 120),
+          cameraAngle: panel.cameraAngle,
+          hasDialogue: c.hasDialogue,
+          tier: c.tier,
+          model: c.model,
+          modelName: c.modelName,
+          reasoning: c.reasoning,
+          faceVisible: c.faceVisible,
+          lipSyncNeeded: c.lipSyncNeeded,
+          lipSyncBeneficial: c.lipSyncBeneficial,
+          deterministic: c.deterministic,
+          overridden: c.overridden,
+          estimatedCost: cost,
+          v3OmniCost: v3Cost,
+          savings: v3Cost - cost,
+        };
+      });
+
+      // Aggregate summary
+      const tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      let totalCost = 0;
+      let totalV3Cost = 0;
+      let classificationCost = 0;
+      let deterministicCount = 0;
+      let overriddenCount = 0;
+
+      for (const p of perPanel) {
+        tierCounts[p.tier as 1 | 2 | 3 | 4]++;
+        totalCost += p.estimatedCost;
+        totalV3Cost += p.v3OmniCost;
+      }
+      for (const c of finalClassifications) {
+        classificationCost += c.classificationCostUsd;
+        if (c.deterministic) deterministicCount++;
+        if (c.overridden) overriddenCount++;
+      }
+
+      const savings = totalV3Cost - totalCost;
+      const savingsPercent = totalV3Cost > 0 ? (savings / totalV3Cost) * 100 : 0;
+
+      return {
+        episodeId,
+        totalPanels: perPanel.length,
+        tierCounts,
+        totalCost: Math.round(totalCost * 1000) / 1000,
+        totalV3OmniCost: Math.round(totalV3Cost * 1000) / 1000,
+        savings: Math.round(savings * 1000) / 1000,
+        savingsPercent: Math.round(savingsPercent * 10) / 10,
+        classificationCost: Math.round(classificationCost * 1000) / 1000,
+        deterministicCount,
+        overriddenCount,
+        durationSec,
+        mode,
+        perPanel,
+      };
+    }),
+
   /**
    * Classify a single panel — preview only, no database side effects.
    * Useful for the UI to show what model would be selected.
