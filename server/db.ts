@@ -9,6 +9,7 @@ import {
   InsertEpisode, InsertPanel, InsertCharacter,
   InsertVote, InsertComment, InsertFollow, InsertWatchlist, InsertNotification,
   InsertCharacterElement,
+  uploadedAssets, InsertUploadedAsset,
 } from "../drizzle/schema";
 import { like, or, asc, count, isNull, ne } from "drizzle-orm";
 import { ENV } from "./_core/env";
@@ -1211,4 +1212,49 @@ export function formatViewCount(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
   return count.toString();
+}
+
+// ─── Uploaded Assets (BYO Manga) ──────────────────────────────────────────
+
+export async function createUploadedAsset(data: InsertUploadedAsset) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(uploadedAssets).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function createUploadedAssetsBulk(data: InsertUploadedAsset[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (data.length === 0) return;
+  await db.insert(uploadedAssets).values(data);
+}
+
+export async function getUploadedAssetsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(uploadedAssets)
+    .where(eq(uploadedAssets.projectId, projectId))
+    .orderBy(asc(uploadedAssets.panelNumber));
+}
+
+export async function getUploadedAssetById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(uploadedAssets)
+    .where(eq(uploadedAssets.id, id))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateUploadedAsset(id: number, data: Partial<InsertUploadedAsset>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(uploadedAssets).set(data).where(eq(uploadedAssets.id, id));
+}
+
+export async function deleteUploadedAssetsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(uploadedAssets).where(eq(uploadedAssets.projectId, projectId));
 }

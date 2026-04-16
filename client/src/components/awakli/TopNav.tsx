@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Search, X, LogOut, User, LayoutDashboard, Trophy, PenTool, Plus, Wand2 } from "lucide-react";
+import { Menu, Search, X, LogOut, User, LayoutDashboard, Trophy, PenTool, Plus, Wand2, Upload } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -172,6 +172,7 @@ export function TopNav() {
                           <DropdownItem href={`/profile/${user?.id}`} icon={<User size={15} />}>My Profile</DropdownItem>
                           <DropdownItem href="/studio" icon={<LayoutDashboard size={15} />}>Studio</DropdownItem>
                           <DropdownItem href="/create" icon={<PenTool size={15} />}>Create Manga</DropdownItem>
+                          <DropdownItem href="/studio/byo-upload" icon={<Upload size={15} />}>Upload Manga</DropdownItem>
                           <DropdownItem href="/leaderboard" icon={<Trophy size={15} />}>Leaderboard</DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <button
@@ -251,6 +252,17 @@ export function TopNav() {
                   )}>
                     <Wand2 size={16} />
                     Create Manga
+                  </span>
+                </Link>
+                <Link href="/studio/byo-upload">
+                  <span className={cn(
+                    "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                    location.startsWith("/studio/byo-upload")
+                      ? "bg-[#1C1C35] text-[#00D4FF] font-medium"
+                      : "text-[#9494B8] hover:bg-[#1C1C35] hover:text-[#F0F0F5]"
+                  )}>
+                    <Upload size={16} />
+                    Upload Manga
                   </span>
                 </Link>
                 {PUBLIC_NAV_LINKS.map((link) => (

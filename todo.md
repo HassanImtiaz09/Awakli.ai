@@ -1857,3 +1857,70 @@
 - [x] EpisodePlayer records view on page load (1 test)
 - [x] EpisodePlayer builds JSON-LD with duration estimate (1 test)
 - [x] All 566 tests passing across 29 test files (1 flaky MiniMax network failure excluded)
+
+## Bring Your Own Manga Upload Pipeline
+
+### Database Schema
+- [x] Add source_type enum (text_prompt, upload_ai, upload_digital, upload_hand_drawn) to projects table
+- [x] Add upload_metadata JSONB column to projects table
+- [x] Create uploaded_assets table (id, project_id, original_url, cleaned_url, line_art_url, processed_url, panel_number, source_type, processing_applied, style_transfer_option, ocr_extracted, created_at)
+- [x] Generate and apply migration SQL
+
+### Backend: Upload tRPC Router (server/routers-upload.ts)
+- [x] uploadImages: accept multi-file upload, store to S3, return URLs
+- [x] detectSourceType: Claude Haiku Vision classification (AI/Digital/Hand-Drawn)
+- [x] segmentPanels: Claude Vision panel boundary detection on full pages
+- [x] processPanels: run cleanup + style transfer based on source type
+- [x] previewStyleTransfer: generate 3-option preview (Enhance/Hybrid/Full Restyle)
+- [x] extractDialogue: OCR dialogue from speech bubbles (Claude Vision)
+- [x] autoFillMetadata: auto-detect scene descriptions, camera angles, moods
+- [x] updatePanelMetadata: update individual panel metadata
+- [x] finalize: create project from upload, enter normal pipeline
+- [x] getUploadStatus: processing progress for a project
+
+### Backend: Processing Pipeline (server/upload-processing.ts)
+- [x] Path A: AI-Generated (resolution check, format normalization, aspect ratio check)
+- [x] Path B: Digital Art (cleanup, color normalization, style compatibility check)
+- [x] Path C: Hand-Drawn (deskew, crop, texture removal, brightness normalization, upscale)
+- [x] Line art extraction (via LLM vision or edge detection)
+- [x] Style transfer via image generation (Enhance 0.3 / Hybrid 0.5 / Full Restyle 0.7)
+- [x] Tier gating: Creator gets Enhance+Hybrid, Studio gets Full Restyle
+
+### Frontend: Upload Page (/studio/byo-upload)
+- [x] Step 1: Drag-and-drop upload zone (PNG, JPG, TIFF, PDF, PSD, WebP, ZIP)
+- [x] Thumbnail grid of uploaded pages with reorder/delete/add more
+- [x] Auto-sort by filename
+- [x] Step 2: Source type detection with visual indicator and manual override
+- [x] Step 3: Panel segmentation UI (highlighted boundaries, adjust, split/merge, reading direction)
+- [x] Step 4: Processing pipeline with progress indicators
+- [x] Step 5: Panel metadata editor (two-panel: thumbnails left, metadata right)
+- [x] Step 6: Style transfer preview with side-by-side comparison
+- [x] Step 7: Finalize and enter normal pipeline
+
+### Frontend: Style Transfer Preview
+- [x] 3-option side-by-side comparison (Original → Enhance → Hybrid → Full Restyle)
+- [x] User selects preferred option before batch processing
+
+### Frontend: Homepage Section
+- [x] 'Bring Your Own Manga' section between TwoAudiences and Content rows
+- [x] 3-column step cards (Upload Pages → AI Processing → Animate)
+- [x] Hover glow effects with accent colors per step
+- [x] CTA button linking to /studio/byo-upload
+- [x] Mobile responsive (stacks vertically)
+
+### Frontend: Navigation Update
+- [x] TopNav: Upload Manga link in authenticated dropdown menu
+- [x] TopNav: Upload Manga link in mobile drawer
+- [x] Studio Sidebar: BYO Manga link in main nav
+- [x] Route registered in App.tsx (/studio/byo-upload)
+
+### Tests
+- [x] Source type detection: AI/Digital/Hand-Drawn classification
+- [x] Processing pipeline: correct path selection per source type (getCleanupSteps)
+- [x] Style transfer: strength values per option (STYLE_TRANSFER_CONFIG)
+- [x] Tier gating: Creator vs Studio access (UPLOAD_TIER_LIMITS, getUploadLimits)
+- [x] tRPC endpoint registration for all 9 upload procedures
+- [x] Upload finalization validation (validateFinalization)
+- [x] Type export verification (SourceType, StyleTransferOption, DetectionResult, etc.)
+- [x] All 44 upload pipeline tests passing
+- [x] Full suite: 610 tests passing across 30 test files

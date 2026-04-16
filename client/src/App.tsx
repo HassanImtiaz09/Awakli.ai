@@ -40,6 +40,7 @@ import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
 import DemoRecording from "./pages/DemoRecording";
 import Trending from "./pages/Trending";
+import BYOUpload from "./pages/BYOUpload";
 import CreatorAnalytics from "./pages/CreatorAnalytics";
 import { StudioLayout } from "./components/awakli/Layouts";
 
@@ -94,6 +95,7 @@ function Router() {
         <Route path="/studio" component={StudioDashboard} />
         <Route path="/studio/new" component={ProjectWizard} />
         <Route path="/studio/upload" component={MangaUpload} />
+        <Route path="/studio/byo-upload" component={BYOUpload} />
         <Route path="/studio/projects/:id" component={ProjectDetail} />
 
         {/* Studio — per-project tools (wrapped in StudioLayout) */}
@@ -111,6 +113,7 @@ function Router() {
             </StudioLayout>
           )}
         </Route>
+        <Route path="/studio/byo-upload/:projectId" component={BYOUpload} />
         <Route path="/studio/project/:projectId/upload">
           {(params) => (
             <StudioLayout>

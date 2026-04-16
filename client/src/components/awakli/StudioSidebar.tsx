@@ -18,6 +18,7 @@ const MAIN_NAV: NavItem[] = [
   { href: "/studio",          label: "Dashboard",  icon: <LayoutDashboard size={18} /> },
   { href: "/studio/new",      label: "New Project", icon: <PlusCircle size={18} /> },
   { href: "/studio/upload",   label: "Upload",     icon: <Upload size={18} /> },
+  { href: "/studio/byo-upload", label: "BYO Manga", icon: <BookOpen size={18} /> },
 ];
 
 function getProjectNav(projectId: string): NavItem[] {

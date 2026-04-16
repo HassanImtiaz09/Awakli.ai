@@ -68,6 +68,7 @@ import { harnessRouter, productionBibleRouter } from "./routers-harness";
 import { modelRoutingRouter } from "./routers-model-routing";
 import { transitionsRouter } from "./routers-transitions";
 import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./routers-public-content";
+import { uploadRouter } from "./routers-upload";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -1851,6 +1852,7 @@ const voiceRouter = router({
 // ─── App Router ───────────────────────────────────────────────────────────
 
 export const appRouter = router({
+  upload: uploadRouter,
   system: systemRouter,
 
   auth: router({

@@ -66,6 +66,8 @@ export const projects = mysqlTable("projects", {
   chapterEndingStyle: mysqlEnum("chapter_ending_style", ["cliffhanger", "resolution", "serialized"]).default("cliffhanger"),
   publicationStatus: mysqlEnum("publication_status", ["draft", "private", "published", "archived"]).default("draft").notNull(),
   publishedAt: timestamp("publishedAt"),
+  sourceType: mysqlEnum("source_type", ["text_prompt", "upload_ai", "upload_digital", "upload_hand_drawn"]).default("text_prompt"),
+  uploadMetadata: json("upload_metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -770,3 +772,23 @@ export const harnessResults = mysqlTable("harness_results", {
 
 export type HarnessResult = typeof harnessResults.$inferSelect;
 export type InsertHarnessResult = typeof harnessResults.$inferInsert;
+
+// ─── Uploaded Assets (BYO Manga) ──────────────────────────────────────────
+export const uploadedAssets = mysqlTable("uploaded_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  originalUrl: text("originalUrl").notNull(),
+  cleanedUrl: text("cleanedUrl"),
+  lineArtUrl: text("lineArtUrl"),
+  processedUrl: text("processedUrl"),
+  panelNumber: int("panelNumber").notNull(),
+  sourceType: mysqlEnum("source_type", ["ai_generated", "digital_art", "hand_drawn"]).default("ai_generated"),
+  processingApplied: json("processing_applied"),  // string[] of steps applied
+  styleTransferOption: mysqlEnum("style_transfer_option", ["none", "enhance_only", "hybrid", "full_restyle"]).default("none"),
+  ocrExtracted: json("ocr_extracted"),  // detected dialogue, bubbles, SFX
+  panelMetadata: json("panel_metadata"),  // scene desc, camera angle, mood, etc.
+  segmentationData: json("segmentation_data"),  // bounding box if from full page
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UploadedAsset = typeof uploadedAssets.$inferSelect;
+export type InsertUploadedAsset = typeof uploadedAssets.$inferInsert;

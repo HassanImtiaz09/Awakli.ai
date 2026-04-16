@@ -8,7 +8,7 @@ import {
   Play, Star, ChevronRight, ChevronLeft, Sparkles, Zap, Palette,
   Film, Users, TrendingUp, Clock, ArrowRight, BookOpen, Eye,
   Wand2, Layers, Mic, Shield, Crown, Check, PenTool, Heart,
-  Vote, Clapperboard, Brain, ImageIcon
+  Vote, Clapperboard, Brain, ImageIcon, Upload
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import DemoShowcase from "@/components/awakli/DemoShowcase";
@@ -1018,6 +1018,96 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
   );
 }
 
+// ─── BYO Manga Upload Section ─────────────────────────────────────────────
+function BYOUploadSection() {
+  return (
+    <section className="py-24 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#08080F] via-[#0D0D1A] to-[#08080F]" />
+      {/* Accent glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#00D4FF]/5 rounded-full blur-[120px]" />
+
+      <div className="container relative z-10">
+        <ScrollReveal>
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-sm font-medium mb-6">
+              <Upload className="w-4 h-4" />
+              New Feature
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
+              Bring Your Own Manga
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              Already have manga pages? Upload them and let AI transform your art into anime-ready assets with panel segmentation, dialogue extraction, and style transfer.
+            </p>
+          </div>
+        </ScrollReveal>
+
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Step 1 */}
+            <ScrollReveal delay={0}>
+              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#00D4FF]/20 transition-all">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4FF]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center mb-4 text-[#00D4FF] font-bold">1</div>
+                  <h3 className="text-lg font-heading font-bold text-white mb-2">Upload Pages</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Drag and drop your manga pages. AI detects if they're hand-drawn, digital, or AI-generated and applies the right cleanup pipeline.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* Step 2 */}
+            <ScrollReveal delay={0.1}>
+              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#E94560]/20 transition-all">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#E94560]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-lg bg-[#E94560]/10 border border-[#E94560]/20 flex items-center justify-center mb-4 text-[#E94560] font-bold">2</div>
+                  <h3 className="text-lg font-heading font-bold text-white mb-2">AI Processing</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Panels are segmented, dialogue extracted via OCR, and style transfer applied. Choose from anime, cinematic, or painterly styles.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* Step 3 */}
+            <ScrollReveal delay={0.2}>
+              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#FFB800]/20 transition-all">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFB800]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="w-10 h-10 rounded-lg bg-[#FFB800]/10 border border-[#FFB800]/20 flex items-center justify-center mb-4 text-[#FFB800] font-bold">3</div>
+                  <h3 className="text-lg font-heading font-bold text-white mb-2">Animate</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Processed panels flow into the Awakli pipeline for voice generation, video animation, and final episode assembly.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
+
+          {/* CTA */}
+          <ScrollReveal delay={0.3}>
+            <div className="text-center mt-10">
+              <Link href="/studio/byo-upload">
+                <motion.button
+                  whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,212,255,0.3)" }}
+                  whileTap={{ scale: 0.97 }}
+                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#0099CC] text-white font-semibold shadow-lg shadow-[#00D4FF]/25"
+                >
+                  Upload Your Manga <ArrowRight className="inline-block ml-2 w-4 h-4" />
+                </motion.button>
+              </Link>
+              <p className="text-gray-500 text-sm mt-3">Available on Creator and Studio plans</p>
+            </div>
+          </ScrollReveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Home Page ────────────────────────────────────────────────────────
 export default function Home() {
   const featured = trpc.discover.featured.useQuery();
@@ -1035,6 +1125,8 @@ export default function Home() {
       <DemoShowcase />
 
       <TwoAudiences />
+
+      <BYOUploadSection />
 
       {/* Content rows */}
       <section className="py-8">
