@@ -16,4 +16,5 @@ export const ENV = {
   cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
   cloudflareStreamToken: process.env.CLOUDFLARE_STREAM_TOKEN ?? "",
   falApiKey: process.env.FAL_API_KEY ?? "",
+  fishAudioApiKey: process.env.FISH_AUDIO_API_KEY ?? "",
 };

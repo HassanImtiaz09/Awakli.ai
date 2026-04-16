@@ -2135,3 +2135,11 @@
 - [x] Write Fal.ai provider integration tests (20 tests: adapter registration, validation, cost estimation, ENV fallback)
 - [x] Verify all 775 tests pass across 34 test files
 - [x] Pika 2.2 adapter remains generic REST pattern (Pika has its own API, not Fal.ai-hosted)
+
+## Fish Audio API Key Integration
+- [x] Store FISH_AUDIO_API_KEY as project secret
+- [x] Add FISH_AUDIO_API_KEY to server env configuration (ENV.fishAudioApiKey)
+- [x] Verify Fish Audio API key authenticates successfully (status 200)
+- [x] Add registry ENV fallback for Fish Audio provider (+ ElevenLabs, MiniMax)
+- [x] Write Fish Audio validation tests (4 tests)
+- [x] All 28 API key tests passing across 3 test files

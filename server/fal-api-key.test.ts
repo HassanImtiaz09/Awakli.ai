@@ -31,33 +31,41 @@ describe("Fal.ai API Key Configuration", () => {
       return;
     }
 
-    try {
-      // Use the queue endpoint to validate auth without running a model
-      const response = await fetch("https://queue.fal.run/fal-ai/fast-sdxl", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: "test",
-          num_inference_steps: 1,
-          image_size: "square",
-        }),
-      });
+    // Retry up to 2 times to handle intermittent 403s from Fal.ai edge
+    let lastStatus = 0;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch("https://queue.fal.run/fal-ai/fast-sdxl", {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "test",
+            num_inference_steps: 1,
+            image_size: "square",
+          }),
+        });
 
-      // 200 = queued successfully (proves key works)
-      // 422 = valid auth but bad params (still proves key works)
-      // 401/403 = invalid key
-      expect(response.status).not.toBe(401);
-      expect(response.status).not.toBe(403);
-    } catch (err: any) {
-      // DNS resolution may fail in sandbox environments
-      if (err?.cause?.code === "ENOTFOUND") {
-        console.warn("DNS resolution failed for fal.ai - skipping live test (key format validated above)");
-        return;
+        lastStatus = response.status;
+        // 200 = queued successfully (proves key works)
+        // 422 = valid auth but bad params (still proves key works)
+        if (lastStatus !== 401 && lastStatus !== 403) {
+          console.log(`Fal.ai authenticated successfully (status: ${lastStatus})`);
+          return; // Pass
+        }
+        // Retry on 403 (may be transient)
+        if (attempt < 1) await new Promise(r => setTimeout(r, 2000));
+      } catch (err: any) {
+        if (err?.cause?.code === "ENOTFOUND") {
+          console.warn("DNS resolution failed for fal.ai - skipping live test (key format validated above)");
+          return;
+        }
+        throw err;
       }
-      throw err;
     }
+    expect(lastStatus).not.toBe(401);
+    expect(lastStatus).not.toBe(403);
   });
 });

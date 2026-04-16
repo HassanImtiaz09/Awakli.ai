@@ -170,6 +170,26 @@ export async function getActiveApiKey(providerId: string): Promise<{
     }
   }
 
+  // Fallback: providers with dedicated ENV keys
+  const ENV_KEY_MAP: Record<string, string> = {
+    fish_audio: "FISH_AUDIO_API_KEY",
+    elevenlabs_turbo_v25: "ELEVENLABS_API_KEY",
+    minimax_video02: "MINIMAX_API_KEY",
+    minimax_music01: "MINIMAX_API_KEY",
+  };
+  const envVarName = ENV_KEY_MAP[providerId];
+  if (envVarName) {
+    const envKey = process.env[envVarName] ?? "";
+    if (envKey) {
+      return {
+        id: -1, // Sentinel: ENV-sourced key, not from DB
+        decryptedKey: envKey,
+        rateLimitRpm: 60,
+        dailySpendCapUsd: null,
+      };
+    }
+  }
+
   return null;
 }
 
