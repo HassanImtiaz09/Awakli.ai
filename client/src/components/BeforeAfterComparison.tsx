@@ -11,6 +11,7 @@ import {
   Zap, ChevronDown, ChevronUp, RefreshCw, Loader2,
   AlertTriangle, ArrowUpCircle,
 } from "lucide-react";
+import { RetrainingNudge } from "@/components/LoraRetrainingRecommendation";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -499,6 +500,12 @@ export default function BeforeAfterComparison({
               </p>
             </div>
           )}
+
+          {/* LoRA Retraining Nudge */}
+          <RetrainingNudge
+            attemptCount={reFix.attemptCount}
+            latestImprovement={data.driftImprovement ?? 0}
+          />
         </div>
       )}
 

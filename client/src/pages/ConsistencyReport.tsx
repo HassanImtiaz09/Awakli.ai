@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import BeforeAfterComparison, { type ComparisonData, type ReFixProps } from "@/components/BeforeAfterComparison";
 import FixDriftAnalyticsDashboard from "@/components/FixDriftAnalyticsDashboard";
+import LoraRetrainingRecommendation from "@/components/LoraRetrainingRecommendation";
 
 // ─── Grade Colors ───────────────────────────────────────────────────────
 
@@ -435,6 +436,12 @@ export default function ConsistencyReport() {
     { enabled: !!user && !isNaN(characterId) }
   );
 
+  // ── LoRA Retraining Recommendation ────────────────────────────────────
+  const { data: retrainingData, isLoading: retrainingLoading } = trpc.characterLibrary.getRetrainingRecommendation.useQuery(
+    { characterId },
+    { enabled: !!user && !isNaN(characterId) }
+  );
+
   // ── Persisted fix history ─────────────────────────────────────────────
   const { data: fixHistory, refetch: refetchHistory } = trpc.characterLibrary.getFixDriftHistory.useQuery(
     { characterId, limit: 200 },
@@ -806,6 +813,9 @@ export default function ConsistencyReport() {
 
         {/* ── Fix Drift Analytics Dashboard ──────────────────────────── */}
         <FixDriftAnalyticsDashboard data={analyticsData} isLoading={analyticsLoading} />
+
+        {/* ── LoRA Retraining Recommendation ─────────────────────────── */}
+        <LoraRetrainingRecommendation data={retrainingData} isLoading={retrainingLoading} />
 
         {/* ── Drift Threshold Slider ─────────────────────────────────── */}
         <Card className="bg-base border-white/10">

@@ -2803,3 +2803,38 @@
 ### Tests
 - [x] Unit: re-fix boost calculation — chained boosts (4 tests), diminishing returns (2 tests), cost scaling (1 test), confidence degradation (3 tests)
 - [x] Unit: re-fix eligibility logic — status checks (4 tests), max strength (2 tests), chain integration (3 tests) — 36 total tests
+
+## LoRA Retraining Recommendation
+
+### Backend — Diminishing Returns Detection Engine
+- [x] Create `lora-retraining-recommendation.ts` module with:
+  - `analyzeDiminishingReturns(fixHistory)` — detect when improvement ratio drops below threshold across successive attempts
+  - `computeImprovementTrend(jobs)` — calculate per-attempt improvement deltas and trend slope via linear regression
+  - `buildFrameFixSummaries(attempts)` — group attempts by frame and compute per-frame summaries
+  - `identifyWeakFeatures(jobs)` — find which features consistently fail to improve despite re-fixes
+  - `generateRetrainingRecommendation(attempts)` — produce structured recommendation with priority, weak features, reference image suggestions
+  - `assessRetrainingUrgency(analysis)` — classify urgency as "recommended" | "strongly_recommended" | "critical"
+- [x] Define types: `FixAttemptRecord`, `FrameFixSummary`, `ImprovementTrend`, `WeakFeature`, `ReferenceImageSuggestion`, `DiminishingReturnsAnalysis`, `RetrainingRecommendation`, `RetrainingUrgency`
+- [x] Constants: MIN_ATTEMPTS_FOR_RECOMMENDATION (3), IMPROVEMENT_PLATEAU_THRESHOLD (0.02), WEAK_FEATURE_THRESHOLD (0.15), HIGH_REMAINING_DRIFT (0.20), CRITICAL_REMAINING_DRIFT (0.30), FEATURE_LABELS, FEATURE_REFERENCE_SUGGESTIONS
+
+### Backend — tRPC Endpoint
+- [x] Add `characterLibrary.getRetrainingRecommendation` endpoint — accepts characterId, analyzes fix history, returns recommendation or null
+- [x] Aggregate fix history per frame, detect diminishing returns patterns, identify weak features across all frames
+
+### Frontend — RetrainingRecommendation Component
+- [x] Create `LoraRetrainingRecommendation.tsx` component with:
+  - Urgency banner (amber/orange/red gradient backgrounds per urgency level)
+  - ImprovementTrendChart bar visualization showing per-attempt improvement declining with color coding
+  - WeakFeatureCard expandable cards with reference image suggestions per feature
+  - "Start Retraining" CTA button (gradient styled, placeholder toast)
+  - Collapsible detailed analysis section with trend slope, data points, avg/latest improvement
+- [x] Integrate into ConsistencyReport page — show below analytics dashboard when recommendation exists
+- [x] Show inline RetrainingNudge in BeforeAfterComparison when frame has 3+ attempts with declining improvement
+
+### Tests
+- [x] Unit: analyzeDiminishingReturns (5 tests: empty input, multi-attempt counting, diminishing detection, remaining drift stats, null drift handling)
+- [x] Unit: computeImprovementTrend (8 tests: empty, single point, diminishing, improving, flat, cumulative, sorting, null handling)
+- [x] Unit: identifyWeakFeatures (6 tests: empty, multi-targeting, reference suggestions, sorting, null features, labels)
+- [x] Unit: generateRetrainingRecommendation (9 tests: null cases, diminishing returns, weak features, summary/explanation, frame counts, impact bounds, image counts, high drift)
+- [x] Unit: assessRetrainingUrgency (6 tests: recommended, strongly_recommended conditions, critical, edge cases)
+- [x] TypeScript compilation passes with 0 errors — 44 total tests passing

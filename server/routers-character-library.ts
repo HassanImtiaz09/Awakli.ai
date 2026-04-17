@@ -1572,6 +1572,48 @@ export const characterLibraryRouter = router({
         atMaxStrength: newBoostedStrength >= MAX_STRENGTH,
       };
     }),
+
+  // ─── LoRA Retraining Recommendation ─────────────────────────────────────
+
+  getRetrainingRecommendation: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const { generateRetrainingRecommendation } = await import("./lora-retraining-recommendation");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Fetch all fix-drift jobs for this character
+      const jobs = await db.select()
+        .from(fixDriftJobs)
+        .where(and(
+          eq(fixDriftJobs.characterId, input.characterId),
+          eq(fixDriftJobs.userId, ctx.user.id),
+        ))
+        .orderBy(asc(fixDriftJobs.queuedAt));
+
+      if (jobs.length === 0) return null;
+
+      // Map DB rows to FixAttemptRecord
+      const attempts = jobs.map(j => ({
+        jobId: j.id,
+        generationId: j.generationId,
+        frameIndex: j.frameIndex,
+        episodeId: j.episodeId,
+        originalDriftScore: j.originalDriftScore,
+        newDriftScore: j.newDriftScore ?? null,
+        driftImprovement: j.driftImprovement ?? null,
+        boostedLoraStrength: j.boostedLoraStrength,
+        boostDelta: j.boostDelta,
+        targetFeatures: (j.targetFeatures as string[] | null) ?? null,
+        severity: j.severity as "warning" | "critical",
+        status: j.status as "queued" | "processing" | "completed" | "failed",
+        queuedAt: j.queuedAt ? new Date(j.queuedAt).getTime() : Date.now(),
+      }));
+
+      return generateRetrainingRecommendation(attempts);
+    }),
 });
 
 // ─── Simulated Completion Helper ──────────────────────────────────────────
