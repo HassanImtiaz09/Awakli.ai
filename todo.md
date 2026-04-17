@@ -2752,3 +2752,23 @@
 - [x] Unit: fix-drift persistence helpers — insert data shape (4 tests), history mapping (6 tests), lifecycle simulation (3 tests)
 - [x] Unit: status priority merge logic (6 tests), persistence edge cases (4 tests)
 - [x] All 23 persistence tests passing, 0 TypeScript errors
+
+## Before/After Comparison View
+### Component
+- [x] Create `BeforeAfterComparison.tsx` component with side-by-side original vs. re-generated frame display
+- [x] Add interactive slider/scrubber overlay mode with drag handle for pixel-level comparison
+- [x] Show drift score summary bar with original drift → new drift, improvement badge, LoRA boost, and confidence indicator
+- [x] Show per-feature drift breakdown comparison (face, hair, outfit, colorPalette, bodyProportion) with dual before/after progress bars and targeted feature badges
+- [x] Add toggle between side-by-side and overlay (slider) modes with segmented button control
+- [x] Add LoRA strength comparison (original → boosted) in summary bar with orange accent
+
+### Integration
+- [x] Wire into ConsistencyReport frame detail panel — show comparison when a completed fix job exists for the selected frame
+- [x] Pull comparison data from getFixDriftHistory with estimated post-fix per-feature drifts calculated from improvement ratio
+- [x] Comparison auto-shows in frame detail panel when a completed fix exists (no extra button needed)
+- [x] Add expand/collapse toggle for the feature-level comparison section (ChevronUp/Down)
+
+### Tests
+- [x] Unit: ComparisonData construction (4 tests), estimated feature drifts (7 tests), feature targeting (3 tests), view mode logic (2 tests), improvement display (5 tests) — 21 total tests
+- [x] Unit: comparison data mapping from fix history entries including null fallbacks and real buildFixDriftJob output
+- [x] TypeScript compilation passes with 0 errors

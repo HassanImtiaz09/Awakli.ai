@@ -20,6 +20,7 @@ import {
   History, RotateCcw, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
+import BeforeAfterComparison, { type ComparisonData } from "@/components/BeforeAfterComparison";
 
 // ─── Grade Colors ───────────────────────────────────────────────────────
 
@@ -1185,6 +1186,43 @@ export default function ConsistencyReport() {
                     icon={<TrendingDown className="h-4 w-4" />} />
                 </div>
               </div>
+
+              {/* Before/After Comparison for completed fixes */}
+              {(() => {
+                const frameHistory = getFrameFixHistory(selectedFrame.generationId);
+                const latestCompleted = frameHistory.find(j => j.status === "completed");
+                if (!latestCompleted) return null;
+
+                // Estimate post-fix per-feature drifts based on overall improvement ratio
+                const improvementRatio = latestCompleted.driftImprovement != null && latestCompleted.originalDriftScore
+                  ? latestCompleted.driftImprovement / latestCompleted.originalDriftScore
+                  : 0;
+                const estimatedFixedFeatureDrifts = {
+                  face: Math.max(0, selectedFrame.featureDrifts.face * (1 - improvementRatio * 1.2)),
+                  hair: Math.max(0, selectedFrame.featureDrifts.hair * (1 - improvementRatio * 1.1)),
+                  outfit: Math.max(0, selectedFrame.featureDrifts.outfit * (1 - improvementRatio * 0.9)),
+                  colorPalette: Math.max(0, selectedFrame.featureDrifts.colorPalette * (1 - improvementRatio * 0.8)),
+                  bodyProportion: Math.max(0, selectedFrame.featureDrifts.bodyProportion * (1 - improvementRatio * 0.7)),
+                };
+
+                const comparisonData: ComparisonData = {
+                  originalUrl: selectedFrame.resultUrl || null,
+                  fixedUrl: latestCompleted.newResultUrl || null,
+                  originalDriftScore: latestCompleted.originalDriftScore ?? selectedFrame.driftScore,
+                  newDriftScore: latestCompleted.newDriftScore ?? null,
+                  driftImprovement: latestCompleted.driftImprovement ?? null,
+                  originalLoraStrength: latestCompleted.originalLoraStrength ?? null,
+                  boostedLoraStrength: latestCompleted.boostedLoraStrength ?? 0,
+                  boostDelta: latestCompleted.boostDelta ?? 0,
+                  fixConfidence: (latestCompleted.fixConfidence as "high" | "medium" | "low") ?? "medium",
+                  severity: (latestCompleted.severity as "warning" | "critical") ?? "warning",
+                  targetFeatures: latestCompleted.targetFeatures ?? null,
+                  originalFeatureDrifts: selectedFrame.featureDrifts,
+                  estimatedFixedFeatureDrifts,
+                };
+
+                return <BeforeAfterComparison data={comparisonData} />;
+              })()}
 
               {/* Fix History for this frame */}
               {(() => {
