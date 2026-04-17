@@ -2480,3 +2480,13 @@
 - [x] Router integration tests: providerHint injection, stage skipping, shouldSkipStage, getStageReplacement, getAllPipelineConfigs
 - [x] Cost forecast tests: per-type breakdown, V3-Omni comparison, savings %, reaction cache hit rate
 - [x] Verify all existing tests still pass (1166 passed, 1 pre-existing MiniMax network timeout)
+
+## Wire SceneTypePanel into PipelineDashboard
+- [x] Fetch panels for the first episode using trpc.panels.listByEpisode to derive scene data
+- [x] Group panels into scenes (by sceneNumber) to build the SceneTypePanel scenes prop (useMemo with Map grouping)
+- [x] Add collapsible section above episode table using Collapsible primitive + AwakliCard styling
+- [x] Render SceneTypePanel inside collapsible with chevron toggle and "Scene Analysis" header (BarChart3 icon)
+- [x] Auto-expand when no active pipeline run (pre-flight mode), collapse when run is active (hasActiveRun detection)
+- [x] Episode selector dropdown for multi-episode projects (inline in header)
+- [x] Write 26 integration tests (panel grouping, scene classification, batch classification, cost forecast, template coverage, provider hints)
+- [x] Verify all existing tests still pass (1193 total, 10 transient network timeouts from external APIs)

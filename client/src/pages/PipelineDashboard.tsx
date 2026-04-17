@@ -9,8 +9,8 @@ import { AwakliProgress } from "@/components/awakli/AwakliProgress";
 import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import {
   Play, RotateCcw, CheckCircle, XCircle, Clock, DollarSign,
-  ChevronDown, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
-  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu
+  ChevronDown, ChevronUp, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
+  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu, BarChart3
 } from "lucide-react";
 import { QualityBadge } from "@/components/awakli/QualityBadge";
 import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
@@ -18,6 +18,8 @@ import { VideoPromptBuilder } from "@/components/awakli/VideoPromptBuilder";
 import { ModerationBanner } from "@/components/awakli/ModerationBanner";
 import { ModelRoutingWidget } from "@/components/awakli/ModelRoutingWidget";
 import { RoutingPreviewModal } from "@/components/awakli/RoutingPreviewModal";
+import { SceneTypePanel } from "@/components/awakli/SceneTypePanel";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -661,6 +663,8 @@ export default function PipelineDashboard() {
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [expandedNode, setExpandedNode] = useState<NodeName | null>(null);
   const [previewEpisode, setPreviewEpisode] = useState<{ id: number; title: string } | null>(null);
+  const [sceneAnalysisOpen, setSceneAnalysisOpen] = useState(true);
+  const [selectedAnalysisEpisodeId, setSelectedAnalysisEpisodeId] = useState<number | null>(null);
 
   // Queries
   const episodesQuery = trpc.episodes.listByProject.useQuery(
@@ -677,6 +681,48 @@ export default function PipelineDashboard() {
     { projectId },
     { enabled: !!user && !!projectId }
   );
+
+  // Auto-select first episode for scene analysis
+  const analysisEpisodeId = selectedAnalysisEpisodeId ?? (episodesQuery.data?.[0]?.id ?? null);
+
+  // Fetch panels for the selected episode to feed SceneTypePanel
+  const panelsForAnalysis = trpc.panels.listByEpisode.useQuery(
+    { episodeId: analysisEpisodeId! },
+    { enabled: !!user && !!analysisEpisodeId }
+  );
+
+  // Group panels into scenes for SceneTypePanel
+  const scenesForAnalysis = useMemo(() => {
+    if (!panelsForAnalysis.data) return [];
+    const sorted = [...panelsForAnalysis.data].sort(
+      (a: any, b: any) => a.sceneNumber - b.sceneNumber || a.panelNumber - b.panelNumber
+    );
+    const sceneMap = new Map<number, typeof sorted>();
+    sorted.forEach((p: any) => {
+      const arr = sceneMap.get(p.sceneNumber) || [];
+      arr.push(p);
+      sceneMap.set(p.sceneNumber, arr);
+    });
+    return Array.from(sceneMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([sceneNum, panels]) => ({
+        sceneId: panels[0]?.id ?? sceneNum,
+        sceneNumber: sceneNum,
+        panels: panels.map((p: any) => ({
+          panelId: p.id,
+          visualDescription: p.visualDescription || "",
+          cameraAngle: p.cameraAngle || undefined,
+          dialogue: Array.isArray(p.dialogue)
+            ? p.dialogue.map((d: any) => ({ character: d.character, text: d.text || d.line || "" }))
+            : [],
+          panelSizePct: 50,
+        })),
+        estimatedDurationS: Math.max(5, panels.length * 3),
+      }));
+  }, [panelsForAnalysis.data]);
+
+  // Collapse scene analysis when a pipeline is active
+  const hasActiveRun = !!(runsQuery.data || []).find((r: any) => r.status === "running" || r.status === "pending");
 
   // Active run details
   const activeRunQuery = trpc.pipeline.getStatus.useQuery(
@@ -932,6 +978,63 @@ export default function PipelineDashboard() {
             </div>
           </AwakliCard>
         </div>
+      )}
+
+      {/* Scene-Type Analysis (collapsible) */}
+      {episodesQuery.data && episodesQuery.data.length > 0 && !activeRun && scenesForAnalysis.length > 0 && (
+        <Collapsible open={sceneAnalysisOpen && !hasActiveRun} onOpenChange={setSceneAnalysisOpen}>
+          <AwakliCard className="overflow-hidden">
+            <CollapsibleTrigger className="w-full">
+              <div className="flex items-center justify-between p-5 cursor-pointer hover:bg-zinc-800/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <BarChart3 className="w-4.5 h-4.5 text-indigo-400" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-sm font-semibold text-zinc-100">Scene-Type Analysis</h3>
+                    <p className="text-[10px] text-zinc-500">
+                      Classify scenes to optimize pipeline routing and estimate costs
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {episodesQuery.data.length > 1 && (
+                    <select
+                      className="text-xs bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1 text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      value={analysisEpisodeId ?? ""}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setSelectedAnalysisEpisodeId(Number(e.target.value));
+                      }}
+                    >
+                      {episodesQuery.data.map((ep: any) => (
+                        <option key={ep.id} value={ep.id}>
+                          {ep.title || `Episode ${ep.episodeNumber}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {sceneAnalysisOpen && !hasActiveRun ? (
+                    <ChevronUp className="w-4 h-4 text-zinc-500" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-zinc-500" />
+                  )}
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-5 pb-5 border-t border-zinc-800/50">
+                <div className="pt-4">
+                  <SceneTypePanel
+                    episodeId={analysisEpisodeId!}
+                    scenes={scenesForAnalysis}
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </AwakliCard>
+        </Collapsible>
       )}
 
       {/* Episode Pipeline Table */}
