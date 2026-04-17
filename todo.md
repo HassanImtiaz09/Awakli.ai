@@ -2516,3 +2516,25 @@
 - [x] Head motion values display synchronized with playhead position
 - [x] Keyboard shortcuts (Space for play/pause, Left/Right for frame step)
 - [x] Tests for replay animation logic (playhead position, speed control, scrubbing math) — 44 tests passing
+
+## Audio Waveform Overlay
+- [x] Backend: Generate synthetic waveform amplitude data from dialogue line timing and phoneme energy in previewDialogue endpoint
+- [x] Frontend: Render semi-transparent waveform SVG overlay on the viseme timeline bar
+- [x] Frontend: Waveform highlights active dialogue regions vs silence gaps
+- [x] Tests: Waveform generation logic (amplitude scaling, silence gaps, phoneme energy mapping) — 32 tests
+
+## Compare Split-View Mode
+- [x] Backend: Add compareDialogue endpoint returning side-by-side cost/quality/timing comparison data
+- [x] Frontend: Split-view toggle button in the preview modal header (tabs: Preview / Compare)
+- [x] Frontend: Left panel shows dialogue inpainting pipeline preview (existing)
+- [x] Frontend: Right panel shows full Kling video pipeline comparison (cost, timing, quality metrics)
+- [x] Frontend: Comparison summary bar with savings percentage, quality trade-offs, and recommendation
+- [x] Tests: Compare endpoint data shape and cost differential calculations — included in 32-test suite
+
+## A/B Looping Mode
+- [x] Frontend: Loop toggle button in replay transport controls
+- [x] Frontend: Draggable A and B markers on the timeline bar to define loop region
+- [x] Frontend: Visual highlight of the looped region on the timeline
+- [x] Frontend: Playhead automatically jumps back to A marker when reaching B marker during loop mode
+- [x] Frontend: Display loop region duration and frame count
+- [x] Tests: Loop boundary clamping, wrap-around logic, marker drag math — included in 32-test suite
