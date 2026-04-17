@@ -2562,3 +2562,76 @@
 - [x] Frontend: Preset validation with error toast for malformed imports
 - [x] Frontend: Preset metadata (name, created date, version) in the exported JSON
 - [x] Tests: Export schema validation, import parsing, round-trip consistency — included in 41-test suite
+
+## Prompt 21: Character LoRA Training Pipeline & Asset Library
+
+### Database Schema
+- [x] Create character_library table (id, userId, name, seriesId, description, appearanceTags, referenceSheetUrl, loraStatus, activeLoraId, activeIpEmbeddingUrl, activeClipEmbeddingUrl, usageCount)
+- [x] Create character_loras table (id, characterId, version, artifactPath, artifactSizeBytes, trainingParams, trainingLossFinal, qualityScore, clipSimilarity, validationStatus, status, triggerWord, deprecatedAt)
+- [x] Create lora_training_jobs table (id, characterId, loraId, userId, status, priority, runpodJobId, gpuType, gpuSeconds, costUsd, costCredits, errorMessage, startedAt, completedAt)
+- [x] Create character_assets table (id, characterId, assetType, storageUrl, version, metadata, isActive)
+- [x] Create pipeline_run_lora_pins table (pipelineRunId, characterId, loraId, pinnedAt — composite PK)
+- [x] ALTER generation_requests: add characterId, loraId, loraStrength columns
+- [x] Run drizzle-kit generate and apply migration SQL
+
+### Backend: Training Pipeline Modules
+- [x] Preprocessing module: extractReferenceImages, cropToCharacter (rembg simulation), resizeTo512, autoCaptionImage with trigger word
+- [x] Training config builder: buildKohyaConfig with rank/alpha/lr/steps/scheduler params and validation
+- [x] Quality validation module: generateTestImages, computeClipSimilarity, scoreValidation with auto-approve/review/reject thresholds
+- [x] Training job scheduler: enqueueTrainingJob, processJobQueue with priority ordering, GPU-aware scheduling
+- [x] LoRA lifecycle manager: activateLora, deprecateLora, retainDeprecated30Days, retrainingTrigger with CLIP delta detection
+
+### Backend: tRPC Router (characterLibrary)
+- [x] characterLibrary.list — list characters with LoRA status badges, filter by series, sort by name/lastUsed
+- [x] characterLibrary.getById — full character detail with active LoRA, version history, usage stats
+- [x] characterLibrary.create — create character from reference sheet upload, auto-extract views
+- [x] characterLibrary.update — update character details, trigger retraining check if sheet changed
+- [x] characterLibrary.delete — soft delete, deprecate LoRA, preserve published episodes
+- [x] characterLibrary.trainLora — enqueue LoRA training job for a character
+- [x] characterLibrary.batchTrain — enqueue batch training with priority ordering for multiple characters
+- [x] characterLibrary.getTrainingStatus — poll training job status with progress (merged into getById)
+- [x] characterLibrary.getBatchStatus — poll batch training progress for all characters
+- [x] characterLibrary.reviewLora — creator approve/reject for manual review range (0.75-0.85 CLIP)
+- [x] characterLibrary.getVersionHistory — list all LoRA versions with scores and status
+- [x] characterLibrary.rollbackVersion — revert to a previous LoRA version
+- [x] characterLibrary.getAssets — list character assets (reference sheets, LoRA files, embeddings)
+- [x] characterLibrary.getUsageStats — generation count, episode count, avg quality score
+
+### Backend: LoRA Injection & Consistency
+- [x] getConsistencyMechanism function: LoRA → IP-Adapter → text prompt fallback chain
+- [x] Extend local_animatediff adapter: accept loraPath, loraStrength, triggerWord in buildJobInput (via buildLoraInjectionPayload)
+- [x] Extend local_controlnet adapter: accept loraPath, loraStrength, triggerWord in buildJobInput (via buildLoraInjectionPayload)
+- [x] IP-Adapter fallback in executor: detect non-LoRA providers, inject IP embedding
+- [x] Version pinning: snapshot active LoRA versions at pipeline_run start into pipeline_run_lora_pins
+
+### Frontend: Character Library Grid View (/characters)
+- [x] Character card grid: portrait thumbnail, name, series, LoRA status badge (green/yellow/red/gray)
+- [x] Filter by series dropdown, sort by name or last used (sort by createdAt/name/lastUsed)
+- [x] Add Character button → upload reference sheet → auto-extract views → save
+- [x] Batch Train button for selected characters → /batch-training page
+- [x] Empty state for no characters
+
+### Frontend: Character Detail View (/characters/:id)
+- [x] Reference images gallery (front, side, back, expressions) — via assets tab
+- [x] LoRA section: current version, quality score, CLIP similarity, file size, training date
+- [x] Validation images viewer: 5 test images side by side with reference (in version history expand)
+- [x] Version history table: all versions with score, status, creation date, rollback action
+- [x] Usage stats: generation count, episode count, avg quality score
+- [x] Retrain LoRA button with cost estimate (Train LoRA modal with GPU/rank/alpha/steps/cost)
+- [x] Delete Character button with confirmation (in library grid)
+
+### Frontend: Batch Training Dashboard
+- [x] Batch training progress cards per character: name, status, progress bar, ETA
+- [x] Total estimated time and cost header (progress ring + summary stats)
+- [x] Auto-refresh polling for status updates (5s refetchInterval)
+- [x] Priority reordering via selection (characters sorted by role priority)
+
+### Tests
+- [x] Unit: preprocessing (crop, resize, caption generation) — 98 tests
+- [x] Unit: training config builder produces correct Kohya SS arguments
+- [x] Unit: quality validation CLIP scoring and threshold decisions
+- [x] Unit: version pinning uses pinned LoRA even after newer version activated (lifecycle tests)
+- [x] Unit: getConsistencyMechanism returns correct fallback chain
+- [x] Integration: character library CRUD operations (router contract tests)
+- [x] Integration: training job lifecycle (enqueue → preprocess → train → validate → activate) — full pipeline flow test
+- [x] Integration: batch training priority ordering and progress tracking — batch flow test

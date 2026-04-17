@@ -72,6 +72,7 @@ import { uploadRouter } from "./routers-upload";
 import { providerAdminRouter } from "./routers-provider-admin";
 import { localInfraRouter } from "./routers-local-infra";
 import { sceneTypeRouter } from "./routers-scene-type";
+import { characterLibraryRouter } from "./routers-character-library";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
   gateConfigRouter, qualityAnalyticsRouter, cascadeRewindRouter,
@@ -1990,6 +1991,7 @@ export const appRouter = router({
   providerAdmin: providerAdminRouter,
   localInfra: localInfraRouter,
   sceneType: sceneTypeRouter,
+  characterLibrary: characterLibraryRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

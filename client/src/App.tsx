@@ -47,6 +47,9 @@ import DemoRecording from "./pages/DemoRecording";
 import Trending from "./pages/Trending";
 import BYOUpload from "./pages/BYOUpload";
 import CreatorAnalytics from "./pages/CreatorAnalytics";
+import CharacterLibrary from "./pages/CharacterLibrary";
+import CharacterDetail from "./pages/CharacterDetail";
+import BatchTraining from "./pages/BatchTraining";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -86,6 +89,11 @@ function Router() {
 
         {/* User profiles */}
         <Route path="/profile/:userId" component={UserProfile} />
+
+        {/* Character Library */}
+        <Route path="/characters" component={CharacterLibrary} />
+        <Route path="/characters/:id" component={CharacterDetail} />
+        <Route path="/batch-training" component={BatchTraining} />
 
         {/* Account / billing */}
         <Route path="/usage" component={UsageDashboard} />

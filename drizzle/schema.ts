@@ -1167,6 +1167,10 @@ export const generationRequests = mysqlTable("generation_requests", {
   parentRequestId: int("parentRequestId"),  // for fallback chain tracking
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
+  // Prompt 21: Character LoRA tracking
+  characterId: int("characterId"),
+  loraId: int("loraId"),
+  loraStrength: decimal("loraStrength", { precision: 3, scale: 2 }),
 });
 export type GenerationRequest = typeof generationRequests.$inferSelect;
 export type InsertGenerationRequest = typeof generationRequests.$inferInsert;
@@ -1377,3 +1381,127 @@ export const pipelineTemplates = mysqlTable("pipeline_templates", {
 });
 export type PipelineTemplate = typeof pipelineTemplates.$inferSelect;
 export type InsertPipelineTemplate = typeof pipelineTemplates.$inferInsert;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMPT 21: Character LoRA Training Pipeline & Asset Library
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Character Library ──────────────────────────────────────────────────
+export const characterLibrary = mysqlTable("character_library", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  seriesId: int("seriesId"),  // optional grouping by project/series
+  description: text("description"),
+  appearanceTags: json("appearanceTags"),  // {"hair":"blue","eyes":"red","outfit":"school_uniform"}
+  referenceSheetUrl: text("referenceSheetUrl"),
+  loraStatus: mysqlEnum("loraStatus", [
+    "untrained",
+    "training",
+    "validating",
+    "active",
+    "needs_retraining",
+    "failed",
+  ]).default("untrained").notNull(),
+  activeLoraId: int("activeLoraId"),  // references character_loras.id (set after validation)
+  activeIpEmbeddingUrl: text("activeIpEmbeddingUrl"),
+  activeClipEmbeddingUrl: text("activeClipEmbeddingUrl"),
+  usageCount: int("usageCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CharacterLibraryEntry = typeof characterLibrary.$inferSelect;
+export type InsertCharacterLibraryEntry = typeof characterLibrary.$inferInsert;
+
+// ─── Character LoRAs (versioned) ────────────────────────────────────────
+export const characterLoras = mysqlTable("character_loras", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characterLibrary.id, { onDelete: "cascade" }),
+  version: int("version").notNull(),
+  artifactPath: text("artifactPath").notNull(),  // S3 path: characters/{id}/lora/{version}/lora.safetensors
+  artifactSizeBytes: bigint("artifactSizeBytes", { mode: "number" }).notNull(),
+  trainingParams: json("trainingParams").notNull(),  // {rank, alpha, lr, steps, baseModel, scheduler, optimizer}
+  trainingLossFinal: decimal("trainingLossFinal", { precision: 8, scale: 6 }),
+  qualityScore: int("qualityScore"),  // 0-100 (mapped from CLIP similarity)
+  clipSimilarity: decimal("clipSimilarity", { precision: 5, scale: 4 }),  // 0.0000-1.0000
+  validationStatus: mysqlEnum("validationStatus", [
+    "pending",
+    "validating",
+    "approved",
+    "rejected",
+    "deprecated",
+  ]).default("pending").notNull(),
+  status: mysqlEnum("loraVersionStatus", [
+    "training",
+    "active",
+    "deprecated",
+    "failed",
+  ]).default("training").notNull(),
+  triggerWord: varchar("triggerWord", { length: 100 }).notNull(),  // 'awakli_charactername'
+  validationImageUrls: json("validationImageUrls"),  // string[] of 5 test image URLs
+  deprecatedAt: timestamp("deprecatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CharacterLora = typeof characterLoras.$inferSelect;
+export type InsertCharacterLora = typeof characterLoras.$inferInsert;
+
+// ─── LoRA Training Jobs ─────────────────────────────────────────────────
+export const loraTrainingJobs = mysqlTable("lora_training_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characterLibrary.id, { onDelete: "cascade" }),
+  loraId: int("loraId"),  // references character_loras.id (set after LoRA record created)
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: mysqlEnum("trainingJobStatus", [
+    "queued",
+    "preprocessing",
+    "training",
+    "validating",
+    "completed",
+    "failed",
+  ]).default("queued").notNull(),
+  priority: int("priority").default(5).notNull(),  // 1=highest, 10=lowest
+  runpodJobId: varchar("runpodJobId", { length: 255 }),
+  gpuType: varchar("gpuType", { length: 32 }),  // 'h100_sxm', 'a100_80gb', 'rtx_4090'
+  gpuSeconds: decimal("gpuSeconds", { precision: 10, scale: 3 }),
+  costUsd: decimal("costUsd", { precision: 10, scale: 4 }),
+  costCredits: decimal("costCredits", { precision: 10, scale: 4 }),
+  errorMessage: text("errorMessage"),
+  batchId: varchar("batchId", { length: 64 }),  // groups jobs in a batch training session
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LoraTrainingJob = typeof loraTrainingJobs.$inferSelect;
+export type InsertLoraTrainingJob = typeof loraTrainingJobs.$inferInsert;
+
+// ─── Character Assets (reference sheets, embeddings, etc.) ──────────────
+export const characterAssets = mysqlTable("character_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characterLibrary.id, { onDelete: "cascade" }),
+  assetType: mysqlEnum("assetType", [
+    "reference_sheet",
+    "reference_image",
+    "lora",
+    "ip_adapter_embedding",
+    "clip_embedding",
+  ]).notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  version: int("version").default(1).notNull(),
+  metadata: json("metadata"),  // {width, height, caption, viewAngle, etc.}
+  isActive: int("isActive").default(1).notNull(),  // 1=true, 0=false
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CharacterAsset = typeof characterAssets.$inferSelect;
+export type InsertCharacterAsset = typeof characterAssets.$inferInsert;
+
+// ─── Pipeline Run LoRA Pins (version pinning per pipeline run) ──────────
+export const pipelineRunLoraPins = mysqlTable("pipeline_run_lora_pins", {
+  id: int("id").autoincrement().primaryKey(),
+  pipelineRunId: int("pipelineRunId").notNull().references(() => pipelineRuns.id, { onDelete: "cascade" }),
+  characterId: int("characterId").notNull().references(() => characterLibrary.id, { onDelete: "cascade" }),
+  loraId: int("loraId").notNull().references(() => characterLoras.id, { onDelete: "cascade" }),
+  pinnedAt: timestamp("pinnedAt").defaultNow().notNull(),
+});
+export type PipelineRunLoraPin = typeof pipelineRunLoraPins.$inferSelect;
+export type InsertPipelineRunLoraPin = typeof pipelineRunLoraPins.$inferInsert;
