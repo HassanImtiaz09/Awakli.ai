@@ -2693,3 +2693,15 @@
 - [x] Unit: generateConsistencyTimeline (sorting, global indices, data shape)
 - [x] Unit: aggregateCharacterReport (grade calculation, episode breakdown, empty input, threshold customization)
 - [x] Integration: getFrameDriftDetail (suggestions, nearest good frame, feature-specific advice)
+
+## LoRA A/B Blind Mode
+- [x] Frontend: Add blind mode toggle switch in LoraComparisonModal header (Eye/EyeOff icon)
+- [x] Frontend: When blind mode is ON, replace version labels with "Sample X" / "Sample Y" (randomized assignment)
+- [x] Frontend: Hide version numbers, training dates, and quality scores in blind mode
+- [x] Frontend: Add "Pick Preferred" voting buttons (X vs Y) that appear only in blind mode (amber/violet themed)
+- [x] Frontend: After voting, reveal true version labels with animated transition and show whether the creator's pick matches the metrics-based winner
+- [x] Frontend: Show match/mismatch badge ("Your pick matches metrics!" or "Interesting — you preferred the metrics underdog")
+- [x] Frontend: Prevent re-entering blind mode after reveal without re-running comparison (toggle disabled after reveal, "Run Another Blind Test" button re-randomizes)
+- [x] Frontend: Randomize left/right assignment so version A isn't always on the left
+- [x] Tests: Blind mode state transitions (toggle on/off, vote, reveal, re-run reset) — 35 tests
+- [x] Tests: Randomization produces both orderings, label masking logic, vote match/mismatch detection, UI visibility rules, reveal banner content
