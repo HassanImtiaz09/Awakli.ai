@@ -55,28 +55,71 @@ const VALIDATION_STATUS_CONFIG: Record<string, { label: string; color: string }>
 
 // ─── Training Config Modal ──────────────────────────────────────────────
 
+// ─── Quality Badge ──────────────────────────────────────────────────────
+
+const QUALITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  excellent: { label: "Excellent", color: "text-[var(--status-success)]", bg: "bg-[var(--status-success)]/10" },
+  good:      { label: "Good",      color: "text-cyan",                    bg: "bg-cyan/10" },
+  fair:      { label: "Fair",      color: "text-[var(--accent-gold)]",     bg: "bg-[var(--accent-gold)]/10" },
+  poor:      { label: "Poor",      color: "text-[var(--status-error)]",    bg: "bg-[var(--status-error)]/10" },
+};
+
+const CONFIDENCE_COLORS = {
+  high: "border-[var(--status-success)]/50 bg-[var(--status-success)]/5",
+  medium: "border-[var(--accent-gold)]/50 bg-[var(--accent-gold)]/5",
+  low: "border-[var(--status-error)]/50 bg-[var(--status-error)]/5",
+};
+
+function getConfidenceLevel(c: number) {
+  if (c >= 0.85) return "high";
+  if (c >= 0.70) return "medium";
+  return "low";
+}
+
+// ─── Training Config Modal (Multi-step) ─────────────────────────────────
+
 function TrainLoraModal({
   open,
   onOpenChange,
   characterId,
   characterName,
+  referenceSheetUrl,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   characterId: number;
   characterName: string;
+  referenceSheetUrl: string | null;
 }) {
+  const [step, setStep] = useState<"preview" | "config">("preview");
+  const [extractionApproved, setExtractionApproved] = useState(false);
   const [gpuType, setGpuType] = useState<"h100_sxm" | "a100_80gb" | "rtx_4090">("h100_sxm");
   const [rank, setRank] = useState(32);
   const [alpha, setAlpha] = useState(16);
   const [learningRate, setLearningRate] = useState(1e-4);
   const [trainingSteps, setTrainingSteps] = useState(800);
+  const [selectedView, setSelectedView] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
 
+  // Reset step when modal opens
+  useEffect(() => {
+    if (open) {
+      setStep("preview");
+      setExtractionApproved(false);
+      setSelectedView(null);
+    }
+  }, [open]);
+
+  // Extraction preview query
+  const { data: extraction, isLoading: extractionLoading } = trpc.characterLibrary.previewExtraction.useQuery(
+    { referenceSheetUrl: referenceSheetUrl || "", characterName },
+    { enabled: open && !!referenceSheetUrl && step === "preview" }
+  );
+
   const { data: estimate } = trpc.characterLibrary.getTrainingEstimate.useQuery(
     { gpuType, rank, trainingSteps },
-    { enabled: open }
+    { enabled: open && step === "config" }
   );
 
   const trainMutation = trpc.characterLibrary.trainLora.useMutation({
@@ -96,158 +139,397 @@ function TrainLoraModal({
     { value: "rtx_4090" as const, label: "RTX 4090", desc: "Budget-friendly" },
   ];
 
+  const qualityCfg = extraction ? (QUALITY_CONFIG[extraction.overallQuality] || QUALITY_CONFIG.fair) : QUALITY_CONFIG.fair;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[var(--bg-elevated)] border-white/10 max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-[var(--bg-elevated)] border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl flex items-center gap-2">
             <Zap className="w-5 h-5 text-cyan" /> Train LoRA for {characterName}
           </DialogTitle>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all",
+              step === "preview" ? "bg-cyan/20 text-cyan" : extractionApproved ? "bg-[var(--status-success)]/20 text-[var(--status-success)]" : "bg-white/5 text-muted-foreground"
+            )}>
+              {extractionApproved ? <CheckCircle2 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              1. Verify Extraction
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <div className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all",
+              step === "config" ? "bg-cyan/20 text-cyan" : "bg-white/5 text-muted-foreground"
+            )}>
+              <Cpu className="w-3 h-3" />
+              2. Configure Training
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-5 mt-2">
-          {/* GPU Selection */}
-          <div>
-            <Label className="text-sm text-muted-foreground">GPU Type</Label>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {GPU_OPTIONS.map(gpu => (
-                <button
-                  key={gpu.value}
-                  type="button"
-                  className={cn(
-                    "rounded-lg border p-3 text-left transition-all",
-                    gpuType === gpu.value
-                      ? "border-cyan bg-cyan/10"
-                      : "border-white/10 hover:border-white/20"
-                  )}
-                  onClick={() => setGpuType(gpu.value)}
-                >
-                  <Cpu className={cn("w-4 h-4 mb-1", gpuType === gpu.value ? "text-cyan" : "text-muted-foreground")} />
-                  <div className="text-sm font-medium">{gpu.label}</div>
-                  <div className="text-[10px] text-muted-foreground">{gpu.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* LoRA Rank */}
-          <div>
-            <div className="flex justify-between items-center">
-              <Label className="text-sm text-muted-foreground">LoRA Rank</Label>
-              <span className="text-xs text-cyan font-mono">{rank}</span>
-            </div>
-            <Slider
-              value={[rank]}
-              onValueChange={([v]) => setRank(v)}
-              min={16} max={64} step={8}
-              className="mt-2"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>16 (lighter)</span>
-              <span>64 (heavier)</span>
-            </div>
-          </div>
-
-          {/* Alpha */}
-          <div>
-            <div className="flex justify-between items-center">
-              <Label className="text-sm text-muted-foreground">Alpha</Label>
-              <span className="text-xs text-cyan font-mono">{alpha}</span>
-            </div>
-            <Slider
-              value={[alpha]}
-              onValueChange={([v]) => setAlpha(v)}
-              min={8} max={32} step={4}
-              className="mt-2"
-            />
-          </div>
-
-          {/* Training Steps */}
-          <div>
-            <div className="flex justify-between items-center">
-              <Label className="text-sm text-muted-foreground">Training Steps</Label>
-              <span className="text-xs text-cyan font-mono">{trainingSteps}</span>
-            </div>
-            <Slider
-              value={[trainingSteps]}
-              onValueChange={([v]) => setTrainingSteps(v)}
-              min={500} max={1500} step={100}
-              className="mt-2"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>500 (fast)</span>
-              <span>1500 (thorough)</span>
-            </div>
-          </div>
-
-          {/* Learning Rate */}
-          <div>
-            <Label className="text-sm text-muted-foreground">Learning Rate</Label>
-            <Select
-              value={String(learningRate)}
-              onValueChange={(v) => setLearningRate(Number(v))}
-            >
-              <SelectTrigger className="mt-1 bg-[var(--bg-base)] border-white/10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[var(--bg-elevated)] border-white/10">
-                <SelectItem value="0.00005">5e-5 (Conservative)</SelectItem>
-                <SelectItem value="0.0001">1e-4 (Default)</SelectItem>
-                <SelectItem value="0.0002">2e-4 (Aggressive)</SelectItem>
-                <SelectItem value="0.0003">3e-4 (Maximum)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Cost Estimate */}
-          {estimate && (
-            <div className="rounded-lg border border-white/10 bg-[var(--bg-base)] p-4">
-              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-[var(--accent-gold)]" /> Cost Estimate
-              </h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground">GPU Time</span>
-                  <div className="font-mono text-cyan">{estimate.estimatedMinutes.toFixed(1)} min</div>
+        {/* ─── Step 1: Extraction Preview ─── */}
+        {step === "preview" && (
+          <div className="space-y-4 mt-2">
+            {!referenceSheetUrl ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="w-10 h-10 text-[var(--accent-gold)] mx-auto mb-3" />
+                <p className="text-muted-foreground">No reference sheet uploaded for this character.</p>
+                <p className="text-xs text-muted-foreground mt-1">Upload a reference sheet first, then return to train.</p>
+              </div>
+            ) : extractionLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-cyan mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Analyzing reference sheet...</p>
+                <p className="text-xs text-muted-foreground mt-1">Detecting character views and computing confidence scores</p>
+              </div>
+            ) : extraction ? (
+              <>
+                {/* Overall quality header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Extraction Quality:</span>
+                    <Badge variant="outline" className={cn("text-xs", qualityCfg.color, qualityCfg.bg, "border-0")}>
+                      {qualityCfg.label}
+                    </Badge>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {(extraction.overallConfidence * 100).toFixed(0)}% avg confidence
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-xs border-white/10 text-muted-foreground">
+                    {extraction.views.length} views detected
+                  </Badge>
                 </div>
+
+                {/* Reference sheet with bounding box overlay */}
+                <div className="relative rounded-lg border border-white/10 overflow-hidden bg-black/30">
+                  <img
+                    src={referenceSheetUrl}
+                    alt={`${characterName} reference sheet`}
+                    className="w-full h-auto opacity-70"
+                  />
+                  {/* Bounding box overlays */}
+                  {extraction.views.map((view, i) => {
+                    const confLevel = getConfidenceLevel(view.confidence);
+                    return (
+                      <button
+                        key={view.viewAngle}
+                        type="button"
+                        className={cn(
+                          "absolute border-2 rounded transition-all cursor-pointer",
+                          CONFIDENCE_COLORS[confLevel],
+                          selectedView === i && "ring-2 ring-cyan ring-offset-1 ring-offset-transparent"
+                        )}
+                        style={{
+                          left: `${view.boundingBox.x * 100}%`,
+                          top: `${view.boundingBox.y * 100}%`,
+                          width: `${view.boundingBox.width * 100}%`,
+                          height: `${view.boundingBox.height * 100}%`,
+                        }}
+                        onClick={() => setSelectedView(selectedView === i ? null : i)}
+                      >
+                        <div className="absolute -top-5 left-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-black/80 whitespace-nowrap">
+                          {view.label}
+                        </div>
+                        <div className="absolute -bottom-5 left-0 text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/80">
+                          {(view.confidence * 100).toFixed(0)}%
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 5-panel extracted views grid */}
                 <div>
-                  <span className="text-muted-foreground">Cost</span>
-                  <div className="font-mono text-[var(--accent-gold)]">
-                    {estimate.withMargin.costCredits.toFixed(0)} credits
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-cyan" /> Extracted Views
+                  </h4>
+                  <div className="grid grid-cols-5 gap-2">
+                    {extraction.views.map((view, i) => {
+                      const confLevel = getConfidenceLevel(view.confidence);
+                      const isSelected = selectedView === i;
+                      return (
+                        <button
+                          key={view.viewAngle}
+                          type="button"
+                          className={cn(
+                            "rounded-lg border p-2 text-center transition-all",
+                            isSelected ? "border-cyan bg-cyan/10" : "border-white/10 hover:border-white/20"
+                          )}
+                          onClick={() => setSelectedView(isSelected ? null : i)}
+                        >
+                          {/* Simulated cropped view thumbnail */}
+                          <div className={cn(
+                            "aspect-square rounded-md mb-2 flex items-center justify-center border",
+                            CONFIDENCE_COLORS[confLevel]
+                          )}>
+                            <div className="text-center">
+                              <ImageIcon className={cn(
+                                "w-6 h-6 mx-auto mb-1",
+                                confLevel === "high" ? "text-[var(--status-success)]" :
+                                confLevel === "medium" ? "text-[var(--accent-gold)]" :
+                                "text-[var(--status-error)]"
+                              )} />
+                              <span className="text-[10px] font-mono">
+                                {(view.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-[11px] font-medium truncate">{view.label}</div>
+                          <div className={cn(
+                            "text-[10px] mt-0.5",
+                            confLevel === "high" ? "text-[var(--status-success)]" :
+                            confLevel === "medium" ? "text-[var(--accent-gold)]" :
+                            "text-[var(--status-error)]"
+                          )}>
+                            {confLevel === "high" ? "High" : confLevel === "medium" ? "Medium" : "Low"}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">USD Estimate</span>
-                  <div className="font-mono">${estimate.withMargin.costUsd.toFixed(2)}</div>
+
+                {/* Selected view detail */}
+                <AnimatePresence>
+                  {selectedView !== null && extraction.views[selectedView] && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-lg border border-white/10 bg-[var(--bg-base)] p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h5 className="text-sm font-medium">{extraction.views[selectedView].label}</h5>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Confidence: <span className="font-mono">{(extraction.views[selectedView].confidence * 100).toFixed(1)}%</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Bounding box: <span className="font-mono">
+                                x={extraction.views[selectedView].boundingBox.x.toFixed(2)},
+                                y={extraction.views[selectedView].boundingBox.y.toFixed(2)},
+                                w={extraction.views[selectedView].boundingBox.width.toFixed(2)},
+                                h={extraction.views[selectedView].boundingBox.height.toFixed(2)}
+                              </span>
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-white/10 text-xs"
+                            onClick={() => toast.info("Manual re-crop coming soon")}
+                          >
+                            <Edit3 className="w-3 h-3 mr-1" /> Re-crop
+                          </Button>
+                        </div>
+                        {extraction.views[selectedView].qualityWarning && (
+                          <div className="mt-2 flex items-start gap-2 text-xs text-[var(--accent-gold)] bg-[var(--accent-gold)]/5 rounded-md p-2">
+                            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            {extraction.views[selectedView].qualityWarning}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Warnings */}
+                {extraction.warnings.length > 0 && (
+                  <div className="rounded-lg border border-[var(--accent-gold)]/20 bg-[var(--accent-gold)]/5 p-3">
+                    <h5 className="text-xs font-medium text-[var(--accent-gold)] mb-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Quality Warnings
+                    </h5>
+                    <ul className="space-y-1">
+                      {extraction.warnings.map((w, i) => (
+                        <li key={i} className="text-xs text-[var(--accent-gold)]/80 flex items-start gap-1.5">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-[var(--accent-gold)]/60 shrink-0" />
+                          {w}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Trigger word preview */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Trigger word:</span>
+                  <code className="px-2 py-0.5 rounded bg-cyan/10 text-cyan font-mono">{extraction.triggerWord}</code>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">File Size</span>
-                  <div className="font-mono">{(estimate.fileSize.avgBytes / 1024 / 1024).toFixed(0)} MB</div>
-                </div>
+              </>
+            ) : null}
+          </div>
+        )}
+
+        {/* ─── Step 2: Training Config ─── */}
+        {step === "config" && (
+          <div className="space-y-5 mt-2">
+            {/* GPU Selection */}
+            <div>
+              <Label className="text-sm text-muted-foreground">GPU Type</Label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {GPU_OPTIONS.map(gpu => (
+                  <button
+                    key={gpu.value}
+                    type="button"
+                    className={cn(
+                      "rounded-lg border p-3 text-left transition-all",
+                      gpuType === gpu.value
+                        ? "border-cyan bg-cyan/10"
+                        : "border-white/10 hover:border-white/20"
+                    )}
+                    onClick={() => setGpuType(gpu.value)}
+                  >
+                    <Cpu className={cn("w-4 h-4 mb-1", gpuType === gpu.value ? "text-cyan" : "text-muted-foreground")} />
+                    <div className="text-sm font-medium">{gpu.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{gpu.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </div>
 
+            {/* LoRA Rank */}
+            <div>
+              <div className="flex justify-between items-center">
+                <Label className="text-sm text-muted-foreground">LoRA Rank</Label>
+                <span className="text-xs text-cyan font-mono">{rank}</span>
+              </div>
+              <Slider
+                value={[rank]}
+                onValueChange={([v]) => setRank(v)}
+                min={16} max={64} step={8}
+                className="mt-2"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>16 (lighter)</span>
+                <span>64 (heavier)</span>
+              </div>
+            </div>
+
+            {/* Alpha */}
+            <div>
+              <div className="flex justify-between items-center">
+                <Label className="text-sm text-muted-foreground">Alpha</Label>
+                <span className="text-xs text-cyan font-mono">{alpha}</span>
+              </div>
+              <Slider
+                value={[alpha]}
+                onValueChange={([v]) => setAlpha(v)}
+                min={8} max={32} step={4}
+                className="mt-2"
+              />
+            </div>
+
+            {/* Training Steps */}
+            <div>
+              <div className="flex justify-between items-center">
+                <Label className="text-sm text-muted-foreground">Training Steps</Label>
+                <span className="text-xs text-cyan font-mono">{trainingSteps}</span>
+              </div>
+              <Slider
+                value={[trainingSteps]}
+                onValueChange={([v]) => setTrainingSteps(v)}
+                min={500} max={1500} step={100}
+                className="mt-2"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>500 (fast)</span>
+                <span>1500 (thorough)</span>
+              </div>
+            </div>
+
+            {/* Learning Rate */}
+            <div>
+              <Label className="text-sm text-muted-foreground">Learning Rate</Label>
+              <Select
+                value={String(learningRate)}
+                onValueChange={(v) => setLearningRate(Number(v))}
+              >
+                <SelectTrigger className="mt-1 bg-[var(--bg-base)] border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[var(--bg-elevated)] border-white/10">
+                  <SelectItem value="0.00005">5e-5 (Conservative)</SelectItem>
+                  <SelectItem value="0.0001">1e-4 (Default)</SelectItem>
+                  <SelectItem value="0.0002">2e-4 (Aggressive)</SelectItem>
+                  <SelectItem value="0.0003">3e-4 (Maximum)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Cost Estimate */}
+            {estimate && (
+              <div className="rounded-lg border border-white/10 bg-[var(--bg-base)] p-4">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-[var(--accent-gold)]" /> Cost Estimate
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">GPU Time</span>
+                    <div className="font-mono text-cyan">{estimate.estimatedMinutes.toFixed(1)} min</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Cost</span>
+                    <div className="font-mono text-[var(--accent-gold)]">
+                      {estimate.withMargin.costCredits.toFixed(0)} credits
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">USD Estimate</span>
+                    <div className="font-mono">${estimate.withMargin.costUsd.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">File Size</span>
+                    <div className="font-mono">{(estimate.fileSize.avgBytes / 1024 / 1024).toFixed(0)} MB</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Footer ─── */}
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">
-            Cancel
-          </Button>
-          <Button
-            onClick={() => trainMutation.mutate({
-              characterId,
-              gpuType,
-              rank,
-              alpha,
-              learningRate,
-              trainingSteps,
-            })}
-            disabled={trainMutation.isPending}
-            className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
-          >
-            {trainMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Zap className="w-4 h-4 mr-1" />}
-            Start Training
-          </Button>
+          {step === "preview" ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setExtractionApproved(true);
+                  setStep("config");
+                }}
+                disabled={!extraction || extractionLoading}
+                className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Approve & Continue
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setStep("preview")} className="border-white/10">
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+              </Button>
+              <Button
+                onClick={() => trainMutation.mutate({
+                  characterId,
+                  gpuType,
+                  rank,
+                  alpha,
+                  learningRate,
+                  trainingSteps,
+                })}
+                disabled={trainMutation.isPending}
+                className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+              >
+                {trainMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Zap className="w-4 h-4 mr-1" />}
+                Start Training
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -930,6 +1212,7 @@ export default function CharacterDetail() {
         onOpenChange={setShowTrainModal}
         characterId={characterId}
         characterName={character.name}
+        referenceSheetUrl={character.referenceSheetUrl ?? null}
       />
     </div>
   );

@@ -2635,3 +2635,15 @@
 - [x] Integration: character library CRUD operations (router contract tests)
 - [x] Integration: training job lifecycle (enqueue → preprocess → train → validate → activate) — full pipeline flow test
 - [x] Integration: batch training priority ordering and progress tracking — batch flow test
+
+## Reference Sheet Auto-Cropping Preview
+- [x] Backend: `characterLibrary.previewExtraction` endpoint — accepts referenceSheetUrl + characterName, returns 5 simulated extracted views with bounding boxes, confidence scores, and crop metadata
+- [x] Backend: Add extractionPreview helper to lora-training-pipeline.ts with bounding box simulation, view detection confidence, and quality warnings
+- [x] Frontend: ExtractionPreviewStep component — shows original reference sheet with overlay bounding boxes for each detected view
+- [x] Frontend: 5-panel grid showing each extracted/cropped view (front, side, back, 3-quarter, expression) with labels and confidence badges
+- [x] Frontend: Quality warnings for low-confidence extractions (e.g., "Side view may be partially occluded")
+- [x] Frontend: "Re-crop" button per view to allow manual adjustment (placeholder with toast)
+- [x] Frontend: Wire ExtractionPreviewStep into TrainLoraModal as Step 1 before training config
+- [x] Frontend: "Approve & Continue" button to proceed from preview to training config step
+- [x] Tests: extractionPreview helper (bounding box generation, confidence scoring, quality warnings) — 31 tests
+- [x] Tests: previewExtraction endpoint contract test — included in 31-test suite

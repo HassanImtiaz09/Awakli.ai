@@ -37,6 +37,7 @@ import {
   getConsistencyMechanism,
   buildLoraInjectionPayload,
   shouldRetrain,
+  previewExtraction,
   type TrainingJobEstimate,
   type ValidationResult,
 } from "./lora-training-pipeline";
@@ -756,5 +757,15 @@ export const characterLibraryRouter = router({
         chars.map(c => ({ name: c.name, role: "supporting" })),
         input.gpuType
       );
+    }),
+
+  // ── Preview Extraction ────────────────────────────────────────────────
+  previewExtraction: protectedProcedure
+    .input(z.object({
+      referenceSheetUrl: z.string().url(),
+      characterName: z.string().min(1).max(100),
+    }))
+    .query(({ input }) => {
+      return previewExtraction(input.referenceSheetUrl, input.characterName);
     }),
 });

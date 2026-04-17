@@ -673,3 +673,179 @@ export function buildLoraInjectionPayload(
     prompt: tagStr ? `${tagStr}, ${basePrompt}` : basePrompt,
   };
 }
+
+// ─── 7. Extraction Preview ────────────────────────────────────────────
+
+export interface BoundingBox {
+  x: number;      // 0-1 normalized left
+  y: number;      // 0-1 normalized top
+  width: number;  // 0-1 normalized width
+  height: number; // 0-1 normalized height
+}
+
+export interface ExtractedViewPreview {
+  viewAngle: ReferenceImage["viewAngle"];
+  label: string;
+  boundingBox: BoundingBox;
+  croppedUrl: string;
+  confidence: number;  // 0-1
+  qualityWarning: string | null;
+}
+
+export interface ExtractionPreviewResult {
+  referenceSheetUrl: string;
+  characterName: string;
+  triggerWord: string;
+  views: ExtractedViewPreview[];
+  overallQuality: "excellent" | "good" | "fair" | "poor";
+  overallConfidence: number;
+  warnings: string[];
+}
+
+/**
+ * Quality thresholds for extraction confidence
+ */
+export const EXTRACTION_CONFIDENCE_THRESHOLDS = {
+  excellent: 0.92,
+  good: 0.80,
+  fair: 0.65,
+  // Below 0.65 → poor
+};
+
+/**
+ * Standard bounding box layout for a 5-view reference sheet.
+ * Assumes a horizontal strip layout: front | side | back | 3/4 | expression
+ * Each view occupies roughly 1/5 of the sheet width.
+ * In production, a vision model (e.g., YOLO or SAM) would detect these.
+ */
+const VIEW_LAYOUT: Record<ReferenceImage["viewAngle"], { x: number; y: number; w: number; h: number }> = {
+  front:         { x: 0.00, y: 0.05, w: 0.19, h: 0.90 },
+  side:          { x: 0.20, y: 0.05, w: 0.19, h: 0.90 },
+  back:          { x: 0.40, y: 0.05, w: 0.19, h: 0.90 },
+  three_quarter: { x: 0.60, y: 0.05, w: 0.19, h: 0.90 },
+  expression:    { x: 0.80, y: 0.05, w: 0.19, h: 0.90 },
+};
+
+const VIEW_LABELS: Record<ReferenceImage["viewAngle"], string> = {
+  front: "Front View",
+  side: "Side View",
+  back: "Back View",
+  three_quarter: "3/4 View",
+  expression: "Expression Sheet",
+};
+
+/**
+ * Simulate per-view detection confidence based on view angle difficulty.
+ * In production, this would come from the vision model's output logits.
+ */
+function simulateViewConfidence(viewAngle: ReferenceImage["viewAngle"], seed: number): number {
+  // Front views are easiest to detect, expressions are hardest
+  const baseDifficulty: Record<string, number> = {
+    front: 0.95,
+    side: 0.88,
+    back: 0.82,
+    three_quarter: 0.86,
+    expression: 0.78,
+  };
+  const base = baseDifficulty[viewAngle] ?? 0.80;
+  // Add deterministic pseudo-random variation ±0.05
+  const variation = ((seed * 7 + viewAngle.length * 13) % 100) / 1000 - 0.05;
+  return Math.max(0, Math.min(1, base + variation));
+}
+
+/**
+ * Generate quality warnings for a view based on confidence and angle.
+ */
+function getViewQualityWarning(viewAngle: ReferenceImage["viewAngle"], confidence: number): string | null {
+  if (confidence < 0.65) {
+    return `${VIEW_LABELS[viewAngle]} detection confidence is very low (${(confidence * 100).toFixed(0)}%). Consider providing a clearer reference.`;
+  }
+  if (confidence < 0.75) {
+    return `${VIEW_LABELS[viewAngle]} may be partially occluded or unclear (${(confidence * 100).toFixed(0)}% confidence).`;
+  }
+  if (viewAngle === "back" && confidence < 0.85) {
+    return "Back view detection is uncertain. Ensure the character's back is fully visible.";
+  }
+  if (viewAngle === "expression" && confidence < 0.85) {
+    return "Expression sheet detection is uncertain. Multiple facial expressions should be clearly separated.";
+  }
+  return null;
+}
+
+/**
+ * Determine overall quality rating from average confidence.
+ */
+export function getOverallQuality(avgConfidence: number): ExtractionPreviewResult["overallQuality"] {
+  if (avgConfidence >= EXTRACTION_CONFIDENCE_THRESHOLDS.excellent) return "excellent";
+  if (avgConfidence >= EXTRACTION_CONFIDENCE_THRESHOLDS.good) return "good";
+  if (avgConfidence >= EXTRACTION_CONFIDENCE_THRESHOLDS.fair) return "fair";
+  return "poor";
+}
+
+/**
+ * Run the extraction preview pipeline.
+ * Simulates what a production vision model would do:
+ * 1. Detect character regions in the reference sheet
+ * 2. Assign view angles to each region
+ * 3. Compute confidence scores
+ * 4. Generate quality warnings
+ * 5. Return preview data for creator verification
+ */
+export function previewExtraction(
+  referenceSheetUrl: string,
+  characterName: string,
+  viewAngles: ReferenceImage["viewAngle"][] = ["front", "side", "back", "three_quarter", "expression"]
+): ExtractionPreviewResult {
+  const triggerWord = buildTriggerWord(characterName);
+  const seed = characterName.length + referenceSheetUrl.length;
+
+  const views: ExtractedViewPreview[] = viewAngles.map((angle) => {
+    const layout = VIEW_LAYOUT[angle];
+    const confidence = simulateViewConfidence(angle, seed);
+    const warning = getViewQualityWarning(angle, confidence);
+
+    // Generate the cropped URL (same pattern as extractReferenceImages + cropToCharacter)
+    const baseUrl = referenceSheetUrl.replace(/\.[^.]+$/, "");
+    const croppedUrl = `${baseUrl}_${angle}_cropped_512.png`;
+
+    return {
+      viewAngle: angle,
+      label: VIEW_LABELS[angle],
+      boundingBox: {
+        x: layout.x,
+        y: layout.y,
+        width: layout.w,
+        height: layout.h,
+      },
+      croppedUrl,
+      confidence,
+      qualityWarning: warning,
+    };
+  });
+
+  const avgConfidence = views.length > 0
+    ? views.reduce((sum, v) => sum + v.confidence, 0) / views.length
+    : 0;
+
+  const warnings = views
+    .map(v => v.qualityWarning)
+    .filter((w): w is string => w !== null);
+
+  // Add overall warnings
+  if (avgConfidence < EXTRACTION_CONFIDENCE_THRESHOLDS.fair) {
+    warnings.unshift("Overall extraction quality is poor. Consider using a higher-resolution reference sheet with clearly separated character views.");
+  }
+  if (views.length < 3) {
+    warnings.unshift(`Only ${views.length} views detected. At least 3 views (front, side, back) are recommended for good LoRA quality.`);
+  }
+
+  return {
+    referenceSheetUrl,
+    characterName,
+    triggerWord,
+    views,
+    overallQuality: getOverallQuality(avgConfidence),
+    overallConfidence: avgConfidence,
+    warnings,
+  };
+}
