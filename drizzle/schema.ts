@@ -1301,3 +1301,79 @@ export const gpuUsageLog = mysqlTable("gpu_usage_log", {
 });
 export type GpuUsageLogEntry = typeof gpuUsageLog.$inferSelect;
 export type InsertGpuUsageLogEntry = typeof gpuUsageLog.$inferInsert;
+
+// ─── Prompt 20: Scene-Type Router ─────────────────────────────────────────
+
+// Scene type enum values
+export const SCENE_TYPES = ["dialogue", "action", "establishing", "transition", "reaction", "montage"] as const;
+export type SceneType = typeof SCENE_TYPES[number];
+
+// Emotion enum values for reaction cache
+export const REACTION_EMOTIONS = ["surprise", "anger", "joy", "sadness", "fear", "neutral"] as const;
+export type ReactionEmotion = typeof REACTION_EMOTIONS[number];
+
+// Camera angle enum values for reaction cache
+export const REACTION_CAMERA_ANGLES = ["front", "three_quarter", "side", "close_up"] as const;
+export type ReactionCameraAngle = typeof REACTION_CAMERA_ANGLES[number];
+
+// ─── Scene Classifications ────────────────────────────────────────────────
+export const sceneClassifications = mysqlTable("scene_classifications", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  sceneId: int("sceneId").notNull().references(() => scenes.id, { onDelete: "cascade" }),
+  sceneType: mysqlEnum("sceneType", ["dialogue", "action", "establishing", "transition", "reaction", "montage"]).notNull(),
+  classifierVersion: varchar("classifierVersion", { length: 32 }).default("v1_rule_based").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  metadata: json("metadata").notNull(),  // Input features used for classification (SceneMetadata)
+  creatorOverride: mysqlEnum("creatorOverride", ["dialogue", "action", "establishing", "transition", "reaction", "montage"]),
+  overrideReason: text("overrideReason"),
+  pipelineTemplate: varchar("pipelineTemplate", { length: 64 }).notNull(),  // 'dialogue_inpaint', 'action_premium', etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type SceneClassification = typeof sceneClassifications.$inferSelect;
+export type InsertSceneClassification = typeof sceneClassifications.$inferInsert;
+
+// ─── Reaction Cache ───────────────────────────────────────────────────────
+export const reactionCache = mysqlTable("reaction_cache", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  emotion: mysqlEnum("emotion", ["surprise", "anger", "joy", "sadness", "fear", "neutral"]).notNull(),
+  cameraAngle: mysqlEnum("reactionCameraAngle", ["front", "three_quarter", "side", "close_up"]).notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  durationS: decimal("durationS", { precision: 5, scale: 2 }).notNull(),
+  generationRequestId: int("generationRequestId"),  // refs generation_requests.id
+  reusableAcrossEpisodes: int("reusableAcrossEpisodes").default(1).notNull(),  // 1=true, 0=false
+  usageCount: int("usageCount").default(0).notNull(),
+  createdBy: int("createdBy").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReactionCacheEntry = typeof reactionCache.$inferSelect;
+export type InsertReactionCacheEntry = typeof reactionCache.$inferInsert;
+
+// ─── Scene Type Overrides (training data for V2 classifier) ──────────────
+export const sceneTypeOverrides = mysqlTable("scene_type_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  sceneClassificationId: int("sceneClassificationId").notNull().references(() => sceneClassifications.id, { onDelete: "cascade" }),
+  originalType: mysqlEnum("originalType", ["dialogue", "action", "establishing", "transition", "reaction", "montage"]).notNull(),
+  overriddenType: mysqlEnum("overriddenType", ["dialogue", "action", "establishing", "transition", "reaction", "montage"]).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type SceneTypeOverride = typeof sceneTypeOverrides.$inferSelect;
+export type InsertSceneTypeOverride = typeof sceneTypeOverrides.$inferInsert;
+
+// ─── Pipeline Templates ──────────────────────────────────────────────────
+export const pipelineTemplates = mysqlTable("pipeline_templates", {
+  id: varchar("id", { length: 64 }).primaryKey(),  // 'dialogue_inpaint', 'action_premium', etc.
+  sceneType: mysqlEnum("templateSceneType", ["dialogue", "action", "establishing", "transition", "reaction", "montage"]).notNull(),
+  displayName: varchar("displayName", { length: 128 }).notNull(),
+  stages: json("stages").notNull(),  // Ordered list of stage configs
+  preferredProviders: json("preferredProviders").notNull(),  // Per-stage provider hints
+  skipStages: json("skipStages").notNull(),  // Stage numbers to skip
+  estimatedCreditsPerTenS: decimal("estimatedCreditsPerTenS", { precision: 10, scale: 4 }).notNull(),
+  isActive: int("isActive").default(1).notNull(),  // 1=active, 0=inactive
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PipelineTemplate = typeof pipelineTemplates.$inferSelect;
+export type InsertPipelineTemplate = typeof pipelineTemplates.$inferInsert;

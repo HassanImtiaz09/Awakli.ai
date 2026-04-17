@@ -2399,3 +2399,84 @@
 - [x] Add "Start Pipeline" / "Start with N Override(s)" button that passes overrides to pipeline start
 - [x] Write 31 tests for batch classification (deterministic rules, cost calculation, MODEL_MAP, batch classify, override logic, aggregates, edge cases)
 - [x] Verify all existing tests still pass (1068 passed, 43 test files, 0 failures)
+
+## Prompt 20: Scene-Type Router & Intelligent Pipeline Selector
+
+### Database Schema
+- [x] Add scene_classifications table (episode_id, scene_id, scene_type enum, classifier_version, confidence, metadata json, creator_override, pipeline_template)
+- [x] Add reaction_cache table (character_id, emotion enum, camera_angle enum, storage_url, duration_s, reusable_across_episodes, usage_count)
+- [x] Add scene_type_overrides table (scene_classification_id, original_type, overridden_type, user_id, reason)
+- [x] Add pipeline_templates table (id text PK, scene_type, display_name, stages json, preferred_providers json, skip_stages json, estimated_credits_per_10s, is_active)
+- [x] Generate and apply migration SQL (0027_scene_type_router.sql)
+
+### Scene-Type Classifier (V1 Rule-Based)
+- [x] Implement SceneMetadata interface (panelCount, hasDialogue, dialogueLineCount, characterCount, motionIntensity, isExterior, hasActionLines, isCloseUp, panelSizePct, previousSceneType, narrativeTag)
+- [x] Implement classifySceneType() with 8 priority-ordered rules (transition > establishing > action > montage > reaction > dialogue > dialogue_fallback > establishing_fallback)
+- [x] Implement classifyEpisodeScenes() batch function with previous-scene-type chaining
+- [x] Implement extractSceneMetadata() with keyword-based detectors (motion, exterior, action lines, narrative tags)
+- [x] Seed 6 pipeline templates with provider hints, stage skip configs, and cost estimates (pipeline-templates.ts)
+
+### Ken Burns Engine
+- [x] Implement KenBurnsEngine with 7 movement types (slow zoom in/out, pan L/R, pan U/D, combo pan+zoom) with presets
+- [x] Implement selectMovement() auto-selection from scene context keywords
+- [x] Implement generateKenBurnsParams() with configurable duration, fps, source/output dimensions, easing
+- [x] Implement generateFrameTransforms() producing per-frame crop/scale data with easing
+- [x] Implement generateFfmpegFilter() producing ready-to-use zoompan filter string
+- [x] Implement applyKenBurns() and autoKenBurns() convenience functions
+
+### Rule-Based Transition Generator
+- [x] Implement 6 transition types (fade_to_black, fade_from_black, cross_dissolve, wipe, title_card, manga_panel_reveal)
+- [x] Implement generateTransition() returning CompositingInstruction with ffmpegFilter + canvasInstructions
+- [x] Implement selectTransitionType() auto-selection from TransitionContext (mood, hint, chapter boundary)
+- [x] Zero AI cost — all transitions produce aiCost: 0
+
+### Reaction Shot Cache
+- [x] Implement ReactionCacheManager with lookup(character_id, emotion, camera_angle) + in-memory LRU (200 entries)
+- [x] Implement cache miss handler returning estimatedCredits: 0.14 for generation-on-miss
+- [x] Implement cache storage with reusable_across_episodes flag, DB insert + memory cache update
+- [x] Implement usage tracking (increment usage_count on reuse, sync memory cache)
+- [x] Implement cache invalidation (per-character, per-entry, memory + DB)
+- [x] Implement getStats() with coverage %, savings estimate, memory cache size
+- [x] Singleton pattern with getReactionCacheManager() / resetReactionCacheManager()e
+- [x] Implement FaceLandmarkDetector interface (mouth box, eye boxes, head center/rotation, nose tip, face box, confidence)
+- [x] Implement viseme mapping table (8 shapes: A, I, U, E, O, Closed, N, Rest) with IPA phoneme coverage
+- [x] Implement generateVisemeTimeline() — phoneme timestamps → per-frame viseme at target FPS
+- [x] Implement generateBlinkSchedule() — natural blinks every 3-5s, 3-frame alpha blend, no AI cost
+- [x] Implement generateHeadMotion() — sinusoidal 1-3° rotation + 2-5px translation
+- [x] Implement estimateDialogueCost() — 0.06-0.08 credits/10s (97% savings vs full video)
+- [x] Implement planDialoguePipeline() — 7-stage plan (base→landmarks→viseme→blink→head→rife→assembly)
+- [x] Implement generateAssemblyInstructions() — per-frame compositing layers
+
+### Router Integration
+- [x] Implement getProviderHintForSceneType() — full hint mapping for all 6 scene types (video, image, replacement pipeline)
+- [x] Implement getPipelineStageSkips() — stage skip config per scene type with explanations
+- [x] Implement shouldSkipStage() and getStageReplacement() helpers
+- [x] Implement getPipelineExecutionConfig() — full config (hints + skips + credits + template) per scene
+- [x] Implement getAllPipelineConfigs() for admin display
+
+### Cost Forecast Enhancement
+- [x] Implement generateCostForecast() using SceneTypeDistribution array
+- [x] Implement per-scene-type cost breakdown (credits per 10s × duration)
+- [x] Implement V3-Omni comparison and savings calculation
+- [x] Account for reaction cache hit rate in forecast (configurable, default 50%)
+- [x] Generate human-readable summary string
+
+### Creator UI
+- [x] SceneTypeBadge component (icon + color per scene type, sm/md sizes)
+- [x] SceneTypePanel with distribution bar, cost forecast card, per-scene classification table
+- [x] Override dropdown per scene with reason dialog and instant cost recalculation
+- [x] Cost forecast breakdown (per-type credits, V3-Omni comparison, savings %, expandable table)
+- [x] tRPC router: classifyScene, classifyEpisode, overrideSceneType, getEpisodeClassifications, getOverrideHistory, getCostForecast, getAllPipelineConfigs, seedTemplates
+- [x] Wired sceneTypeRouter into appRouter
+
+### Tests
+- [x] 99 tests in prompt20-scene-type-router.test.ts covering all modules
+- [x] Classifier tests: 8 scene types with rule priority, edge cases, batch classification
+- [x] Pipeline template tests: all 6 templates verified (stages, skip configs, provider hints, credits)
+- [x] Ken Burns tests: 7 movement types, presets, selectMovement, ffmpegFilter, frame transforms, easing
+- [x] Transition tests: 6 types with correct ffmpegFilter, frameCount, aiCost=0, selectTransitionType rules
+- [x] Reaction cache tests: lookup, cache miss, storage, invalidation, stats, singleton pattern
+- [x] Dialogue inpainting tests: viseme mapping, blink schedule, head motion, cost estimation, pipeline plan, assembly
+- [x] Router integration tests: providerHint injection, stage skipping, shouldSkipStage, getStageReplacement, getAllPipelineConfigs
+- [x] Cost forecast tests: per-type breakdown, V3-Omni comparison, savings %, reaction cache hit rate
+- [x] Verify all existing tests still pass (1166 passed, 1 pre-existing MiniMax network timeout)

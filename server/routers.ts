@@ -71,6 +71,7 @@ import { publicContentRouter, publishRouter, creatorAnalyticsRouter } from "./ro
 import { uploadRouter } from "./routers-upload";
 import { providerAdminRouter } from "./routers-provider-admin";
 import { localInfraRouter } from "./routers-local-infra";
+import { sceneTypeRouter } from "./routers-scene-type";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
   gateConfigRouter, qualityAnalyticsRouter, cascadeRewindRouter,
@@ -1988,6 +1989,7 @@ export const appRouter = router({
   // Prompt 15: Credit Gateway (pre-flight affordability)
   providerAdmin: providerAdminRouter,
   localInfra: localInfraRouter,
+  sceneType: sceneTypeRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure
