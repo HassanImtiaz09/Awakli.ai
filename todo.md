@@ -2505,3 +2505,14 @@
 - [x] Frontend: Persist classification results to DB after classifyEpisode completes
 - [x] Frontend: Invalidate getEpisodeClassifications query after override
 - [x] Tests: saveClassifications endpoint tests (override template mapping, persistence logic) — included in 39-test suite
+
+## Viseme Timeline Replay Animation
+- [x] Interactive playhead overlay on viseme timeline bar with play/pause toggle
+- [x] Real-time scrubbing via click/drag on the timeline bar
+- [x] Animated mouth shape display showing current viseme with large SVG icon
+- [x] Speed control (0.25x, 0.5x, 1x, 2x) for replay
+- [x] Current time / frame counter display synchronized with playhead
+- [x] Blink indicator that flashes when playhead crosses a blink event
+- [x] Head motion values display synchronized with playhead position
+- [x] Keyboard shortcuts (Space for play/pause, Left/Right for frame step)
+- [x] Tests for replay animation logic (playhead position, speed control, scrubbing math) — 44 tests passing
