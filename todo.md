@@ -2490,3 +2490,18 @@
 - [x] Episode selector dropdown for multi-episode projects (inline in header)
 - [x] Write 26 integration tests (panel grouping, scene classification, batch classification, cost forecast, template coverage, provider hints)
 - [x] Verify all existing tests still pass (1193 total, 10 transient network timeouts from external APIs)
+
+## Dialogue Preview Tool
+- [x] Backend: `sceneType.previewDialogue` tRPC endpoint (calls planDialoguePipeline, generateVisemeTimeline, generateBlinkSchedule, generateHeadMotion, estimateDialogueCost)
+- [x] Frontend: `DialoguePreviewModal.tsx` component with viseme timeline visualization, blink schedule markers, head motion chart, cost breakdown card, 7-stage pipeline plan display
+- [x] Entry point: "Preview Dialogue" button in SceneTypePanel for dialogue-type scenes
+- [x] Tests: previewDialogue endpoint tests (viseme timeline, blink schedule, cost estimate, pipeline plan) — 39 tests passing
+
+## Scene-Type Override Persistence
+- [x] Backend: `sceneType.saveClassifications` tRPC endpoint (upserts into scene_classifications table)
+- [x] Frontend: Load persisted classifications from DB on mount via `getEpisodeClassifications` query
+- [x] Frontend: Wire override dialog to call `overrideSceneType` mutation (DB persistence instead of local state)
+- [x] Frontend: Show "overridden" badge on scenes with creatorOverride set
+- [x] Frontend: Persist classification results to DB after classifyEpisode completes
+- [x] Frontend: Invalidate getEpisodeClassifications query after override
+- [x] Tests: saveClassifications endpoint tests (override template mapping, persistence logic) — included in 39-test suite

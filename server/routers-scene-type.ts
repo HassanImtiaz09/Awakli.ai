@@ -1,6 +1,7 @@
 /**
  * Scene-Type Router — tRPC endpoints for Prompt 20 Scene-Type classification,
- * cost forecast, pipeline config, and creator overrides.
+ * cost forecast, pipeline config, creator overrides, dialogue preview, and
+ * classification persistence.
  */
 
 import { z } from "zod";
@@ -26,6 +27,15 @@ import {
   getTemplateForSceneType,
   ALL_PIPELINE_TEMPLATES,
 } from "./scene-type-router/pipeline-templates";
+import {
+  planDialoguePipeline,
+  generateVisemeTimeline,
+  generateBlinkSchedule,
+  generateHeadMotion,
+  estimateDialogueCost,
+  phonemeToViseme,
+} from "./scene-type-router/dialogue-inpainting";
+import type { DialogueSceneConfig, PhonemeTimestamp, BoundingBox } from "./scene-type-router/dialogue-inpainting";
 import { getDb } from "./db";
 import { sceneClassifications, sceneTypeOverrides, pipelineTemplates } from "../drizzle/schema";
 import type { SceneType } from "../drizzle/schema";
@@ -327,6 +337,198 @@ export const sceneTypeRouter = router({
           skipStages: t.skipStages,
         })),
         creditsPerTenS: { ...CREDITS_PER_10S },
+      };
+    }),
+
+  /**
+   * Preview dialogue inpainting pipeline for a scene.
+   * Generates viseme timeline, blink schedule, head motion, cost estimate,
+   * and 7-stage pipeline plan without committing to generation.
+   */
+  previewDialogue: protectedProcedure
+    .input(z.object({
+      durationS: z.number().min(1).max(120).default(10),
+      cameraAngles: z.array(z.string()).min(1).default(["front"]),
+      dialogueLines: z.array(z.object({
+        character: z.string(),
+        text: z.string(),
+        emotion: z.string().optional(),
+        startTimeS: z.number().min(0),
+        endTimeS: z.number().min(0),
+      })).default([]),
+      inpaintFps: z.number().min(4).max(24).default(8),
+      outputFps: z.number().min(12).max(60).default(24),
+    }))
+    .mutation(async ({ input }) => {
+      const { durationS, cameraAngles, dialogueLines, inpaintFps, outputFps } = input;
+
+      // Build synthetic phoneme timestamps from dialogue lines
+      // In production, these come from TTS alignment; here we simulate
+      const phonemes: PhonemeTimestamp[] = [];
+      for (const line of dialogueLines) {
+        const chars = line.text.replace(/[^a-zA-Z]/g, "").split("");
+        if (chars.length === 0) continue;
+        const charDuration = (line.endTimeS - line.startTimeS) / chars.length;
+        for (let i = 0; i < chars.length; i++) {
+          const ch = chars[i].toLowerCase();
+          // Map characters to approximate phonemes
+          const phoneme = "aeiou".includes(ch) ? ch : "sil";
+          phonemes.push({
+            phoneme,
+            startTimeS: line.startTimeS + i * charDuration,
+            endTimeS: line.startTimeS + (i + 1) * charDuration,
+          });
+        }
+      }
+
+      // Generate viseme timeline
+      const visemeTimeline = generateVisemeTimeline(phonemes, durationS, inpaintFps);
+
+      // Generate blink schedule (default eye region for preview)
+      const defaultEyeRegion: BoundingBox = { x: 80, y: 60, width: 40, height: 20 };
+      const blinkSchedule = generateBlinkSchedule(
+        durationS, inpaintFps, dialogueLines[0]?.character || "character", defaultEyeRegion,
+      );
+
+      // Generate head motion
+      const headMotion = generateHeadMotion(durationS, inpaintFps);
+
+      // Cost estimate
+      const costEstimate = estimateDialogueCost(durationS, cameraAngles.length, inpaintFps);
+
+      // Pipeline plan
+      const config: DialogueSceneConfig = {
+        durationS,
+        inpaintFps,
+        outputFps,
+        mouthRegionSize: 256,
+        cameraAngles,
+        dialogueLines: dialogueLines.map(l => ({
+          character: l.character,
+          text: l.text,
+          emotion: l.emotion,
+          startTimeS: l.startTimeS,
+          endTimeS: l.endTimeS,
+        })),
+        characterReferences: {},
+      };
+      const pipelinePlan = planDialoguePipeline(config);
+
+      // Aggregate viseme distribution for visualization
+      const visemeDistribution: Record<string, number> = {};
+      for (const frame of visemeTimeline) {
+        visemeDistribution[frame.viseme] = (visemeDistribution[frame.viseme] || 0) + 1;
+      }
+
+      return {
+        durationS,
+        inpaintFps,
+        outputFps,
+        totalFrames: visemeTimeline.length,
+        visemeTimeline: visemeTimeline.map(f => ({
+          viseme: f.viseme,
+          frameIndex: f.frameIndex,
+          timeS: Math.round(f.timeS * 1000) / 1000,
+        })),
+        visemeDistribution,
+        blinkSchedule: blinkSchedule.map(b => ({
+          startFrame: b.startFrameIndex,
+          endFrame: b.endFrameIndex,
+          character: b.character,
+        })),
+        headMotion: headMotion.map(h => ({
+          frameIndex: h.frameIndex,
+          rotationDeg: Math.round(h.rotationDeg * 100) / 100,
+          translationX: Math.round(h.translationX * 100) / 100,
+          translationY: Math.round(h.translationY * 100) / 100,
+        })),
+        costEstimate,
+        pipelinePlan: {
+          stages: pipelinePlan.stages.map(s => ({
+            name: s.name,
+            description: s.description,
+            provider: s.provider,
+            fallbackProvider: s.fallbackProvider,
+            estimatedCredits: Math.round(s.estimatedCredits * 10000) / 10000,
+            frameCount: s.frameCount,
+          })),
+          totalInpaintFrames: pipelinePlan.totalInpaintFrames,
+          totalOutputFrames: pipelinePlan.totalOutputFrames,
+          estimatedTotalCredits: pipelinePlan.estimatedTotalCredits,
+        },
+      };
+    }),
+
+  /**
+   * Save scene classifications to the database.
+   * Called after classifyEpisode to persist results.
+   */
+  saveClassifications: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      classifications: z.array(z.object({
+        sceneId: z.number(),
+        sceneType: z.enum(SCENE_TYPES),
+        confidence: z.number().min(0).max(1),
+        metadata: z.any(),
+        pipelineTemplate: z.string(),
+        matchedRule: z.string().optional(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const { episodeId, classifications } = input;
+      let saved = 0;
+      const savedIds: number[] = [];
+
+      for (const c of classifications) {
+        // Check if classification already exists for this episode+scene
+        const [existing] = await db
+          .select()
+          .from(sceneClassifications)
+          .where(
+            and(
+              eq(sceneClassifications.episodeId, episodeId),
+              eq(sceneClassifications.sceneId, c.sceneId),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          // Update existing classification
+          await db
+            .update(sceneClassifications)
+            .set({
+              sceneType: c.sceneType as any,
+              confidence: c.confidence.toFixed(4),
+              metadata: c.metadata || {},
+              pipelineTemplate: c.pipelineTemplate,
+            })
+            .where(eq(sceneClassifications.id, existing.id));
+          savedIds.push(existing.id);
+        } else {
+          // Insert new classification
+          const [result] = await db.insert(sceneClassifications).values({
+            episodeId,
+            sceneId: c.sceneId,
+            sceneType: c.sceneType as any,
+            confidence: c.confidence.toFixed(4),
+            metadata: c.metadata || {},
+            pipelineTemplate: c.pipelineTemplate,
+          });
+          savedIds.push(result.insertId);
+        }
+        saved++;
+      }
+
+      return {
+        success: true,
+        episodeId,
+        saved,
+        total: classifications.length,
+        classificationIds: savedIds,
       };
     }),
 

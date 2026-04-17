@@ -1,11 +1,11 @@
 /**
  * Prompt 20 — Scene Type Panel
  *
- * Displays scene-type classification results, allows overrides,
- * and shows cost forecast breakdown for an episode.
+ * Displays scene-type classification results, allows overrides (persisted to DB),
+ * shows cost forecast breakdown, and provides dialogue preview for dialogue scenes.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   MessageSquare,
@@ -42,7 +48,11 @@ import {
   ChevronUp,
   Edit3,
   Info,
+  Eye,
+  History,
+  Check,
 } from "lucide-react";
+import { DialoguePreviewModal } from "./DialoguePreviewModal";
 
 // ─── Scene Type Config ──────────────────────────────────────────────────
 
@@ -280,11 +290,16 @@ interface SceneClassificationRow {
   stageExplanation: string;
   creditsPerTenS: number;
   estimatedCredits: number;
+  /** DB classification ID (set after persistence) */
+  classificationId?: number;
+  /** Whether this scene has a creator override */
+  isOverridden?: boolean;
 }
 
 interface OverrideDialogState {
   open: boolean;
   sceneId: number | null;
+  classificationId: number | null;
   currentType: SceneType;
   newType: SceneType;
   reason: string;
@@ -293,13 +308,18 @@ interface OverrideDialogState {
 function SceneClassificationTable({
   scenes,
   onOverride,
+  onPreviewDialogue,
+  overridePending,
 }: {
   scenes: SceneClassificationRow[];
-  onOverride?: (sceneId: number, newType: SceneType, reason: string) => void;
+  onOverride?: (sceneId: number, classificationId: number | undefined, newType: SceneType, reason: string) => void;
+  onPreviewDialogue?: (scene: SceneClassificationRow) => void;
+  overridePending?: boolean;
 }) {
   const [overrideDialog, setOverrideDialog] = useState<OverrideDialogState>({
     open: false,
     sceneId: null,
+    classificationId: null,
     currentType: "dialogue",
     newType: "dialogue",
     reason: "",
@@ -309,6 +329,7 @@ function SceneClassificationTable({
     setOverrideDialog({
       open: true,
       sceneId: scene.sceneId,
+      classificationId: scene.classificationId ?? null,
       currentType: scene.sceneType,
       newType: scene.sceneType,
       reason: "",
@@ -317,7 +338,12 @@ function SceneClassificationTable({
 
   const confirmOverride = () => {
     if (overrideDialog.sceneId && overrideDialog.reason.trim() && onOverride) {
-      onOverride(overrideDialog.sceneId, overrideDialog.newType, overrideDialog.reason);
+      onOverride(
+        overrideDialog.sceneId,
+        overrideDialog.classificationId ?? undefined,
+        overrideDialog.newType,
+        overrideDialog.reason,
+      );
     }
     setOverrideDialog(prev => ({ ...prev, open: false }));
   };
@@ -336,7 +362,7 @@ function SceneClassificationTable({
               <th className="text-right px-3 py-2 font-medium">Credits</th>
               <th className="text-left px-3 py-2 font-medium">Rule</th>
               <th className="text-center px-3 py-2 font-medium">Skips</th>
-              {onOverride && <th className="text-center px-3 py-2 font-medium w-10"></th>}
+              <th className="text-center px-3 py-2 font-medium w-20"></th>
             </tr>
           </thead>
           <tbody>
@@ -344,7 +370,24 @@ function SceneClassificationTable({
               <tr key={s.sceneId} className="border-b border-border/30 last:border-0 hover:bg-muted/20">
                 <td className="px-3 py-2 font-mono text-muted-foreground">#{s.sceneNumber}</td>
                 <td className="px-3 py-2">
-                  <SceneTypeBadge sceneType={s.sceneType} />
+                  <div className="flex items-center gap-1.5">
+                    <SceneTypeBadge sceneType={s.sceneType} />
+                    {s.isOverridden && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-amber-500/10 text-amber-400 border-amber-500/20">
+                              <History className="h-2.5 w-2.5 mr-0.5" />
+                              overridden
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">This scene type was manually overridden by a creator</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </td>
                 <td className="text-right px-3 py-2 tabular-nums">
                   <span className={s.confidence >= 0.8 ? "text-emerald-400" : s.confidence >= 0.6 ? "text-amber-400" : "text-red-400"}>
@@ -366,19 +409,35 @@ function SceneClassificationTable({
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </td>
-                {onOverride && (
-                  <td className="text-center px-3 py-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => openOverride(s)}
-                      title="Override scene type"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                )}
+                <td className="text-center px-3 py-1">
+                  <div className="flex items-center justify-center gap-0.5">
+                    {/* Dialogue preview button — only for dialogue scenes */}
+                    {s.sceneType === "dialogue" && onPreviewDialogue && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+                        onClick={() => onPreviewDialogue(s)}
+                        title="Preview dialogue pipeline"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {/* Override button */}
+                    {onOverride && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => openOverride(s)}
+                        title="Override scene type"
+                        disabled={overridePending}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -392,6 +451,9 @@ function SceneClassificationTable({
             <DialogTitle>Override Scene Type</DialogTitle>
             <DialogDescription>
               Change the scene type classification. This affects the pipeline template and cost.
+              {overrideDialog.classificationId
+                ? " The override will be saved to the database."
+                : " Classify first to enable persistent overrides."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -436,9 +498,16 @@ function SceneClassificationTable({
             </Button>
             <Button
               onClick={confirmOverride}
-              disabled={!overrideDialog.reason.trim() || overrideDialog.newType === overrideDialog.currentType}
+              disabled={!overrideDialog.reason.trim() || overrideDialog.newType === overrideDialog.currentType || overridePending}
             >
-              Apply Override
+              {overridePending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Apply Override"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -468,15 +537,100 @@ interface SceneTypePanelProps {
 
 export function SceneTypePanel({ episodeId, scenes, onClassificationComplete }: SceneTypePanelProps) {
   const [classificationResult, setClassificationResult] = useState<any>(null);
+  const [dialoguePreviewOpen, setDialoguePreviewOpen] = useState(false);
+  const [dialoguePreviewScene, setDialoguePreviewScene] = useState<SceneClassificationRow | null>(null);
+
+  const utils = trpc.useUtils();
+
+  // ─── Load persisted classifications from DB ────────────────────────
+  const persistedClassifications = trpc.sceneType.getEpisodeClassifications.useQuery(
+    { episodeId },
+    { enabled: !!episodeId },
+  );
+
+  // Build a map of sceneId → persisted classification for merging
+  const persistedMap = useMemo(() => {
+    const map = new Map<number, {
+      id: number;
+      sceneType: string;
+      confidence: string | null;
+      creatorOverride: boolean;
+      pipelineTemplate: string;
+    }>();
+    if (persistedClassifications.data) {
+      for (const row of persistedClassifications.data) {
+        map.set(row.sceneId, row);
+      }
+    }
+    return map;
+  }, [persistedClassifications.data]);
+
+  // ─── Classify mutation ─────────────────────────────────────────────
+  const saveClassificationsMutation = trpc.sceneType.saveClassifications.useMutation({
+    onSuccess: () => {
+      utils.sceneType.getEpisodeClassifications.invalidate({ episodeId });
+    },
+    onError: (err) => {
+      // Non-blocking — classification still works locally
+      console.warn("Failed to persist classifications:", err.message);
+    },
+  });
 
   const classifyMutation = trpc.sceneType.classifyEpisode.useMutation({
     onSuccess: (data) => {
       setClassificationResult(data);
       onClassificationComplete?.(data);
       toast.success(`${data.totalScenes} scenes classified. ${data.forecast.savingsPercent}% savings vs V3-Omni.`);
+
+      // Persist classifications to DB
+      saveClassificationsMutation.mutate({
+        episodeId,
+        classifications: data.perScene.map((s: any) => ({
+          sceneId: s.sceneId,
+          sceneType: s.sceneType,
+          confidence: s.confidence,
+          metadata: {
+            panelCount: s.panelCount,
+            estimatedDurationS: s.estimatedDurationS,
+            matchedRule: s.matchedRule,
+          },
+          pipelineTemplate: s.pipelineTemplate,
+          matchedRule: s.matchedRule,
+        })),
+      });
     },
     onError: (err) => {
       toast.error(err.message);
+    },
+  });
+
+  // ─── Override mutation (DB-persisted) ──────────────────────────────
+  const overrideMutation = trpc.sceneType.overrideSceneType.useMutation({
+    onSuccess: (result) => {
+      // Update local state
+      if (classificationResult) {
+        const updated = { ...classificationResult };
+        const sceneIdx = updated.perScene.findIndex(
+          (s: any) => persistedMap.get(s.sceneId)?.id === result.sceneClassificationId,
+        );
+        if (sceneIdx >= 0) {
+          updated.perScene[sceneIdx] = {
+            ...updated.perScene[sceneIdx],
+            sceneType: result.newType,
+            matchedRule: `Override: ${result.originalType} → ${result.newType}`,
+            confidence: 1.0,
+            pipelineTemplate: result.pipelineTemplate,
+            creditsPerTenS: result.creditsPerTenS,
+          };
+          setClassificationResult(updated);
+        }
+      }
+      // Invalidate persisted data
+      utils.sceneType.getEpisodeClassifications.invalidate({ episodeId });
+      toast.success(`Scene type overridden to ${SCENE_TYPE_CONFIG[result.newType as SceneType]?.label || result.newType}`);
+    },
+    onError: (err) => {
+      toast.error(`Override failed: ${err.message}`);
     },
   });
 
@@ -498,23 +652,79 @@ export function SceneTypePanel({ episodeId, scenes, onClassificationComplete }: 
     });
   };
 
-  const handleOverride = (sceneId: number, newType: SceneType, reason: string) => {
-    // For now, apply override locally (DB persistence requires sceneClassificationId)
-    if (!classificationResult) return;
-
-    const updated = { ...classificationResult };
-    const sceneIdx = updated.perScene.findIndex((s: any) => s.sceneId === sceneId);
-    if (sceneIdx >= 0) {
-      updated.perScene[sceneIdx] = {
-        ...updated.perScene[sceneIdx],
-        sceneType: newType,
-        matchedRule: `Override: ${reason}`,
-        confidence: 1.0,
-      };
-      setClassificationResult(updated);
-      toast.success(`Scene #${updated.perScene[sceneIdx].sceneNumber} changed to ${SCENE_TYPE_CONFIG[newType].label}`);
+  const handleOverride = (sceneId: number, classificationId: number | undefined, newType: SceneType, reason: string) => {
+    if (classificationId) {
+      // Persist to DB via overrideSceneType mutation
+      overrideMutation.mutate({
+        sceneClassificationId: classificationId,
+        newSceneType: newType,
+        reason,
+      });
+    } else {
+      // Fallback: apply locally if no DB classification exists yet
+      if (!classificationResult) return;
+      const updated = { ...classificationResult };
+      const sceneIdx = updated.perScene.findIndex((s: any) => s.sceneId === sceneId);
+      if (sceneIdx >= 0) {
+        updated.perScene[sceneIdx] = {
+          ...updated.perScene[sceneIdx],
+          sceneType: newType,
+          matchedRule: `Override: ${reason}`,
+          confidence: 1.0,
+        };
+        setClassificationResult(updated);
+        toast.success(`Scene #${updated.perScene[sceneIdx].sceneNumber} changed to ${SCENE_TYPE_CONFIG[newType].label}`);
+      }
     }
   };
+
+  const handlePreviewDialogue = (scene: SceneClassificationRow) => {
+    setDialoguePreviewScene(scene);
+    setDialoguePreviewOpen(true);
+  };
+
+  // ─── Merge persisted overrides into classification result ──────────
+  const enrichedPerScene = useMemo(() => {
+    if (!classificationResult?.perScene) return [];
+    return classificationResult.perScene.map((s: any) => {
+      const persisted = persistedMap.get(s.sceneId);
+      return {
+        ...s,
+        classificationId: persisted?.id,
+        isOverridden: persisted?.creatorOverride ?? false,
+        // If persisted type differs from local (e.g., loaded from DB), use persisted
+        ...(persisted?.creatorOverride ? {
+          sceneType: persisted.sceneType,
+          confidence: 1.0,
+          matchedRule: `Override (persisted)`,
+        } : {}),
+      };
+    });
+  }, [classificationResult, persistedMap]);
+
+  // Build dialogue lines for preview from scene panels
+  const dialogueLinesForPreview = useMemo(() => {
+    if (!dialoguePreviewScene) return undefined;
+    const scene = scenes.find(s => s.sceneId === dialoguePreviewScene.sceneId);
+    if (!scene) return undefined;
+
+    const lines: Array<{ character: string; text: string; emotion: string; startTimeS: number; endTimeS: number }> = [];
+    let timeOffset = 0;
+    for (const panel of scene.panels) {
+      for (const d of panel.dialogue) {
+        const duration = Math.max(2, (d.text?.length || 10) * 0.1);
+        lines.push({
+          character: d.character || "Character",
+          text: d.text || "",
+          emotion: "neutral",
+          startTimeS: timeOffset,
+          endTimeS: timeOffset + duration,
+        });
+        timeOffset += duration + 0.5;
+      }
+    }
+    return lines.length > 0 ? lines : undefined;
+  }, [dialoguePreviewScene, scenes]);
 
   return (
     <div className="space-y-6">
@@ -531,23 +741,31 @@ export function SceneTypePanel({ episodeId, scenes, onClassificationComplete }: 
                 Classify scenes to select optimal pipelines and estimate costs before starting the pipeline.
               </CardDescription>
             </div>
-            <Button
-              onClick={handleClassify}
-              disabled={classifyMutation.isPending || scenes.length === 0}
-              size="lg"
-            >
-              {classifyMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Classifying...
-                </>
-              ) : (
-                <>
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Classify {scenes.length} Scenes
-                </>
+            <div className="flex items-center gap-2">
+              {persistedClassifications.data && persistedClassifications.data.length > 0 && !classificationResult && (
+                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                  <Check className="h-3 w-3 mr-1" />
+                  {persistedClassifications.data.length} saved
+                </Badge>
               )}
-            </Button>
+              <Button
+                onClick={handleClassify}
+                disabled={classifyMutation.isPending || scenes.length === 0}
+                size="lg"
+              >
+                {classifyMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Classifying...
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Classify {scenes.length} Scenes
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         {!classificationResult && (
@@ -585,20 +803,38 @@ export function SceneTypePanel({ episodeId, scenes, onClassificationComplete }: 
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Per-Scene Classification</CardTitle>
-                <span className="text-sm text-muted-foreground">
-                  {classificationResult.totalScenes} scenes
-                </span>
+                <div className="flex items-center gap-2">
+                  {saveClassificationsMutation.isSuccess && (
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                      <Check className="h-2.5 w-2.5 mr-0.5" />
+                      Saved to DB
+                    </Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {classificationResult.totalScenes} scenes
+                  </span>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <SceneClassificationTable
-                scenes={classificationResult.perScene}
+                scenes={enrichedPerScene}
                 onOverride={handleOverride}
+                onPreviewDialogue={handlePreviewDialogue}
+                overridePending={overrideMutation.isPending}
               />
             </CardContent>
           </Card>
         </>
       )}
+
+      {/* Dialogue Preview Modal */}
+      <DialoguePreviewModal
+        open={dialoguePreviewOpen}
+        onOpenChange={setDialoguePreviewOpen}
+        initialDurationS={dialoguePreviewScene?.estimatedDurationS}
+        initialDialogueLines={dialogueLinesForPreview}
+      />
     </div>
   );
 }
