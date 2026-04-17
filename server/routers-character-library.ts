@@ -1349,6 +1349,229 @@ export const characterLibraryRouter = router({
         completedAt: job.completedAt?.getTime() ?? null,
       }));
     }),
+
+  // ── Fix Drift Analytics ──────────────────────────────────────────────
+  getFixDriftAnalytics: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Get all fix jobs for this character
+      const allJobs = await db.select()
+        .from(fixDriftJobs)
+        .where(eq(fixDriftJobs.characterId, input.characterId))
+        .orderBy(asc(fixDriftJobs.queuedAt));
+
+      const totalFixes = allJobs.length;
+      const completedJobs = allJobs.filter(j => j.status === "completed");
+      const failedJobs = allJobs.filter(j => j.status === "failed");
+      const queuedJobs = allJobs.filter(j => j.status === "queued");
+      const processingJobs = allJobs.filter(j => j.status === "processing");
+
+      const successRate = totalFixes > 0
+        ? Math.round((completedJobs.length / (completedJobs.length + failedJobs.length || 1)) * 100)
+        : 0;
+
+      const avgDriftImprovement = completedJobs.length > 0
+        ? Math.round(
+            completedJobs.reduce((sum, j) => sum + (j.driftImprovement ?? 0), 0) / completedJobs.length * 10000
+          ) / 10000
+        : 0;
+
+      const totalCreditsSpent = allJobs.reduce((sum, j) => sum + (j.estimatedCredits ?? 0), 0);
+
+      const avgFixTimeSeconds = completedJobs.length > 0
+        ? Math.round(
+            completedJobs.reduce((sum, j) => {
+              if (j.startedAt && j.completedAt) {
+                return sum + (j.completedAt.getTime() - j.startedAt.getTime()) / 1000;
+              }
+              return sum + (j.estimatedSeconds ?? 0);
+            }, 0) / completedJobs.length
+          )
+        : 0;
+
+      // Severity breakdown
+      const criticalFixes = allJobs.filter(j => j.severity === "critical");
+      const warningFixes = allJobs.filter(j => j.severity === "warning");
+      const criticalSuccessRate = criticalFixes.length > 0
+        ? Math.round(
+            (criticalFixes.filter(j => j.status === "completed").length /
+              (criticalFixes.filter(j => j.status === "completed" || j.status === "failed").length || 1)) * 100
+          )
+        : 0;
+      const warningSuccessRate = warningFixes.length > 0
+        ? Math.round(
+            (warningFixes.filter(j => j.status === "completed").length /
+              (warningFixes.filter(j => j.status === "completed" || j.status === "failed").length || 1)) * 100
+          )
+        : 0;
+
+      // Fixes over time (grouped by day)
+      const fixesByDay: Record<string, { total: number; completed: number; failed: number; credits: number }> = {};
+      for (const job of allJobs) {
+        const day = job.queuedAt ? job.queuedAt.toISOString().slice(0, 10) : "unknown";
+        if (!fixesByDay[day]) fixesByDay[day] = { total: 0, completed: 0, failed: 0, credits: 0 };
+        fixesByDay[day].total++;
+        if (job.status === "completed") fixesByDay[day].completed++;
+        if (job.status === "failed") fixesByDay[day].failed++;
+        fixesByDay[day].credits += job.estimatedCredits ?? 0;
+      }
+
+      const fixesOverTime = Object.entries(fixesByDay)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, data]) => ({ date, ...data }));
+
+      // Average boost delta
+      const avgBoostDelta = totalFixes > 0
+        ? Math.round(allJobs.reduce((sum, j) => sum + (j.boostDelta ?? 0), 0) / totalFixes * 100) / 100
+        : 0;
+
+      // Re-fix count (frames with multiple fix attempts)
+      const generationCounts: Record<number, number> = {};
+      for (const job of allJobs) {
+        generationCounts[job.generationId] = (generationCounts[job.generationId] ?? 0) + 1;
+      }
+      const reFixCount = Object.values(generationCounts).filter(c => c > 1).length;
+
+      return {
+        totalFixes,
+        completed: completedJobs.length,
+        failed: failedJobs.length,
+        queued: queuedJobs.length,
+        processing: processingJobs.length,
+        successRate,
+        avgDriftImprovement,
+        totalCreditsSpent,
+        avgFixTimeSeconds,
+        criticalFixes: criticalFixes.length,
+        warningFixes: warningFixes.length,
+        criticalSuccessRate,
+        warningSuccessRate,
+        avgBoostDelta,
+        reFixCount,
+        fixesOverTime,
+      };
+    }),
+
+  // ── Re-Fix (higher LoRA strength) ────────────────────────────────────
+  reFix: protectedProcedure
+    .input(z.object({
+      jobId: z.number(),
+      characterId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Get the original completed job
+      const [originalJob] = await db.select()
+        .from(fixDriftJobs)
+        .where(and(
+          eq(fixDriftJobs.id, input.jobId),
+          eq(fixDriftJobs.characterId, input.characterId),
+        ))
+        .limit(1);
+
+      if (!originalJob) throw new TRPCError({ code: "NOT_FOUND", message: "Fix job not found" });
+      if (originalJob.status !== "completed" && originalJob.status !== "failed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Can only re-fix completed or failed jobs" });
+      }
+
+      // Calculate re-fix boost: use previous boosted strength as new baseline
+      const previousBoosted = originalJob.boostedLoraStrength;
+      const MAX_STRENGTH = 0.95;
+
+      if (previousBoosted >= MAX_STRENGTH) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "LoRA strength already at maximum (95%). Cannot boost further." });
+      }
+
+      // Diminishing returns: each re-fix adds less boost
+      const currentDrift = originalJob.newDriftScore ?? originalJob.originalDriftScore;
+      const reFixBoostRaw = Math.min(0.10, currentDrift * 0.35);
+      const reFixBoostDelta = Math.round(reFixBoostRaw * 100) / 100;
+      const newBoostedStrength = Math.min(MAX_STRENGTH, previousBoosted + reFixBoostDelta);
+      const actualDelta = Math.round((newBoostedStrength - previousBoosted) * 100) / 100;
+
+      // Re-determine target features from the post-fix drift
+      // Use original features as proxy since we don't store per-feature post-fix drifts
+      const prevTargetFeatures = (originalJob.targetFeatures as string[] | null) ?? [];
+
+      // Confidence decreases with each re-fix attempt
+      const attemptCount = await db.select({ count: sql<number>`count(*)` })
+        .from(fixDriftJobs)
+        .where(and(
+          eq(fixDriftJobs.characterId, input.characterId),
+          eq(fixDriftJobs.generationId, originalJob.generationId),
+        ));
+      const totalAttempts = attemptCount[0]?.count ?? 1;
+      const reFixConfidence: "high" | "medium" | "low" =
+        totalAttempts >= 3 ? "low" : totalAttempts >= 2 ? "medium" : "high";
+
+      // Cost scales with attempt count (diminishing returns warning)
+      const baseCost = 8;
+      const boostAddon = Math.ceil(actualDelta / 0.1) * 2;
+      const attemptMultiplier = 1 + (totalAttempts - 1) * 0.25; // 25% more per attempt
+      const estimatedCredits = Math.round((baseCost + boostAddon) * attemptMultiplier);
+      const estimatedSeconds = Math.round(45 * (1 + actualDelta * 0.5));
+
+      // Insert new fix job
+      const insertData: InsertFixDriftJob = {
+        characterId: input.characterId,
+        userId: ctx.user.id,
+        generationId: originalJob.generationId,
+        episodeId: originalJob.episodeId,
+        sceneId: originalJob.sceneId ?? undefined,
+        frameIndex: originalJob.frameIndex,
+        originalResultUrl: originalJob.newResultUrl ?? originalJob.originalResultUrl ?? undefined,
+        originalDriftScore: currentDrift,
+        originalLoraStrength: previousBoosted,
+        boostedLoraStrength: newBoostedStrength,
+        boostDelta: actualDelta,
+        severity: originalJob.severity as "warning" | "critical",
+        targetFeatures: prevTargetFeatures,
+        fixConfidence: reFixConfidence,
+        estimatedCredits,
+        estimatedSeconds,
+        status: "queued",
+        progress: 0,
+      };
+
+      const [inserted] = await db.insert(fixDriftJobs).values(insertData).$returningId();
+
+      // Schedule simulated completion
+      scheduleSimulatedCompletion(db, inserted.id, currentDrift);
+
+      return {
+        jobId: inserted.id,
+        previousBoostedStrength: previousBoosted,
+        newBoostedStrength,
+        reFixBoostDelta: actualDelta,
+        estimatedCredits,
+        estimatedSeconds,
+        formattedTime: formatDuration(estimatedSeconds),
+        attemptNumber: totalAttempts + 1,
+        confidence: reFixConfidence,
+        atMaxStrength: newBoostedStrength >= MAX_STRENGTH,
+      };
+    }),
 });
 
 // ─── Simulated Completion Helper ──────────────────────────────────────────

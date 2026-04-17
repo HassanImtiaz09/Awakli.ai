@@ -2,9 +2,14 @@ import { useState, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowRight, ArrowDown, Columns2, SlidersHorizontal,
   TrendingDown, Shield, Sparkles, Layers, BarChart3,
-  Zap, ChevronDown, ChevronUp,
+  Zap, ChevronDown, ChevronUp, RefreshCw, Loader2,
+  AlertTriangle, ArrowUpCircle,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -37,6 +42,30 @@ export interface ComparisonData {
     colorPalette: number;
     bodyProportion: number;
   };
+}
+
+export interface ReFixProps {
+  /** The jobId of the completed fix to re-fix */
+  jobId: number;
+  /** Whether re-fix is available (strength < 0.95) */
+  canReFix: boolean;
+  /** Number of previous fix attempts for this frame */
+  attemptCount: number;
+  /** Callback to trigger re-fix */
+  onReFix: (jobId: number) => void;
+  /** Whether the re-fix mutation is pending */
+  isReFixing: boolean;
+  /** Result from the re-fix mutation (if available) */
+  reFixResult?: {
+    previousBoostedStrength: number;
+    newBoostedStrength: number;
+    reFixBoostDelta: number;
+    estimatedCredits: number;
+    formattedTime: string;
+    attemptNumber: number;
+    confidence: "high" | "medium" | "low";
+    atMaxStrength: boolean;
+  } | null;
 }
 
 type ViewMode = "side-by-side" | "overlay";
@@ -218,9 +247,16 @@ function FeatureComparisonBar({
 
 // ─── Main Component ─────────────────────────────────────────────────────
 
-export default function BeforeAfterComparison({ data }: { data: ComparisonData }) {
+export default function BeforeAfterComparison({
+  data,
+  reFix,
+}: {
+  data: ComparisonData;
+  reFix?: ReFixProps;
+}) {
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
   const [showFeatures, setShowFeatures] = useState(true);
+  const [showReFixConfirm, setShowReFixConfirm] = useState(false);
 
   const conf = CONFIDENCE_STYLES[data.fixConfidence];
   const improvementPct = data.driftImprovement != null ? Math.round(data.driftImprovement * 100) : null;
@@ -416,6 +452,135 @@ export default function BeforeAfterComparison({ data }: { data: ComparisonData }
             </Badge>
           ))}
         </div>
+      )}
+
+      {/* Re-Fix Button */}
+      {reFix && (
+        <div className="border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-purple-400" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Not satisfied with the result?</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {reFix.canReFix
+                    ? `Re-fix with higher LoRA strength (attempt #${reFix.attemptCount + 1})`
+                    : "LoRA strength is at maximum (95%). Cannot boost further."
+                  }
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!reFix.canReFix || reFix.isReFixing}
+              onClick={() => setShowReFixConfirm(true)}
+              className={reFix.canReFix
+                ? "gap-1.5 border-purple-500/40 text-purple-400 hover:bg-purple-500/10"
+                : "gap-1.5 opacity-50 cursor-not-allowed"
+              }
+            >
+              {reFix.isReFixing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {reFix.isReFixing ? "Re-Fixing..." : "Re-Fix"}
+            </Button>
+          </div>
+
+          {/* Diminishing returns warning */}
+          {reFix.attemptCount >= 2 && reFix.canReFix && (
+            <div className="mt-2 flex items-start gap-2 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-2.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-yellow-400">
+                Diminishing returns: after {reFix.attemptCount} attempts, additional fixes may have limited impact.
+                Consider retraining the LoRA with more reference images instead.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Re-Fix Confirmation Dialog */}
+      {reFix && (
+        <AlertDialog open={showReFixConfirm} onOpenChange={setShowReFixConfirm}>
+          <AlertDialogContent className="bg-base border-white/10 max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+                <RefreshCw className="h-5 w-5 text-purple-400" />
+                Re-Fix with Higher Strength
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                Re-generate this frame with an additional LoRA strength boost.
+                This is attempt #{reFix.attemptCount + 1} for this frame.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3 py-2">
+              {/* Strength boost preview */}
+              <div className="bg-white/[0.03] rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Current LoRA Strength</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {(data.boostedLoraStrength * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">New LoRA Strength</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-foreground">
+                      {(data.boostedLoraStrength * 100).toFixed(0)}%
+                    </span>
+                    <ArrowUpCircle className="h-3.5 w-3.5 text-purple-400" />
+                    <span className="text-sm font-bold text-purple-400">
+                      {(Math.min(0.95, data.boostedLoraStrength + 0.05) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                {data.newDriftScore != null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Current Drift</span>
+                    <span className={`text-sm font-medium ${
+                      data.newDriftScore > 0.25 ? "text-red-400" :
+                      data.newDriftScore > 0.15 ? "text-yellow-400" : "text-emerald-400"
+                    }`}>
+                      {(data.newDriftScore * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Attempt count warning */}
+              {reFix.attemptCount >= 2 && (
+                <div className="flex items-start gap-2 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
+                  <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-yellow-400">Diminishing Returns</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Each subsequent fix attempt yields smaller improvements.
+                      Cost increases by ~25% per attempt.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel className="text-muted-foreground">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  reFix.onReFix(reFix.jobId);
+                  setShowReFixConfirm(false);
+                }}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Queue Re-Fix
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

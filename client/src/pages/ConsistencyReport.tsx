@@ -20,7 +20,8 @@ import {
   History, RotateCcw, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import BeforeAfterComparison, { type ComparisonData } from "@/components/BeforeAfterComparison";
+import BeforeAfterComparison, { type ComparisonData, type ReFixProps } from "@/components/BeforeAfterComparison";
+import FixDriftAnalyticsDashboard from "@/components/FixDriftAnalyticsDashboard";
 
 // ─── Grade Colors ───────────────────────────────────────────────────────
 
@@ -428,6 +429,12 @@ export default function ConsistencyReport() {
     { enabled: !!user && !isNaN(characterId) }
   );
 
+  // ── Fix Drift Analytics ───────────────────────────────────────────────
+  const { data: analyticsData, isLoading: analyticsLoading } = trpc.characterLibrary.getFixDriftAnalytics.useQuery(
+    { characterId },
+    { enabled: !!user && !isNaN(characterId) }
+  );
+
   // ── Persisted fix history ─────────────────────────────────────────────
   const { data: fixHistory, refetch: refetchHistory } = trpc.characterLibrary.getFixDriftHistory.useQuery(
     { characterId, limit: 200 },
@@ -493,6 +500,27 @@ export default function ConsistencyReport() {
       toast.error("Failed to queue fix", { description: err.message });
     },
   });
+
+  // Re-fix mutation
+  const reFixMutation = trpc.characterLibrary.reFix.useMutation({
+    onSuccess: (data) => {
+      setFixJobStatuses(prev => ({
+        ...prev,
+        [data.jobId]: { status: "queued", improvement: null, jobId: data.jobId },
+      }));
+      toast.success(`Re-fix queued (attempt #${data.attemptNumber})`, {
+        description: `${data.estimatedCredits} credits, ~${data.formattedTime}. New LoRA: ${(data.newBoostedStrength * 100).toFixed(0)}%`,
+      });
+      setTimeout(() => refetchHistory(), 2000);
+    },
+    onError: (err) => {
+      toast.error("Failed to queue re-fix", { description: err.message });
+    },
+  });
+
+  const handleReFix = useCallback((jobId: number) => {
+    reFixMutation.mutate({ jobId, characterId });
+  }, [characterId, reFixMutation]);
 
   const fixDriftBatchMutation = trpc.characterLibrary.fixDriftBatch.useMutation({
     onSuccess: (data) => {
@@ -775,6 +803,9 @@ export default function ConsistencyReport() {
             <p className="text-sm text-muted-foreground">{report.grade.description}</p>
           </CardContent>
         </Card>
+
+        {/* ── Fix Drift Analytics Dashboard ──────────────────────────── */}
+        <FixDriftAnalyticsDashboard data={analyticsData} isLoading={analyticsLoading} />
 
         {/* ── Drift Threshold Slider ─────────────────────────────────── */}
         <Card className="bg-base border-white/10">
@@ -1221,7 +1252,18 @@ export default function ConsistencyReport() {
                   estimatedFixedFeatureDrifts,
                 };
 
-                return <BeforeAfterComparison data={comparisonData} />;
+                // Build reFix props
+                const MAX_STRENGTH = 0.95;
+                const canReFix = (latestCompleted.boostedLoraStrength ?? 0) < MAX_STRENGTH;
+                const reFixProps: ReFixProps = {
+                  jobId: latestCompleted.jobId,
+                  canReFix,
+                  attemptCount: frameHistory.length,
+                  onReFix: handleReFix,
+                  isReFixing: reFixMutation.isPending,
+                };
+
+                return <BeforeAfterComparison data={comparisonData} reFix={reFixProps} />;
               })()}
 
               {/* Fix History for this frame */}

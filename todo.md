@@ -2772,3 +2772,34 @@
 - [x] Unit: ComparisonData construction (4 tests), estimated feature drifts (7 tests), feature targeting (3 tests), view mode logic (2 tests), improvement display (5 tests) — 21 total tests
 - [x] Unit: comparison data mapping from fix history entries including null fallbacks and real buildFixDriftJob output
 - [x] TypeScript compilation passes with 0 errors
+
+## Fix History Analytics Dashboard
+### Backend
+- [x] Add `getFixDriftAnalytics` tRPC endpoint — aggregate stats: totalFixes, completed, failed, queued, processing, successRate, avgDriftImprovement, totalCreditsSpent, avgFixTimeSeconds, criticalFixes, warningFixes, criticalSuccessRate, warningSuccessRate, avgBoostDelta, reFixCount, fixesOverTime (grouped by day)
+- [x] Query fix_drift_jobs table with aggregation for analytics data
+
+### Frontend
+- [x] Add FixDriftAnalyticsDashboard component with KPI tiles: Success Rate, Avg Improvement, Credits Spent, Avg Fix Time
+- [x] Add stacked bar chart (Recharts) showing completed/failed fixes over time grouped by day
+- [x] Add severity breakdown section with critical/warning counts and per-severity success rate progress bars
+- [x] Color-code KPIs (emerald for ≥80%, yellow for ≥50%, red for <50%)
+- [x] Show "No fix history yet" empty state when no fixes exist, loading skeleton during fetch
+
+### Tests
+- [x] Unit: analytics aggregation logic — success rate (4 tests), avg improvement (3 tests), credits (2 tests), severity breakdown (1 test), re-fix count (2 tests)
+- [x] Unit: fixes-over-time grouping (2 tests), data formatting (3 tests) — 36 total tests
+
+## Re-Fix Button on Comparison View
+### Backend
+- [x] Add `reFix` tRPC endpoint — accepts jobId of completed/failed fix, creates new fix job with higher LoRA strength (boost from previous boosted value)
+- [x] Calculate re-fix boost: use previous boostedLoraStrength as new baseline, apply additional boost capped at 0.95, cost scales +25% per attempt
+
+### Frontend
+- [x] Add "Re-Fix with Higher Strength" button in BeforeAfterComparison with purple accent styling
+- [x] Show re-fix confirmation AlertDialog with: current→new LoRA strength, current drift, diminishing returns warning for 3+ attempts
+- [x] Disable re-fix button when LoRA strength is already at max (0.95) with explanatory text
+- [x] Show re-fix attempt count in button text and confirmation dialog, diminishing returns warning at 2+ attempts
+
+### Tests
+- [x] Unit: re-fix boost calculation — chained boosts (4 tests), diminishing returns (2 tests), cost scaling (1 test), confidence degradation (3 tests)
+- [x] Unit: re-fix eligibility logic — status checks (4 tests), max strength (2 tests), chain integration (3 tests) — 36 total tests
