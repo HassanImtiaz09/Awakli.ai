@@ -163,7 +163,8 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
   const approvedPanels = panels.filter(p => p.imageUrl);
   let totalCost = Object.values(nodeCosts).reduce((a, b) => a + b, 0);
 
-  const panelsToProcess = approvedPanels.slice(0, 4);
+  // Process ALL panels for full episode production (13 panels × 10s = ~130s base + voice/transitions)
+  const panelsToProcess = approvedPanels;
 
   // ─── Subject Library: look up ready character elements ───────────────
   const elementMap = await getReadyElementMapForProject(projectId);
@@ -229,7 +230,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
 
   console.log(`[Router] Classification complete: T1=${tierCounts[1]} T2=${tierCounts[2]} T3=${tierCounts[3]} T4=${tierCounts[4]}, cost=$${classificationCost.toFixed(3)}`);
 
-  // ─── Step 2: Submit video generation tasks based on classification ────
+  // ─── Step 2: Submit video generation tasks in batches (Kling limit: 5 parallel) ────
   interface TaskInfo {
     panelId: number;
     taskId: string;
@@ -240,8 +241,20 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     classification: SceneClassification;
   }
   const taskIds: TaskInfo[] = [];
+  let totalActualCostUsd = 0;
+  let totalV3OmniCostUsd = 0;
+  const KLING_BATCH_SIZE = 5;
+  const allPanelBatches: typeof panelsToProcess[] = [];
+  for (let i = 0; i < panelsToProcess.length; i += KLING_BATCH_SIZE) {
+    allPanelBatches.push(panelsToProcess.slice(i, i + KLING_BATCH_SIZE));
+  }
 
-  for (const panel of panelsToProcess) {
+  for (let batchIdx = 0; batchIdx < allPanelBatches.length; batchIdx++) {
+    const batch = allPanelBatches[batchIdx];
+    console.log(`[Pipeline] Submitting batch ${batchIdx + 1}/${allPanelBatches.length} (${batch.length} panels)...`);
+    const batchTaskIds: TaskInfo[] = [];
+
+  for (const panel of batch) {
     if (!panel.imageUrl) continue;
 
     const classification = classifications.get(panel.id);
@@ -289,14 +302,14 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
           imageList: [{ image_url: panel.imageUrl, type: "first_frame" }],
           elementList: omniElementList,
           sound: "on",
-          duration: "5",
+          duration: "10",
           mode: "pro",
           modelName: "kling-video-o1",
           aspectRatio: "16:9",
         });
 
         if (result.code === 0 && result.data?.task_id) {
-          taskIds.push({
+          batchTaskIds.push({
             panelId: panel.id,
             taskId: result.data.task_id,
             panelNumber: panel.panelNumber,
@@ -306,6 +319,8 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             classification,
           });
           console.log(`[Pipeline] Tier 1 V3 Omni task: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
+        } else {
+          console.warn(`[Pipeline] Omni task returned non-zero code for panel ${panel.id}:`, result);
         }
       } else {
         // ─── TIER 2/3/4: Use appropriate model via image2video ───
@@ -316,13 +331,13 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
           image: panel.imageUrl,
           prompt,
           negativePrompt: "static, still image, blurry, low quality, distorted",
-          duration: "5",
+          duration: "10",
           mode: "pro",
           modelName,
         });
 
         if (result.code === 0 && result.data?.task_id) {
-          taskIds.push({
+          batchTaskIds.push({
             panelId: panel.id,
             taskId: result.data.task_id,
             panelNumber: panel.panelNumber,
@@ -332,97 +347,107 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             classification,
           });
           console.log(`[Pipeline] Tier ${classification.tier} ${classification.model} task: panel ${panel.id}: ${result.data.task_id}`);
+        } else {
+          console.warn(`[Pipeline] Image2Video task returned non-zero code for panel ${panel.id}:`, result);
         }
       }
     } catch (err) {
       console.error(`[Pipeline] Kling submission failed for panel ${panel.id}:`, err);
     }
-  }
+  } // end panel loop within batch
 
-  // ─── Step 3: Poll all tasks until completion ──────────────────────────
-  const completedTasks = new Set<string>();
-  const maxPollTime = 10 * 60 * 1000;
-  const pollStart = Date.now();
-  let pollInterval = 5000;
-  let totalActualCostUsd = 0;
-  let totalV3OmniCostUsd = 0;
+    taskIds.push(...batchTaskIds);
 
-  while (completedTasks.size < taskIds.length && (Date.now() - pollStart) < maxPollTime) {
-    for (const task of taskIds) {
-      if (completedTasks.has(task.taskId)) continue;
-      try {
-        const status = await queryTask(task.taskId, task.taskType);
-        if (status.data?.task_status === "succeed") {
-          completedTasks.add(task.taskId);
-          const video = status.data.task_result?.videos?.[0];
-          if (video?.url) {
-            const videoRes = await fetch(video.url);
-            const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
-            const suffix = task.classification.tier === 1 ? "omni-lipsync" : `t${task.classification.tier}-clip`;
-            const videoKey = `pipeline/${runId}/${suffix}-panel${task.panelId}-${nanoid(6)}.mp4`;
-            const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+    // ─── Poll this batch until all tasks complete before submitting next batch ──
+    const batchCompletedTasks = new Set<string>();
+    const batchMaxPollTime = 12 * 60 * 1000; // 12 min per batch
+    const batchPollStart = Date.now();
+    let batchPollInterval = 8000;
 
-            const durationSec = Number(video.duration) || 5;
-            const actualCost = calculateCost(task.classification.tier, durationSec, "pro");
-            const v3OmniCost = calculateV3OmniCost(durationSec, "pro");
-            totalActualCostUsd += actualCost;
-            totalV3OmniCostUsd += v3OmniCost;
+    while (batchCompletedTasks.size < batchTaskIds.length && (Date.now() - batchPollStart) < batchMaxPollTime) {
+      for (const task of batchTaskIds) {
+        if (batchCompletedTasks.has(task.taskId)) continue;
+        try {
+          const status = await queryTask(task.taskId, task.taskType);
+          if (status.data?.task_status === "succeed") {
+            batchCompletedTasks.add(task.taskId);
+            const video = status.data.task_result?.videos?.[0];
+            if (video?.url) {
+              const videoRes = await fetch(video.url);
+              const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+              const suffix = task.classification.tier === 1 ? "omni-lipsync" : `t${task.classification.tier}-clip`;
+              const videoKey = `pipeline/${runId}/${suffix}-panel${task.panelId}-${nanoid(6)}.mp4`;
+              const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
 
-            const assetType = task.classification.tier === 1 ? "synced_clip" : "video_clip";
-            const lipSyncMethod = task.classification.tier === 1
-              ? (task.hasNativeLipSync ? "native" : "native")
-              : task.classification.lipSyncBeneficial ? "post_sync" : "none";
+              const durationSec = Number(video.duration) || 10;
+              const actualCost = calculateCost(task.classification.tier, durationSec, "pro");
+              const v3OmniCost = calculateV3OmniCost(durationSec, "pro");
+              totalActualCostUsd += actualCost;
+              totalV3OmniCostUsd += v3OmniCost;
 
-            const assetId = await createPipelineAsset({
-              pipelineRunId: runId,
-              episodeId,
-              panelId: task.panelId,
-              assetType,
-              url: storedUrl,
-              metadata: {
-                duration: durationSec,
-                format: "mp4",
-                panelNumber: task.panelNumber,
-                klingTaskId: task.taskId,
-                klingModel: task.classification.model,
-                hasNativeAudio: task.classification.tier === 1,
-                hasLipSync: task.classification.tier === 1,
-                hasNativeLipSync: task.hasNativeLipSync,
-                usedSubjectLibrary: task.hasNativeLipSync,
+              const assetType = task.classification.tier === 1 ? "synced_clip" : "video_clip";
+              const lipSyncMethod = task.classification.tier === 1
+                ? (task.hasNativeLipSync ? "native" : "native")
+                : task.classification.lipSyncBeneficial ? "post_sync" : "none";
+
+              await createPipelineAsset({
+                pipelineRunId: runId,
+                episodeId,
+                panelId: task.panelId,
+                assetType,
+                url: storedUrl,
+                metadata: {
+                  duration: durationSec,
+                  format: "mp4",
+                  panelNumber: task.panelNumber,
+                  klingTaskId: task.taskId,
+                  klingModel: task.classification.model,
+                  hasNativeAudio: task.classification.tier === 1,
+                  hasLipSync: task.classification.tier === 1,
+                  hasNativeLipSync: task.hasNativeLipSync,
+                  usedSubjectLibrary: task.hasNativeLipSync,
+                  complexityTier: task.classification.tier,
+                  lipSyncBeneficial: task.classification.lipSyncBeneficial,
+                } as any,
+                nodeSource: "video_gen",
+                klingModelUsed: task.classification.model,
                 complexityTier: task.classification.tier,
-                lipSyncBeneficial: task.classification.lipSyncBeneficial,
-              } as any,
-              nodeSource: "video_gen",
-              klingModelUsed: task.classification.model,
-              complexityTier: task.classification.tier,
-              lipSyncMethod,
-              classificationReasoning: task.classification.reasoning,
-              costActual: actualCost,
-              costIfV3Omni: v3OmniCost,
-              userOverride: 0,
-            });
+                lipSyncMethod,
+                classificationReasoning: task.classification.reasoning,
+                costActual: actualCost,
+                costIfV3Omni: v3OmniCost,
+                userOverride: 0,
+              });
 
-            const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.classification.tier === 1 ? "Omni audio" : `Tier ${task.classification.tier}`;
-            console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl} ($${actualCost.toFixed(3)} vs $${v3OmniCost.toFixed(3)} V3)`);
+              const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.classification.tier === 1 ? "Omni audio" : `Tier ${task.classification.tier}`;
+              console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl.slice(0, 60)}... ($${actualCost.toFixed(3)})`);
+            }
+          } else if (status.data?.task_status === "failed") {
+            batchCompletedTasks.add(task.taskId);
+            console.error(`[Pipeline] Kling task failed for panel ${task.panelId}: ${status.data.task_status_msg}`);
           }
-        } else if (status.data?.task_status === "failed") {
-          completedTasks.add(task.taskId);
-          console.error(`[Pipeline] Kling task failed for panel ${task.panelId}: ${status.data.task_status_msg}`);
+        } catch (err) {
+          console.error(`[Pipeline] Poll error for task ${task.taskId}:`, err);
         }
-      } catch (err) {
-        console.error(`[Pipeline] Poll error for task ${task.taskId}:`, err);
+      }
+
+      const totalCompleted = taskIds.filter(t => batchCompletedTasks.has(t.taskId) || t.taskId !== t.taskId).length;
+      const overallProgress = Math.round(((batchIdx * KLING_BATCH_SIZE + batchCompletedTasks.size) / panelsToProcess.length) * 25);
+      totalCost += Math.round(NODE_COSTS.video_gen / Math.max(panelsToProcess.length, 1));
+      await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, overallProgress, totalCost, nodeCosts);
+
+      if (batchCompletedTasks.size < batchTaskIds.length) {
+        await sleep(batchPollInterval);
+        batchPollInterval = Math.min(batchPollInterval * 1.2, 20000);
       }
     }
 
-    totalCost += Math.round(NODE_COSTS.video_gen / Math.max(panelsToProcess.length, 1));
-    const progress = Math.round((completedTasks.size / Math.max(taskIds.length, 1)) * 25);
-    await updateNodeProgress(runId, "video_gen", "running", nodeStatuses, progress, totalCost, nodeCosts);
-
-    if (completedTasks.size < taskIds.length) {
-      await sleep(pollInterval);
-      pollInterval = Math.min(pollInterval * 1.3, 20000);
+    console.log(`[Pipeline] Batch ${batchIdx + 1} complete: ${batchCompletedTasks.size}/${batchTaskIds.length} tasks`);
+    // Small delay between batches to avoid rate limits
+    if (batchIdx < allPanelBatches.length - 1) {
+      await sleep(3000);
     }
-  }
+  } // end batch loop
 
   // ─── Step 4: Save model routing stats ─────────────────────────────────
   const savings = totalV3OmniCostUsd - totalActualCostUsd;
@@ -462,7 +487,8 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
     return dialogue && (Array.isArray(dialogue) ? dialogue.length > 0 : Object.keys(dialogue).length > 0);
   });
 
-  for (let i = 0; i < Math.min(panelsWithDialogue.length, 6); i++) {
+  // Generate voice for ALL dialogue panels (no limit for full episode)
+  for (let i = 0; i < panelsWithDialogue.length; i++) {
     const panel = panelsWithDialogue[i];
     const dialogue = panel.dialogue as any;
     const dialogueText = Array.isArray(dialogue)
@@ -833,11 +859,26 @@ export async function runPipeline(runId: number) {
 
   try {
     // ── Layer 1: Script Validation (pre-flight) ──
-    console.log(`[Pipeline] Running Layer 1: Script Validation...`);
+    // Populate targetData with episode panels so harness checks can validate
+    const episodePanelsForHarness = await getPanelsByEpisode(run.episodeId);
+    const scriptData = {
+      panels: episodePanelsForHarness.map(p => ({
+        panelId: p.id,
+        sceneNumber: p.sceneNumber,
+        panelNumber: p.panelNumber,
+        visualDescription: p.visualDescription,
+        cameraAngle: p.cameraAngle,
+        dialogue: p.dialogue,
+        sfx: p.sfx,
+        transition: p.transition,
+        imageUrl: p.imageUrl,
+      })),
+    };
+    console.log(`[Pipeline] Running Layer 1: Script Validation (${scriptData.panels.length} panels)...`);
     const scriptSummary = await runHarnessGate(
       "Layer 1: Script Validation",
       scriptChecks,
-      { ...baseContext, targetType: "episode" },
+      { ...baseContext, targetType: "episode", targetData: scriptData },
       bible,
       runId,
     );
