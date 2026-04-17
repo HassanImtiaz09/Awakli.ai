@@ -15,9 +15,10 @@ import { getDb } from "./db";
 import { eq, and, desc, asc, sql, inArray } from "drizzle-orm";
 import {
   characterLibrary, characterLoras, loraTrainingJobs, characterAssets,
-  pipelineRunLoraPins, generationRequests,
+  pipelineRunLoraPins, generationRequests, fixDriftJobs,
   type InsertCharacterLibraryEntry, type InsertCharacterLora,
   type InsertLoraTrainingJob, type InsertCharacterAsset,
+  type InsertFixDriftJob,
 } from "../drizzle/schema";
 import {
   preprocessCharacterSheet,
@@ -50,6 +51,7 @@ import {
   type FrameDriftResult,
 } from "./consistency-analysis";
 import {
+  computeBoostParams,
   buildFixDriftJob,
   estimateFixDriftBatch,
   simulateFixDriftStatus,
@@ -58,6 +60,7 @@ import {
 import {
   episodes, scenes, generationResults,
 } from "../drizzle/schema";
+import { gte } from "drizzle-orm";
 
 // ─── Character Library Router ───────────────────────────────────────────
 
@@ -1067,7 +1070,7 @@ export const characterLibraryRouter = router({
       return getFrameDriftDetail(frame, [frame], char.referenceSheetUrl);
     }),
 
-  // ── Fix Drift ─────────────────────────────────────────────────────────
+  // ── Fix Drift (persisted) ─────────────────────────────────────────────
   fixDrift: protectedProcedure
     .input(z.object({
       characterId: z.number(),
@@ -1121,14 +1124,43 @@ export const characterLibraryRouter = router({
 
       const jobSpec = buildFixDriftJob(frameDrift);
 
+      // Persist the job to the database
+      const insertData: InsertFixDriftJob = {
+        characterId: input.characterId,
+        userId: ctx.user.id,
+        generationId: input.generationId,
+        episodeId: input.episodeId,
+        sceneId: input.sceneId ?? undefined,
+        frameIndex: input.frameIndex,
+        originalResultUrl: input.resultUrl,
+        originalDriftScore: input.driftScore,
+        originalLoraStrength: input.loraStrength ?? undefined,
+        boostedLoraStrength: jobSpec.boostParams.boostedStrength,
+        boostDelta: jobSpec.boostParams.boostDelta,
+        severity: input.severity,
+        targetFeatures: jobSpec.boostParams.targetFeatures,
+        fixConfidence: jobSpec.boostParams.fixConfidence,
+        estimatedCredits: jobSpec.estimatedCredits,
+        estimatedSeconds: jobSpec.estimatedSeconds,
+        status: "queued",
+        progress: 0,
+      };
+
+      const [inserted] = await db.insert(fixDriftJobs).values(insertData).$returningId();
+
+      // Schedule simulated completion (processing → completed)
+      // In production this would be a real job queue callback
+      scheduleSimulatedCompletion(db, inserted.id, input.driftScore);
+
       return {
         ...jobSpec,
+        jobId: inserted.id,
         formattedTime: formatDuration(jobSpec.estimatedSeconds),
         characterName: char.name,
       };
     }),
 
-  // ── Fix Drift Batch ───────────────────────────────────────────────────
+  // ── Fix Drift Batch (persisted) ───────────────────────────────────────
   fixDriftBatch: protectedProcedure
     .input(z.object({
       characterId: z.number(),
@@ -1184,19 +1216,52 @@ export const characterLibraryRouter = router({
 
       const estimate = estimateFixDriftBatch(driftResults);
 
+      // Persist all jobs to the database
+      const jobIds: number[] = [];
+      for (let i = 0; i < estimate.jobs.length; i++) {
+        const job = estimate.jobs[i];
+        const frame = input.frames.find(f => f.generationId === job.generationId);
+        const insertData: InsertFixDriftJob = {
+          characterId: input.characterId,
+          userId: ctx.user.id,
+          generationId: job.generationId,
+          episodeId: job.episodeId,
+          sceneId: job.sceneId ?? undefined,
+          frameIndex: job.frameIndex,
+          originalResultUrl: job.originalResultUrl,
+          originalDriftScore: job.driftScore,
+          originalLoraStrength: frame?.loraStrength ?? undefined,
+          boostedLoraStrength: job.boostParams.boostedStrength,
+          boostDelta: job.boostParams.boostDelta,
+          severity: job.severity,
+          targetFeatures: job.boostParams.targetFeatures,
+          fixConfidence: job.boostParams.fixConfidence,
+          estimatedCredits: job.estimatedCredits,
+          estimatedSeconds: job.estimatedSeconds,
+          status: "queued",
+          progress: 0,
+        };
+
+        const [inserted] = await db.insert(fixDriftJobs).values(insertData).$returningId();
+        jobIds.push(inserted.id);
+
+        // Schedule simulated completion with staggered delay
+        scheduleSimulatedCompletion(db, inserted.id, job.driftScore, 2000 + i * 1500);
+      }
+
       return {
         ...estimate,
+        jobIds,
         formattedTotalTime: formatDuration(estimate.totalEstimatedSeconds),
         characterName: char.name,
       };
     }),
 
-  // ── Get Fix Drift Status ──────────────────────────────────────────────
+  // ── Get Fix Drift Status (reads from DB) ──────────────────────────────
   getFixDriftStatus: protectedProcedure
     .input(z.object({
       characterId: z.number(),
       generationId: z.number(),
-      driftScore: z.number(),
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -1209,7 +1274,130 @@ export const characterLibraryRouter = router({
         .limit(1);
       if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
 
-      const status = simulateFixDriftStatus(input.generationId, input.driftScore);
-      return status;
+      // Get the latest job for this generation
+      const [job] = await db.select()
+        .from(fixDriftJobs)
+        .where(and(
+          eq(fixDriftJobs.characterId, input.characterId),
+          eq(fixDriftJobs.generationId, input.generationId),
+        ))
+        .orderBy(desc(fixDriftJobs.queuedAt))
+        .limit(1);
+
+      if (!job) return null;
+
+      return {
+        jobId: job.id,
+        generationId: job.generationId,
+        status: job.status,
+        progress: job.progress,
+        newResultUrl: job.newResultUrl,
+        newDriftScore: job.newDriftScore,
+        driftImprovement: job.driftImprovement,
+        errorMessage: job.errorMessage,
+        queuedAt: job.queuedAt?.getTime() ?? null,
+        startedAt: job.startedAt?.getTime() ?? null,
+        completedAt: job.completedAt?.getTime() ?? null,
+      };
+    }),
+
+  // ── Get Fix Drift History (all jobs for a character) ──────────────────
+  getFixDriftHistory: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      limit: z.number().min(1).max(200).default(100),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      const jobs = await db.select()
+        .from(fixDriftJobs)
+        .where(eq(fixDriftJobs.characterId, input.characterId))
+        .orderBy(desc(fixDriftJobs.queuedAt))
+        .limit(input.limit);
+
+      return jobs.map(job => ({
+        jobId: job.id,
+        generationId: job.generationId,
+        episodeId: job.episodeId,
+        sceneId: job.sceneId,
+        frameIndex: job.frameIndex,
+        originalDriftScore: job.originalDriftScore,
+        originalLoraStrength: job.originalLoraStrength,
+        boostedLoraStrength: job.boostedLoraStrength,
+        boostDelta: job.boostDelta,
+        severity: job.severity,
+        targetFeatures: job.targetFeatures as string[] | null,
+        fixConfidence: job.fixConfidence,
+        estimatedCredits: job.estimatedCredits,
+        status: job.status,
+        progress: job.progress,
+        newResultUrl: job.newResultUrl,
+        newDriftScore: job.newDriftScore,
+        driftImprovement: job.driftImprovement,
+        errorMessage: job.errorMessage,
+        queuedAt: job.queuedAt?.getTime() ?? null,
+        startedAt: job.startedAt?.getTime() ?? null,
+        completedAt: job.completedAt?.getTime() ?? null,
+      }));
     }),
 });
+
+// ─── Simulated Completion Helper ──────────────────────────────────────────
+// In production, this would be replaced by a real job queue callback.
+// For now, it simulates the lifecycle: queued → processing → completed.
+
+async function scheduleSimulatedCompletion(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  jobId: number,
+  originalDriftScore: number,
+  baseDelayMs: number = 2000,
+) {
+  // Stage 1: queued → processing
+  setTimeout(async () => {
+    try {
+      await db.update(fixDriftJobs)
+        .set({
+          status: "processing",
+          progress: 30,
+          startedAt: new Date(),
+        })
+        .where(eq(fixDriftJobs.id, jobId));
+    } catch { /* ignore */ }
+  }, baseDelayMs);
+
+  // Stage 2: processing → 60%
+  setTimeout(async () => {
+    try {
+      await db.update(fixDriftJobs)
+        .set({ progress: 60 })
+        .where(eq(fixDriftJobs.id, jobId));
+    } catch { /* ignore */ }
+  }, baseDelayMs + 2000);
+
+  // Stage 3: completed with improvement
+  setTimeout(async () => {
+    try {
+      const improvement = originalDriftScore * (0.3 + Math.random() * 0.4); // 30-70% improvement
+      const newDriftScore = Math.round((originalDriftScore - improvement) * 10000) / 10000;
+
+      await db.update(fixDriftJobs)
+        .set({
+          status: "completed",
+          progress: 100,
+          newDriftScore,
+          driftImprovement: Math.round(improvement * 10000) / 10000,
+          completedAt: new Date(),
+        })
+        .where(eq(fixDriftJobs.id, jobId));
+    } catch { /* ignore */ }
+  }, baseDelayMs + 5000);
+}

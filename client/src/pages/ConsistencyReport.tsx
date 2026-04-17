@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -17,6 +17,7 @@ import {
   Eye, ChevronDown, ChevronUp, BarChart3, Shield, Sparkles,
   TrendingDown, TrendingUp, Info, Layers, Film, Zap,
   Wrench, Loader2, ArrowUpCircle, Target, Clock, CreditCard,
+  History, RotateCcw, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -388,6 +389,18 @@ function BatchFixDialog({ open, onClose, onConfirm, isLoading, estimate }: Batch
   );
 }
 
+// ─── Status Priority Helper ─────────────────────────────────────────────
+
+function statusPriority(status: "queued" | "processing" | "completed" | "failed"): number {
+  switch (status) {
+    case "queued": return 1;
+    case "processing": return 2;
+    case "completed": return 3;
+    case "failed": return 3; // same as completed (terminal)
+    default: return 0;
+  }
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────
 
 export default function ConsistencyReport() {
@@ -406,6 +419,7 @@ export default function ConsistencyReport() {
   const [fixJobStatuses, setFixJobStatuses] = useState<Record<number, {
     status: "queued" | "processing" | "completed" | "failed";
     improvement: number | null;
+    jobId?: number;
   }>>({});
 
   const { data: report, isLoading } = trpc.characterLibrary.getConsistencyReport.useQuery(
@@ -413,34 +427,66 @@ export default function ConsistencyReport() {
     { enabled: !!user && !isNaN(characterId) }
   );
 
+  // ── Persisted fix history ─────────────────────────────────────────────
+  const { data: fixHistory, refetch: refetchHistory } = trpc.characterLibrary.getFixDriftHistory.useQuery(
+    { characterId, limit: 200 },
+    { enabled: !!user && !isNaN(characterId) }
+  );
+
+  // Merge persisted history into local fixJobStatuses on load
+  useEffect(() => {
+    if (!fixHistory || fixHistory.length === 0) return;
+    setFixJobStatuses(prev => {
+      const merged = { ...prev };
+      for (const job of fixHistory) {
+        // Only overwrite if we don't have a more recent local status
+        // or if the DB status is more advanced
+        const existing = merged[job.generationId];
+        const dbStatus = {
+          status: job.status as "queued" | "processing" | "completed" | "failed",
+          improvement: job.driftImprovement != null ? Math.round(job.driftImprovement * 100) : null,
+          jobId: job.jobId,
+        };
+        if (!existing || statusPriority(dbStatus.status) >= statusPriority(existing.status)) {
+          merged[job.generationId] = dbStatus;
+        }
+      }
+      return merged;
+    });
+  }, [fixHistory]);
+
+  // Poll for in-progress jobs to get updated statuses
+  const hasInProgressJobs = useMemo(() => {
+    return Object.values(fixJobStatuses).some(s => s.status === "queued" || s.status === "processing");
+  }, [fixJobStatuses]);
+
+  useEffect(() => {
+    if (!hasInProgressJobs) return;
+    const interval = setInterval(() => { refetchHistory(); }, 3000);
+    return () => clearInterval(interval);
+  }, [hasInProgressJobs, refetchHistory]);
+
+  // Get fix history for a specific frame
+  const getFrameFixHistory = useCallback((generationId: number) => {
+    if (!fixHistory) return [];
+    return fixHistory
+      .filter(j => j.generationId === generationId)
+      .sort((a, b) => (b.queuedAt ?? 0) - (a.queuedAt ?? 0));
+  }, [fixHistory]);
+
   // Fix drift mutations
   const fixDriftMutation = trpc.characterLibrary.fixDrift.useMutation({
     onSuccess: (data) => {
       setFixingFrameId(null);
       setFixJobStatuses(prev => ({
         ...prev,
-        [data.generationId]: { status: "queued", improvement: null },
+        [data.generationId]: { status: "queued", improvement: null, jobId: data.jobId },
       }));
       toast.success(`Fix queued for Frame #${data.frameIndex}`, {
         description: `${data.estimatedCredits} credits, ~${data.formattedTime}`,
       });
-      // Simulate completion after a short delay
-      setTimeout(() => {
-        setFixJobStatuses(prev => ({
-          ...prev,
-          [data.generationId]: { status: "processing", improvement: null },
-        }));
-      }, 1500);
-      setTimeout(() => {
-        const improvement = data.driftScore * (0.3 + Math.random() * 0.4);
-        setFixJobStatuses(prev => ({
-          ...prev,
-          [data.generationId]: { status: "completed", improvement: Math.round(improvement * 100) },
-        }));
-        toast.success(`Frame #${data.frameIndex} fixed!`, {
-          description: `Drift improved by ~${Math.round(improvement * 100)}%`,
-        });
-      }, 4000);
+      // Refetch history to pick up DB-persisted status updates
+      setTimeout(() => refetchHistory(), 2000);
     },
     onError: (err) => {
       toast.error("Failed to queue fix", { description: err.message });
@@ -450,32 +496,22 @@ export default function ConsistencyReport() {
   const fixDriftBatchMutation = trpc.characterLibrary.fixDriftBatch.useMutation({
     onSuccess: (data) => {
       setShowBatchFixDialog(false);
-      // Mark all frames as queued
+      // Mark all frames as queued with their DB job IDs
       const newStatuses: typeof fixJobStatuses = {};
-      for (const job of data.jobs) {
-        newStatuses[job.generationId] = { status: "queued", improvement: null };
+      for (let i = 0; i < data.jobs.length; i++) {
+        const job = data.jobs[i];
+        newStatuses[job.generationId] = {
+          status: "queued",
+          improvement: null,
+          jobId: data.jobIds?.[i],
+        };
       }
       setFixJobStatuses(prev => ({ ...prev, ...newStatuses }));
       toast.success(`Batch fix queued: ${data.totalFrames} frames`, {
         description: `${data.totalEstimatedCredits} credits, ~${data.formattedTotalTime}`,
       });
-      // Simulate progressive completion
-      for (let i = 0; i < data.jobs.length; i++) {
-        const job = data.jobs[i];
-        setTimeout(() => {
-          setFixJobStatuses(prev => ({
-            ...prev,
-            [job.generationId]: { status: "processing", improvement: null },
-          }));
-        }, 1500 + i * 800);
-        setTimeout(() => {
-          const improvement = job.driftScore * (0.3 + Math.random() * 0.4);
-          setFixJobStatuses(prev => ({
-            ...prev,
-            [job.generationId]: { status: "completed", improvement: Math.round(improvement * 100) },
-          }));
-        }, 3500 + i * 800);
-      }
+      // Refetch history to pick up DB-persisted status updates
+      setTimeout(() => refetchHistory(), 2000);
     },
     onError: (err) => {
       toast.error("Failed to queue batch fix", { description: err.message });
@@ -939,6 +975,24 @@ export default function ConsistencyReport() {
                             {(frame.driftScore * 100).toFixed(0)}%
                           </div>
 
+                          {/* Previously Fixed badge */}
+                          {jobStatus?.status === "completed" && (
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/90 text-white flex items-center gap-0.5">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Fixed
+                            </div>
+                          )}
+
+                          {/* Fix attempt count badge */}
+                          {(() => {
+                            const count = fixHistory?.filter(j => j.generationId === frame.generationId).length ?? 0;
+                            if (count <= 0) return null;
+                            return (
+                              <div className="absolute top-1 left-1 px-1 py-0.5 rounded text-[9px] font-medium bg-white/20 text-white backdrop-blur-sm flex items-center gap-0.5" style={jobStatus?.status === "completed" ? { top: '22px' } : {}}>
+                                <RotateCcw className="h-2.5 w-2.5" /> {count}x
+                              </div>
+                            );
+                          })()}
+
                           {/* Fix Drift button overlay */}
                           {(frame.severity === "warning" || frame.severity === "critical") && !jobStatus && (
                             <button
@@ -1131,6 +1185,58 @@ export default function ConsistencyReport() {
                     icon={<TrendingDown className="h-4 w-4" />} />
                 </div>
               </div>
+
+              {/* Fix History for this frame */}
+              {(() => {
+                const frameHistory = getFrameFixHistory(selectedFrame.generationId);
+                if (frameHistory.length === 0) return null;
+                return (
+                  <div className="bg-white/[0.02] border border-white/10 rounded-lg p-4">
+                    <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <History className="h-4 w-4 text-cyan" /> Fix History
+                      <Badge variant="outline" className="text-[10px] ml-1">{frameHistory.length} attempt{frameHistory.length > 1 ? "s" : ""}</Badge>
+                    </p>
+                    <div className="space-y-2">
+                      {frameHistory.map((job, idx) => (
+                        <div key={job.jobId} className={`flex items-center justify-between py-2 px-3 rounded-md ${
+                          idx === 0 ? "bg-white/[0.04]" : "bg-white/[0.02]"
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${
+                              job.status === "completed" ? "bg-emerald-400" :
+                              job.status === "failed" ? "bg-red-400" :
+                              job.status === "processing" ? "bg-orange-400 animate-pulse" :
+                              "bg-yellow-400 animate-pulse"
+                            }`} />
+                            <div>
+                              <span className="text-xs text-foreground capitalize">{job.status}</span>
+                              {job.queuedAt && (
+                                <span className="text-[10px] text-muted-foreground ml-2">
+                                  {new Date(job.queuedAt).toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {job.driftImprovement != null && (
+                              <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-400">
+                                -{Math.round(job.driftImprovement * 100)}% drift
+                              </Badge>
+                            )}
+                            <span className="text-[10px] text-muted-foreground">
+                              {job.originalDriftScore != null && `${(job.originalDriftScore * 100).toFixed(1)}%`}
+                              {job.newDriftScore != null && ` → ${(job.newDriftScore * 100).toFixed(1)}%`}
+                            </span>
+                            <Badge variant="outline" className="text-[10px]">
+                              +{((job.boostedLoraStrength ?? 0) * 100).toFixed(0)}% LoRA
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Suggestions */}
               {selectedFrame.severity !== "ok" && (

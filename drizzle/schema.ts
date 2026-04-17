@@ -1505,3 +1505,35 @@ export const pipelineRunLoraPins = mysqlTable("pipeline_run_lora_pins", {
 });
 export type PipelineRunLoraPin = typeof pipelineRunLoraPins.$inferSelect;
 export type InsertPipelineRunLoraPin = typeof pipelineRunLoraPins.$inferInsert;
+
+// ─── Fix Drift Jobs (persistence for targeted re-generation) ──────────
+export const fixDriftJobs = mysqlTable("fix_drift_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characterLibrary.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  generationId: int("generationId").notNull(),
+  episodeId: int("episodeId").notNull(),
+  sceneId: int("sceneId"),
+  frameIndex: int("frameIndex").notNull(),
+  originalResultUrl: text("originalResultUrl"),
+  originalDriftScore: float("originalDriftScore").notNull(),
+  originalLoraStrength: float("originalLoraStrength"),
+  boostedLoraStrength: float("boostedLoraStrength").notNull(),
+  boostDelta: float("boostDelta").notNull(),
+  severity: mysqlEnum("fixSeverity", ["warning", "critical"]).notNull(),
+  targetFeatures: json("targetFeatures"),  // string[]
+  fixConfidence: mysqlEnum("fixConfidence", ["high", "medium", "low"]).notNull(),
+  estimatedCredits: int("estimatedCredits").notNull(),
+  estimatedSeconds: int("estimatedSeconds").notNull(),
+  status: mysqlEnum("fixDriftStatus", ["queued", "processing", "completed", "failed"]).default("queued").notNull(),
+  progress: int("fixProgress").default(0).notNull(),
+  newResultUrl: text("newResultUrl"),
+  newDriftScore: float("newDriftScore"),
+  driftImprovement: float("driftImprovement"),
+  errorMessage: text("fixErrorMessage"),
+  queuedAt: timestamp("queuedAt").defaultNow().notNull(),
+  startedAt: timestamp("fixStartedAt"),
+  completedAt: timestamp("fixCompletedAt"),
+});
+export type FixDriftJob = typeof fixDriftJobs.$inferSelect;
+export type InsertFixDriftJob = typeof fixDriftJobs.$inferInsert;

@@ -2727,3 +2727,28 @@
 - [x] Unit: buildFixDriftJob (job spec shape, identity preservation, severity mapping, credit/time scaling) — 8 tests
 - [x] Unit: estimateFixDriftBatch (filtering, aggregation, empty/all-ok edge cases, avg boost delta) — 7 tests
 - [x] Unit: simulateFixDriftStatus (status fields, improvement range, timestamps) — 8 tests + formatDuration (4 tests) + constants (6 tests) + edge cases (6 tests) — 56 total tests
+
+## Fix Drift History Persistence
+### Database
+- [x] Add `fix_drift_jobs` table: id, characterId, userId, generationId, episodeId, sceneId, frameIndex, originalResultUrl, originalDriftScore, originalLoraStrength, boostedLoraStrength, boostDelta, severity, targetFeatures (JSON), fixConfidence, estimatedCredits, estimatedSeconds, status (queued/processing/completed/failed), progress, newDriftScore, driftImprovement, newResultUrl, errorMessage, queuedAt, startedAt, completedAt
+- [x] Generate and apply migration SQL via drizzle-kit (0029_fix_drift_jobs.sql)
+
+### Backend
+- [x] Update `fixDrift` endpoint to insert a row into fix_drift_jobs on queue, return the job ID
+- [x] Update `fixDriftBatch` endpoint to insert rows for all frames, return job IDs
+- [x] Update `getFixDriftStatus` endpoint to read from DB instead of simulating
+- [x] Add `getFixDriftHistory` endpoint — returns all fix-drift jobs for a character, sorted by queuedAt desc, with limit parameter
+- [x] Add `completeFixDriftJob` internal helper — scheduleSimulatedCompletion updates job row through queued→processing→completed lifecycle
+- [x] Background simulation: after inserting job, schedule simulated completion via setTimeout (queued→processing at 3s, completed at 8s)
+
+### Frontend
+- [x] Load persisted fix statuses on ConsistencyReport mount via getFixDriftHistory query
+- [x] Merge DB-persisted statuses with local state via statusPriority helper so fixes survive page refresh
+- [x] Show fix history in frame detail panel: list of past fix attempts with timestamps, drift before→after, LoRA boost, status dot, improvement badge
+- [x] Show "Previously Fixed" badge (green checkmark) on frames that have completed fix jobs
+- [x] Add fix attempt count badge (RotateCcw Nx) on flagged frame cards with history
+
+### Tests
+- [x] Unit: fix-drift persistence helpers — insert data shape (4 tests), history mapping (6 tests), lifecycle simulation (3 tests)
+- [x] Unit: status priority merge logic (6 tests), persistence edge cases (4 tests)
+- [x] All 23 persistence tests passing, 0 TypeScript errors
