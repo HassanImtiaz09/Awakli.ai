@@ -2999,3 +2999,46 @@
 - [x] Unit: staleness scoring (13 tests: score computation, flagging, version gap, budget, refresh events)
 - [x] Unit: governance workflow (19 tests: committee, submission, voting, approval, veto, stats)
 - [x] TypeScript compilation passes with 0 errors — 66 total tests passing
+
+## Audit — Full Platform Functionality Review
+
+### Bugs Fixed
+- [x] Fix ProjectDetail params mismatch: `params.id` → `params.projectId` to match route `:projectId`
+- [x] Fix ProjectDetail duplicate StudioLayout wrapper (already wrapped by App.tsx route)
+- [x] Fix MangaUpload duplicate StudioLayout wrapper (already wrapped by App.tsx route)
+- [x] Remove stale `/studio/projects/:id` route from App.tsx
+
+### Pages Audited — All Rendering Correctly
+- [x] Home landing page (hero, prompt input, 4-step process, pricing, footer)
+- [x] Pricing page (3 tiers, monthly/annual toggle, FAQ)
+- [x] Discover page (genre filters, sort, search, empty state)
+- [x] Trending page (4 tabs, empty state)
+- [x] Leaderboard page (3 tabs, empty state)
+- [x] Onboarding page (2-path wizard)
+- [x] Create page (prompt, genre buttons, examples)
+- [x] Studio Dashboard (creation cards, stats, project list)
+- [x] Project Wizard /studio/new (4-step wizard)
+- [x] Project Detail /studio/project/:projectId (overview with stats)
+- [x] Script Editor (episode list, scene accordion, panel cards)
+- [x] Characters page (empty state with CTA)
+- [x] Upload page (drag-drop zone)
+- [x] Panels page (panel grid, generation status, approve/reject)
+- [x] Storyboard page (reader/slideshow/PDF modes)
+- [x] Pipeline page (cost estimate, pre-flight checks, scene classification, episode status)
+- [x] Lineart page (5 tabs all functional)
+- [x] Tier Sampler page (4 tabs all functional)
+- [x] BYO Upload page (paywall gate)
+- [x] Usage Dashboard (credit balance, transactions)
+- [x] Creator Earnings (earnings breakdown, tips, payouts)
+- [x] Character Library (search, filter, sort)
+- [x] Consistency Report (loads for valid characters)
+- [x] Batch Training (GPU tier selection, batch setup)
+
+### Known Issues (Not Fixed — Low Priority)
+- [ ] Pricing inconsistency: Home page shows Free $0 / Pro $29/mo / Studio $99/mo vs /pricing page Free $0 / Creator $19/mo / Studio $49/mo
+- [ ] Consistency Report shows blank page for non-existent characters (could show a better error)
+
+### Test Suite
+- [x] All 61 test files passing
+- [x] All 1,895 tests passing
+- [x] No regressions from bug fixes
