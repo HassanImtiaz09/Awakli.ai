@@ -3055,3 +3055,19 @@
 - [x] Assemble final video: 130.5s (2:10), 34.1MB, fade transitions, voice overlay, BGM mix
 - [x] Upload to S3 + Cloudflare Stream (uid=3665adc0e60bd8e659190079af59b93c)
 - [x] Pipeline run 60005 completed, harness score 7.5/10 (14/22 checks passed)
+
+## Episode 1 Improvements — Voice Consistency + Audio Mix Fix
+
+### Voice Re-generation
+- [x] Map each panel's dialogue to a specific character (all Kael)
+- [x] Assign fixed ElevenLabs voice IDs per character (Harry - Fierce Warrior, SOYHLrjzK2X1ezoPC6cr)
+- [x] Re-generate 13 voice clips with consistent voices (emotion-tuned settings per panel)
+- [x] Verify voice consistency across panels
+
+### Assembly Re-mix
+- [x] Boost voice track volume (loudnorm I=-16 + volume=1.8)
+- [x] Lower BGM volume (0.15 → 0.06)
+- [x] Add sidechain ducking (sidechaincompress threshold=0.02, ratio=6)
+- [x] Vary transitions per scene type (0.8s dissolve between scenes, 0.3s fade for action, 0.5s fade for others)
+- [x] Re-assemble final video with corrected mix (117.43s, 37MB compressed)
+- [x] Upload to Cloudflare Stream (uid=7df6d64a14735a18022a8d4d8e1890b7) and S3
