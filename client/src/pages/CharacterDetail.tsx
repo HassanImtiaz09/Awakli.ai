@@ -11,7 +11,7 @@ import {
   Clock, Brain, Edit3, Save, X, RotateCcw, ChevronDown, ChevronRight,
   Download, Eye, Shield, FileText, Image as ImageIcon, Activity,
   Cpu, HardDrive, Timer, DollarSign, Star, TrendingUp,
-  Play, MoreVertical, Check, XCircle,
+  Play, MoreVertical, Check, XCircle, Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import LoraComparisonModal from "@/components/awakli/LoraComparisonModal";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -709,6 +710,7 @@ export default function CharacterDetail() {
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [showTrainModal, setShowTrainModal] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const utils = trpc.useUtils();
@@ -1143,6 +1145,19 @@ export default function CharacterDetail() {
           <TabsContent value="versions" className="mt-6">
             {versions && versions.length > 0 ? (
               <div className="space-y-3">
+                {/* A/B Compare button */}
+                {versions.length >= 2 && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-white/10 bg-gradient-to-r from-cyan/10 to-[var(--accent-pink)]/10 hover:from-cyan/20 hover:to-[var(--accent-pink)]/20"
+                      onClick={() => setShowCompareModal(true)}
+                    >
+                      <Scale className="w-3.5 h-3.5 mr-1.5" /> A/B Compare Versions
+                    </Button>
+                  </div>
+                )}
                 {versions.map(v => (
                   <VersionRow
                     key={v.id}
@@ -1214,6 +1229,30 @@ export default function CharacterDetail() {
         characterName={character.name}
         referenceSheetUrl={character.referenceSheetUrl ?? null}
       />
+
+      {/* A/B Comparison Modal */}
+      {versions && versions.length >= 2 && (
+        <LoraComparisonModal
+          open={showCompareModal}
+          onOpenChange={setShowCompareModal}
+          characterId={characterId}
+          characterName={character.name}
+          versions={versions.map(v => ({
+            id: v.id,
+            version: v.version,
+            qualityScore: v.qualityScore,
+            status: v.status,
+            validationStatus: v.validationStatus,
+            triggerWord: v.triggerWord,
+            createdAt: v.createdAt,
+          }))}
+          activeLoraId={character.activeLoraId}
+          onActivate={(loraId) => {
+            rollbackMutation.mutate({ characterId, loraId });
+            setShowCompareModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

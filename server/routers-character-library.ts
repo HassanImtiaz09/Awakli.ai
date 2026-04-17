@@ -38,6 +38,7 @@ import {
   buildLoraInjectionPayload,
   shouldRetrain,
   previewExtraction,
+  compareLoraVersions,
   type TrainingJobEstimate,
   type ValidationResult,
 } from "./lora-training-pipeline";
@@ -767,5 +768,63 @@ export const characterLibraryRouter = router({
     }))
     .query(({ input }) => {
       return previewExtraction(input.referenceSheetUrl, input.characterName);
+    }),
+
+  // ── Compare LoRA Versions (A/B) ──────────────────────────────────────
+  compareVersions: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      versionAId: z.number(),
+      versionBId: z.number(),
+      customPrompt: z.string().max(500).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Fetch both LoRA versions
+      const [loraA] = await db.select()
+        .from(characterLoras)
+        .where(and(eq(characterLoras.id, input.versionAId), eq(characterLoras.characterId, input.characterId)))
+        .limit(1);
+      if (!loraA) throw new TRPCError({ code: "NOT_FOUND", message: "Version A not found" });
+
+      const [loraB] = await db.select()
+        .from(characterLoras)
+        .where(and(eq(characterLoras.id, input.versionBId), eq(characterLoras.characterId, input.characterId)))
+        .limit(1);
+      if (!loraB) throw new TRPCError({ code: "NOT_FOUND", message: "Version B not found" });
+
+      const triggerWord = buildTriggerWord(char.name);
+
+      const comparison = compareLoraVersions(
+        {
+          id: loraA.id,
+          version: loraA.version,
+          qualityScore: loraA.qualityScore ?? 70,
+          artifactPath: loraA.artifactPath ?? "",
+        },
+        {
+          id: loraB.id,
+          version: loraB.version,
+          qualityScore: loraB.qualityScore ?? 70,
+          artifactPath: loraB.artifactPath ?? "",
+        },
+        triggerWord,
+        input.customPrompt
+      );
+
+      return {
+        characterName: char.name,
+        activeLoraId: char.activeLoraId,
+        ...comparison,
+      };
     }),
 });

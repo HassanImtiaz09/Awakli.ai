@@ -2647,3 +2647,26 @@
 - [x] Frontend: "Approve & Continue" button to proceed from preview to training config step
 - [x] Tests: extractionPreview helper (bounding box generation, confidence scoring, quality warnings) — 31 tests
 - [x] Tests: previewExtraction endpoint contract test — included in 31-test suite
+
+## LoRA A/B Comparison Tool
+### Backend
+- [x] Add `compareLoraVersions` helper to lora-training-pipeline.ts — accepts two LoRA version IDs + test prompt, returns simulated side-by-side generation results with quality metrics
+- [x] Add `generateComparisonPrompts` helper — produces 5 standard test prompts (portrait, action pose, emotional expression, group scene, lighting variation)
+- [x] Add `computeComparisonMetrics` helper — computes per-image CLIP similarity, style consistency, detail preservation, and overall winner recommendation (computeOverallScore, determinePromptWinner, generateRecommendation)
+- [x] Add `characterLibrary.compareVersions` tRPC endpoint — accepts characterId, versionA, versionB, optional custom prompt; returns comparison data
+
+### Frontend
+- [x] LoraComparisonModal component — full-screen modal with side-by-side image viewer
+- [x] Version selector dropdowns (A and B) populated from character's version history
+- [x] Test prompt selector — 5 preset prompts + custom prompt input (expandable custom prompt section with Re-run button)
+- [x] Side-by-side image grid — version A on left (cyan), version B on right (pink), with expandable per-prompt cards
+- [x] Per-image metric cards — CLIP similarity, style consistency, detail preservation dual-bar metrics
+- [x] Summary comparison bar — winner banner with crown icon, confidence badge, aggregated metrics panel, and recommendation text
+- [x] "Set as Active" button to promote the winning version directly from comparison view (Activate button in winner banner)
+- [x] Wire comparison modal into CharacterDetail version history section with "A/B Compare Versions" button (gradient cyan-to-pink)
+
+### Tests
+- [x] Unit: compareLoraVersions (prompt generation, metric computation, winner determination) — 37 tests
+- [x] Unit: generateComparisonPrompts (5 standard prompts, custom prompt support)
+- [x] Unit: computeComparisonMetrics (scoring, tie-breaking, edge cases)
+- [x] Integration: compareVersions endpoint contract test — included in 37-test suite

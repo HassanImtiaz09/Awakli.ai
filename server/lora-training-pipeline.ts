@@ -849,3 +849,333 @@ export function previewExtraction(
     warnings,
   };
 }
+
+
+// ─── 8. LoRA A/B Comparison ────────────────────────────────────────────
+
+export interface ComparisonPrompt {
+  id: string;
+  label: string;
+  prompt: string;
+  category: "portrait" | "action" | "emotion" | "group" | "lighting" | "custom";
+}
+
+export interface ComparisonImageResult {
+  promptId: string;
+  versionAImageUrl: string;
+  versionBImageUrl: string;
+  metrics: {
+    clipSimilarityA: number;   // How close version A is to reference
+    clipSimilarityB: number;   // How close version B is to reference
+    styleConsistencyA: number; // Style coherence 0-1
+    styleConsistencyB: number;
+    detailPreservationA: number; // Fine detail retention 0-1
+    detailPreservationB: number;
+    overallScoreA: number;     // Weighted composite 0-100
+    overallScoreB: number;
+  };
+  winner: "A" | "B" | "tie";
+}
+
+export interface ComparisonSummary {
+  versionAId: number;
+  versionBId: number;
+  versionALabel: string;
+  versionBLabel: string;
+  prompts: ComparisonPrompt[];
+  results: ComparisonImageResult[];
+  aggregated: {
+    avgScoreA: number;
+    avgScoreB: number;
+    avgClipA: number;
+    avgClipB: number;
+    avgStyleA: number;
+    avgStyleB: number;
+    avgDetailA: number;
+    avgDetailB: number;
+    winsA: number;
+    winsB: number;
+    ties: number;
+    overallWinner: "A" | "B" | "tie";
+    confidence: number;        // 0-1 how confident the recommendation is
+    recommendation: string;    // Human-readable recommendation
+  };
+}
+
+/**
+ * Generate 5 standard comparison prompts for a character.
+ * Each prompt tests a different aspect of LoRA quality.
+ */
+export function generateComparisonPrompts(triggerWord: string, customPrompt?: string): ComparisonPrompt[] {
+  const prompts: ComparisonPrompt[] = [
+    {
+      id: "portrait",
+      label: "Portrait Close-up",
+      prompt: `${triggerWord}, close-up portrait, soft studio lighting, neutral background, anime style, high quality, detailed face`,
+      category: "portrait",
+    },
+    {
+      id: "action",
+      label: "Action Pose",
+      prompt: `${triggerWord}, dynamic action pose, running, wind blowing hair, dramatic angle, anime style, high quality`,
+      category: "action",
+    },
+    {
+      id: "emotion",
+      label: "Emotional Expression",
+      prompt: `${triggerWord}, crying with tears, emotional scene, close-up, warm lighting, anime style, high quality`,
+      category: "emotion",
+    },
+    {
+      id: "group",
+      label: "Group Scene",
+      prompt: `${triggerWord}, standing with other characters, school setting, daylight, anime style, high quality`,
+      category: "group",
+    },
+    {
+      id: "lighting",
+      label: "Dramatic Lighting",
+      prompt: `${triggerWord}, dramatic rim lighting, dark background, cinematic, volumetric light, anime style, high quality`,
+      category: "lighting",
+    },
+  ];
+
+  if (customPrompt) {
+    prompts.push({
+      id: "custom",
+      label: "Custom Prompt",
+      prompt: customPrompt.includes(triggerWord) ? customPrompt : `${triggerWord}, ${customPrompt}`,
+      category: "custom",
+    });
+  }
+
+  return prompts;
+}
+
+/**
+ * Simulate generating a test image with a specific LoRA version.
+ * In production, this calls the generation service with the LoRA artifact.
+ * Returns a simulated image URL.
+ */
+function simulateLoraGeneration(
+  loraArtifactPath: string,
+  prompt: string,
+  versionId: number,
+  promptId: string
+): string {
+  const hash = Math.abs(
+    (loraArtifactPath.length * 31 + prompt.length * 17 + versionId * 7) % 10000
+  );
+  return `https://cdn.awakli.com/lora-comparison/${versionId}/${promptId}_${hash}.png`;
+}
+
+/**
+ * Simulate per-image quality metrics for a LoRA-generated image.
+ * In production, this runs CLIP embedding comparison against the reference sheet.
+ * 
+ * Uses deterministic pseudo-random based on inputs so results are reproducible.
+ */
+function simulateImageMetrics(
+  versionId: number,
+  promptId: string,
+  baseQualityScore: number,
+  seed: number
+): { clipSimilarity: number; styleConsistency: number; detailPreservation: number } {
+  // Use the version's base quality as anchor, add per-prompt variation
+  const promptVariation: Record<string, number> = {
+    portrait: 0.05,   // portraits are easiest
+    action: -0.03,    // action poses are harder
+    emotion: 0.02,    // emotions are moderate
+    group: -0.06,     // group scenes are hardest
+    lighting: -0.01,  // lighting is moderate
+    custom: 0.00,     // neutral
+  };
+
+  const pv = promptVariation[promptId] ?? 0;
+  const deterministicNoise = ((seed * 13 + versionId * 7 + promptId.length * 31) % 100) / 1000 - 0.05;
+
+  // CLIP similarity: base quality mapped to 0.65-0.98 range
+  const baseClip = 0.65 + (baseQualityScore / 100) * 0.33;
+  const clipSimilarity = Math.max(0, Math.min(1, baseClip + pv + deterministicNoise));
+
+  // Style consistency: slightly different variation
+  const styleNoise = ((seed * 17 + versionId * 11 + promptId.length * 23) % 100) / 1000 - 0.05;
+  const styleConsistency = Math.max(0, Math.min(1, baseClip + pv * 0.8 + styleNoise));
+
+  // Detail preservation: another variation
+  const detailNoise = ((seed * 23 + versionId * 13 + promptId.length * 19) % 100) / 1000 - 0.05;
+  const detailPreservation = Math.max(0, Math.min(1, baseClip + pv * 0.6 + detailNoise));
+
+  return { clipSimilarity, styleConsistency, detailPreservation };
+}
+
+/**
+ * Compute a weighted overall score from individual metrics.
+ * Weights: CLIP similarity (50%), Style consistency (30%), Detail preservation (20%)
+ */
+export function computeOverallScore(
+  clipSimilarity: number,
+  styleConsistency: number,
+  detailPreservation: number
+): number {
+  const weighted = clipSimilarity * 0.50 + styleConsistency * 0.30 + detailPreservation * 0.20;
+  return Math.round(weighted * 100);
+}
+
+/**
+ * Determine the winner for a single prompt comparison.
+ * A version wins if its overall score is at least 2 points higher.
+ */
+export function determinePromptWinner(scoreA: number, scoreB: number): "A" | "B" | "tie" {
+  const diff = scoreA - scoreB;
+  if (diff >= 2) return "A";
+  if (diff <= -2) return "B";
+  return "tie";
+}
+
+/**
+ * Determine the overall winner and generate a recommendation.
+ */
+export function generateRecommendation(
+  winsA: number,
+  winsB: number,
+  ties: number,
+  avgScoreA: number,
+  avgScoreB: number,
+  versionALabel: string,
+  versionBLabel: string
+): { winner: "A" | "B" | "tie"; confidence: number; recommendation: string } {
+  const totalTests = winsA + winsB + ties;
+  if (totalTests === 0) {
+    return { winner: "tie", confidence: 0, recommendation: "No comparison data available." };
+  }
+
+  const scoreDiff = Math.abs(avgScoreA - avgScoreB);
+  const winRatioA = winsA / totalTests;
+  const winRatioB = winsB / totalTests;
+
+  let winner: "A" | "B" | "tie";
+  let confidence: number;
+  let recommendation: string;
+
+  if (winsA > winsB) {
+    winner = "A";
+    confidence = Math.min(1, winRatioA * 0.6 + (scoreDiff / 20) * 0.4);
+    recommendation = `${versionALabel} outperforms ${versionBLabel} in ${winsA} of ${totalTests} tests (avg score ${avgScoreA.toFixed(1)} vs ${avgScoreB.toFixed(1)}). Recommend keeping ${versionALabel} as active.`;
+  } else if (winsB > winsA) {
+    winner = "B";
+    confidence = Math.min(1, winRatioB * 0.6 + (scoreDiff / 20) * 0.4);
+    recommendation = `${versionBLabel} outperforms ${versionALabel} in ${winsB} of ${totalTests} tests (avg score ${avgScoreB.toFixed(1)} vs ${avgScoreA.toFixed(1)}). Recommend switching to ${versionBLabel}.`;
+  } else {
+    // Tie in wins — use average score as tiebreaker
+    if (scoreDiff >= 1) {
+      winner = avgScoreA > avgScoreB ? "A" : "B";
+      const winnerLabel = winner === "A" ? versionALabel : versionBLabel;
+      const winnerScore = winner === "A" ? avgScoreA : avgScoreB;
+      confidence = Math.min(1, (scoreDiff / 10) * 0.5);
+      recommendation = `Both versions won equal tests, but ${winnerLabel} has a slightly higher average score (${winnerScore.toFixed(1)}). Marginal difference — either version is acceptable.`;
+    } else {
+      winner = "tie";
+      confidence = 0.1;
+      recommendation = `Both versions perform nearly identically (avg ${avgScoreA.toFixed(1)} vs ${avgScoreB.toFixed(1)}). No significant quality difference detected. Keep the current active version.`;
+    }
+  }
+
+  return { winner, confidence: Number(confidence.toFixed(3)), recommendation };
+}
+
+/**
+ * Run a full A/B comparison between two LoRA versions.
+ * 
+ * @param versionA - First version metadata { id, version, qualityScore, artifactPath }
+ * @param versionB - Second version metadata { id, version, qualityScore, artifactPath }
+ * @param triggerWord - The character's trigger word
+ * @param customPrompt - Optional custom prompt to include
+ * @returns Full comparison summary with per-prompt results and aggregated metrics
+ */
+export function compareLoraVersions(
+  versionA: { id: number; version: number; qualityScore: number; artifactPath: string },
+  versionB: { id: number; version: number; qualityScore: number; artifactPath: string },
+  triggerWord: string,
+  customPrompt?: string
+): ComparisonSummary {
+  const prompts = generateComparisonPrompts(triggerWord, customPrompt);
+  const versionALabel = `v${versionA.version}`;
+  const versionBLabel = `v${versionB.version}`;
+
+  const seed = versionA.id + versionB.id + triggerWord.length;
+
+  const results: ComparisonImageResult[] = prompts.map((p) => {
+    const imageUrlA = simulateLoraGeneration(versionA.artifactPath, p.prompt, versionA.id, p.id);
+    const imageUrlB = simulateLoraGeneration(versionB.artifactPath, p.prompt, versionB.id, p.id);
+
+    const metricsA = simulateImageMetrics(versionA.id, p.id, versionA.qualityScore, seed);
+    const metricsB = simulateImageMetrics(versionB.id, p.id, versionB.qualityScore, seed + 1);
+
+    const overallA = computeOverallScore(metricsA.clipSimilarity, metricsA.styleConsistency, metricsA.detailPreservation);
+    const overallB = computeOverallScore(metricsB.clipSimilarity, metricsB.styleConsistency, metricsB.detailPreservation);
+
+    return {
+      promptId: p.id,
+      versionAImageUrl: imageUrlA,
+      versionBImageUrl: imageUrlB,
+      metrics: {
+        clipSimilarityA: Number(metricsA.clipSimilarity.toFixed(4)),
+        clipSimilarityB: Number(metricsB.clipSimilarity.toFixed(4)),
+        styleConsistencyA: Number(metricsA.styleConsistency.toFixed(4)),
+        styleConsistencyB: Number(metricsB.styleConsistency.toFixed(4)),
+        detailPreservationA: Number(metricsA.detailPreservation.toFixed(4)),
+        detailPreservationB: Number(metricsB.detailPreservation.toFixed(4)),
+        overallScoreA: overallA,
+        overallScoreB: overallB,
+      },
+      winner: determinePromptWinner(overallA, overallB),
+    };
+  });
+
+  // Aggregate metrics
+  const n = results.length;
+  const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+  const avg = (arr: number[]) => n > 0 ? sum(arr) / n : 0;
+
+  const avgScoreA = avg(results.map(r => r.metrics.overallScoreA));
+  const avgScoreB = avg(results.map(r => r.metrics.overallScoreB));
+  const avgClipA = avg(results.map(r => r.metrics.clipSimilarityA));
+  const avgClipB = avg(results.map(r => r.metrics.clipSimilarityB));
+  const avgStyleA = avg(results.map(r => r.metrics.styleConsistencyA));
+  const avgStyleB = avg(results.map(r => r.metrics.styleConsistencyB));
+  const avgDetailA = avg(results.map(r => r.metrics.detailPreservationA));
+  const avgDetailB = avg(results.map(r => r.metrics.detailPreservationB));
+  const winsA = results.filter(r => r.winner === "A").length;
+  const winsB = results.filter(r => r.winner === "B").length;
+  const ties = results.filter(r => r.winner === "tie").length;
+
+  const { winner, confidence, recommendation } = generateRecommendation(
+    winsA, winsB, ties, avgScoreA, avgScoreB, versionALabel, versionBLabel
+  );
+
+  return {
+    versionAId: versionA.id,
+    versionBId: versionB.id,
+    versionALabel,
+    versionBLabel,
+    prompts,
+    results,
+    aggregated: {
+      avgScoreA: Number(avgScoreA.toFixed(1)),
+      avgScoreB: Number(avgScoreB.toFixed(1)),
+      avgClipA: Number(avgClipA.toFixed(4)),
+      avgClipB: Number(avgClipB.toFixed(4)),
+      avgStyleA: Number(avgStyleA.toFixed(4)),
+      avgStyleB: Number(avgStyleB.toFixed(4)),
+      avgDetailA: Number(avgDetailA.toFixed(4)),
+      avgDetailB: Number(avgDetailB.toFixed(4)),
+      winsA,
+      winsB,
+      ties,
+      overallWinner: winner,
+      confidence,
+      recommendation,
+    },
+  };
+}
