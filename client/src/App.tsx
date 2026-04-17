@@ -50,6 +50,7 @@ import CreatorAnalytics from "./pages/CreatorAnalytics";
 import CharacterLibrary from "./pages/CharacterLibrary";
 import CharacterDetail from "./pages/CharacterDetail";
 import BatchTraining from "./pages/BatchTraining";
+import ConsistencyReport from "./pages/ConsistencyReport";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -93,6 +94,7 @@ function Router() {
         {/* Character Library */}
         <Route path="/characters" component={CharacterLibrary} />
         <Route path="/characters/:id" component={CharacterDetail} />
+        <Route path="/characters/:id/consistency" component={ConsistencyReport} />
         <Route path="/batch-training" component={BatchTraining} />
 
         {/* Account / billing */}

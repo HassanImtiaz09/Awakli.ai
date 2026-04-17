@@ -30,6 +30,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import LoraComparisonModal from "@/components/awakli/LoraComparisonModal";
+import { Link } from "wouter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -946,6 +947,11 @@ export default function CharacterDetail() {
                         <Zap className="w-4 h-4 mr-1" /> Train LoRA
                       </Button>
                     )}
+                    <Link href={`/characters/${characterId}/consistency`}>
+                      <Button size="sm" variant="outline" className="border-white/10 gap-1.5">
+                        <Activity className="w-4 h-4" /> Consistency Report
+                      </Button>
+                    </Link>
                   </>
                 )}
               </div>

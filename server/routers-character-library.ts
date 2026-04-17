@@ -42,6 +42,15 @@ import {
   type TrainingJobEstimate,
   type ValidationResult,
 } from "./lora-training-pipeline";
+import {
+  aggregateCharacterReport,
+  getFrameDriftDetail,
+  DEFAULT_DRIFT_THRESHOLD,
+  type FrameGeneration,
+} from "./consistency-analysis";
+import {
+  episodes, scenes, generationResults,
+} from "../drizzle/schema";
 
 // ─── Character Library Router ───────────────────────────────────────────
 
@@ -826,5 +835,228 @@ export const characterLibraryRouter = router({
         activeLoraId: char.activeLoraId,
         ...comparison,
       };
+    }),
+
+  // ── Consistency Report ────────────────────────────────────────────────
+
+  getConsistencyReport: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      driftThreshold: z.number().min(0.01).max(0.5).optional(),
+      episodeFilter: z.array(z.number()).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [char] = await db.select().from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Get active LoRA quality info
+      let qualityScore: number | null = null;
+      let clipSimilarity: number | null = null;
+      if (char.activeLoraId) {
+        const [lora] = await db.select().from(characterLoras)
+          .where(eq(characterLoras.id, char.activeLoraId))
+          .limit(1);
+        if (lora) {
+          qualityScore = lora.qualityScore;
+          clipSimilarity = lora.clipSimilarity ? Number(lora.clipSimilarity) : null;
+        }
+      }
+
+      // Fetch all generation requests for this character that have results
+      let query = db.select({
+        generationId: generationRequests.id,
+        episodeId: generationRequests.episodeId,
+        sceneId: generationRequests.sceneId,
+        loraId: generationRequests.loraId,
+        loraStrength: generationRequests.loraStrength,
+        createdAt: generationRequests.createdAt,
+        resultUrl: generationResults.storageUrl,
+      })
+        .from(generationRequests)
+        .innerJoin(generationResults, eq(generationResults.requestId, generationRequests.id))
+        .where(
+          and(
+            eq(generationRequests.characterId, input.characterId),
+            eq(generationRequests.userId, ctx.user.id),
+          )
+        )
+        .orderBy(asc(generationRequests.createdAt));
+
+      const rows = await query;
+
+      // Enrich with episode info
+      const episodeIds = Array.from(new Set(rows.map(r => r.episodeId).filter((id): id is number => id !== null)));
+      const episodeMap = new Map<number, { number: number; title: string }>();
+      if (episodeIds.length > 0) {
+        const eps = await db.select({ id: episodes.id, episodeNumber: episodes.episodeNumber, title: episodes.title })
+          .from(episodes)
+          .where(inArray(episodes.id, episodeIds));
+        for (const ep of eps) {
+          episodeMap.set(ep.id, { number: ep.episodeNumber, title: ep.title });
+        }
+      }
+
+      // Enrich with scene info
+      const sceneIds = Array.from(new Set(rows.map(r => r.sceneId).filter((id): id is number => id !== null)));
+      const sceneMap = new Map<number, number>();
+      if (sceneIds.length > 0) {
+        const scns = await db.select({ id: scenes.id, sceneNumber: scenes.sceneNumber })
+          .from(scenes)
+          .where(inArray(scenes.id, sceneIds));
+        for (const s of scns) {
+          sceneMap.set(s.id, s.sceneNumber);
+        }
+      }
+
+      // Get LoRA version info
+      const loraIds = Array.from(new Set(rows.map(r => r.loraId).filter((id): id is number => id !== null)));
+      const loraMap = new Map<number, number>();
+      if (loraIds.length > 0) {
+        const loras = await db.select({ id: characterLoras.id, version: characterLoras.version })
+          .from(characterLoras)
+          .where(inArray(characterLoras.id, loraIds));
+        for (const l of loras) {
+          loraMap.set(l.id, l.version);
+        }
+      }
+
+      // Build FrameGeneration array
+      let frameIndex = 0;
+      const generations: FrameGeneration[] = rows
+        .filter(r => {
+          if (!input.episodeFilter || input.episodeFilter.length === 0) return true;
+          return r.episodeId !== null && input.episodeFilter.includes(r.episodeId);
+        })
+        .map(r => {
+          const epInfo = r.episodeId ? episodeMap.get(r.episodeId) : null;
+          return {
+            generationId: r.generationId,
+            episodeId: r.episodeId ?? 0,
+            episodeNumber: epInfo?.number ?? 0,
+            episodeTitle: epInfo?.title ?? "Unknown Episode",
+            sceneId: r.sceneId,
+            sceneNumber: r.sceneId ? (sceneMap.get(r.sceneId) ?? null) : null,
+            frameIndex: frameIndex++,
+            resultUrl: r.resultUrl,
+            loraId: r.loraId,
+            loraVersion: r.loraId ? (loraMap.get(r.loraId) ?? null) : null,
+            loraStrength: r.loraStrength ? Number(r.loraStrength) : null,
+            createdAt: r.createdAt,
+          };
+        });
+
+      const threshold = input.driftThreshold ?? DEFAULT_DRIFT_THRESHOLD;
+      return aggregateCharacterReport(
+        char.id,
+        char.name,
+        char.referenceSheetUrl,
+        generations,
+        qualityScore,
+        clipSimilarity,
+        threshold,
+      );
+    }),
+
+  getFrameDriftDetail: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      generationId: z.number(),
+      driftThreshold: z.number().min(0.01).max(0.5).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [char] = await db.select().from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Get the specific generation
+      const [gen] = await db.select({
+        generationId: generationRequests.id,
+        episodeId: generationRequests.episodeId,
+        sceneId: generationRequests.sceneId,
+        loraId: generationRequests.loraId,
+        loraStrength: generationRequests.loraStrength,
+        createdAt: generationRequests.createdAt,
+        resultUrl: generationResults.storageUrl,
+      })
+        .from(generationRequests)
+        .innerJoin(generationResults, eq(generationResults.requestId, generationRequests.id))
+        .where(
+          and(
+            eq(generationRequests.id, input.generationId),
+            eq(generationRequests.characterId, input.characterId),
+          )
+        )
+        .limit(1);
+
+      if (!gen) throw new TRPCError({ code: "NOT_FOUND", message: "Generation not found" });
+
+      // We need the full report to get context for the detail view
+      // For efficiency, we just compute drift for this frame and a few neighbors
+      let qualityScore: number | null = null;
+      let clipSimilarity: number | null = null;
+      if (char.activeLoraId) {
+        const [lora] = await db.select().from(characterLoras)
+          .where(eq(characterLoras.id, char.activeLoraId))
+          .limit(1);
+        if (lora) {
+          qualityScore = lora.qualityScore;
+          clipSimilarity = lora.clipSimilarity ? Number(lora.clipSimilarity) : null;
+        }
+      }
+
+      // Get episode info
+      let episodeNumber = 0;
+      let episodeTitle = "Unknown";
+      if (gen.episodeId) {
+        const [ep] = await db.select({ episodeNumber: episodes.episodeNumber, title: episodes.title })
+          .from(episodes)
+          .where(eq(episodes.id, gen.episodeId))
+          .limit(1);
+        if (ep) {
+          episodeNumber = ep.episodeNumber;
+          episodeTitle = ep.title;
+        }
+      }
+
+      // Get LoRA version
+      let loraVersion: number | null = null;
+      if (gen.loraId) {
+        const [lora] = await db.select({ version: characterLoras.version })
+          .from(characterLoras)
+          .where(eq(characterLoras.id, gen.loraId))
+          .limit(1);
+        if (lora) loraVersion = lora.version;
+      }
+
+      const sceneNumber = gen.sceneId ? 1 : null; // simplified
+
+      const frameGen: FrameGeneration = {
+        generationId: gen.generationId,
+        episodeId: gen.episodeId ?? 0,
+        episodeNumber,
+        episodeTitle,
+        sceneId: gen.sceneId,
+        sceneNumber,
+        frameIndex: 0,
+        resultUrl: gen.resultUrl,
+        loraId: gen.loraId,
+        loraVersion,
+        loraStrength: gen.loraStrength ? Number(gen.loraStrength) : null,
+        createdAt: gen.createdAt,
+      };
+
+      // Import computeFrameDrift and detectDriftSpikes
+      const { computeFrameDrift, detectDriftSpikes } = await import("./consistency-analysis");
+      const rawFrame = computeFrameDrift(frameGen, qualityScore, clipSimilarity);
+      const [frame] = detectDriftSpikes([rawFrame], input.driftThreshold ?? DEFAULT_DRIFT_THRESHOLD);
+
+      return getFrameDriftDetail(frame, [frame], char.referenceSheetUrl);
     }),
 });

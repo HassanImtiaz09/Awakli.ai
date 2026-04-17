@@ -2670,3 +2670,26 @@
 - [x] Unit: generateComparisonPrompts (5 standard prompts, custom prompt support)
 - [x] Unit: computeComparisonMetrics (scoring, tie-breaking, edge cases)
 - [x] Integration: compareVersions endpoint contract test — included in 37-test suite
+
+## Character Consistency Report
+### Backend
+- [x] Add `consistency-analysis.ts` module with: computeFrameDrift, detectDriftSpikes, generateConsistencyTimeline, computeEpisodeConsistency, computeConsistencyGrade, aggregateCharacterReport, getFrameDriftDetail
+- [x] Add `characterLibrary.getConsistencyReport` tRPC endpoint — accepts characterId, optional episodeFilter, driftThreshold; returns per-frame drift scores, flagged frames, episode breakdown, and overall consistency grade
+- [x] Add `characterLibrary.getFrameDriftDetail` tRPC endpoint — accepts characterId + frameId; returns detailed drift analysis for a single flagged frame (reference comparison, feature-level breakdown, suggestions)
+
+### Frontend
+- [x] ConsistencyReport page (`/characters/:id/consistency`) with character header and overall consistency grade (A-F)
+- [x] Drift timeline chart — SVG line graph showing drift score over time across all episodes, with threshold line and flagged regions highlighted in red
+- [x] Episode breakdown table — per-episode consistency score, frame count, flagged frame count, worst drift score, LoRA version used
+- [x] Flagged frames gallery — grid of thumbnails for frames exceeding drift threshold, sorted by severity, with feature drift radar badges
+- [x] Frame detail panel — click a flagged frame to see side-by-side comparison with reference sheet, per-feature drift breakdown (face, hair, outfit, colorPalette, bodyProportion), nearest good frame, and actionable suggestions
+- [x] Drift threshold slider — adjustable threshold (0.05-0.30) that dynamically re-filters flagged frames
+- [x] Export report button — download consistency report as JSON
+- [x] Wire route into App.tsx and add "Consistency Report" button in CharacterDetail page header
+
+### Tests
+- [x] Unit: computeFrameDrift (CLIP-based drift scoring, normalization, determinism, LoRA impact) — 51 tests
+- [x] Unit: detectDriftSpikes (threshold filtering, warning zone, spike detection)
+- [x] Unit: generateConsistencyTimeline (sorting, global indices, data shape)
+- [x] Unit: aggregateCharacterReport (grade calculation, episode breakdown, empty input, threshold customization)
+- [x] Integration: getFrameDriftDetail (suggestions, nearest good frame, feature-specific advice)
