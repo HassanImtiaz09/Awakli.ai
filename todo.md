@@ -2538,3 +2538,27 @@
 - [x] Frontend: Playhead automatically jumps back to A marker when reaching B marker during loop mode
 - [x] Frontend: Display loop region duration and frame count
 - [x] Tests: Loop boundary clamping, wrap-around logic, marker drag math — included in 32-test suite
+
+## Inline Phoneme Editor
+- [x] Frontend: Clickable viseme segments on the timeline that open an inline editor popover
+- [x] Frontend: Viseme dropdown selector to reassign a segment's viseme (A, I, U, E, O, Closed, N, Rest)
+- [x] Frontend: Split/merge controls to subdivide or combine adjacent viseme segments
+- [x] Frontend: Visual diff highlighting showing edited vs original viseme assignments
+- [x] Frontend: "Reset to Auto" button to revert manual edits back to phoneme-derived assignments
+- [x] Backend: Accept optional visemeOverrides in previewDialogue to apply manual edits
+- [x] Tests: Phoneme editor override application, split/merge logic, reset behavior — 41 tests
+
+## Batch Preview Mode
+- [x] Backend: batchPreviewDialogue endpoint that processes multiple scenes and returns per-scene summaries
+- [x] Frontend: "Batch Preview" tab in the modal showing episode-level dialogue scene summary table
+- [x] Frontend: Per-scene rows with cost estimate, duration, frame count, viseme distribution mini-bar
+- [x] Frontend: Episode totals row with aggregated cost, total duration, and total frames
+- [x] Frontend: Click-to-expand individual scene details within the batch table
+- [x] Tests: Batch preview endpoint (multi-scene aggregation, cost totals, empty scenes) — included in 41-test suite
+
+## Export/Import JSON Preset
+- [x] Frontend: "Export Preset" button that downloads a JSON file with dialogue lines, loop markers, speed, and viseme overrides
+- [x] Frontend: "Import Preset" button that loads a JSON file and restores all configuration state
+- [x] Frontend: Preset validation with error toast for malformed imports
+- [x] Frontend: Preset metadata (name, created date, version) in the exported JSON
+- [x] Tests: Export schema validation, import parsing, round-trip consistency — included in 41-test suite

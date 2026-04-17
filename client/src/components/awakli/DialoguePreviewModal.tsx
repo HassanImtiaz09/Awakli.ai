@@ -13,6 +13,9 @@
  * - Audio waveform overlay on the timeline bar
  * - Compare split-view: dialogue inpainting vs full Kling video
  * - A/B looping mode with draggable markers
+ * - Inline phoneme editor: click segments to reassign visemes
+ * - Batch preview: episode-level dialogue scene summary table
+ * - Export/Import JSON preset for sharing configurations
  * - Keyboard shortcuts (Space, Left/Right, L for loop, A/B for markers)
  */
 
@@ -26,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -55,9 +59,18 @@ import {
   AudioLines,
   CheckCircle2,
   XCircle,
-  Timer,
   Sparkles,
   Shield,
+  Pencil,
+  RotateCcw,
+  Download,
+  Upload,
+  FileJson,
+  ListChecks,
+  Users,
+  Timer,
+  Scissors,
+  Merge,
 } from "lucide-react";
 
 // ─── Viseme Colors ─────────────────────────────────────────────────────
@@ -76,6 +89,8 @@ const VISEME_LABELS: Record<string, string> = {
   A: "A (open)", I: "I (smile)", U: "U (pucker)", E: "E (mid)",
   O: "O (round)", Closed: "Closed", N: "N (nasal)", Rest: "Rest",
 };
+
+const ALL_VISEMES = ["A", "I", "U", "E", "O", "Closed", "N", "Rest"] as const;
 
 // ─── Mouth Shape SVGs ─────────────────────────────────────────────────
 
@@ -106,38 +121,24 @@ function MouthShapeSVG({ viseme, size = 120 }: { viseme: string; size?: number }
 
 interface LoopState {
   enabled: boolean;
-  /** Progress 0-1 for marker A */
   markerA: number;
-  /** Progress 0-1 for marker B */
   markerB: number;
 }
 
 function useLoopState() {
   const [loop, setLoop] = useState<LoopState>({
-    enabled: false,
-    markerA: 0.2,
-    markerB: 0.8,
+    enabled: false, markerA: 0.2, markerB: 0.8,
   });
 
-  const toggleLoop = useCallback(() => {
-    setLoop(s => ({ ...s, enabled: !s.enabled }));
-  }, []);
-
+  const toggleLoop = useCallback(() => setLoop(s => ({ ...s, enabled: !s.enabled })), []);
   const setMarkerA = useCallback((progress: number) => {
-    setLoop(s => ({
-      ...s,
-      markerA: Math.max(0, Math.min(progress, s.markerB - 0.01)),
-    }));
+    setLoop(s => ({ ...s, markerA: Math.max(0, Math.min(progress, s.markerB - 0.01)) }));
   }, []);
-
   const setMarkerB = useCallback((progress: number) => {
-    setLoop(s => ({
-      ...s,
-      markerB: Math.min(1, Math.max(progress, s.markerA + 0.01)),
-    }));
+    setLoop(s => ({ ...s, markerB: Math.min(1, Math.max(progress, s.markerA + 0.01)) }));
   }, []);
 
-  return { loop, toggleLoop, setMarkerA, setMarkerB };
+  return { loop, toggleLoop, setMarkerA, setMarkerB, setLoop };
 }
 
 // ─── Replay Controller Hook ───────────────────────────────────────────
@@ -153,10 +154,7 @@ interface ReplayState {
 }
 
 function useReplayController(
-  totalFrames: number,
-  fps: number,
-  durationS: number,
-  loopState?: LoopState,
+  totalFrames: number, fps: number, durationS: number, loopState?: LoopState,
 ) {
   const [state, setState] = useState<ReplayState>({
     isPlaying: false, currentFrame: 0, speed: 1, currentTimeS: 0,
@@ -204,7 +202,6 @@ function useReplayController(
     });
   }, [fps]);
 
-  // Animation loop with A/B loop support
   useEffect(() => {
     if (!state.isPlaying) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -219,18 +216,14 @@ function useReplayController(
 
       setState(prev => {
         if (!prev.isPlaying) return prev;
-
         const advanceS = elapsed * prev.speed;
         let newTimeS = prev.currentTimeS + advanceS;
         let newFrame = Math.floor(newTimeS * fps);
 
-        // A/B loop logic
         if (loopState?.enabled && totalFrames > 0) {
           const loopEndFrame = Math.round(loopState.markerB * (totalFrames - 1));
           const loopStartFrame = Math.round(loopState.markerA * (totalFrames - 1));
-
           if (newFrame > loopEndFrame) {
-            // Wrap back to A marker
             newFrame = loopStartFrame;
             newTimeS = loopStartFrame / fps;
           }
@@ -255,15 +248,56 @@ function useReplayController(
   };
 }
 
+// ─── Viseme Override State ────────────────────────────────────────────
+
+interface VisemeOverride {
+  frameIndex: number;
+  viseme: string;
+}
+
+function useVisemeOverrides() {
+  const [overrides, setOverrides] = useState<VisemeOverride[]>([]);
+
+  const setOverride = useCallback((frameIndex: number, viseme: string) => {
+    setOverrides(prev => {
+      const existing = prev.findIndex(o => o.frameIndex === frameIndex);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { frameIndex, viseme };
+        return updated;
+      }
+      return [...prev, { frameIndex, viseme }];
+    });
+  }, []);
+
+  const setRangeOverride = useCallback((startFrame: number, endFrame: number, viseme: string) => {
+    setOverrides(prev => {
+      const filtered = prev.filter(o => o.frameIndex < startFrame || o.frameIndex > endFrame);
+      const newOverrides: VisemeOverride[] = [];
+      for (let i = startFrame; i <= endFrame; i++) {
+        newOverrides.push({ frameIndex: i, viseme });
+      }
+      return [...filtered, ...newOverrides];
+    });
+  }, []);
+
+  const removeOverride = useCallback((frameIndex: number) => {
+    setOverrides(prev => prev.filter(o => o.frameIndex !== frameIndex));
+  }, []);
+
+  const removeRangeOverrides = useCallback((startFrame: number, endFrame: number) => {
+    setOverrides(prev => prev.filter(o => o.frameIndex < startFrame || o.frameIndex > endFrame));
+  }, []);
+
+  const resetAll = useCallback(() => setOverrides([]), []);
+
+  return { overrides, setOverride, setRangeOverride, removeOverride, removeRangeOverrides, resetAll, setOverrides };
+}
+
 // ─── Waveform Overlay SVG ─────────────────────────────────────────────
 
 function WaveformOverlay({
-  samples,
-  peakAmplitude,
-  dialogueRegions,
-  totalSamples,
-  height,
-  playheadProgress,
+  samples, peakAmplitude, dialogueRegions, totalSamples, height,
 }: {
   samples: number[];
   peakAmplitude: number;
@@ -272,7 +306,6 @@ function WaveformOverlay({
   height: number;
   playheadProgress: number | null;
 }) {
-  // Downsample for rendering (max 200 bars)
   const maxBars = 200;
   const step = Math.max(1, Math.floor(totalSamples / maxBars));
   const bars = useMemo(() => {
@@ -295,44 +328,109 @@ function WaveformOverlay({
       preserveAspectRatio="none"
       style={{ opacity: 0.35 }}
     >
-      {/* Dialogue region highlights */}
       {dialogueRegions.map((r, i) => {
         const x1 = (r.startSample / totalSamples) * 100;
         const x2 = (r.endSample / totalSamples) * 100;
         return (
-          <rect
-            key={`region-${i}`}
-            x={x1}
-            y={0}
-            width={x2 - x1}
-            height={height}
-            fill="#60a5fa"
-            opacity={0.08}
-          />
+          <rect key={`region-${i}`} x={x1} y={0} width={x2 - x1} height={height} fill="#60a5fa" opacity={0.08} />
         );
       })}
-      {/* Waveform bars (mirrored around center) */}
       {bars.map((amp, i) => {
         const x = i * barWidth;
         const barH = Math.max(amp * mid * 0.85, 0.3);
         return (
-          <rect
-            key={i}
-            x={x}
-            y={mid - barH}
-            width={Math.max(barWidth * 0.7, 0.2)}
-            height={barH * 2}
-            rx={0.15}
-            fill="#a78bfa"
-            opacity={0.7}
-          />
+          <rect key={i} x={x} y={mid - barH} width={Math.max(barWidth * 0.7, 0.2)} height={barH * 2} rx={0.15} fill="#a78bfa" opacity={0.7} />
         );
       })}
     </svg>
   );
 }
 
-// ─── Interactive Viseme Timeline with Waveform + A/B Loop ─────────────
+// ─── Phoneme Editor Popover ───────────────────────────────────────────
+
+function PhonemeEditorPopover({
+  segment,
+  totalFrames,
+  overrideCount,
+  onAssignViseme,
+  onSplitSegment,
+  onResetSegment,
+}: {
+  segment: { viseme: string; startIdx: number; endIdx: number; startTimeS: number };
+  totalFrames: number;
+  overrideCount: number;
+  onAssignViseme: (startFrame: number, endFrame: number, viseme: string) => void;
+  onSplitSegment: (startFrame: number, endFrame: number) => void;
+  onResetSegment: (startFrame: number, endFrame: number) => void;
+}) {
+  const frameCount = segment.endIdx - segment.startIdx + 1;
+  const durationMs = Math.round((frameCount / totalFrames) * 10000) / 10;
+
+  return (
+    <div className="space-y-3 p-1">
+      <div className="space-y-1">
+        <div className="text-xs font-medium flex items-center gap-1.5">
+          <Pencil className="h-3 w-3" />
+          Edit Viseme Segment
+        </div>
+        <div className="text-[10px] text-muted-foreground">
+          Frames {segment.startIdx}–{segment.endIdx} ({frameCount} frames, {durationMs}ms)
+          {overrideCount > 0 && (
+            <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 text-amber-400 border-amber-500/20">
+              {overrideCount} edited
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Viseme selector grid */}
+      <div className="grid grid-cols-4 gap-1">
+        {ALL_VISEMES.map(v => (
+          <button
+            key={v}
+            className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-medium transition-colors border ${
+              v === segment.viseme
+                ? "border-primary bg-primary/20 text-primary"
+                : "border-border/50 bg-muted/30 text-muted-foreground hover:bg-muted/60"
+            }`}
+            onClick={() => onAssignViseme(segment.startIdx, segment.endIdx, v)}
+          >
+            <div className={`h-2 w-2 rounded-sm ${VISEME_COLORS[v]}`} />
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+        {frameCount > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={() => onSplitSegment(segment.startIdx, segment.endIdx)}
+          >
+            <Scissors className="h-2.5 w-2.5" />
+            Split
+          </Button>
+        )}
+        {overrideCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1 text-amber-400 hover:text-amber-300"
+            onClick={() => onResetSegment(segment.startIdx, segment.endIdx)}
+          >
+            <RotateCcw className="h-2.5 w-2.5" />
+            Reset
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Interactive Viseme Timeline with Waveform + A/B Loop + Editor ────
 
 function VisemeTimelineBar({
   frames,
@@ -343,6 +441,12 @@ function VisemeTimelineBar({
   loopState,
   onSetMarkerA,
   onSetMarkerB,
+  editorEnabled,
+  visemeOverrides,
+  originalFrames,
+  onAssignViseme,
+  onSplitSegment,
+  onResetSegment,
 }: {
   frames: Array<{ viseme: string; frameIndex: number; timeS: number }>;
   totalFrames: number;
@@ -357,6 +461,12 @@ function VisemeTimelineBar({
   loopState?: LoopState;
   onSetMarkerA?: (progress: number) => void;
   onSetMarkerB?: (progress: number) => void;
+  editorEnabled?: boolean;
+  visemeOverrides?: VisemeOverride[];
+  originalFrames?: Array<{ viseme: string; frameIndex: number; timeS: number }>;
+  onAssignViseme?: (startFrame: number, endFrame: number, viseme: string) => void;
+  onSplitSegment?: (startFrame: number, endFrame: number) => void;
+  onResetSegment?: (startFrame: number, endFrame: number) => void;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<false | "scrub" | "markerA" | "markerB">(false);
@@ -383,11 +493,10 @@ function VisemeTimelineBar({
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (!barRef.current) return;
+    if (!barRef.current || editorEnabled) return;
     const progress = getProgress(e);
     barRef.current.setPointerCapture(e.pointerId);
 
-    // Check if near a loop marker (within 2% tolerance)
     if (loopState?.enabled) {
       if (Math.abs(progress - loopState.markerA) < 0.02) {
         isDraggingRef.current = "markerA";
@@ -399,28 +508,45 @@ function VisemeTimelineBar({
       }
     }
 
-    // Normal scrub
     isDraggingRef.current = "scrub";
     replay?.seekToProgress(progress);
-  }, [replay, loopState, getProgress]);
+  }, [replay, loopState, getProgress, editorEnabled]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDraggingRef.current || !barRef.current) return;
     const progress = getProgress(e);
-
-    if (isDraggingRef.current === "markerA" && onSetMarkerA) {
-      onSetMarkerA(progress);
-    } else if (isDraggingRef.current === "markerB" && onSetMarkerB) {
-      onSetMarkerB(progress);
-    } else if (isDraggingRef.current === "scrub") {
-      replay?.seekToProgress(progress);
-    }
+    if (isDraggingRef.current === "markerA" && onSetMarkerA) onSetMarkerA(progress);
+    else if (isDraggingRef.current === "markerB" && onSetMarkerB) onSetMarkerB(progress);
+    else if (isDraggingRef.current === "scrub") replay?.seekToProgress(progress);
   }, [replay, onSetMarkerA, onSetMarkerB, getProgress]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     isDraggingRef.current = false;
     if (barRef.current) barRef.current.releasePointerCapture(e.pointerId);
   }, []);
+
+  // Count overrides per segment
+  const segmentOverrideCounts = useMemo(() => {
+    if (!visemeOverrides || !originalFrames) return new Map<number, number>();
+    const counts = new Map<number, number>();
+    segments.forEach((seg, i) => {
+      let count = 0;
+      for (let f = seg.startIdx; f <= seg.endIdx; f++) {
+        if (visemeOverrides.some(o => o.frameIndex === f)) count++;
+      }
+      counts.set(i, count);
+    });
+    return counts;
+  }, [segments, visemeOverrides, originalFrames]);
+
+  // Check if a segment differs from original
+  const segmentIsEdited = useCallback((seg: { startIdx: number; endIdx: number }) => {
+    if (!originalFrames || !visemeOverrides) return false;
+    for (let f = seg.startIdx; f <= seg.endIdx; f++) {
+      if (visemeOverrides.some(o => o.frameIndex === f)) return true;
+    }
+    return false;
+  }, [originalFrames, visemeOverrides]);
 
   const durationS = totalFrames > 0 ? frames[frames.length - 1]?.timeS ?? 0 : 0;
 
@@ -430,6 +556,12 @@ function VisemeTimelineBar({
         <span className="flex items-center gap-1.5">
           Viseme Timeline
           {waveform && <AudioLines className="h-3 w-3 text-purple-400" />}
+          {editorEnabled && (
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-pink-400 border-pink-500/20">
+              <Pencil className="h-2.5 w-2.5 mr-0.5" />
+              Editing
+            </Badge>
+          )}
           {loopState?.enabled && (
             <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-amber-400 border-amber-500/20">
               <Repeat className="h-2.5 w-2.5 mr-0.5" />
@@ -448,7 +580,7 @@ function VisemeTimelineBar({
         <div
           ref={barRef}
           className={`flex h-12 rounded-md overflow-hidden bg-muted/30 border border-border/50 relative ${
-            replay ? "cursor-pointer select-none" : ""
+            editorEnabled ? "cursor-crosshair" : replay ? "cursor-pointer select-none" : ""
           }`}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -458,20 +590,45 @@ function VisemeTimelineBar({
           {/* Viseme segments */}
           {segments.map((seg, i) => {
             const widthPct = ((seg.endIdx - seg.startIdx + 1) / totalFrames) * 100;
-            return (
+            const isEdited = segmentIsEdited(seg);
+
+            const segmentEl = (
               <div
                 key={i}
-                className={`${VISEME_COLORS[seg.viseme]} transition-all relative group`}
+                className={`${VISEME_COLORS[seg.viseme]} transition-all relative group ${
+                  editorEnabled ? "hover:brightness-125 cursor-pointer" : ""
+                } ${isEdited ? "ring-1 ring-pink-400/50 ring-inset" : ""}`}
                 style={{ width: `${Math.max(widthPct, 0.5)}%` }}
-                title={`${seg.viseme} (frames ${seg.startIdx}-${seg.endIdx}, ${seg.startTimeS.toFixed(2)}s)`}
+                title={`${seg.viseme} (frames ${seg.startIdx}-${seg.endIdx}, ${seg.startTimeS.toFixed(2)}s)${isEdited ? " [edited]" : ""}`}
               >
                 {widthPct > 4 && (
                   <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white/90 pointer-events-none">
                     {seg.viseme}
+                    {isEdited && <span className="ml-0.5 text-pink-200">*</span>}
                   </span>
                 )}
               </div>
             );
+
+            if (editorEnabled && onAssignViseme && onSplitSegment && onResetSegment) {
+              return (
+                <Popover key={i}>
+                  <PopoverTrigger asChild>{segmentEl}</PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" side="top" align="center">
+                    <PhonemeEditorPopover
+                      segment={seg}
+                      totalFrames={totalFrames}
+                      overrideCount={segmentOverrideCounts.get(i) || 0}
+                      onAssignViseme={onAssignViseme}
+                      onSplitSegment={onSplitSegment}
+                      onResetSegment={onResetSegment}
+                    />
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            return segmentEl;
           })}
 
           {/* Waveform overlay */}
@@ -504,9 +661,7 @@ function VisemeTimelineBar({
               style={{ left: `${loopState.markerA * 100}%` }}
               title={`A: ${(loopState.markerA * durationS).toFixed(2)}s`}
             >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-400 bg-background/80 px-1 rounded">
-                A
-              </div>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-400 bg-background/80 px-1 rounded">A</div>
             </div>
           )}
 
@@ -517,9 +672,7 @@ function VisemeTimelineBar({
               style={{ left: `${loopState.markerB * 100}%` }}
               title={`B: ${(loopState.markerB * durationS).toFixed(2)}s`}
             >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-400 bg-background/80 px-1 rounded">
-                B
-              </div>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-400 bg-background/80 px-1 rounded">B</div>
             </div>
           )}
 
@@ -597,12 +750,8 @@ function VisemeTimelineBar({
 // ─── Replay Controls ──────────────────────────────────────────────────
 
 function ReplayControls({
-  replay,
-  currentViseme,
-  isBlinking,
-  currentHeadMotion,
-  loopState,
-  onToggleLoop,
+  replay, currentViseme, isBlinking, currentHeadMotion, loopState, onToggleLoop,
+  editorEnabled, onToggleEditor, overrideCount, onResetAllOverrides,
 }: {
   replay: ReturnType<typeof useReplayController>;
   currentViseme: string;
@@ -610,6 +759,10 @@ function ReplayControls({
   currentHeadMotion: { rotationDeg: number; translationX: number; translationY: number } | null;
   loopState?: LoopState;
   onToggleLoop?: () => void;
+  editorEnabled?: boolean;
+  onToggleEditor?: () => void;
+  overrideCount?: number;
+  onResetAllOverrides?: () => void;
 }) {
   return (
     <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-3">
@@ -668,8 +821,35 @@ function ReplayControls({
               </Button>
             )}
 
+            {/* Editor toggle */}
+            {onToggleEditor && (
+              <Button
+                variant={editorEnabled ? "default" : "ghost"}
+                size="sm"
+                className={`h-8 w-8 p-0 ${editorEnabled ? "bg-pink-500/20 text-pink-400 hover:bg-pink-500/30" : ""}`}
+                onClick={onToggleEditor}
+                title="Toggle phoneme editor (E)"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+
+            {/* Reset overrides */}
+            {(overrideCount ?? 0) > 0 && onResetAllOverrides && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-[10px] text-amber-400 hover:text-amber-300 gap-1"
+                onClick={onResetAllOverrides}
+                title="Reset all viseme edits"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset ({overrideCount})
+              </Button>
+            )}
+
             {/* Speed selector */}
-            <div className="ml-2 flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1">
               <Gauge className="h-3 w-3 text-muted-foreground" />
               {SPEED_OPTIONS.map(s => (
                 <button
@@ -700,8 +880,9 @@ function ReplayControls({
           </div>
 
           <div className="text-[9px] text-muted-foreground/60">
-            Space: play/pause &middot; ← →: step frame &middot; L: toggle loop &middot; Click timeline to scrub
-            {loopState?.enabled && " · Drag A/B markers to adjust loop region"}
+            Space: play/pause &middot; ← →: step frame &middot; L: loop &middot; E: editor
+            {loopState?.enabled && " · Drag A/B markers"}
+            {editorEnabled && " · Click segments to edit visemes"}
           </div>
         </div>
       </div>
@@ -737,8 +918,7 @@ function VisemeDistribution({ distribution }: { distribution: Record<string, num
 // ─── Head Motion Chart ─────────────────────────────────────────────────
 
 function HeadMotionPreview({
-  motion,
-  currentFrame,
+  motion, currentFrame,
 }: {
   motion: Array<{ frameIndex: number; rotationDeg: number; translationX: number; translationY: number }>;
   currentFrame?: number;
@@ -966,14 +1146,12 @@ function ComparePanel({ durationS, cameraAngleCount }: { durationS: number; came
             <div className="h-2 w-2 rounded-full bg-emerald-400" />
             <span className="text-xs font-bold text-emerald-400">Dialogue Inpainting</span>
           </div>
-
           <div className="space-y-2">
             <MetricRow label="Credits" value={data.dialogueInpainting.totalCredits.toFixed(4)} accent="emerald" />
             <MetricRow label="Gen Time" value={`${data.dialogueInpainting.generationTimeS}s`} accent="emerald" />
             <MetricRow label="Output FPS" value={data.dialogueInpainting.outputFps.toString()} />
             <MetricRow label="Resolution" value={data.dialogueInpainting.resolution} />
           </div>
-
           <div className="space-y-1.5 pt-2 border-t border-border/30">
             <div className="text-[10px] text-muted-foreground font-medium">Quality Scores</div>
             <QualityBar label="Overall" value={data.dialogueInpainting.qualityScore} />
@@ -981,7 +1159,6 @@ function ComparePanel({ durationS, cameraAngleCount }: { durationS: number; came
             <QualityBar label="Consistency" value={data.dialogueInpainting.consistency} color="emerald" />
             <QualityBar label="Motion" value={data.dialogueInpainting.motionNaturalness} />
           </div>
-
           <div className="space-y-1 pt-2 border-t border-border/30">
             {data.dialogueInpainting.strengths.map((s, i) => (
               <div key={i} className="flex items-center gap-1 text-[10px]">
@@ -1004,14 +1181,12 @@ function ComparePanel({ durationS, cameraAngleCount }: { durationS: number; came
             <div className="h-2 w-2 rounded-full bg-blue-400" />
             <span className="text-xs font-bold text-blue-400">Kling 2.6 Full Video</span>
           </div>
-
           <div className="space-y-2">
             <MetricRow label="Credits" value={data.kling.totalCredits.toFixed(4)} accent="red" />
             <MetricRow label="Gen Time" value={`${data.kling.generationTimeS}s`} accent="red" />
             <MetricRow label="Output FPS" value={data.kling.outputFps.toString()} />
             <MetricRow label="Resolution" value={data.kling.resolution} />
           </div>
-
           <div className="space-y-1.5 pt-2 border-t border-border/30">
             <div className="text-[10px] text-muted-foreground font-medium">Quality Scores</div>
             <QualityBar label="Overall" value={data.kling.qualityScore} color="blue" />
@@ -1019,7 +1194,6 @@ function ComparePanel({ durationS, cameraAngleCount }: { durationS: number; came
             <QualityBar label="Consistency" value={data.kling.consistency} />
             <QualityBar label="Motion" value={data.kling.motionNaturalness} color="blue" />
           </div>
-
           <div className="space-y-1 pt-2 border-t border-border/30">
             {data.kling.strengths.map((s, i) => (
               <div key={i} className="flex items-center gap-1 text-[10px]">
@@ -1081,6 +1255,338 @@ function QualityBar({ label, value, color }: { label: string; value: number; col
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${value}%` }} />
       </div>
       <span className="text-[10px] font-mono w-8 text-right">{value}</span>
+    </div>
+  );
+}
+
+// ─── Batch Preview Panel ──────────────────────────────────────────────
+
+function BatchPreviewPanel() {
+  const [expandedScene, setExpandedScene] = useState<number | null>(null);
+
+  const batchMutation = trpc.sceneType.batchPreviewDialogue.useMutation({
+    onError: (err) => toast.error(`Batch preview failed: ${err.message}`),
+  });
+
+  // Demo scenes for batch preview
+  const [demoScenes] = useState(() => [
+    {
+      sceneId: 1, sceneNumber: 1, durationS: 8,
+      dialogueLines: [
+        { character: "Sakura", text: "I never thought it would end like this.", emotion: "sad", startTimeS: 0.5, endTimeS: 3.5 },
+        { character: "Hiro", text: "It doesn't have to.", emotion: "determined", startTimeS: 4.0, endTimeS: 6.5 },
+      ],
+    },
+    {
+      sceneId: 2, sceneNumber: 3, durationS: 12,
+      dialogueLines: [
+        { character: "Sakura", text: "What do you mean?", emotion: "confused", startTimeS: 0.5, endTimeS: 2.5 },
+        { character: "Hiro", text: "We can change our fate. Together.", emotion: "hopeful", startTimeS: 3.0, endTimeS: 6.0 },
+        { character: "Sakura", text: "Together...", emotion: "hopeful", startTimeS: 7.0, endTimeS: 9.0 },
+      ],
+    },
+    {
+      sceneId: 3, sceneNumber: 5, durationS: 6,
+      dialogueLines: [
+        { character: "Villain", text: "You fools! You cannot escape destiny!", emotion: "angry", startTimeS: 0.5, endTimeS: 4.5 },
+      ],
+    },
+    {
+      sceneId: 4, sceneNumber: 7, durationS: 10,
+      dialogueLines: [
+        { character: "Hiro", text: "Stay behind me, Sakura.", emotion: "protective", startTimeS: 0.5, endTimeS: 3.0 },
+        { character: "Sakura", text: "No. We fight side by side.", emotion: "brave", startTimeS: 3.5, endTimeS: 6.5 },
+        { character: "Hiro", text: "Always.", emotion: "warm", startTimeS: 7.0, endTimeS: 8.5 },
+      ],
+    },
+  ]);
+
+  const handleBatchPreview = () => {
+    batchMutation.mutate({ scenes: demoScenes, inpaintFps: 8, outputFps: 24 });
+  };
+
+  const data = batchMutation.data;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground">
+          Preview all dialogue scenes in the episode at once.
+        </div>
+        <Button onClick={handleBatchPreview} disabled={batchMutation.isPending} size="sm" className="gap-1.5">
+          {batchMutation.isPending ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" />Processing...</>
+          ) : (
+            <><ListChecks className="h-3.5 w-3.5" />Batch Preview ({demoScenes.length} scenes)</>
+          )}
+        </Button>
+      </div>
+
+      {data && (
+        <>
+          {/* Totals summary */}
+          <div className="grid grid-cols-5 gap-2">
+            <div className="rounded-md bg-muted/30 p-2 text-center border border-border/50">
+              <div className="text-sm font-bold">{data.sceneCount}</div>
+              <div className="text-[10px] text-muted-foreground">Scenes</div>
+            </div>
+            <div className="rounded-md bg-muted/30 p-2 text-center border border-border/50">
+              <div className="text-sm font-bold">{data.totals.durationS}s</div>
+              <div className="text-[10px] text-muted-foreground">Total Duration</div>
+            </div>
+            <div className="rounded-md bg-muted/30 p-2 text-center border border-border/50">
+              <div className="text-sm font-bold">{data.totals.totalFrames}</div>
+              <div className="text-[10px] text-muted-foreground">Total Frames</div>
+            </div>
+            <div className="rounded-md bg-emerald-500/10 p-2 text-center border border-emerald-500/20">
+              <div className="text-sm font-bold text-emerald-400">{data.totals.totalCredits.toFixed(4)}</div>
+              <div className="text-[10px] text-muted-foreground">Total Credits</div>
+            </div>
+            <div className="rounded-md bg-emerald-500/10 p-2 text-center border border-emerald-500/20">
+              <div className="text-sm font-bold text-emerald-400">{data.totals.savingsPercent}%</div>
+              <div className="text-[10px] text-muted-foreground">vs Kling</div>
+            </div>
+          </div>
+
+          {/* Characters & dialogue stats */}
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {data.totals.characters.length} characters: {data.totals.characters.join(", ")}
+            </span>
+            <span className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              {data.totals.totalDialogueS}s dialogue / {data.totals.totalSilenceS}s silence
+            </span>
+          </div>
+
+          {/* Per-scene table */}
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/30 border-b border-border/50">
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Scene</th>
+                  <th className="text-center px-2 py-2 font-medium text-muted-foreground">Duration</th>
+                  <th className="text-center px-2 py-2 font-medium text-muted-foreground">Lines</th>
+                  <th className="text-center px-2 py-2 font-medium text-muted-foreground">Frames</th>
+                  <th className="text-center px-2 py-2 font-medium text-muted-foreground">Credits</th>
+                  <th className="text-center px-2 py-2 font-medium text-muted-foreground">Visemes</th>
+                  <th className="w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.perScene.map(scene => (
+                  <>
+                    <tr
+                      key={scene.sceneId}
+                      className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors"
+                      onClick={() => setExpandedScene(expandedScene === scene.sceneId ? null : scene.sceneId)}
+                    >
+                      <td className="px-3 py-2 font-medium">Scene {scene.sceneNumber}</td>
+                      <td className="text-center px-2 py-2 font-mono">{scene.durationS}s</td>
+                      <td className="text-center px-2 py-2">{scene.lineCount}</td>
+                      <td className="text-center px-2 py-2 font-mono">{scene.totalFrames}</td>
+                      <td className="text-center px-2 py-2 font-mono text-emerald-400">{scene.costEstimate.totalCredits.toFixed(4)}</td>
+                      <td className="px-2 py-2">
+                        <VisemeMiniBar distribution={scene.visemeDistribution} />
+                      </td>
+                      <td className="px-2 py-2">
+                        {expandedScene === scene.sceneId ? (
+                          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </td>
+                    </tr>
+                    {expandedScene === scene.sceneId && (
+                      <tr key={`${scene.sceneId}-detail`}>
+                        <td colSpan={7} className="px-3 py-3 bg-muted/10">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2 text-[10px]">
+                              <div>
+                                <span className="text-muted-foreground">Characters: </span>
+                                <span className="font-medium">{scene.characters.join(", ")}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Dialogue: </span>
+                                <span className="font-medium">{scene.totalDialogueS}s</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Silence: </span>
+                                <span className="font-medium">{scene.silenceS}s</span>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1">
+                              {Object.entries(scene.visemeDistribution)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([viseme, count]) => (
+                                  <div key={viseme} className="flex items-center gap-1 text-[10px]">
+                                    <div className={`h-2 w-2 rounded-sm ${VISEME_COLORS[viseme] || "bg-zinc-600"}`} />
+                                    <span className="text-muted-foreground">{viseme}: {count}</span>
+                                  </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-emerald-400 border-emerald-500/20">
+                                {scene.costEstimate.savingsPercent}% savings vs Kling
+                              </Badge>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-muted/30 font-medium">
+                  <td className="px-3 py-2">Total ({data.sceneCount} scenes)</td>
+                  <td className="text-center px-2 py-2 font-mono">{data.totals.durationS}s</td>
+                  <td className="text-center px-2 py-2">—</td>
+                  <td className="text-center px-2 py-2 font-mono">{data.totals.totalFrames}</td>
+                  <td className="text-center px-2 py-2 font-mono text-emerald-400">{data.totals.totalCredits.toFixed(4)}</td>
+                  <td className="px-2 py-2">
+                    <VisemeMiniBar distribution={data.totals.visemeDistribution} />
+                  </td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Kling comparison bar */}
+          <div className="rounded-md bg-muted/30 p-2 border border-border/50 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              Full Kling equivalent: <span className="font-mono line-through">{data.totals.klingEquivalentCredits.toFixed(4)}</span> credits
+            </span>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
+              <TrendingDown className="h-3 w-3 mr-1" />
+              {data.totals.savingsPercent}% episode savings
+            </Badge>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function VisemeMiniBar({ distribution }: { distribution: Record<string, number> }) {
+  const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+  if (total === 0) return <div className="h-3 w-full rounded-sm bg-muted/30" />;
+
+  const sorted = Object.entries(distribution).sort((a, b) => b[1] - a[1]);
+
+  return (
+    <div className="flex h-3 rounded-sm overflow-hidden">
+      {sorted.map(([viseme, count]) => (
+        <div
+          key={viseme}
+          className={`${VISEME_COLORS[viseme] || "bg-zinc-600"}`}
+          style={{ width: `${(count / total) * 100}%` }}
+          title={`${viseme}: ${count} (${Math.round((count / total) * 100)}%)`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Export/Import Preset ─────────────────────────────────────────────
+
+interface DialoguePreset {
+  version: 1;
+  name: string;
+  createdAt: string;
+  durationS: number;
+  dialogueLines: DialogueLineInput[];
+  visemeOverrides: VisemeOverride[];
+  loopState: LoopState;
+  speed: number;
+}
+
+function ExportImportControls({
+  durationS,
+  dialogueLines,
+  visemeOverrides,
+  loopState,
+  speed,
+  onImport,
+}: {
+  durationS: number;
+  dialogueLines: DialogueLineInput[];
+  visemeOverrides: VisemeOverride[];
+  loopState: LoopState;
+  speed: number;
+  onImport: (preset: DialoguePreset) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const preset: DialoguePreset = {
+      version: 1,
+      name: `Dialogue Preset ${new Date().toISOString().slice(0, 10)}`,
+      createdAt: new Date().toISOString(),
+      durationS,
+      dialogueLines,
+      visemeOverrides,
+      loopState,
+      speed,
+    };
+
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dialogue-preset-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Preset exported successfully");
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const raw = JSON.parse(ev.target?.result as string);
+
+        // Validate
+        if (!raw.version || raw.version !== 1) {
+          toast.error("Invalid preset: unsupported version");
+          return;
+        }
+        if (!raw.durationS || !Array.isArray(raw.dialogueLines)) {
+          toast.error("Invalid preset: missing required fields");
+          return;
+        }
+        if (raw.dialogueLines.some((l: any) => !l.character || !l.text || l.startTimeS === undefined || l.endTimeS === undefined)) {
+          toast.error("Invalid preset: malformed dialogue lines");
+          return;
+        }
+
+        onImport(raw as DialoguePreset);
+        toast.success(`Preset "${raw.name}" imported successfully`);
+      } catch {
+        toast.error("Failed to parse preset file");
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset input so same file can be re-imported
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 gap-1" onClick={handleExport}>
+        <Download className="h-3 w-3" />
+        Export
+      </Button>
+      <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 gap-1" onClick={() => fileInputRef.current?.click()}>
+        <Upload className="h-3 w-3" />
+        Import
+      </Button>
+      <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
     </div>
   );
 }
@@ -1158,11 +1664,20 @@ export function DialoguePreviewModal({
   );
   const [showConfig, setShowConfig] = useState(false);
   const [activeTab, setActiveTab] = useState("preview");
+  const [editorEnabled, setEditorEnabled] = useState(false);
 
-  const { loop, toggleLoop, setMarkerA, setMarkerB } = useLoopState();
+  const { loop, toggleLoop, setMarkerA, setMarkerB, setLoop } = useLoopState();
+  const visemeEditor = useVisemeOverrides();
+
+  // Store original frames for diff highlighting
+  const [originalFrames, setOriginalFrames] = useState<Array<{ viseme: string; frameIndex: number; timeS: number }>>([]);
 
   const previewMutation = trpc.sceneType.previewDialogue.useMutation({
     onError: (err) => toast.error(`Preview failed: ${err.message}`),
+    onSuccess: (data) => {
+      // Store original frames for diff
+      setOriginalFrames(data.visemeTimeline.map(f => ({ ...f })));
+    },
   });
 
   const handlePreview = () => {
@@ -1173,10 +1688,30 @@ export function DialoguePreviewModal({
         character: l.character, text: l.text, emotion: l.emotion || undefined,
         startTimeS: l.startTimeS, endTimeS: l.endTimeS,
       })),
+      visemeOverrides: visemeEditor.overrides.length > 0 ? visemeEditor.overrides : undefined,
     });
   };
 
   const data = previewMutation.data;
+
+  // Apply overrides to displayed frames
+  const displayFrames = useMemo(() => {
+    if (!data) return [];
+    if (visemeEditor.overrides.length === 0) return data.visemeTimeline;
+    return data.visemeTimeline.map(f => {
+      const override = visemeEditor.overrides.find(o => o.frameIndex === f.frameIndex);
+      return override ? { ...f, viseme: override.viseme } : f;
+    });
+  }, [data, visemeEditor.overrides]);
+
+  // Recompute distribution from display frames
+  const displayDistribution = useMemo(() => {
+    const dist: Record<string, number> = {};
+    for (const f of displayFrames) {
+      dist[f.viseme] = (dist[f.viseme] || 0) + 1;
+    }
+    return dist;
+  }, [displayFrames]);
 
   const replay = useReplayController(
     data?.totalFrames ?? 0,
@@ -1186,10 +1721,10 @@ export function DialoguePreviewModal({
   );
 
   const currentViseme = useMemo(() => {
-    if (!data || !data.visemeTimeline.length) return "Rest";
-    const frame = data.visemeTimeline.find(f => f.frameIndex === replay.currentFrame);
+    if (!displayFrames.length) return "Rest";
+    const frame = displayFrames.find(f => f.frameIndex === replay.currentFrame);
     return frame?.viseme ?? "Rest";
-  }, [data, replay.currentFrame]);
+  }, [displayFrames, replay.currentFrame]);
 
   const isBlinking = useMemo(() => {
     if (!data) return false;
@@ -1200,6 +1735,33 @@ export function DialoguePreviewModal({
     if (!data || !data.headMotion.length) return null;
     return data.headMotion.find(h => h.frameIndex === replay.currentFrame) ?? null;
   }, [data, replay.currentFrame]);
+
+  // Phoneme editor handlers
+  const handleAssignViseme = useCallback((startFrame: number, endFrame: number, viseme: string) => {
+    visemeEditor.setRangeOverride(startFrame, endFrame, viseme);
+  }, [visemeEditor.setRangeOverride]);
+
+  const handleSplitSegment = useCallback((startFrame: number, endFrame: number) => {
+    const mid = Math.floor((startFrame + endFrame) / 2);
+    // First half keeps current viseme, second half gets "Rest"
+    const currentViseme = displayFrames.find(f => f.frameIndex === startFrame)?.viseme || "Rest";
+    visemeEditor.setRangeOverride(startFrame, mid, currentViseme);
+    visemeEditor.setRangeOverride(mid + 1, endFrame, "Rest");
+    toast.success(`Split segment at frame ${mid}`);
+  }, [visemeEditor.setRangeOverride, displayFrames]);
+
+  const handleResetSegment = useCallback((startFrame: number, endFrame: number) => {
+    visemeEditor.removeRangeOverrides(startFrame, endFrame);
+    toast.success("Segment reset to auto-generated visemes");
+  }, [visemeEditor.removeRangeOverrides]);
+
+  // Import preset handler
+  const handleImportPreset = useCallback((preset: DialoguePreset) => {
+    setDurationS(preset.durationS);
+    setDialogueLines(preset.dialogueLines);
+    if (preset.visemeOverrides) visemeEditor.setOverrides(preset.visemeOverrides);
+    if (preset.loopState) setLoop(preset.loopState);
+  }, [visemeEditor.setOverrides, setLoop]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1233,6 +1795,10 @@ export function DialoguePreviewModal({
           e.preventDefault();
           toggleLoop();
           break;
+        case "KeyE":
+          e.preventDefault();
+          setEditorEnabled(prev => !prev);
+          break;
       }
     };
 
@@ -1248,13 +1814,25 @@ export function DialoguePreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-400" />
-            Dialogue Pipeline Preview
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-blue-400" />
+              Dialogue Pipeline Preview
+            </DialogTitle>
+            {data && (
+              <ExportImportControls
+                durationS={durationS}
+                dialogueLines={dialogueLines}
+                visemeOverrides={visemeEditor.overrides}
+                loopState={loop}
+                speed={replay.speed}
+                onImport={handleImportPreset}
+              />
+            )}
+          </div>
           <DialogDescription>
             Preview viseme timeline, waveform, blink schedule, and cost estimate.
-            Compare with full Kling video or fine-tune timing with A/B looping.
+            Compare with full Kling video, batch preview scenes, or fine-tune with the phoneme editor.
           </DialogDescription>
         </DialogHeader>
 
@@ -1285,7 +1863,7 @@ export function DialoguePreviewModal({
               {previewMutation.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating Preview...</>
               ) : (
-                <><Play className="h-4 w-4 mr-2" />Generate Preview</>
+                <><Play className="h-4 w-4 mr-2" />{visemeEditor.overrides.length > 0 ? "Regenerate with Edits" : "Generate Preview"}</>
               )}
             </Button>
           </div>
@@ -1297,14 +1875,23 @@ export function DialoguePreviewModal({
                 <TabsTrigger value="preview" className="flex-1 gap-1.5">
                   <Eye className="h-3.5 w-3.5" />
                   Preview
+                  {visemeEditor.overrides.length > 0 && (
+                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 text-pink-400 border-pink-500/20 ml-1">
+                      {visemeEditor.overrides.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="compare" className="flex-1 gap-1.5">
                   <Columns2 className="h-3.5 w-3.5" />
                   Compare
                 </TabsTrigger>
+                <TabsTrigger value="batch" className="flex-1 gap-1.5">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Batch
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="preview" className="space-y-5 pt-3">
+              <TabsContent value="preview" className="space-y-4 pt-3">
                 {/* Stats bar */}
                 <div className="grid grid-cols-4 gap-2">
                   <StatCard label="Duration" value={`${data.durationS}s`} />
@@ -1313,7 +1900,7 @@ export function DialoguePreviewModal({
                   <StatCard label="Output FPS" value={data.outputFps.toString()} />
                 </div>
 
-                {/* Replay Controls */}
+                {/* Replay Controls with editor toggle */}
                 <ReplayControls
                   replay={replay}
                   currentViseme={currentViseme}
@@ -1321,11 +1908,18 @@ export function DialoguePreviewModal({
                   currentHeadMotion={currentHeadMotion}
                   loopState={loop}
                   onToggleLoop={toggleLoop}
+                  editorEnabled={editorEnabled}
+                  onToggleEditor={() => setEditorEnabled(!editorEnabled)}
+                  overrideCount={visemeEditor.overrides.length}
+                  onResetAllOverrides={() => {
+                    visemeEditor.resetAll();
+                    toast.success("All viseme edits reset");
+                  }}
                 />
 
-                {/* Viseme Timeline with Waveform + A/B Loop */}
+                {/* Viseme Timeline with Waveform + A/B Loop + Editor */}
                 <VisemeTimelineBar
-                  frames={data.visemeTimeline}
+                  frames={displayFrames}
                   totalFrames={data.totalFrames}
                   blinkEvents={data.blinkSchedule}
                   replay={replay}
@@ -1333,10 +1927,31 @@ export function DialoguePreviewModal({
                   loopState={loop}
                   onSetMarkerA={setMarkerA}
                   onSetMarkerB={setMarkerB}
+                  editorEnabled={editorEnabled}
+                  visemeOverrides={visemeEditor.overrides}
+                  originalFrames={originalFrames}
+                  onAssignViseme={handleAssignViseme}
+                  onSplitSegment={handleSplitSegment}
+                  onResetSegment={handleResetSegment}
                 />
 
+                {/* Editor info banner */}
+                {editorEnabled && (
+                  <div className="rounded-md bg-pink-500/10 border border-pink-500/20 p-2 flex items-center gap-2">
+                    <Pencil className="h-3.5 w-3.5 text-pink-400 shrink-0" />
+                    <div className="text-[11px] text-pink-300">
+                      <span className="font-medium">Phoneme Editor active.</span> Click any segment on the timeline to reassign its viseme, split it, or reset to auto.
+                      {visemeEditor.overrides.length > 0 && (
+                        <span className="ml-1 text-pink-400 font-medium">
+                          {visemeEditor.overrides.length} frame{visemeEditor.overrides.length !== 1 ? "s" : ""} edited.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Viseme Distribution */}
-                <VisemeDistribution distribution={data.visemeDistribution} />
+                <VisemeDistribution distribution={displayDistribution} />
 
                 {/* Head Motion */}
                 <HeadMotionPreview motion={data.headMotion} currentFrame={replay.currentFrame} />
@@ -1350,6 +1965,10 @@ export function DialoguePreviewModal({
 
               <TabsContent value="compare" className="pt-3">
                 <ComparePanel durationS={data.durationS} cameraAngleCount={1} />
+              </TabsContent>
+
+              <TabsContent value="batch" className="pt-3">
+                <BatchPreviewPanel />
               </TabsContent>
             </Tabs>
           )}

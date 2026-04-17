@@ -482,9 +482,13 @@ export const sceneTypeRouter = router({
       })).default([]),
       inpaintFps: z.number().min(4).max(24).default(8),
       outputFps: z.number().min(12).max(60).default(24),
+      visemeOverrides: z.array(z.object({
+        frameIndex: z.number().min(0),
+        viseme: z.string(),
+      })).optional(),
     }))
     .mutation(async ({ input }) => {
-      const { durationS, cameraAngles, dialogueLines, inpaintFps, outputFps } = input;
+      const { durationS, cameraAngles, dialogueLines, inpaintFps, outputFps, visemeOverrides } = input;
 
       // Build synthetic phoneme timestamps from dialogue lines
       // In production, these come from TTS alignment; here we simulate
@@ -507,6 +511,16 @@ export const sceneTypeRouter = router({
 
       // Generate viseme timeline
       const visemeTimeline = generateVisemeTimeline(phonemes, durationS, inpaintFps);
+
+      // Apply viseme overrides if provided
+      if (visemeOverrides && visemeOverrides.length > 0) {
+        for (const override of visemeOverrides) {
+          const frame = visemeTimeline.find(f => f.frameIndex === override.frameIndex);
+          if (frame) {
+            (frame as any).viseme = override.viseme;
+          }
+        }
+      }
 
       // Generate blink schedule (default eye region for preview)
       const defaultEyeRegion: BoundingBox = { x: 80, y: 60, width: 40, height: 20 };
@@ -675,6 +689,116 @@ export const sceneTypeRouter = router({
         saved,
         total: classifications.length,
         classificationIds: savedIds,
+      };
+    }),
+
+  /**
+   * Batch preview all dialogue scenes in an episode.
+   * Returns per-scene summaries with cost, duration, viseme distribution.
+   */
+  batchPreviewDialogue: protectedProcedure
+    .input(z.object({
+      scenes: z.array(z.object({
+        sceneId: z.number(),
+        sceneNumber: z.number(),
+        durationS: z.number().min(1).max(120).default(10),
+        dialogueLines: z.array(z.object({
+          character: z.string(),
+          text: z.string(),
+          emotion: z.string().optional(),
+          startTimeS: z.number().min(0),
+          endTimeS: z.number().min(0),
+        })),
+      })),
+      inpaintFps: z.number().min(4).max(24).default(8),
+      outputFps: z.number().min(12).max(60).default(24),
+    }))
+    .mutation(async ({ input }) => {
+      const { scenes, inpaintFps, outputFps } = input;
+
+      const perScene = scenes.map(scene => {
+        // Build phonemes
+        const phonemes: PhonemeTimestamp[] = [];
+        for (const line of scene.dialogueLines) {
+          const chars = line.text.replace(/[^a-zA-Z]/g, "").split("");
+          if (chars.length === 0) continue;
+          const charDuration = (line.endTimeS - line.startTimeS) / chars.length;
+          for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i].toLowerCase();
+            const phoneme = "aeiou".includes(ch) ? ch : "sil";
+            phonemes.push({
+              phoneme,
+              startTimeS: line.startTimeS + i * charDuration,
+              endTimeS: line.startTimeS + (i + 1) * charDuration,
+            });
+          }
+        }
+
+        const visemeTimeline = generateVisemeTimeline(phonemes, scene.durationS, inpaintFps);
+        const costEstimate = estimateDialogueCost(scene.durationS, 1, inpaintFps);
+        const totalFrames = visemeTimeline.length;
+
+        // Viseme distribution
+        const visemeDistribution: Record<string, number> = {};
+        for (const frame of visemeTimeline) {
+          visemeDistribution[frame.viseme] = (visemeDistribution[frame.viseme] || 0) + 1;
+        }
+
+        // Character count
+        const characters = Array.from(new Set(scene.dialogueLines.map(l => l.character)));
+        const totalDialogueS = scene.dialogueLines.reduce((sum, l) => sum + (l.endTimeS - l.startTimeS), 0);
+
+        return {
+          sceneId: scene.sceneId,
+          sceneNumber: scene.sceneNumber,
+          durationS: scene.durationS,
+          totalFrames,
+          lineCount: scene.dialogueLines.length,
+          characters,
+          totalDialogueS: Math.round(totalDialogueS * 100) / 100,
+          silenceS: Math.round((scene.durationS - totalDialogueS) * 100) / 100,
+          visemeDistribution,
+          costEstimate: {
+            totalCredits: costEstimate.totalCredits,
+            savingsPercent: costEstimate.savingsPercent,
+          },
+        };
+      });
+
+      // Aggregate totals
+      const totalDurationS = perScene.reduce((sum, s) => sum + s.durationS, 0);
+      const totalFrames = perScene.reduce((sum, s) => sum + s.totalFrames, 0);
+      const totalCredits = perScene.reduce((sum, s) => sum + s.costEstimate.totalCredits, 0);
+      const totalDialogueS = perScene.reduce((sum, s) => sum + s.totalDialogueS, 0);
+      const allCharacters = Array.from(new Set(perScene.flatMap(s => s.characters)));
+
+      // Aggregate viseme distribution
+      const aggregateVisemeDistribution: Record<string, number> = {};
+      for (const s of perScene) {
+        for (const [v, count] of Object.entries(s.visemeDistribution)) {
+          aggregateVisemeDistribution[v] = (aggregateVisemeDistribution[v] || 0) + count;
+        }
+      }
+
+      // Full Kling comparison for the whole batch
+      const klingCreditsPerSecond = 0.26;
+      const klingTotalCredits = totalDurationS * klingCreditsPerSecond;
+      const batchSavingsPercent = Math.round((1 - totalCredits / Math.max(klingTotalCredits, 0.001)) * 100);
+
+      return {
+        sceneCount: perScene.length,
+        perScene,
+        totals: {
+          durationS: Math.round(totalDurationS * 100) / 100,
+          totalFrames,
+          totalCredits: Math.round(totalCredits * 10000) / 10000,
+          totalDialogueS: Math.round(totalDialogueS * 100) / 100,
+          totalSilenceS: Math.round((totalDurationS - totalDialogueS) * 100) / 100,
+          characters: allCharacters,
+          klingEquivalentCredits: Math.round(klingTotalCredits * 10000) / 10000,
+          savingsPercent: batchSavingsPercent,
+          visemeDistribution: aggregateVisemeDistribution,
+        },
       };
     }),
 
