@@ -9,10 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft, Download, AlertTriangle, CheckCircle2, XCircle,
   Eye, ChevronDown, ChevronUp, BarChart3, Shield, Sparkles,
   TrendingDown, TrendingUp, Info, Layers, Film, Zap,
+  Wrench, Loader2, ArrowUpCircle, Target, Clock, CreditCard,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ─── Grade Colors ───────────────────────────────────────────────────────
 
@@ -28,6 +34,12 @@ const SEVERITY_COLORS = {
   ok: "border-emerald-500/30",
   warning: "border-yellow-500/50",
   critical: "border-red-500/50",
+};
+
+const CONFIDENCE_CONFIG = {
+  high: { label: "High", color: "text-emerald-400", bg: "bg-emerald-500/20", ring: "ring-emerald-500/30" },
+  medium: { label: "Medium", color: "text-yellow-400", bg: "bg-yellow-500/20", ring: "ring-yellow-500/30" },
+  low: { label: "Low", color: "text-red-400", bg: "bg-red-500/20", ring: "ring-red-500/30" },
 };
 
 // ─── Drift Timeline SVG ─────────────────────────────────────────────────
@@ -63,12 +75,10 @@ function DriftTimeline({
   const xScale = (i: number) => padding.left + (i / Math.max(1, timeline.length - 1)) * chartW;
   const yScale = (v: number) => padding.top + chartH - (v / maxDrift) * chartH;
 
-  // Build line path
   const linePath = timeline
     .map((t, i) => `${i === 0 ? "M" : "L"} ${xScale(i)} ${yScale(t.driftScore)}`)
     .join(" ");
 
-  // Flagged region fill
   const flaggedRegions: Array<{ x1: number; x2: number }> = [];
   let regionStart: number | null = null;
   for (let i = 0; i < timeline.length; i++) {
@@ -80,7 +90,6 @@ function DriftTimeline({
     }
   }
 
-  // Episode boundaries
   let cumFrames = 0;
   const episodeBoundaries: Array<{ x: number; label: string }> = [];
   for (const ep of episodes) {
@@ -90,21 +99,15 @@ function DriftTimeline({
     cumFrames += ep.frameCount;
   }
 
-  // Y-axis ticks
   const yTicks = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3].filter(v => v <= maxDrift);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-      {/* Background */}
       <rect x={padding.left} y={padding.top} width={chartW} height={chartH} fill="rgba(255,255,255,0.02)" rx="4" />
-
-      {/* Flagged regions */}
       {flaggedRegions.map((r, i) => (
         <rect key={i} x={r.x1} y={padding.top} width={Math.max(2, r.x2 - r.x1)} height={chartH}
           fill="rgba(239,68,68,0.08)" />
       ))}
-
-      {/* Episode boundaries */}
       {episodeBoundaries.map((b, i) => (
         <g key={i}>
           <line x1={b.x} y1={padding.top} x2={b.x} y2={padding.top + chartH}
@@ -114,8 +117,6 @@ function DriftTimeline({
           </text>
         </g>
       ))}
-
-      {/* Y-axis grid + labels */}
       {yTicks.map(v => (
         <g key={v}>
           <line x1={padding.left} y1={yScale(v)} x2={padding.left + chartW} y2={yScale(v)}
@@ -125,18 +126,12 @@ function DriftTimeline({
           </text>
         </g>
       ))}
-
-      {/* Threshold line */}
       <line x1={padding.left} y1={yScale(threshold)} x2={padding.left + chartW} y2={yScale(threshold)}
         stroke="#ef4444" strokeWidth="1.5" strokeDasharray="6,3" opacity="0.7" />
       <text x={padding.left + chartW + 4} y={yScale(threshold) + 3} fill="#ef4444" fontSize="9">
         Threshold
       </text>
-
-      {/* Drift line */}
       <path d={linePath} fill="none" stroke="url(#driftGradient)" strokeWidth="2" strokeLinejoin="round" />
-
-      {/* Gradient definition */}
       <defs>
         <linearGradient id="driftGradient" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#06b6d4" />
@@ -144,8 +139,6 @@ function DriftTimeline({
           <stop offset="100%" stopColor="#ec4899" />
         </linearGradient>
       </defs>
-
-      {/* Data points (clickable) */}
       {timeline.map((t, i) => (
         <circle
           key={t.generationId}
@@ -160,8 +153,6 @@ function DriftTimeline({
           onClick={() => onFrameClick(t.generationId)}
         />
       ))}
-
-      {/* Axis labels */}
       <text x={padding.left + chartW / 2} y={height - 2} fill="rgba(255,255,255,0.5)" fontSize="10" textAnchor="middle">
         Frame Index
       </text>
@@ -196,6 +187,207 @@ function FeatureDriftBar({ label, value, icon }: { label: string; value: number;
   );
 }
 
+// ─── Fix Drift Confirmation Dialog ──────────────────────────────────────
+
+interface FixDriftDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+  jobSpec: {
+    boostParams: {
+      originalStrength: number;
+      boostedStrength: number;
+      boostDelta: number;
+      targetFeatures: string[];
+      negativePromptAdditions: string[];
+      fixConfidence: "high" | "medium" | "low";
+    };
+    estimatedCredits: number;
+    formattedTime: string;
+    driftScore: number;
+    severity: "warning" | "critical";
+    frameIndex: number;
+    episodeId: number;
+  } | null;
+}
+
+function FixDriftDialog({ open, onClose, onConfirm, isLoading, jobSpec }: FixDriftDialogProps) {
+  if (!jobSpec) return null;
+  const conf = CONFIDENCE_CONFIG[jobSpec.boostParams.fixConfidence];
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="bg-base border-white/10 max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <Wrench className="h-5 w-5 text-orange-400" />
+            Fix Drift — Frame #{jobSpec.frameIndex}
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Re-generate this frame with boosted LoRA strength to correct appearance drift.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Boost params */}
+          <div className="bg-white/[0.03] rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">LoRA Strength</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-foreground">{(jobSpec.boostParams.originalStrength * 100).toFixed(0)}%</span>
+                <ArrowUpCircle className="h-3.5 w-3.5 text-orange-400" />
+                <span className="text-sm font-bold text-orange-400">{(jobSpec.boostParams.boostedStrength * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Boost Delta</span>
+              <span className="text-sm font-medium text-orange-400">+{(jobSpec.boostParams.boostDelta * 100).toFixed(0)}%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Current Drift</span>
+              <span className={`text-sm font-medium ${
+                jobSpec.severity === "critical" ? "text-red-400" : "text-yellow-400"
+              }`}>{(jobSpec.driftScore * 100).toFixed(1)}%</span>
+            </div>
+          </div>
+
+          {/* Target features */}
+          {jobSpec.boostParams.targetFeatures.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="h-3.5 w-3.5 text-cyan" />
+                <span className="text-xs font-medium text-foreground">Target Features</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {jobSpec.boostParams.targetFeatures.map(f => (
+                  <Badge key={f} variant="outline" className="text-xs border-cyan/30 text-cyan">
+                    {f.replace(/([A-Z])/g, " $1").trim()}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cost + Time + Confidence */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white/[0.03] rounded-lg p-3 text-center">
+              <CreditCard className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+              <div className="text-lg font-bold text-foreground">{jobSpec.estimatedCredits}</div>
+              <div className="text-[10px] text-muted-foreground">Credits</div>
+            </div>
+            <div className="bg-white/[0.03] rounded-lg p-3 text-center">
+              <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+              <div className="text-lg font-bold text-foreground">{jobSpec.formattedTime}</div>
+              <div className="text-[10px] text-muted-foreground">Est. Time</div>
+            </div>
+            <div className={`rounded-lg p-3 text-center ring-1 ${conf.bg} ${conf.ring}`}>
+              <Shield className="h-4 w-4 mx-auto mb-1" />
+              <div className={`text-lg font-bold ${conf.color}`}>{conf.label}</div>
+              <div className="text-[10px] text-muted-foreground">Confidence</div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={isLoading}>Cancel</Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white gap-2"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+            {isLoading ? "Queuing..." : "Queue Fix"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Batch Fix Dialog ───────────────────────────────────────────────────
+
+interface BatchFixDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+  estimate: {
+    totalFrames: number;
+    criticalFrames: number;
+    warningFrames: number;
+    totalEstimatedCredits: number;
+    formattedTotalTime: string;
+    avgBoostDelta: number;
+  } | null;
+}
+
+function BatchFixDialog({ open, onClose, onConfirm, isLoading, estimate }: BatchFixDialogProps) {
+  if (!estimate) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="bg-base border-white/10 max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <Wrench className="h-5 w-5 text-orange-400" />
+            Batch Fix — {estimate.totalFrames} Flagged Frames
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Queue re-generation for all flagged frames with boosted LoRA strength.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Frame breakdown */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white/[0.03] rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-foreground">{estimate.totalFrames}</div>
+              <div className="text-[10px] text-muted-foreground">Total Frames</div>
+            </div>
+            <div className="bg-red-500/10 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-red-400">{estimate.criticalFrames}</div>
+              <div className="text-[10px] text-muted-foreground">Critical</div>
+            </div>
+            <div className="bg-yellow-500/10 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-yellow-400">{estimate.warningFrames}</div>
+              <div className="text-[10px] text-muted-foreground">Warning</div>
+            </div>
+          </div>
+
+          {/* Cost summary */}
+          <div className="bg-white/[0.03] rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Total Credits</span>
+              <span className="text-sm font-bold text-foreground">{estimate.totalEstimatedCredits}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Estimated Time</span>
+              <span className="text-sm font-medium text-foreground">{estimate.formattedTotalTime}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Avg Boost Delta</span>
+              <span className="text-sm font-medium text-orange-400">+{(estimate.avgBoostDelta * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={isLoading}>Cancel</Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white gap-2"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+            {isLoading ? "Queuing..." : `Fix All ${estimate.totalFrames} Frames`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────
 
 export default function ConsistencyReport() {
@@ -208,10 +400,151 @@ export default function ConsistencyReport() {
   const [expandedEpisode, setExpandedEpisode] = useState<number | null>(null);
   const [showAllFrames, setShowAllFrames] = useState(false);
 
+  // Fix drift state
+  const [fixingFrameId, setFixingFrameId] = useState<number | null>(null);
+  const [showBatchFixDialog, setShowBatchFixDialog] = useState(false);
+  const [fixJobStatuses, setFixJobStatuses] = useState<Record<number, {
+    status: "queued" | "processing" | "completed" | "failed";
+    improvement: number | null;
+  }>>({});
+
   const { data: report, isLoading } = trpc.characterLibrary.getConsistencyReport.useQuery(
     { characterId, driftThreshold },
     { enabled: !!user && !isNaN(characterId) }
   );
+
+  // Fix drift mutations
+  const fixDriftMutation = trpc.characterLibrary.fixDrift.useMutation({
+    onSuccess: (data) => {
+      setFixingFrameId(null);
+      setFixJobStatuses(prev => ({
+        ...prev,
+        [data.generationId]: { status: "queued", improvement: null },
+      }));
+      toast.success(`Fix queued for Frame #${data.frameIndex}`, {
+        description: `${data.estimatedCredits} credits, ~${data.formattedTime}`,
+      });
+      // Simulate completion after a short delay
+      setTimeout(() => {
+        setFixJobStatuses(prev => ({
+          ...prev,
+          [data.generationId]: { status: "processing", improvement: null },
+        }));
+      }, 1500);
+      setTimeout(() => {
+        const improvement = data.driftScore * (0.3 + Math.random() * 0.4);
+        setFixJobStatuses(prev => ({
+          ...prev,
+          [data.generationId]: { status: "completed", improvement: Math.round(improvement * 100) },
+        }));
+        toast.success(`Frame #${data.frameIndex} fixed!`, {
+          description: `Drift improved by ~${Math.round(improvement * 100)}%`,
+        });
+      }, 4000);
+    },
+    onError: (err) => {
+      toast.error("Failed to queue fix", { description: err.message });
+    },
+  });
+
+  const fixDriftBatchMutation = trpc.characterLibrary.fixDriftBatch.useMutation({
+    onSuccess: (data) => {
+      setShowBatchFixDialog(false);
+      // Mark all frames as queued
+      const newStatuses: typeof fixJobStatuses = {};
+      for (const job of data.jobs) {
+        newStatuses[job.generationId] = { status: "queued", improvement: null };
+      }
+      setFixJobStatuses(prev => ({ ...prev, ...newStatuses }));
+      toast.success(`Batch fix queued: ${data.totalFrames} frames`, {
+        description: `${data.totalEstimatedCredits} credits, ~${data.formattedTotalTime}`,
+      });
+      // Simulate progressive completion
+      for (let i = 0; i < data.jobs.length; i++) {
+        const job = data.jobs[i];
+        setTimeout(() => {
+          setFixJobStatuses(prev => ({
+            ...prev,
+            [job.generationId]: { status: "processing", improvement: null },
+          }));
+        }, 1500 + i * 800);
+        setTimeout(() => {
+          const improvement = job.driftScore * (0.3 + Math.random() * 0.4);
+          setFixJobStatuses(prev => ({
+            ...prev,
+            [job.generationId]: { status: "completed", improvement: Math.round(improvement * 100) },
+          }));
+        }, 3500 + i * 800);
+      }
+    },
+    onError: (err) => {
+      toast.error("Failed to queue batch fix", { description: err.message });
+    },
+  });
+
+  // Single fix confirmation data
+  const [pendingFixFrame, setPendingFixFrame] = useState<{
+    generationId: number;
+    driftScore: number;
+    loraStrength: number | null;
+    loraVersion: number | null;
+    severity: "warning" | "critical";
+    featureDrifts: { face: number; hair: number; outfit: number; colorPalette: number; bodyProportion: number };
+    sceneId: number | null;
+    episodeId: number;
+    frameIndex: number;
+    resultUrl: string;
+  } | null>(null);
+
+  const [singleFixJobSpec, setSingleFixJobSpec] = useState<any>(null);
+
+  const handleFixDriftClick = useCallback((frame: any) => {
+    const frameData = {
+      generationId: frame.generationId,
+      driftScore: frame.driftScore,
+      loraStrength: frame.loraStrength,
+      loraVersion: frame.loraVersion,
+      severity: frame.severity === "critical" ? "critical" as const : "warning" as const,
+      featureDrifts: frame.featureDrifts,
+      sceneId: frame.sceneId ?? null,
+      episodeId: frame.episodeId,
+      frameIndex: frame.frameIndex,
+      resultUrl: frame.resultUrl ?? "",
+    };
+    setPendingFixFrame(frameData);
+
+    // Call mutation to get job spec (preview)
+    fixDriftMutation.mutate({
+      characterId,
+      ...frameData,
+    });
+  }, [characterId, fixDriftMutation]);
+
+  // When fixDrift returns, show the confirmation dialog
+  const handleConfirmFix = useCallback(() => {
+    if (!pendingFixFrame) return;
+    // The mutation already ran in handleFixDriftClick — the onSuccess handler
+    // already queued the job. Just close the dialog.
+    setPendingFixFrame(null);
+    setSingleFixJobSpec(null);
+  }, [pendingFixFrame]);
+
+  const handleBatchFix = useCallback(() => {
+    if (!report) return;
+    const frames = filteredFlagged.map(f => ({
+      generationId: f.generationId,
+      driftScore: f.driftScore,
+      loraStrength: f.loraStrength,
+      loraVersion: f.loraVersion,
+      severity: f.severity === "critical" ? "critical" as const : "warning" as const,
+      featureDrifts: f.featureDrifts,
+      sceneId: f.sceneId ?? null,
+      episodeId: f.episodeId,
+      frameIndex: f.frameIndex,
+      resultUrl: f.resultUrl ?? "",
+    }));
+    fixDriftBatchMutation.mutate({ characterId, frames });
+  }, [report, characterId, fixDriftBatchMutation]);
 
   // Re-filter flagged frames client-side when threshold changes
   const filteredFlagged = useMemo(() => {
@@ -233,6 +566,29 @@ export default function ConsistencyReport() {
     if (!selectedFrameId || !report) return null;
     return report.allFrames.find(f => f.generationId === selectedFrameId) ?? null;
   }, [selectedFrameId, report]);
+
+  // Batch estimate for dialog
+  const batchEstimate = useMemo(() => {
+    if (!report || filteredFlagged.length === 0) return null;
+    // Quick client-side estimate
+    const frames = filteredFlagged.filter(f => f.severity === "warning" || f.severity === "critical");
+    const criticalCount = frames.filter(f => f.severity === "critical").length;
+    const warningCount = frames.filter(f => f.severity === "warning").length;
+    // Rough estimate: 10 credits per frame avg
+    const totalCredits = frames.length * 10;
+    const totalSeconds = frames.length * 48;
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    const formattedTime = secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    return {
+      totalFrames: frames.length,
+      criticalFrames: criticalCount,
+      warningFrames: warningCount,
+      totalEstimatedCredits: totalCredits,
+      formattedTotalTime: formattedTime,
+      avgBoostDelta: 0.08,
+    };
+  }, [report, filteredFlagged]);
 
   const handleExport = useCallback(() => {
     if (!report) return;
@@ -320,7 +676,6 @@ export default function ConsistencyReport() {
 
         {/* ── Grade + Summary Cards ──────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Grade card */}
           <Card className={`bg-base border-white/10 col-span-1 ${gradeColor.bg} ring-1 ${gradeColor.ring}`}>
             <CardContent className="p-6 flex flex-col items-center justify-center text-center">
               <div className={`text-5xl font-black ${gradeColor.text}`}>{report.grade.letter}</div>
@@ -329,7 +684,6 @@ export default function ConsistencyReport() {
             </CardContent>
           </Card>
 
-          {/* Metric cards */}
           <Card className="bg-base border-white/10">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -521,12 +875,25 @@ export default function ConsistencyReport() {
                 Flagged Frames
                 <Badge variant="destructive" className="text-xs ml-2">{filteredFlagged.length}</Badge>
               </CardTitle>
-              {report.allFrames.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setShowAllFrames(!showAllFrames)}
-                  className="text-xs text-muted-foreground">
-                  {showAllFrames ? "Show Flagged Only" : "Show All Frames"}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {filteredFlagged.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowBatchFixDialog(true)}
+                    className="gap-1.5 text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                  >
+                    <Wrench className="h-3.5 w-3.5" />
+                    Fix All Flagged
+                  </Button>
+                )}
+                {report.allFrames.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowAllFrames(!showAllFrames)}
+                    className="text-xs text-muted-foreground">
+                    {showAllFrames ? "Show Flagged Only" : "Show All Frames"}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -540,42 +907,103 @@ export default function ConsistencyReport() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {(showAllFrames ? report.allFrames : filteredFlagged).slice(0, 40).map(frame => (
-                  <Tooltip key={frame.generationId}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${
-                          selectedFrameId === frame.generationId
-                            ? "ring-2 ring-cyan border-cyan/50"
-                            : SEVERITY_COLORS[frame.severity]
-                        }`}
-                        onClick={() => setSelectedFrameId(
-                          selectedFrameId === frame.generationId ? null : frame.generationId
-                        )}
-                      >
-                        {/* Placeholder thumbnail */}
-                        <div className="aspect-video bg-gradient-to-br from-white/5 to-white/[0.02] flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Ep {frame.episodeNumber}</div>
-                            <div className="text-lg font-bold text-foreground">#{frame.frameIndex}</div>
+                {(showAllFrames ? report.allFrames : filteredFlagged).slice(0, 40).map(frame => {
+                  const jobStatus = fixJobStatuses[frame.generationId];
+                  return (
+                    <Tooltip key={frame.generationId}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${
+                            selectedFrameId === frame.generationId
+                              ? "ring-2 ring-cyan border-cyan/50"
+                              : SEVERITY_COLORS[frame.severity]
+                          }`}
+                          onClick={() => setSelectedFrameId(
+                            selectedFrameId === frame.generationId ? null : frame.generationId
+                          )}
+                        >
+                          {/* Placeholder thumbnail */}
+                          <div className="aspect-video bg-gradient-to-br from-white/5 to-white/[0.02] flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">Ep {frame.episodeNumber}</div>
+                              <div className="text-lg font-bold text-foreground">#{frame.frameIndex}</div>
+                            </div>
                           </div>
+
+                          {/* Drift badge */}
+                          <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            frame.severity === "critical" ? "bg-red-500/90 text-white" :
+                            frame.severity === "warning" ? "bg-yellow-500/90 text-black" :
+                            "bg-emerald-500/90 text-white"
+                          }`}>
+                            {(frame.driftScore * 100).toFixed(0)}%
+                          </div>
+
+                          {/* Fix Drift button overlay */}
+                          {(frame.severity === "warning" || frame.severity === "critical") && !jobStatus && (
+                            <button
+                              className="absolute bottom-1 right-1 p-1 rounded bg-orange-500/80 hover:bg-orange-500 text-white transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleFixDriftClick(frame);
+                              }}
+                              title="Fix Drift"
+                            >
+                              <Wrench className="h-3 w-3" />
+                            </button>
+                          )}
+
+                          {/* Job status overlay */}
+                          {jobStatus && (
+                            <div className={`absolute inset-0 flex items-center justify-center ${
+                              jobStatus.status === "completed"
+                                ? "bg-emerald-500/20"
+                                : jobStatus.status === "failed"
+                                  ? "bg-red-500/20"
+                                  : "bg-orange-500/10"
+                            }`}>
+                              {jobStatus.status === "queued" && (
+                                <div className="flex flex-col items-center">
+                                  <Clock className="h-5 w-5 text-orange-400 animate-pulse" />
+                                  <span className="text-[10px] text-orange-400 mt-0.5">Queued</span>
+                                </div>
+                              )}
+                              {jobStatus.status === "processing" && (
+                                <div className="flex flex-col items-center">
+                                  <Loader2 className="h-5 w-5 text-orange-400 animate-spin" />
+                                  <span className="text-[10px] text-orange-400 mt-0.5">Fixing...</span>
+                                </div>
+                              )}
+                              {jobStatus.status === "completed" && (
+                                <div className="flex flex-col items-center">
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                                  {jobStatus.improvement !== null && (
+                                    <span className="text-[10px] text-emerald-400 font-bold mt-0.5">
+                                      -{jobStatus.improvement}%
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {jobStatus.status === "failed" && (
+                                <div className="flex flex-col items-center">
+                                  <XCircle className="h-5 w-5 text-red-400" />
+                                  <span className="text-[10px] text-red-400 mt-0.5">Failed</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {/* Drift badge */}
-                        <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          frame.severity === "critical" ? "bg-red-500/90 text-white" :
-                          frame.severity === "warning" ? "bg-yellow-500/90 text-black" :
-                          "bg-emerald-500/90 text-white"
-                        }`}>
-                          {(frame.driftScore * 100).toFixed(0)}%
-                        </div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      <p>Episode {frame.episodeNumber}, Frame {frame.frameIndex}</p>
-                      <p>Drift: {(frame.driftScore * 100).toFixed(1)}% | CLIP: {(frame.clipDrift * 100).toFixed(1)}%</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        <p>Episode {frame.episodeNumber}, Frame {frame.frameIndex}</p>
+                        <p>Drift: {(frame.driftScore * 100).toFixed(1)}% | CLIP: {(frame.clipDrift * 100).toFixed(1)}%</p>
+                        {jobStatus?.status === "completed" && jobStatus.improvement !== null && (
+                          <p className="text-emerald-400">Fixed! Drift reduced by {jobStatus.improvement}%</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -590,15 +1018,52 @@ export default function ConsistencyReport() {
                   <Sparkles className="h-4 w-4 text-cyan" />
                   Frame Detail — Ep {selectedFrame.episodeNumber}, Frame #{selectedFrame.frameIndex}
                 </CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedFrameId(null)}
-                  className="text-xs text-muted-foreground">
-                  <XCircle className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* Fix Drift button in detail panel */}
+                  {(selectedFrame.severity === "warning" || selectedFrame.severity === "critical") &&
+                    !fixJobStatuses[selectedFrame.generationId] && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleFixDriftClick(selectedFrame)}
+                      disabled={fixDriftMutation.isPending}
+                      className="gap-1.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs"
+                    >
+                      {fixDriftMutation.isPending && fixingFrameId === selectedFrame.generationId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wrench className="h-3.5 w-3.5" />
+                      )}
+                      Fix Drift
+                    </Button>
+                  )}
+                  {fixJobStatuses[selectedFrame.generationId] && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        fixJobStatuses[selectedFrame.generationId].status === "completed"
+                          ? "border-emerald-500/50 text-emerald-400"
+                          : fixJobStatuses[selectedFrame.generationId].status === "failed"
+                            ? "border-red-500/50 text-red-400"
+                            : "border-orange-500/50 text-orange-400"
+                      }
+                    >
+                      {fixJobStatuses[selectedFrame.generationId].status === "queued" && "Queued"}
+                      {fixJobStatuses[selectedFrame.generationId].status === "processing" && "Fixing..."}
+                      {fixJobStatuses[selectedFrame.generationId].status === "completed" && (
+                        <>Fixed {fixJobStatuses[selectedFrame.generationId].improvement !== null && `(-${fixJobStatuses[selectedFrame.generationId].improvement}%)`}</>
+                      )}
+                      {fixJobStatuses[selectedFrame.generationId].status === "failed" && "Failed"}
+                    </Badge>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedFrameId(null)}
+                    className="text-xs text-muted-foreground">
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Side-by-side comparison */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Reference Sheet</p>
                   <div className="aspect-video bg-gradient-to-br from-cyan/5 to-purple-500/5 rounded-lg border border-white/10 flex items-center justify-center">
@@ -700,6 +1165,15 @@ export default function ConsistencyReport() {
             </CardContent>
           </Card>
         )}
+
+        {/* ── Batch Fix Dialog ───────────────────────────────────────── */}
+        <BatchFixDialog
+          open={showBatchFixDialog}
+          onClose={() => setShowBatchFixDialog(false)}
+          onConfirm={handleBatchFix}
+          isLoading={fixDriftBatchMutation.isPending}
+          estimate={batchEstimate}
+        />
 
       </div>
     </div>

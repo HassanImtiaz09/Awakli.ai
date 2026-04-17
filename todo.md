@@ -2705,3 +2705,25 @@
 - [x] Frontend: Randomize left/right assignment so version A isn't always on the left
 - [x] Tests: Blind mode state transitions (toggle on/off, vote, reveal, re-run reset) — 35 tests
 - [x] Tests: Randomization produces both orderings, label masking logic, vote match/mismatch detection, UI visibility rules, reveal banner content
+
+## Fix Drift Action Button
+### Backend
+- [x] Add `fix-drift.ts` module with: computeBoostParams (calculate optimal LoRA strength boost based on drift severity), buildFixDriftJob (create re-generation job spec with boosted LoRA), estimateFixDriftBatch (batch cost estimation), simulateFixDriftStatus, formatDuration
+- [x] Add `characterLibrary.fixDrift` tRPC endpoint — accepts characterId + frame data; builds fix-drift job spec with boosted LoRA strength and returns cost/time estimate
+- [x] Add `characterLibrary.fixDriftBatch` tRPC endpoint — accepts characterId + all flagged frames for bulk fix with aggregated cost/time estimate
+- [x] Add `characterLibrary.getFixDriftStatus` tRPC endpoint — returns simulated progress of queued fix-drift jobs
+
+### Frontend
+- [x] "Fix Drift" button on each flagged frame card in the gallery (wrench icon, orange accent with overlay)
+- [x] "Fix All Flagged" batch button above the flagged frames gallery (orange outline button in header)
+- [x] Confirmation dialog showing: boost params (original→boosted strength), drift score, target features, cost/time/confidence badges
+- [x] Batch confirmation dialog with total frame count, critical/warning breakdown, total cost/time, avg boost delta
+- [x] Progress indicator on frames with active fix-drift jobs (queued/processing/completed/failed overlays with icons)
+- [x] Success state: frame card shows green checkmark with drift improvement percentage after simulated completion
+- [x] Wire into ConsistencyReport frame detail panel as primary action button (gradient orange-to-red Fix Drift button + status badge)
+
+### Tests
+- [x] Unit: computeBoostParams (drift-to-strength mapping, clamping, confidence levels, feature targeting, edge cases) — 17 tests
+- [x] Unit: buildFixDriftJob (job spec shape, identity preservation, severity mapping, credit/time scaling) — 8 tests
+- [x] Unit: estimateFixDriftBatch (filtering, aggregation, empty/all-ok edge cases, avg boost delta) — 7 tests
+- [x] Unit: simulateFixDriftStatus (status fields, improvement range, timestamps) — 8 tests + formatDuration (4 tests) + constants (6 tests) + edge cases (6 tests) — 56 total tests

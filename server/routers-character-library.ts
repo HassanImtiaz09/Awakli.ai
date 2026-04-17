@@ -47,7 +47,14 @@ import {
   getFrameDriftDetail,
   DEFAULT_DRIFT_THRESHOLD,
   type FrameGeneration,
+  type FrameDriftResult,
 } from "./consistency-analysis";
+import {
+  buildFixDriftJob,
+  estimateFixDriftBatch,
+  simulateFixDriftStatus,
+  formatDuration,
+} from "./fix-drift";
 import {
   episodes, scenes, generationResults,
 } from "../drizzle/schema";
@@ -1058,5 +1065,151 @@ export const characterLibraryRouter = router({
       const [frame] = detectDriftSpikes([rawFrame], input.driftThreshold ?? DEFAULT_DRIFT_THRESHOLD);
 
       return getFrameDriftDetail(frame, [frame], char.referenceSheetUrl);
+    }),
+
+  // ── Fix Drift ─────────────────────────────────────────────────────────
+  fixDrift: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      generationId: z.number(),
+      driftScore: z.number(),
+      loraStrength: z.number().nullable(),
+      loraVersion: z.number().nullable(),
+      severity: z.enum(["warning", "critical"]),
+      featureDrifts: z.object({
+        face: z.number(),
+        hair: z.number(),
+        outfit: z.number(),
+        colorPalette: z.number(),
+        bodyProportion: z.number(),
+      }),
+      sceneId: z.number().nullable(),
+      episodeId: z.number(),
+      frameIndex: z.number(),
+      resultUrl: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Build a FrameDriftResult from the input
+      const frameDrift: FrameDriftResult = {
+        generationId: input.generationId,
+        episodeId: input.episodeId,
+        episodeNumber: 0,
+        episodeTitle: "",
+        sceneId: input.sceneId,
+        sceneNumber: null,
+        frameIndex: input.frameIndex,
+        resultUrl: input.resultUrl,
+        driftScore: input.driftScore,
+        clipDrift: input.driftScore * 0.8,
+        featureDrifts: input.featureDrifts,
+        isFlagged: true,
+        severity: input.severity,
+        loraVersion: input.loraVersion,
+        loraStrength: input.loraStrength,
+        timestamp: Date.now(),
+      };
+
+      const jobSpec = buildFixDriftJob(frameDrift);
+
+      return {
+        ...jobSpec,
+        formattedTime: formatDuration(jobSpec.estimatedSeconds),
+        characterName: char.name,
+      };
+    }),
+
+  // ── Fix Drift Batch ───────────────────────────────────────────────────
+  fixDriftBatch: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      frames: z.array(z.object({
+        generationId: z.number(),
+        driftScore: z.number(),
+        loraStrength: z.number().nullable(),
+        loraVersion: z.number().nullable(),
+        severity: z.enum(["warning", "critical"]),
+        featureDrifts: z.object({
+          face: z.number(),
+          hair: z.number(),
+          outfit: z.number(),
+          colorPalette: z.number(),
+          bodyProportion: z.number(),
+        }),
+        sceneId: z.number().nullable(),
+        episodeId: z.number(),
+        frameIndex: z.number(),
+        resultUrl: z.string(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Convert input frames to FrameDriftResult[]
+      const driftResults: FrameDriftResult[] = input.frames.map(f => ({
+        generationId: f.generationId,
+        episodeId: f.episodeId,
+        episodeNumber: 0,
+        episodeTitle: "",
+        sceneId: f.sceneId,
+        sceneNumber: null,
+        frameIndex: f.frameIndex,
+        resultUrl: f.resultUrl,
+        driftScore: f.driftScore,
+        clipDrift: f.driftScore * 0.8,
+        featureDrifts: f.featureDrifts,
+        isFlagged: true,
+        severity: f.severity,
+        loraVersion: f.loraVersion,
+        loraStrength: f.loraStrength,
+        timestamp: Date.now(),
+      }));
+
+      const estimate = estimateFixDriftBatch(driftResults);
+
+      return {
+        ...estimate,
+        formattedTotalTime: formatDuration(estimate.totalEstimatedSeconds),
+        characterName: char.name,
+      };
+    }),
+
+  // ── Get Fix Drift Status ──────────────────────────────────────────────
+  getFixDriftStatus: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      generationId: z.number(),
+      driftScore: z.number(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      const status = simulateFixDriftStatus(input.generationId, input.driftScore);
+      return status;
     }),
 });
