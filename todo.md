@@ -3035,8 +3035,8 @@
 - [x] Batch Training (GPU tier selection, batch setup)
 
 ### Known Issues (Not Fixed — Low Priority)
-- [ ] Pricing inconsistency: Home page shows Free $0 / Pro $29/mo / Studio $99/mo vs /pricing page Free $0 / Creator $19/mo / Studio $49/mo
-- [ ] Consistency Report shows blank page for non-existent characters (could show a better error)
+- [x] Pricing inconsistency: Home page shows Free $0 / Pro $29/mo / Studio $99/mo vs /pricing page Free $0 / Creator $19/mo / Studio $49/mo — FIXED: aligned Home to Creator $19/mo, Studio $49/mo
+- [x] Consistency Report shows blank page for non-existent characters — FIXED: added informative empty state with icon, message, and back button
 
 ### Test Suite
 - [x] All 61 test files passing

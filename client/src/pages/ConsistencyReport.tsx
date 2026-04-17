@@ -711,9 +711,22 @@ export default function ConsistencyReport() {
   if (!report) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
-        <Card className="bg-base border-white/10 p-8 text-center">
-          <p className="text-muted-foreground">Character not found or no data available.</p>
-          <Link href="/characters" className="text-cyan hover:underline mt-4 inline-block">Back to Library</Link>
+        <Card className="bg-base border-white/10 p-8 text-center max-w-md">
+          <div className="flex justify-center mb-4">
+            <AlertTriangle className="h-12 w-12 text-yellow-400/60" />
+          </div>
+          <h2 className="text-lg font-heading font-bold text-white mb-2">No Consistency Data</h2>
+          <p className="text-muted-foreground mb-6">
+            This character doesn't have any generated frames yet. Generate panels with this character first, then return here to review consistency.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Link href="/characters">
+              <Button variant="outline" className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Library
+              </Button>
+            </Link>
+          </div>
         </Card>
       </div>
     );
