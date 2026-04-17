@@ -2904,3 +2904,98 @@
 - [x] Unit: structural fidelity measurement (8 tests: overall score, SSIM, edge overlap, SSIM improvement, recommendation, strength correlation, batch report, empty batch)
 - [x] Unit: batch processing (9 tests: batch spec, mixed/canny/anime2sketch methods, cost estimation, batch execution, completed results, duration formatting, method summary)
 - [x] TypeScript compilation passes with 0 errors — 48 total tests passing
+
+## Prompt 23: Tier Sampler Library & Expectation-Setting UX
+
+### Database Schema
+- [x] Add `tier_samples` table: id, archetypeId, modality (visual|audio), tier (1-5), provider, genreVariant (action|slice_of_life|atmospheric|neutral), outcomeClass (success|partial_success|expected_failure), failureMode (nullable), creditsConsumed, storageUrl, thumbnailUrl, durationMs, generationSeed, reviewedBy (JSON), publishedAt, stalenessScore (0-1), isActive
+- [x] Add `expectation_anchors` table: id, userId, sceneType, anchoredSampleId (FK→tier_samples), anchoredTier, selectedTier (nullable), anchorConfidence (nullable), createdAt
+- [x] Add `esg_scores` table: id, userId, sceneType, expectationTier, actualTier, expectedSatisfaction, satisfactionScore (1-5), esg (computed gap), routingAction (none|monitor|investigate|act), createdAt
+- [x] Add `sampler_ab_assignments` table: id, userId (UNIQUE), cohort (control|sampler), enrolledAt, exitedAt (nullable)
+- [x] Generate and apply migration SQL (0031_tier_sampler_esg.sql)
+
+### Backend — Sample Catalog
+- [x] Create `tier-sampler-catalog.ts` module with: VISUAL_ARCHETYPES (V01-V12), AUDIO_ARCHETYPES (A01-A08), GENRE_VARIANTS, OUTCOME_CLASSES, FAILURE_MODES
+- [x] Implement `generateSampleBatchSpec(archetypes, tiers)` — produces batch spec for quarterly refresh with 6x over-generation
+- [x] Implement `simulateSampleGeneration(archetypeId, tier, provider, genreVariant, count)` — generates candidates with seeds and quality scores
+- [x] Implement `labelCandidate(candidate)` — assigns outcomeClass and isRepresentative based on quality score
+- [x] Implement `getSamplesForArchetype(archetypeId, tier, genreVariant)` — returns successes + failures per tier
+- [x] Implement `getSamplesForVoice(archetypeId, provider, qualityLevel)` — returns voice samples for provider grid
+
+### Backend — ESG Computation
+- [x] Create `esg-computation.ts` module with: computeESG, classifyESGRouting, getBaselineSatisfaction, ESG_THRESHOLDS
+- [x] ESG formula: esg = expected_satisfaction - satisfaction_score
+- [x] ESG routing: ≤0 → none, 0-0.5 → monitor, 0.5-1.5 → investigate, >1.5 → act
+- [x] Implement `computeESGTrend(records, periodDays)` — period-based trend with improving/stable/declining classification
+- [x] Implement `generateExpectationReportCard(userId, esgRecords, anchorRecords)` — anchor histogram, spend histogram, gap analysis, top exceeded/bottom fell short
+
+### Backend — A/B Testing
+- [x] Create `sampler-ab-testing.ts` module with: assignCohort, verifyCohortDistribution, computePrimaryMetrics, computeGuardrailMetrics, computeABTestResult
+- [x] 80/20 split: sampler (80%) vs control (20%), deterministic sticky assignment per userId
+- [x] Implement `computeABTestResult(controlData, samplerData)` — primary metrics, guardrail metrics, deltas, violations, recommendation
+
+### Backend — Staleness Scoring
+- [x] Create `staleness-scoring.ts` module with: computeStalenessScore, flagStaleSamples, checkProviderVersionGap, computeRefreshBudget, generateRefreshEvents
+- [x] Formula: staleness = min(1.0, 0.01 * days_since_pub + 0.3 * provider_version_gap + 0.2 * esg_drift)
+- [x] Thresholds: ≥0.7 → flagged for refresh, ≥0.9 → "Outdated" badge in UI
+
+### Backend — Governance Workflow
+- [x] Create `governance-workflow.ts` module with: submitForReview, recordVote, checkUnanimousApproval, vetoSample, computeGovernanceStats, getDefaultCommittee
+- [x] Three committee roles: product_lead, ux_lead, skeptical_engineer
+- [x] Unanimous approval required, any single veto rejects, 3-round escalation
+
+### tRPC Endpoints
+- [x] Add `tierSampler.getSamples` — get samples by archetype, tier, genre, modality with filtering
+- [x] Add `tierSampler.getSampleById` — get single sample with full metadata
+- [x] Add `tierSampler.getVoiceSamples` — get voice samples for provider×quality grid
+- [x] Add `tierSampler.recordExpectationAnchor` — store creator's anchor selection at Stage 2
+- [x] Add `tierSampler.recordSatisfaction` — store post-generation satisfaction score, compute ESG
+- [x] Add `tierSampler.getESGScores` — get ESG scores for a user or scene
+- [x] Add `tierSampler.getExpectationReportCard` — get creator's personal ESG report card
+- [x] Add `tierSampler.getABAssignment` — get or create A/B cohort assignment for user
+- [x] Add `tierSampler.getABMetrics` — get A/B test metrics (admin only)
+- [x] Add `tierSampler.getStaleSamples` — get samples flagged for refresh
+- [x] Add `tierSampler.submitGovernanceReview` — submit sample for committee review
+- [x] Add `tierSampler.recordGovernanceVote` — record committee member vote
+- [x] Add `tierSampler.publishSample` — move approved sample to production
+- [x] Add `tierSampler.getPipelineStats` — aggregate sampler usage stats
+
+### Frontend — Tier Sampler Strip Component
+- [x] Create `TierSamplerStrip.tsx` — horizontal strip showing 3 samples per tier (2 success + 1 failure) for scene archetype
+- [x] Each sample card: inline preview, credits consumed badge, outcome label (Typical/Best/Known failure), quality score
+- [x] Genre variant dropdown to switch between action/slice_of_life/atmospheric/neutral
+- [x] Staleness "Outdated" badge on samples with staleness_score ≥ 0.9
+- [x] Failure mode label on expected_failure samples
+
+### Frontend — Voice Sampler Grid
+- [x] Voice sampler grid integrated into TierSamplerStrip with audio archetype support
+- [x] Archetype dropdown (A01-A08) to switch voice samples
+- [x] Cost label and duration per cell in sample cards
+
+### Frontend — Expectation Anchor Survey
+- [x] Create `ExpectationAnchorSurvey.tsx` — single-click micro-survey at Stage 2 gate
+- [x] Shows visible samples, creator clicks one to set anchor with timer tracking
+- [x] Optional 0-1 confidence follow-up (single slider)
+
+### Frontend — ESG Report Card Page
+- [x] Create `ESGReportCard.tsx` component with: personal ESG trend (30d/90d), anchor vs spend histograms, gap analysis, top exceeded / bottom fell short
+- [x] Helpful self-calibration tone, never scolding
+- [x] Direct links to re-sample tier library for underperforming scene types
+
+### Frontend — Governance Dashboard
+- [x] Create `GovernanceDashboard.tsx` — review queue, vote recording, veto tracking, publication controls, staleness monitoring, A/B metrics
+- [x] Sample preview with metadata, committee voting interface, approval status badges
+
+### Frontend — Integration & Routing
+- [x] Add route `/studio/project/:projectId/tier-sampler` for the sampler library browser
+- [x] ESG report card integrated into TierSampler page (tabbed layout)
+- [x] Governance dashboard integrated into TierSampler page (tabbed layout)
+- [x] Add StudioSidebar nav entry for Tier Sampler (Layers icon)
+
+### Tests
+- [x] Unit: sample catalog (12 tests: archetypes, batch spec, sample retrieval, generation, labeling, filtering)
+- [x] Unit: ESG computation (14 tests: formula, routing, baseline, trend, histograms, gap analysis, report card)
+- [x] Unit: A/B testing (8 tests: assignment, distribution, primary metrics, guardrail metrics, full result)
+- [x] Unit: staleness scoring (13 tests: score computation, flagging, version gap, budget, refresh events)
+- [x] Unit: governance workflow (19 tests: committee, submission, voting, approval, veto, stats)
+- [x] TypeScript compilation passes with 0 errors — 66 total tests passing

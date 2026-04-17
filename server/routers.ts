@@ -74,6 +74,7 @@ import { localInfraRouter } from "./routers-local-infra";
 import { sceneTypeRouter } from "./routers-scene-type";
 import { characterLibraryRouter } from "./routers-character-library";
 import { lineartPipelineRouter } from "./routers-lineart-pipeline";
+import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
   gateConfigRouter, qualityAnalyticsRouter, cascadeRewindRouter,
@@ -1994,6 +1995,7 @@ export const appRouter = router({
   sceneType: sceneTypeRouter,
   characterLibrary: characterLibraryRouter,
   lineartPipeline: lineartPipelineRouter,
+  tierSampler: tierSamplerRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

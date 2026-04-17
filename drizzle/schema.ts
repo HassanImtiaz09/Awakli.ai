@@ -1589,3 +1589,70 @@ export const lineartBatchJobs = mysqlTable("lineart_batch_jobs", {
 });
 export type LineartBatchJob = typeof lineartBatchJobs.$inferSelect;
 export type InsertLineartBatchJob = typeof lineartBatchJobs.$inferInsert;
+
+// ─── Prompt 23: Tier Sampler Library & Expectation-Setting UX ─────────
+
+export const tierSamples = mysqlTable("tier_samples", {
+  id: int("id").autoincrement().primaryKey(),
+  archetypeId: varchar("archetypeId", { length: 10 }).notNull(), // V01-V12 or A01-A08
+  modality: mysqlEnum("modality", ["visual", "audio"]).notNull(),
+  tier: int("tier").notNull(), // 1-5
+  provider: varchar("provider", { length: 100 }).notNull(),
+  genreVariant: mysqlEnum("genreVariant", ["action", "slice_of_life", "atmospheric", "neutral"]).notNull(),
+  outcomeClass: mysqlEnum("outcomeClass", ["success", "partial_success", "expected_failure"]).notNull(),
+  failureMode: varchar("failureMode", { length: 100 }), // nullable: morph_artifact, character_drift, motion_stall, etc.
+  creditsConsumed: float("creditsConsumed").notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  thumbnailUrl: text("thumbnailUrl"),
+  durationMs: int("durationMs"),
+  generationSeed: bigint("generationSeed", { mode: "number" }).notNull(),
+  reviewedBy: json("reviewedBy").notNull(), // Array of {role, reviewerId, decision, timestamp}
+  publishedAt: timestamp("publishedAt").notNull(),
+  stalenessScore: float("stalenessScore").notNull().default(0), // 0-1
+  isActive: int("isActive").notNull().default(1), // boolean: 1=active, 0=archived
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TierSample = typeof tierSamples.$inferSelect;
+export type InsertTierSample = typeof tierSamples.$inferInsert;
+
+export const expectationAnchors = mysqlTable("expectation_anchors", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sceneType: varchar("sceneType", { length: 50 }).notNull(), // dialogue, action, establishing, etc.
+  anchoredSampleId: int("anchoredSampleId").notNull().references(() => tierSamples.id),
+  anchoredTier: int("anchoredTier").notNull(), // tier of the anchored sample
+  selectedTier: int("selectedTier"), // actual tier selected (populated at selection time)
+  anchorConfidence: float("anchorConfidence"), // optional 0-1
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ExpectationAnchor = typeof expectationAnchors.$inferSelect;
+export type InsertExpectationAnchor = typeof expectationAnchors.$inferInsert;
+
+export const esgScores = mysqlTable("esg_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sceneType: varchar("sceneType", { length: 50 }).notNull(),
+  expectationTier: int("expectationTier").notNull(),
+  actualTier: int("actualTier").notNull(),
+  expectedSatisfaction: float("expectedSatisfaction").notNull(), // baseline for actual_tier
+  satisfactionScore: float("satisfactionScore").notNull(), // creator rating 1-5
+  esg: float("esg").notNull(), // computed gap
+  routingAction: mysqlEnum("routingAction", ["none", "monitor", "investigate", "act"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EsgScore = typeof esgScores.$inferSelect;
+export type InsertEsgScore = typeof esgScores.$inferInsert;
+
+export const samplerAbAssignments = mysqlTable("sampler_ab_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  cohort: mysqlEnum("cohort", ["control", "sampler"]).notNull(),
+  enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
+  exitedAt: timestamp("exitedAt"),
+});
+
+export type SamplerAbAssignment = typeof samplerAbAssignments.$inferSelect;
+export type InsertSamplerAbAssignment = typeof samplerAbAssignments.$inferInsert;

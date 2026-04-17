@@ -33,6 +33,7 @@ function getProjectNav(projectId: string): NavItem[] {
     { href: `/studio/project/${projectId}/storyboard`, label: "Storyboard", icon: <BookOpen size={18} /> },
     { href: `/studio/project/${projectId}/pipeline`,   label: "Pipeline",   icon: <Clapperboard size={18} />, badge: <PendingGateCount /> },
     { href: `/studio/project/${projectId}/lineart`,    label: "Lineart",    icon: <PenTool size={18} /> },
+    { href: `/studio/project/${projectId}/tier-sampler`, label: "Tier Sampler", icon: <Layers size={18} /> },
   ];
 }
 

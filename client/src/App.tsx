@@ -52,6 +52,7 @@ import CharacterDetail from "./pages/CharacterDetail";
 import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
+import TierSampler from "./pages/TierSampler";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -179,6 +180,13 @@ function Router() {
           {(params) => (
             <StudioLayout>
               <LineartPipeline />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/tier-sampler">
+          {(params) => (
+            <StudioLayout>
+              <TierSampler />
             </StudioLayout>
           )}
         </Route>
