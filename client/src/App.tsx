@@ -51,6 +51,7 @@ import CharacterLibrary from "./pages/CharacterLibrary";
 import CharacterDetail from "./pages/CharacterDetail";
 import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
+import LineartPipeline from "./pages/LineartPipeline";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -171,6 +172,13 @@ function Router() {
           {(params) => (
             <StudioLayout>
               <GateReview />
+            </StudioLayout>
+          )}
+        </Route>
+        <Route path="/studio/project/:projectId/lineart">
+          {(params) => (
+            <StudioLayout>
+              <LineartPipeline />
             </StudioLayout>
           )}
         </Route>

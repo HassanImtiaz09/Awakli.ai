@@ -2838,3 +2838,69 @@
 - [x] Unit: generateRetrainingRecommendation (9 tests: null cases, diminishing returns, weak features, summary/explanation, frame counts, impact bounds, image counts, high drift)
 - [x] Unit: assessRetrainingUrgency (6 tests: recommended, strongly_recommended conditions, critical, edge cases)
 - [x] TypeScript compilation passes with 0 errors — 44 total tests passing
+
+## Prompt 22: Lineart Extraction & ControlNet Conditioning Pipeline
+
+### Database Schema
+- [x] Add `lineart_assets` table: id, episodeId, sceneId, panelIndex, extractionMethod (canny|anime2sketch), storageUrl, sourcePanelUrl, resolutionW, resolutionH, version, snrDb, isActive, createdAt
+- [x] Add `controlnet_configs` table: id, userId, sceneType (dialogue|action|establishing|reaction|montage|transition), controlnetMode (canny|lineart|lineart_anime|depth), conditioningStrength (0.0-1.0), extractionMethod (canny|anime2sketch), isDefault, createdAt, updatedAt
+- [x] Add `lineart_batch_jobs` table: id, episodeId, totalPanels, completedPanels, failedPanels, extractionMethod, status (queued|running|completed|failed), startedAt, completedAt, costCredits, errorLog (JSON)
+- [x] Generate and apply migration SQL (0030_lineart_controlnet_pipeline.sql)
+
+### Backend — Lineart Extraction Engine
+- [x] Create `lineart-extraction.ts` module with 5-stage pipeline: panelIsolation, textBubbleRemoval, lineartExtraction (Canny/Anime2Sketch), lineCleanup, resolutionMatching
+- [x] Implement Canny extraction simulation: grayscale conversion, Gaussian blur (5x5, sigma 1.0), thresholds 50/150, processing time <100ms, cost $0
+- [x] Implement Anime2Sketch extraction simulation: 768x768/1024x1024 resize, GPU forward pass, processing time 2-3s, cost $0.01-0.02
+- [x] Implement line cleanup: morphological erosion/dilation, skeletonization (Canny only), closing (3x3), connected component filtering (<10px)
+- [x] Implement resolution matching: Lanczos resampling to target resolution (512/768/1024)
+- [x] Implement SNR quality metric calculation for extracted edges
+
+### Backend — ControlNet Conditioning
+- [x] Create `controlnet-conditioning.ts` module with: getConditioningConfig, buildConditionedPayload, buildTestImageRequest, simulateTestImageResult
+- [x] Support four ControlNet modes: Canny (hard edges), Lineart (soft edges), Lineart_anime (anime-optimized, default), Depth (planned)
+- [x] Default conditioning strength per scene type: dialogue=0.5, action=0.8, establishing=0.7, reaction=0.6, montage=0.4, transition=0.3
+- [x] LoRA + ControlNet co-injection support: complementary operation on same diffusion pass
+
+### Backend — Structural Fidelity Measurement
+- [x] Create `structural-fidelity.ts` module with: measureFidelity, measureBatchFidelity, SSIM/EdgeOverlap/SSIMImprovement metrics
+- [x] Quality thresholds: SSIM ≥0.65 pass, 0.50-0.65 review, <0.50 fail; Edge overlap ≥40% pass, 25-40% review, <25% fail
+- [x] SSIM improvement metric: conditioned vs unconditioned (≥0.10 pass, 0.05-0.10 review, <0.05 fail)
+
+### Backend — Batch Processing
+- [x] Create `lineart-batch.ts` module with: buildBatchJobSpec, simulateBatchExecution, formatBatchDuration, getBatchMethodSummary
+- [x] Mixed strategy: Canny for action/establishing panels, Anime2Sketch for dialogue/reaction/montage
+- [x] Performance targets: Canny <30s for 50 panels, Anime2Sketch 3-5min, Mixed 2-4min, cost <$1.00/episode
+- [x] Concurrent processing: up to 10 GPU workers for Anime2Sketch panels (simulated)
+
+### tRPC Endpoints
+- [x] Add `lineartPipeline.extractLineart` — single panel extraction with method selection
+- [x] Add `lineartPipeline.batchExtract` — full episode batch extraction with progress tracking
+- [x] Add `lineartPipeline.getBatchStatus` — poll batch job progress
+- [x] Add `lineartPipeline.getLineartAssets` — list lineart assets for episode/scene
+- [x] Add `lineartPipeline.getLineartAsset` — get single lineart asset by id
+- [x] Add `lineartPipeline.reExtract` — re-extract with different method, increment version
+- [x] Add `lineartPipeline.getControlnetConfig` — get user's ControlNet config per scene type
+- [x] Add `lineartPipeline.updateControlnetConfig` — update conditioning strength/mode/method per scene type
+- [x] Add `lineartPipeline.resetControlnetConfig` — reset to platform defaults
+- [x] Add `lineartPipeline.generateTestImage` — 512x512 preview with current conditioning settings (<0.5 credits)
+- [x] Add `lineartPipeline.measureFidelity` — structural fidelity measurement for a generated frame + measureBatchFidelity
+- [x] Add `lineartPipeline.getPipelineStats` — aggregate extraction/conditioning stats + getBatchJobs
+
+### Frontend — Lineart Pipeline Page
+- [x] Create `LineartPipeline.tsx` page with episode selector and panel grid
+- [x] Lineart Preview Overlay: side-by-side original panel + extracted lineart, 50% opacity overlay toggle
+- [x] Conditioning Strength Slider: 0.0-1.0, step 0.05, tooltip with adherence level (Minimal/Loose/Moderate/Tight/Strict)
+- [x] ControlNet Mode Selector: Canny/Lineart/Lineart_anime/Depth with visual comparison
+- [x] Extraction Method Override: per-scene Canny/Anime2Sketch toggle, triggers re-extraction
+- [x] Test Image Generation: "Preview" button, 512x512, <0.5 credits, <30 seconds, inline display with seed/cost/time
+- [x] Batch Extraction Monitor: progress bar, panel-by-panel status, cost tracker, error log
+- [x] Structural Fidelity Dashboard: SSIM scores, edge overlap %, pass/review/fail badges, improvement metrics
+- [x] Scene-type defaults table showing current config per scene type with integration rules
+- [x] Add route `/studio/project/:projectId/lineart` in App.tsx + StudioSidebar nav entry
+
+### Tests
+- [x] Unit: lineart extraction pipeline (9 tests: Canny/Anime2Sketch methods, target resolution, 5 stages, speed comparison, cost, source URL, page dimensions)
+- [x] Unit: ControlNet conditioning (22 tests: scene defaults, strength labels, clamp, conditioned payload, LoRA co-injection, test image request/result, mode descriptions, integration rules)
+- [x] Unit: structural fidelity measurement (8 tests: overall score, SSIM, edge overlap, SSIM improvement, recommendation, strength correlation, batch report, empty batch)
+- [x] Unit: batch processing (9 tests: batch spec, mixed/canny/anime2sketch methods, cost estimation, batch execution, completed results, duration formatting, method summary)
+- [x] TypeScript compilation passes with 0 errors — 48 total tests passing

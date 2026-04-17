@@ -1537,3 +1537,55 @@ export const fixDriftJobs = mysqlTable("fix_drift_jobs", {
 });
 export type FixDriftJob = typeof fixDriftJobs.$inferSelect;
 export type InsertFixDriftJob = typeof fixDriftJobs.$inferInsert;
+
+// ─── Lineart Assets (Prompt 22: Lineart Extraction & ControlNet Pipeline) ─
+export const lineartAssets = mysqlTable("lineart_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  sceneId: int("sceneId"),
+  panelIndex: int("panelIndex").notNull(),
+  extractionMethod: mysqlEnum("extractionMethod", ["canny", "anime2sketch"]).notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  sourcePanelUrl: text("sourcePanelUrl").notNull(),
+  resolutionW: int("resolutionW").notNull(),
+  resolutionH: int("resolutionH").notNull(),
+  version: int("lineartVersion").default(1).notNull(),
+  snrDb: float("snrDb"),
+  isActive: int("lineartIsActive").default(1).notNull(),
+  createdAt: timestamp("lineartCreatedAt").defaultNow().notNull(),
+});
+export type LineartAsset = typeof lineartAssets.$inferSelect;
+export type InsertLineartAsset = typeof lineartAssets.$inferInsert;
+
+// ─── ControlNet Configs (per user, per scene type) ────────────────────────
+export const controlnetConfigs = mysqlTable("controlnet_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sceneType: mysqlEnum("cnSceneType", ["dialogue", "action", "establishing", "reaction", "montage", "transition"]).notNull(),
+  controlnetMode: mysqlEnum("controlnetMode", ["canny", "lineart", "lineart_anime", "depth"]).default("lineart_anime").notNull(),
+  conditioningStrength: float("conditioningStrength").notNull(),
+  extractionMethod: mysqlEnum("cnExtractionMethod", ["canny", "anime2sketch"]).default("anime2sketch").notNull(),
+  isDefault: int("cnIsDefault").default(1).notNull(),
+  createdAt: timestamp("cnCreatedAt").defaultNow().notNull(),
+  updatedAt: timestamp("cnUpdatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ControlnetConfig = typeof controlnetConfigs.$inferSelect;
+export type InsertControlnetConfig = typeof controlnetConfigs.$inferInsert;
+
+// ─── Lineart Batch Jobs (batch extraction tracking) ───────────────────────
+export const lineartBatchJobs = mysqlTable("lineart_batch_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("batchEpisodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  totalPanels: int("totalPanels").notNull(),
+  completedPanels: int("completedPanels").default(0).notNull(),
+  failedPanels: int("failedPanels").default(0).notNull(),
+  extractionMethod: mysqlEnum("batchExtractionMethod", ["canny", "anime2sketch", "mixed"]).notNull(),
+  status: mysqlEnum("batchStatus", ["queued", "running", "completed", "failed"]).default("queued").notNull(),
+  startedAt: timestamp("batchStartedAt"),
+  completedAt: timestamp("batchCompletedAt"),
+  costCredits: float("costCredits").default(0).notNull(),
+  errorLog: json("batchErrorLog"),
+  createdAt: timestamp("batchCreatedAt").defaultNow().notNull(),
+});
+export type LineartBatchJob = typeof lineartBatchJobs.$inferSelect;
+export type InsertLineartBatchJob = typeof lineartBatchJobs.$inferInsert;
