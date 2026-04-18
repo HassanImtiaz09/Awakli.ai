@@ -1750,3 +1750,50 @@ export const motionCoverageMatrix = mysqlTable("motion_coverage_matrix", {
 });
 export type MotionCoverageMatrix = typeof motionCoverageMatrix.$inferSelect;
 export type InsertMotionCoverageMatrix = typeof motionCoverageMatrix.$inferInsert;
+
+
+// ─── Image Router: Generation Costs (Prompt 25) ────────────────────────
+
+/**
+ * Tracks per-image generation costs for cost attribution, budget governance,
+ * and per-chapter / per-provider burn dashboards.
+ */
+export const generationCosts = mysqlTable("generation_costs", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: varchar("job_id", { length: 64 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+  providerId: varchar("provider_id", { length: 64 }).notNull(),
+  workloadType: varchar("workload_type", { length: 32 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // Cost attribution
+  estimatedCostUsd: decimal("estimated_cost_usd", { precision: 10, scale: 6 }),
+  actualCostUsd: decimal("actual_cost_usd", { precision: 10, scale: 6 }),
+  actualCostCredits: decimal("actual_cost_credits", { precision: 10, scale: 4 }),
+  // Image parameters
+  prompt: text("prompt"),
+  width: int("width"),
+  height: int("height"),
+  numImages: int("num_images").default(1),
+  controlNetModel: varchar("control_net_model", { length: 64 }),
+  loraModelUrl: text("lora_model_url"),
+  // Result
+  resultUrl: text("result_url"),
+  resultMimeType: varchar("result_mime_type", { length: 32 }),
+  latencyMs: int("latency_ms"),
+  attemptCount: int("attempt_count").default(1),
+  errorMessage: text("error_message"),
+  errorCode: varchar("error_code", { length: 32 }),
+  // Context
+  userId: int("user_id").notNull(),
+  episodeId: int("episode_id"),
+  chapterId: int("chapter_id"),
+  sceneId: int("scene_id"),
+  // Provider metadata (JSON)
+  providerMetadata: json("provider_metadata"),
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  submittedAt: timestamp("submitted_at"),
+  completedAt: timestamp("completed_at"),
+});
+export type GenerationCost = typeof generationCosts.$inferSelect;
+export type InsertGenerationCost = typeof generationCosts.$inferInsert;

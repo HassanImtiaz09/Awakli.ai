@@ -3309,3 +3309,58 @@
 - [x] Write vitest tests for buildMotionLoraMetadata v1.1 extensions (2 tests)
 - [x] Write vitest tests for provider registry and scene-type router v1.1 (5 tests)
 - [x] Total: 142 tests passing across all 3 motion LoRA test files
+
+## Prompt 27: Modal API Credentials Setup
+- [x] Add MODAL_TOKEN_ID to environment secrets
+- [x] Add MODAL_TOKEN_SECRET to environment secrets
+- [x] Write vitest to validate Modal credentials format (ak- prefix, as- prefix, auth header construction)
+- [x] All 3 credential validation tests passing
+
+## Prompt 28: Multi-Surface Image Generation Router (Prompt 25 spec)
+
+### T1-T2: Secrets & API Keys
+- [x] T1: RUNWARE_API_KEY secret placeholder added to vault (env: RUNWARE_API_KEY)
+- [x] T2: TENSORART_API_KEY secret placeholder added to vault (env: TENSORART_API_KEY)
+- [x] Verify FAL_API_KEY and MODAL_TOKEN_ID/SECRET already configured
+
+### T3-T4: Types & Vault
+- [x] T3: Implement secrets vault accessor (server/image-router/vault.ts) with getProviderApiKey, isProviderConfigured, getConfiguredProviders
+- [x] T4: Define GenerationJob type, WorkloadType enum, ImageGenerateParams, ProviderAdapter interface (server/image-router/types.ts)
+
+### T5: Database
+- [x] T5: Create generation_costs table in drizzle schema and run migration (0034_generation_costs.sql)
+
+### T6-T9: Provider Adapters
+- [x] T6: Implement ImageProviderAdapter interface in types.ts (generate, estimateCostUsd, supportsWorkload, supportsControlNet, supportsLoRA, validateParams)
+- [x] T7: Implement RunwareAdapter with ControlNet + custom LoRA support (server/image-router/adapters/runware.ts)
+- [x] T8: Implement TensorArtAdapter with credit-based billing (server/image-router/adapters/tensorart.ts)
+- [x] T9: Implement FalAdapter for high-throughput thumbnails + video frames (server/image-router/adapters/fal.ts)
+
+### T10-T12: Router Core
+- [x] T10: Implement image router core with WORKLOAD_CONFIGS, scoreProvider, routeJob, executeJob (server/image-router/router.ts)
+- [x] T11: Implement BudgetGovernor with per-provider monthly caps, alerts at 80%/90%/100% (server/image-router/budget.ts)
+- [x] T12: Implement ImageHealthMonitor with circuit breaker (closed/half-open/open), canary probes, recordSuccess/recordFailure (server/image-router/health.ts)
+
+### Pipeline Integration
+- [x] Wire tRPC procedures: imageRouter.submit, imageRouter.status, imageRouter.costSummary (server/routers-image-router.ts)
+- [x] Wire cost attribution: insert into generation_costs on each job completion
+- [x] Add router admin procedures: imageRouter.health, imageRouter.budget, imageRouter.toggleProvider
+
+### T17: Cost Dashboards
+- [x] Build CostDashboard page with per-chapter, per-provider burn, and workload mix tabs (client/src/pages/CostDashboard.tsx)
+- [x] Add Cost Dashboard route and StudioSidebar navigation link
+
+### Evaluation Gates (M1-M12)
+- [x] Implement M1-M12 gate definitions as testable functions (server/image-router/evaluation-gates.ts)
+- [x] Gates: M1 prompt adherence, M2 face consistency, M3 style drift, M4 resolution, M5 ControlNet alignment, M6 LoRA fidelity, M7 latency, M8 cost efficiency, M9 aspect ratio, M10 NSFW, M11 watermark, M12 routing correctness
+
+### Tests
+- [x] Write vitest tests for GenerationJob types and WorkloadType enum (8 tests)
+- [x] Write vitest tests for vault accessor (4 tests)
+- [x] Write vitest tests for all 3 provider adapters (Runware 5, TensorArt 5, Fal 5 = 15 tests)
+- [x] Write vitest tests for router core routing logic (7 tests)
+- [x] Write vitest tests for budget governance (4 tests)
+- [x] Write vitest tests for health check logic (6 tests)
+- [x] Write vitest tests for M1-M12 evaluation gates (14 tests)
+- [x] Write vitest tests for tRPC registration (2 tests)
+- [x] Total: 75 tests passing in image-router.test.ts

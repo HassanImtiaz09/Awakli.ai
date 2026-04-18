@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, Upload,
   Film, Settings, Layers, Users, Zap, FileText, PlusCircle,
-  ArrowLeft, FolderOpen, Palette, Grid3X3, BookOpen, Clapperboard, PenTool,
+  ArrowLeft, FolderOpen, Palette, Grid3X3, BookOpen, Clapperboard, PenTool, DollarSign,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
@@ -34,6 +34,7 @@ function getProjectNav(projectId: string): NavItem[] {
     { href: `/studio/project/${projectId}/pipeline`,   label: "Pipeline",   icon: <Clapperboard size={18} />, badge: <PendingGateCount /> },
     { href: `/studio/project/${projectId}/lineart`,    label: "Lineart",    icon: <PenTool size={18} /> },
     { href: `/studio/project/${projectId}/tier-sampler`, label: "Tier Sampler", icon: <Layers size={18} /> },
+    { href: `/studio/project/${projectId}/cost-dashboard`, label: "Cost Dashboard", icon: <DollarSign size={18} /> },
   ];
 }
 

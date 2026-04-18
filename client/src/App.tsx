@@ -53,6 +53,7 @@ import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import TierSampler from "./pages/TierSampler";
+import CostDashboard from "./pages/CostDashboard";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -190,6 +191,14 @@ function Router() {
             </StudioLayout>
           )}
         </Route>
+        <Route path="/studio/project/:projectId/cost-dashboard">
+          {() => (
+            <StudioLayout>
+              <CostDashboard />
+            </StudioLayout>
+          )}
+        </Route>
+
         <Route path="/studio/project/:projectId/pipeline/:runId/batch-review">
           {(params) => (
             <StudioLayout>
