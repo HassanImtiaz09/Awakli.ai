@@ -3097,3 +3097,13 @@
 - [x] Registered in character_elements table (record ID: 1, status: ready)
 - [x] Bound to pipeline via getReadyElementMapForProject (returns {Kaelis → 308485829798538})
 - [x] Pipeline will auto-inject element_list for Tier 1 panels
+
+## Seraphis Recognition — Full Production (32 panels, 120s)
+- [x] Create Episode 2 "The Seraphis Recognition" with 5 acts, 32 panels in DB
+- [x] Generate 32 keyframe panel images (hero prompts from spec)
+- [x] Generate 32 video clips via Kling (batched 5 at a time, element_list for Kaelis) — ~$35 cost
+- [x] Generate voice clips: 5 clips via ElevenLabs (Ilyra, Kaelis, comms)
+- [x] Generate 3 music cues via MiniMax: tactical_percussion, rising_strings, crystal_drone
+- [x] Assemble final video: 120.0s, 72.8MB, 4-bus audio, 2.39:1 letterbox Acts 3-4, hard cuts, fade to black
+- [x] QC: -16.43 LUFS integrated, TP -1.41 dBTP, 1920x1080 24fps H.264, stereo 48kHz AAC
+- [x] Delivered: Cloudflare Stream (27772f25174256fc41b6db9043062dfe) + S3 direct download
