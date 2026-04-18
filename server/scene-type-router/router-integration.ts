@@ -44,7 +44,7 @@ const PROVIDER_HINT_MAP: Record<SceneType, ProviderHints> = {
     replacementPipeline: "dialogue_inpaint",
   },
   action: {
-    videoHints: ["kling_26", "kling_3_omni"],
+    videoHints: ["kling_26", "kling_3_omni", "wan_26"],  // wan_26 via fal.ai for motion-LoRA-capable path
     imageHints: ["local_controlnet", "local_ip_adapter"],
     videoStageReplaced: false,
     replacementPipeline: null,

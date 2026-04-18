@@ -76,7 +76,7 @@ describe("estimateTrainingCost", () => {
   it("returns modal provider for wan_fork path", async () => {
     const { estimateTrainingCost } = await import("./motion-lora-job-queue");
     const result = estimateTrainingCost("wan_fork", 3500);
-    expect(result.provider).toBe("Modal");
+    expect(result.provider).toBe("Modal (Wan 2.6)");
   });
 
   it("estimates positive minutes and cost for 3500 steps", async () => {

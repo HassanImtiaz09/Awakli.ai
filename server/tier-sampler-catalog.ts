@@ -110,7 +110,7 @@ export const TIER_LABELS: Record<number, string> = {
   5: "Ultra",
 };
 
-export const VISUAL_PROVIDERS = ["animatediff_v3", "kling_2_6", "runway_gen3", "stable_video_xt"] as const;
+export const VISUAL_PROVIDERS = ["animatediff_v3", "kling_2_6", "runway_gen3", "runway_act_two", "wan_26", "stable_video_xt"] as const;
 export const AUDIO_PROVIDERS = ["elevenlabs_turbo", "cartesia_sonic", "fish_audio"] as const;
 
 export const FAILURE_MODES: FailureMode[] = [

@@ -111,6 +111,7 @@ const COMPARISON_SECTIONS = [
       { label: "Voice clones", free: "0", creator: "2", studio: "Unlimited" },
       { label: "Custom narrator voice", free: false, creator: false, studio: true },
       { label: "Motion LoRA (character animation)", free: false, creator: false, studio: true },
+      { label: "LoRA stack layers", free: "None", creator: "Appearance", studio: "All 4 (Flagship)" },
     ],
   },
   {
@@ -133,6 +134,8 @@ const COMPARISON_SECTIONS = [
       { label: "Priority generation queue", free: false, creator: false, studio: true },
       { label: "Priority support", free: false, creator: false, studio: true },
       { label: "Motion LoRA training jobs/mo", free: "—", creator: "—", studio: "20" },
+      { label: "Wan 2.6 Pro (fal.ai)", free: false, creator: false, studio: true },
+      { label: "Runway Act-Two", free: false, creator: false, studio: true },
     ],
   },
 ];
@@ -172,7 +175,7 @@ const FAQS = [
   },
   {
     q: "What is Motion LoRA?",
-    a: "Motion LoRA is an advanced AI feature that trains character-specific animation models from your manga panels. It learns how your characters move, gesture, and fight, producing more consistent and expressive anime clips. Motion LoRA is available on Studio plans and above, with a 15% credit surcharge per generation. Each trained model goes through 14 quality gates (M1-M14) before production use.",
+    a: "Motion LoRA is an advanced AI feature that trains character-specific animation models from your manga panels. It learns how your characters move, gesture, and fight, producing more consistent and expressive anime clips. Studio plans include the full Flagship LoRA stack (appearance + motion + environment + style), with inference served via Wan 2.6 Pro on fal.ai ($0.10/sec at 720p). Each trained model goes through 14 quality gates (M1-M14) before production use. Motion LoRA reduces effective cost per approved second by ~55% through lower regen ratios.",
   },
 ];
 

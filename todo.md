@@ -3271,3 +3271,41 @@
 - [x] Write vitest tests for tRPC router procedure existence (12 tests)
 - [x] Write vitest tests for appRouter motionLora namespace (1 test)
 - [x] Total: 115 tests passing across motion-lora.test.ts + motion-lora-p25.test.ts
+
+## Prompt 26: Motion LoRA v1.1 Enhancements
+
+### Provider Updates
+- [x] Update all Runway Gen-3 Act-One references to Act-Two across codebase (staleness-scoring, tier-sampler-catalog, provider-router/registry)
+- [x] Update Wan 2.6 cost estimates to fal.ai pricing ($0.10/sec 720p, $0.15/sec 1080p, ~$0.05/sec Flash)
+- [x] Add fal.ai integration details to Wan 2.6 provider config (video-providers.ts: wan_26 adapter with fal.ai pricing)
+- [x] Update provider compatibility table: Act-Two partial support (5 credits/sec), fal.ai Wan 2.6
+- [x] Add wan_26 adapter to video-providers.ts with motion_lora support and fal.ai pricing tiers
+
+### Tier Gating Updates
+- [x] Add loraStackLayers to all tiers in products.ts (Free=[], Creator=[appearance], CreatorPro=[appearance,motion], Studio/Enterprise=[all 4])
+- [x] Expose motionLoraEnabled, maxMotionLoraTrainingsPerMonth, loraStackLayers in freemium router getStatus and compare procedures
+
+### Training & Job Queue Updates
+- [x] Update Wan 2.6 training config to reference fal-ai/wan-pro endpoint (servingTarget in job queue)
+- [x] Update job queue Modal provider with fal.ai serving target details and inference pricing
+- [x] Update motion-lora-training.ts version to 1.1.0, Wan config _training_path to wan_26
+
+### Cost Calculation Updates
+- [x] Add MOTION_LORA_ECONOMICS to credit-ledger.ts with full v1.1 cost model
+- [x] Add providerInferenceCosts with per-provider $/sec rates
+- [x] Add effectiveCostPerApprovedSec before/after comparison (55% reduction)
+- [x] Add perChapter and perVolume cost ranges before/after
+- [x] Add loraStackLayers to buildMotionLoraMetadata
+
+### UI Updates
+- [x] Update Pricing page: LoRA stack layers row, Wan 2.6 Pro and Runway Act-Two rows, updated FAQ
+- [x] Update MotionLoraPanel: v1.1 economics card (provider, cost, regen ratio), cost savings badge
+- [x] Update LoRA stack diagram: Wan 2.6 foundation, Environment LoRA layer
+
+### Tests
+- [x] Write vitest tests for v1.1 provider updates (27 tests in motion-lora-v11.test.ts)
+- [x] Write vitest tests for loraStackLayers per tier (7 tests)
+- [x] Write vitest tests for MOTION_LORA_ECONOMICS (4 tests)
+- [x] Write vitest tests for buildMotionLoraMetadata v1.1 extensions (2 tests)
+- [x] Write vitest tests for provider registry and scene-type router v1.1 (5 tests)
+- [x] Total: 142 tests passing across all 3 motion LoRA test files

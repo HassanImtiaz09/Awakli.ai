@@ -56,6 +56,8 @@ export interface TierConfig {
   motionLoraEnabled: boolean;
   /** Max motion LoRA training jobs per month (0 = not allowed) */
   maxMotionLoraTrainingsPerMonth: number;
+  /** LoRA stack depth: which LoRA types this tier can stack (v1.1) */
+  loraStackLayers: ("appearance" | "motion" | "environment" | "style")[];
 }
 
 export const TIERS: Record<TierKey, TierConfig> = {
@@ -95,6 +97,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     packDiscount: 0,
     motionLoraEnabled: false,
     maxMotionLoraTrainingsPerMonth: 0,
+    loraStackLayers: [],  // Free: no LoRA
   },
   creator: {
     name: "Creator",
@@ -132,6 +135,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     packDiscount: 0,
     motionLoraEnabled: false,
     maxMotionLoraTrainingsPerMonth: 0,
+    loraStackLayers: ["appearance"],  // Starter/Creator: appearance only
   },
   creator_pro: {
     name: "Creator Pro",
@@ -169,6 +173,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     packDiscount: 0.10,
     motionLoraEnabled: true,
     maxMotionLoraTrainingsPerMonth: 5,
+    loraStackLayers: ["appearance", "motion"],  // Standard/Creator Pro: appearance + motion
   },
   studio: {
     name: "Studio",
@@ -206,6 +211,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     packDiscount: 0.20,
     motionLoraEnabled: true,
     maxMotionLoraTrainingsPerMonth: 20,
+    loraStackLayers: ["appearance", "motion", "environment", "style"],  // Premium/Studio: all stacked (Flagship)
   },
   enterprise: {
     name: "Enterprise",
@@ -243,6 +249,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     packDiscount: 0.30,
     motionLoraEnabled: true,
     maxMotionLoraTrainingsPerMonth: 999,
+    loraStackLayers: ["appearance", "motion", "environment", "style"],  // Enterprise: all stacked
   },
 };
 

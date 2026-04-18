@@ -2,7 +2,8 @@
  * Prompt 25 — Motion LoRA GPU Job Queue
  *
  * Manages training job submission, status polling, and state transitions
- * for motion LoRA training on RunPod (SDXL/Kohya) and Modal (Wan fork).
+ * for motion LoRA training on RunPod (SDXL/Kohya) and Modal (Wan 2.6 fork).
+ * Wan 2.6 inference served via fal-ai/wan-pro endpoint after training.
  *
  * State machine: queued → training → evaluating → promoted/blocked/needs_review
  *
@@ -61,7 +62,7 @@ export const GPU_PROVIDERS = {
     apiKey: process.env.RUNPOD_API_KEY || "",
   },
   modal: {
-    name: "Modal",
+    name: "Modal (Wan 2.6)",
     supportedPaths: ["wan_fork"] as const,
     gpuType: "H100-SXM",
     costPerMinuteUsd: 0.058,
@@ -69,6 +70,8 @@ export const GPU_PROVIDERS = {
     maxConcurrentJobs: 3,
     endpointUrl: process.env.MODAL_ENDPOINT_URL || "https://awakli--motion-lora-wan.modal.run",
     apiKey: process.env.MODAL_API_KEY || "",
+    servingTarget: "fal-ai/wan-pro",  // v1.1: inference via fal.ai
+    inferencePricing: { "720p": 0.10, "1080p": 0.15, "flash": 0.05 },  // $/sec
   },
 } as const;
 

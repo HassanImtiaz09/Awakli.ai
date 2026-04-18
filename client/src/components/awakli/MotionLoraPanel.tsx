@@ -281,8 +281,8 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
             </div>
           )}
 
-          {/* Training quota */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          {/* Training quota + v1.1 economics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <div className="rounded bg-white/5 p-2">
               <div className="text-xs text-muted-foreground">Quota</div>
               <div className="font-mono">
@@ -296,6 +296,32 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
             <div className="rounded bg-white/5 p-2">
               <div className="text-xs text-muted-foreground">Training Cost</div>
               <div className="font-mono">8 credits</div>
+            </div>
+            <div className="rounded bg-white/5 p-2">
+              <div className="text-xs text-muted-foreground">Cost Savings</div>
+              <div className="font-mono text-[var(--status-success)]">~55%</div>
+            </div>
+          </div>
+
+          {/* v1.1 Provider & Economics Info */}
+          <div className="mt-3 rounded-lg bg-white/[0.02] border border-white/5 p-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div>
+                <span className="text-muted-foreground">Inference Provider</span>
+                <div className="font-medium mt-0.5">Wan 2.6 Pro (fal.ai)</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Inference Cost</span>
+                <div className="font-mono mt-0.5">$0.10/sec (720p)</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Regen Ratio (before)</span>
+                <div className="font-mono mt-0.5 text-[var(--status-error)]">3.5x</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Regen Ratio (after)</span>
+                <div className="font-mono mt-0.5 text-[var(--status-success)]">1.5x</div>
+              </div>
             </div>
           </div>
 
@@ -498,19 +524,19 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
         </div>
       </Collapsible>
 
-      {/* ─── LoRA Stack Diagram ─── */}
+      {/* ─── LoRA Stack Diagram (v1.1: tier-aware layers) ─── */}
       <div className="rounded-xl border border-white/10 bg-[var(--bg-base)] p-4">
         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Activity className="w-4 h-4 text-cyan" /> LoRA Stack (Load Order)
         </h4>
         <div className="flex flex-col gap-1">
           {[
-            { layer: "Base Model", desc: "SD/SDXL/Wan foundation", color: "bg-white/10", active: true },
-            { layer: "Motion Module", desc: "AnimateDiff / Wan temporal", color: "bg-white/10", active: true },
-            { layer: "Style LoRA", desc: "Art style consistency", color: "bg-purple-500/20", active: true },
-            { layer: "Appearance LoRA", desc: "Character visual identity", color: "bg-[var(--accent-pink)]/20", active: true },
-            { layer: "Motion LoRA", desc: "Character animation patterns", color: "bg-cyan/20", active: s.hasMotionLora },
-            { layer: "Scene LoRA", desc: "Optional scene-specific", color: "bg-[var(--accent-gold)]/20", active: false },
+            { layer: "Base Model", desc: "SD/SDXL/Wan 2.6 foundation", color: "bg-white/10", active: true, stackKey: null },
+            { layer: "Motion Module", desc: "AnimateDiff / Wan temporal", color: "bg-white/10", active: true, stackKey: null },
+            { layer: "Style LoRA", desc: "Art style consistency", color: "bg-purple-500/20", active: true, stackKey: "style" as const },
+            { layer: "Appearance LoRA", desc: "Character visual identity", color: "bg-[var(--accent-pink)]/20", active: true, stackKey: "appearance" as const },
+            { layer: "Motion LoRA", desc: "Character animation patterns", color: "bg-cyan/20", active: s.hasMotionLora, stackKey: "motion" as const },
+            { layer: "Environment LoRA", desc: "Scene-specific environment", color: "bg-[var(--accent-gold)]/20", active: false, stackKey: "environment" as const },
           ].map((item, i) => (
             <div
               key={item.layer}

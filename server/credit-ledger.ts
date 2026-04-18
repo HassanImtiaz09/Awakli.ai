@@ -645,6 +645,10 @@ export interface MotionLoraLedgerMetadata {
   baseCostCredits: number;
   /** Motion LoRA surcharge amount */
   motionLoraSurchargeCredits: number;
+  /** v1.1: provider used for this generation */
+  motionLoraProvider?: string;
+  /** v1.1: LoRA stack layers active for this generation */
+  loraStackLayers?: string[];
 }
 
 /** Motion LoRA cost multiplier: 15% surcharge on video generation */
@@ -652,6 +656,41 @@ export const MOTION_LORA_COST_MULTIPLIER = 1.15;
 
 /** Motion LoRA training cost in credits */
 export const MOTION_LORA_TRAINING_COST_CREDITS = 8;
+
+/**
+ * v1.1 Cost Economics — effective cost reduction from motion LoRA.
+ * Before: regen ratio 3.5x → effective $/approved_sec = $1.40-2.80
+ * After:  regen ratio 1.5x → effective $/approved_sec = $0.63-1.26
+ * Delta: ~55% reduction in effective cost per approved second.
+ */
+export const MOTION_LORA_ECONOMICS = {
+  /** Baseline regen ratio without motion LoRA */
+  baselineRegenRatio: 3.5,
+  /** Projected regen ratio with motion LoRA */
+  projectedRegenRatio: 1.5,
+  /** Effective cost reduction percentage */
+  effectiveCostReductionPercent: 55,
+  /** Raw video gen cost range ($/sec) */
+  rawCostPerSecBefore: { min: 0.40, max: 0.80 },
+  rawCostPerSecAfter: { min: 0.42, max: 0.84 },  // +5% from LoRA overhead
+  /** Effective cost per approved second */
+  effectiveCostPerApprovedSecBefore: { min: 1.40, max: 2.80 },
+  effectiveCostPerApprovedSecAfter: { min: 0.63, max: 1.26 },
+  /** Per-chapter and per-volume savings */
+  perChapterCostBefore: { min: 60, max: 150 },
+  perChapterCostAfter: { min: 27, max: 68 },
+  perVolumeCostBefore: { min: 400, max: 900 },
+  perVolumeCostAfter: { min: 180, max: 405 },
+  /** Provider-specific inference costs (v1.1 fal.ai pricing) */
+  providerInferenceCosts: {
+    wan_26_720p: 0.10,   // $/sec via fal-ai/wan-pro
+    wan_26_1080p: 0.15,  // $/sec via fal-ai/wan-pro
+    wan_26_flash: 0.05,  // $/sec via fal-ai/wan-pro Flash
+    animatediff_sdxl: 0.04,  // $/sec local inference
+    hunyuan_video: 0.08,     // $/sec
+    runway_act_two: 0.25,    // $/sec (5 credits/sec at $0.05/credit)
+  },
+} as const;
 
 /**
  * Calculate the credit cost for a video generation with optional motion LoRA.
@@ -684,7 +723,9 @@ export function buildMotionLoraMetadata(
   sceneType: string,
   weight: number,
   loraPath: string,
-  baseCostCredits: number
+  baseCostCredits: number,
+  provider?: string,
+  loraStackLayers?: string[]
 ): MotionLoraLedgerMetadata {
   const { surchargeCredits } = calculateMotionLoraCost(baseCostCredits, true);
   return {
@@ -695,6 +736,8 @@ export function buildMotionLoraMetadata(
     motionLoraCostMultiplier: MOTION_LORA_COST_MULTIPLIER,
     baseCostCredits,
     motionLoraSurchargeCredits: surchargeCredits,
+    motionLoraProvider: provider,
+    loraStackLayers,
   };
 }
 

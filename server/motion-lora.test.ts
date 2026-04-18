@@ -16,7 +16,7 @@ describe("motion-lora-training", () => {
   describe("constants", () => {
     it("exports required constants with correct values", async () => {
       const mod = await import("./motion-lora-training");
-      expect(mod.MOTION_LORA_VERSION).toBe("1.0.0");
+      expect(mod.MOTION_LORA_VERSION).toBe("1.1.0");
       expect(mod.MIN_TRAINING_CLIPS).toBe(40);
       expect(mod.MAX_TRAINING_STEPS).toBe(5000);
       expect(mod.DEFAULT_TRAINING_STEPS).toBe(3500);
@@ -264,7 +264,7 @@ describe("motion-lora-training", () => {
       expect(config.text_encoder_lr).toBe(0);
       expect(config.flip_augment).toBe(false);
       expect(config.inject_temporal_attention).toBe(true);
-      expect(config._training_path).toBe("wan");
+      expect(config._training_path).toBe("wan_26");
     });
 
     it("rejects SDXL config with wrong training path", async () => {

@@ -78,6 +78,8 @@ export const AVG_COST_PER_SAMPLE = 2.50;
 export const PROVIDER_VERSIONS: Record<string, { current: string; previous: string[] }> = {
   kling_2_6: { current: "2.6", previous: ["2.5", "2.4", "2.0"] },
   runway_gen3: { current: "3.0", previous: ["2.5", "2.0"] },
+  runway_act_two: { current: "2.0", previous: ["1.0"] },  // Act-Two (successor to Act-One)
+  wan_26: { current: "2.6", previous: ["2.1", "2.0"] },  // Wan 2.6 via fal.ai
   animatediff_v3: { current: "3.0", previous: ["2.1", "2.0"] },
   stable_video_xt: { current: "1.1", previous: ["1.0"] },
   elevenlabs_turbo: { current: "2.5", previous: ["2.0", "1.5"] },

@@ -176,6 +176,8 @@ export async function getActiveApiKey(providerId: string): Promise<{
     minimax_video02: "MINIMAX_API_KEY",
     minimax_music01: "MINIMAX_API_KEY",
     runway_gen4: "RUNWAY_API_KEY",
+    runway_act_two: "RUNWAY_API_KEY",  // Act-Two uses same Runway dev API key
+    wan_26: "FAL_API_KEY",  // Wan 2.6 served via fal.ai ($0.10-0.15/sec)
   };
   const envVarName = ENV_KEY_MAP[providerId];
   if (envVarName) {

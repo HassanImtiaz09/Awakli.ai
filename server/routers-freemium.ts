@@ -301,6 +301,9 @@ export const tierRouter = router({
         canExportManga: config.canExportManga,
         canExportAnime: config.canExportAnime,
         exportFormats: config.exportFormats,
+        motionLoraEnabled: config.motionLoraEnabled,
+        maxMotionLoraTrainingsPerMonth: config.maxMotionLoraTrainingsPerMonth,
+        loraStackLayers: config.loraStackLayers,
       },
       usage: {
         projects: projectCount?.count || 0,
@@ -333,6 +336,9 @@ export const tierRouter = router({
       hasPriorityQueue: config.hasPriorityQueue,
       hasPrioritySupport: config.hasPrioritySupport,
       hasCustomNarrator: config.hasCustomNarrator,
+      motionLoraEnabled: config.motionLoraEnabled,
+      maxMotionLoraTrainingsPerMonth: config.maxMotionLoraTrainingsPerMonth,
+      loraStackLayers: config.loraStackLayers,
     }));
   }),
 });

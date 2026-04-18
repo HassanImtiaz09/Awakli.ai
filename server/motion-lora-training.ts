@@ -6,14 +6,14 @@
  *
  * Supports two training paths:
  *   - SDXL path: Kohya-SS with AnimateDiff motion module
- *   - Wan path: Wan 2.1 fork with temporal attention injection
+ *   - Wan path: Wan 2.6 fork with temporal attention injection (served via fal.ai)
  *
  * Training corpus: 40+ clips per character, 3500-4000 steps.
  */
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
-export const MOTION_LORA_VERSION = "1.0.0";
+export const MOTION_LORA_VERSION = "1.1.0";
 
 /** Minimum training clips required for motion LoRA */
 export const MIN_TRAINING_CLIPS = 40;
@@ -57,7 +57,7 @@ export interface MotionLoraTrainingConfig {
   characterName: string;
   /** Project ID */
   projectId: number;
-  /** Training path: SDXL (Kohya-SS + AnimateDiff) or Wan (Wan 2.1 fork) */
+  /** Training path: SDXL (Kohya-SS + AnimateDiff) or Wan (Wan 2.6 fork via fal.ai) */
   trainingPath: TrainingPath;
   /** Number of training steps (default: 3500) */
   trainingSteps: number;
@@ -335,7 +335,9 @@ export function generateSdxlTrainingConfig(config: MotionLoraTrainingConfig): Re
 }
 
 /**
- * Generate Wan 2.1 fork training config (Section 4.2 of spec).
+ * Generate Wan 2.6 fork training config (Section 4.2 of spec).
+ * Training runs on Awakli GPU harness; inference served via fal-ai/wan-pro endpoint.
+ * Pricing: $0.10/sec (720p), $0.15/sec (1080p), ~$0.05/sec (Flash).
  */
 export function generateWanTrainingConfig(config: MotionLoraTrainingConfig): Record<string, unknown> {
   if (config.trainingPath !== "wan") throw new Error("Config is not for Wan path");
@@ -402,7 +404,9 @@ export function generateWanTrainingConfig(config: MotionLoraTrainingConfig): Rec
     _awakli_version: MOTION_LORA_VERSION,
     _character_id: config.characterId,
     _character_name: config.characterName,
-    _training_path: "wan",
+    _training_path: "wan_26",
+    _serving_target: "fal-ai/wan-pro",
+    _inference_pricing: { "720p": 0.10, "1080p": 0.15, "flash": 0.05 },
     _clip_count: config.trainingClipUrls.length,
   };
 }

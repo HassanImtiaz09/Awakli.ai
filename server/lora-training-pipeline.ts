@@ -131,9 +131,9 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
   kling_v1_5: { supportsLora: false, supportsIpAdapter: false, name: "Kling 1.5" },
   kling_v2: { supportsLora: false, supportsIpAdapter: false, name: "Kling 2.0" },
   kling_v2_6: { supportsLora: false, supportsIpAdapter: false, name: "Kling 2.6" },
-  wan_2_6: { supportsLora: false, supportsIpAdapter: false, name: "Wan 2.6" },
+  wan_2_6: { supportsLora: true, supportsIpAdapter: false, name: "Wan 2.6 (via fal.ai)" },  // Motion LoRA via adapter fork
   wan_2_7: { supportsLora: false, supportsIpAdapter: false, name: "Wan 2.7" },
-  hunyuan_video: { supportsLora: false, supportsIpAdapter: false, name: "HunyuanVideo" },
+  hunyuan_video: { supportsLora: true, supportsIpAdapter: false, name: "HunyuanVideo" },  // Native HunyuanMotionLoRA support
   flux_schnell: { supportsLora: false, supportsIpAdapter: false, name: "FLUX Schnell" },
   flux_pro: { supportsLora: false, supportsIpAdapter: false, name: "FLUX Pro" },
   pika_2_2: { supportsLora: false, supportsIpAdapter: false, name: "Pika 2.2" },

@@ -365,30 +365,34 @@ registerAdapter(createVideoAdapter({
   authHeader: (key) => ({ "Authorization": `Bearer ${key}` }),
 }));
 
-// ─── Wan 2.1 (via Fal.ai Queue API) ────────────────────────────────────
+// ─── Wan 2.6 (via Fal.ai Queue API) ────────────────────────────────────
 // Fal.ai model: fal-ai/wan-i2v (image-to-video) or fal-ai/wan-t2v (text-to-video)
+// Pro model (motion LoRA capable): fal-ai/wan-pro
 // Queue pattern: POST queue.fal.run/{model} → poll status → GET result
-// Pricing: $0.20 (480p) / $0.40 (720p) per video (~5s)
+// Pricing (v1.1): $0.10/sec (720p), $0.15/sec (1080p), ~$0.05/sec (Flash)
 // Auth: Authorization: Key {FAL_API_KEY}
 const WAN_FAL_MODEL_I2V = "fal-ai/wan-i2v";
 const WAN_FAL_MODEL_T2V = "fal-ai/wan-t2v";
+const WAN_FAL_MODEL_PRO = "fal-ai/wan-pro";  // Motion LoRA capable endpoint
 
 registerAdapter({
-  providerId: "wan_21",
+  providerId: "wan_21",  // Legacy Wan 2.1 adapter (kept for backward compat)
 
   validateParams(p: GenerationParams) {
     const v = p as VideoParams;
     const errors: string[] = [];
     if (!v.prompt) errors.push("prompt required");
-    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for wan_21");
+    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for Wan");
     return { valid: !errors.length, errors: errors.length ? errors : undefined };
   },
 
   estimateCostUsd(p: GenerationParams) {
-    // Wan 2.1 on Fal.ai: $0.40 per video at 720p, $0.20 at 480p
+    // Wan on Fal.ai (v1.1 pricing): $0.10/sec (720p), $0.15/sec (1080p)
     const v = p as VideoParams;
+    const duration = v.durationSeconds ?? 5;
     const resolution = v.resolution ?? "720p";
-    return resolution === "480p" ? 0.20 : 0.40;
+    const perSecond = resolution === "1080p" ? 0.15 : 0.10;
+    return duration * perSecond;
   },
 
   async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
@@ -509,5 +513,145 @@ registerAdapter({
     }
 
     throw new ProviderError("TIMEOUT", "wan_21 task timed out on Fal.ai", "wan_21");
+  },
+});
+
+// ─── Wan 2.6 Pro (Motion LoRA capable, via fal-ai/wan-pro) ─────────────
+// This adapter routes to the Pro endpoint which accepts motion_lora parameter.
+// Used by Premium/Studio/Enterprise tiers for motion-LoRA-enhanced generation.
+registerAdapter({
+  providerId: "wan_26",
+
+  validateParams(p: GenerationParams) {
+    const v = p as VideoParams;
+    const errors: string[] = [];
+    if (!v.prompt) errors.push("prompt required");
+    if (v.durationSeconds && v.durationSeconds > 10) errors.push("max 10s for Wan 2.6 Pro");
+    return { valid: !errors.length, errors: errors.length ? errors : undefined };
+  },
+
+  estimateCostUsd(p: GenerationParams) {
+    // Wan 2.6 Pro on Fal.ai (v1.1 pricing): $0.10/sec (720p), $0.15/sec (1080p), ~$0.05/sec (Flash)
+    const v = p as VideoParams;
+    const duration = v.durationSeconds ?? 5;
+    const resolution = v.resolution ?? "720p";
+    const perSecond = resolution === "1080p" ? 0.15 : resolution === "480p" ? 0.05 : 0.10;
+    return duration * perSecond;
+  },
+
+  async execute(p: GenerationParams, ctx: ExecutionContext): Promise<AdapterResult> {
+    const v = p as VideoParams;
+    const keyInfo = await getActiveApiKey("wan_26");
+    if (!keyInfo) throw new ProviderError("UNKNOWN", "No API key for wan_26", "wan_26", false, false);
+    const apiKey = keyInfo.decryptedKey;
+
+    const queueUrl = `https://queue.fal.run/${WAN_FAL_MODEL_PRO}`;
+
+    // Build request body — Pro endpoint accepts motion_lora parameter
+    const body: Record<string, unknown> = {
+      prompt: v.prompt,
+      resolution: v.resolution ?? "720p",
+      aspect_ratio: v.aspectRatio ?? "16:9",
+      num_frames: 81,
+      frames_per_second: 16,
+      enable_safety_checker: true,
+      enable_prompt_expansion: true,
+    };
+    if (v.imageUrl) body.image_url = v.imageUrl;
+    if (v.negativePrompt) body.negative_prompt = v.negativePrompt;
+    if (v.seed !== undefined) body.seed = v.seed;
+
+    // Motion LoRA injection — pass URL to trained artifact
+    const meta = v as unknown as Record<string, unknown>;
+    if (meta.motionLoraUrl) {
+      body.motion_lora = {
+        url: meta.motionLoraUrl,
+        weight: meta.motionLoraWeight ?? 0.60,
+      };
+    }
+
+    const submitResp = await fetch(queueUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: ctx.timeout ? AbortSignal.timeout(Math.min(ctx.timeout, 30_000)) : undefined,
+    });
+
+    if (!submitResp.ok) {
+      const errBody = await submitResp.text().catch(() => "");
+      if (submitResp.status === 429) throw new ProviderError("RATE_LIMITED", errBody, "wan_26");
+      if (submitResp.status === 422) throw new ProviderError("CONTENT_VIOLATION", errBody, "wan_26", false, false);
+      throw new ProviderError("TRANSIENT", `wan_26 ${submitResp.status}: ${errBody}`, "wan_26");
+    }
+
+    const submitData = await submitResp.json() as Record<string, unknown>;
+    const requestId = String(submitData.request_id ?? "");
+    const statusUrl = String(submitData.status_url ?? `${queueUrl}/requests/${requestId}/status`);
+    const responseUrl = String(submitData.response_url ?? `${queueUrl}/requests/${requestId}`);
+
+    if (!requestId) {
+      throw new ProviderError("TRANSIENT", "No request_id in Fal.ai queue response", "wan_26");
+    }
+
+    const maxWait = ctx.timeout ?? 300_000;
+    const start = Date.now();
+    const pollInterval = 5_000;
+
+    while (Date.now() - start < maxWait) {
+      await new Promise(r => setTimeout(r, pollInterval));
+
+      try {
+        const statusResp = await fetch(statusUrl, {
+          headers: { "Authorization": `Key ${apiKey}` },
+        });
+
+        if (!statusResp.ok) continue;
+        const statusData = await statusResp.json() as Record<string, unknown>;
+        const status = String(statusData.status ?? "");
+
+        if (status === "COMPLETED") {
+          const resultResp = await fetch(responseUrl, {
+            headers: { "Authorization": `Key ${apiKey}` },
+          });
+
+          if (!resultResp.ok) {
+            throw new ProviderError("TRANSIENT", `Failed to fetch Wan 2.6 result: ${resultResp.status}`, "wan_26");
+          }
+
+          const resultData = await resultResp.json() as Record<string, unknown>;
+          const video = resultData.video as Record<string, unknown> | undefined;
+          const videoUrl = video?.url ? String(video.url) : null;
+
+          if (!videoUrl) {
+            throw new ProviderError("TRANSIENT", "No video URL in Wan 2.6 result", "wan_26");
+          }
+
+          return {
+            storageUrl: videoUrl,
+            mimeType: "video/mp4",
+            durationSeconds: v.durationSeconds ?? 5,
+            metadata: {
+              requestId,
+              model: WAN_FAL_MODEL_PRO,
+              motionLoraApplied: !!meta.motionLoraUrl,
+              seed: resultData.seed,
+              timings: resultData.timings,
+            },
+          };
+        }
+
+        if (status === "FAILED") {
+          const errorMsg = String(statusData.error ?? "Wan 2.6 Pro task failed on Fal.ai");
+          throw new ProviderError("TRANSIENT", errorMsg, "wan_26");
+        }
+      } catch (err) {
+        if (err instanceof ProviderError) throw err;
+      }
+    }
+
+    throw new ProviderError("TIMEOUT", "wan_26 task timed out on Fal.ai", "wan_26");
   },
 });
