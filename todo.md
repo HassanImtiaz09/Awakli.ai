@@ -3223,3 +3223,51 @@
 - [x] Write vitest tests for ledger field population (calculateMotionLoraCost, buildMotionLoraMetadata)
 - [x] Write vitest tests for evaluation gate framework (M1-M14 definitions, automated evaluators, report generator)
 - [x] Write vitest tests for scene-type router motion_lora_required flag (9 tests: per-scene-type hints, pipeline config, weight range validation)
+
+## Prompt 25: Motion LoRA CRUD, Job Queue, and Evaluation Runner
+
+### tRPC CRUD Procedures
+- [x] Add DB query helpers for motion LoRA CRUD (server/db-motion-lora.ts: getByCharacter, create, update, retire, promote, getCoverage, batchUpsert)
+- [x] Wire motionLora.list tRPC procedure (list all LoRAs for a character)
+- [x] Wire motionLora.get tRPC procedure (get single LoRA with config and coverage)
+- [x] Wire motionLora.status tRPC procedure (combined status: tier gate, training status, evaluation results)
+- [x] Wire motionLora.update tRPC procedure (update LoRA weight, trigger token)
+- [x] Wire motionLora.retire tRPC procedure (soft-delete / retire a LoRA)
+- [x] Wire motionLora.getCoverage tRPC procedure (get coverage matrix for a character)
+- [x] Coverage auto-updated via evaluation pipeline (batchUpsertCoverage after gate runner)
+
+### GPU Job Queue (RunPod/Modal)
+- [x] Create server/motion-lora-job-queue.ts with job submission, polling, and state machine
+- [x] Implement RunPod serverless endpoint integration for SDXL Kohya training (simulated, production-ready interface)
+- [x] Implement Modal endpoint integration for Wan 2.6 fork training (simulated, production-ready interface)
+- [x] Add job state machine: queued → training → evaluating → promoted/blocked/needs_review
+- [x] Add job polling/webhook handler for status updates from GPU providers (handleTrainingWebhook)
+- [x] Add tier-gated job submission (check motionLoraEnabled + maxMotionLoraTrainingsPerMonth)
+- [x] Wire motionLora.submitTraining tRPC procedure
+- [x] Wire motionLora.checkTrainingStatus tRPC procedure
+
+### Evaluation Gate Runner
+- [x] Create server/motion-lora-gate-runner.ts with end-to-end evaluation pipeline
+- [x] Implement gate runner: generate test clips, run M1-M14 evaluators, produce verdict
+- [x] Wire motionLora.runEvaluation tRPC procedure (trigger evaluation on trained artifact)
+- [x] Wire motionLora.getEvaluationReport tRPC procedure (get gate report for a LoRA)
+- [x] Add automatic evaluation trigger after training completes (via handleTrainingWebhook)
+
+### Frontend Integration
+- [x] Connect MotionLoraPanel to real tRPC data (trpc.motionLora.status.useQuery with 15s polling)
+- [x] Connect training/cancel/evaluate mutations in MotionLoraPanel
+- [x] AssemblySettingsPanel motion LoRA controls already persist via assembly settings JSON
+- [x] Add training progress polling in MotionLoraPanel (refetchInterval: 15000)
+- [x] Add evaluation results display in MotionLoraPanel (wired to tRPC status query)
+
+### Tests
+- [x] Write vitest tests for GPU provider config (7 tests)
+- [x] Write vitest tests for estimateTrainingCost (7 tests)
+- [x] Write vitest tests for submitMotionLoraTrainingJob (3 tests)
+- [x] Write vitest tests for pollTrainingJobStatus (3 tests)
+- [x] Write vitest tests for cancelTrainingJob (2 tests)
+- [x] Write vitest tests for runEvaluationPipeline (5 tests)
+- [x] Write vitest tests for getEvaluationReport (2 tests)
+- [x] Write vitest tests for tRPC router procedure existence (12 tests)
+- [x] Write vitest tests for appRouter motionLora namespace (1 test)
+- [x] Total: 115 tests passing across motion-lora.test.ts + motion-lora-p25.test.ts

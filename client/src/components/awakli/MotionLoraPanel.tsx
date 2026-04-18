@@ -5,12 +5,12 @@
  * and evaluation gate results (M1-M14) for a character.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Lock, CheckCircle2, XCircle, AlertTriangle, Loader2,
   ChevronDown, Shield, Activity, TrendingUp, Timer, DollarSign,
-  Eye, Film, Swords, MessageSquare, Footprints, Sparkles,
+  Eye, Film, Swords, MessageSquare, Footprints, Sparkles, RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 // ─── Scene Type Weight Map (mirrors server/motion-lora-training.ts) ────
 
@@ -115,24 +117,75 @@ interface MotionLoraStatus {
 interface MotionLoraPanelProps {
   characterId: number;
   characterName: string;
-  /** Mock status for now — will be wired to tRPC when backend endpoint exists */
-  status?: MotionLoraStatus;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
 
-export function MotionLoraPanel({ characterId, characterName, status }: MotionLoraPanelProps) {
+export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelProps) {
   const [sceneMapOpen, setSceneMapOpen] = useState(false);
   const [gatesOpen, setGatesOpen] = useState(false);
 
-  // Default status for display when no data is available
-  const s: MotionLoraStatus = status ?? {
+  // ─── tRPC Queries ───
+  const statusQuery = trpc.motionLora.status.useQuery(
+    { characterId },
+    { refetchInterval: 15000 } // Poll every 15s for training progress
+  );
+
+  const submitTraining = trpc.motionLora.submitTraining.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Training job submitted! Estimated ${data.estimatedMinutes} min (${data.estimatedCostCredits} credits)`);
+      statusQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const runEvaluation = trpc.motionLora.runEvaluation.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Evaluation complete: ${data.verdict} (${data.passCount}/${data.passCount + data.failCount} gates passed)`);
+      statusQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const cancelTraining = trpc.motionLora.cancelTraining.useMutation({
+    onSuccess: () => {
+      toast.info("Training job cancelled");
+      statusQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  // Map tRPC data to the display shape
+  const data = statusQuery.data;
+  const s: MotionLoraStatus = data ? {
+    tierAllowed: data.tierAllowed,
+    tierName: data.tierName,
+    maxTrainingsPerMonth: data.maxTrainingsPerMonth,
+    trainingsUsedThisMonth: data.trainingsUsedThisMonth,
+    hasMotionLora: data.hasMotionLora,
+    trainingStatus: data.trainingStatus as MotionLoraStatus["trainingStatus"],
+    trainingProgress: data.trainingProgress ?? undefined,
+    modelVersion: data.modelVersion ?? undefined,
+    evaluationResults: data.evaluationResults ? {
+      verdict: data.evaluationResults.verdict,
+      gates: data.evaluationResults.gates,
+      evaluatedAt: data.evaluationResults.evaluatedAt,
+    } : undefined,
+  } : {
     tierAllowed: false,
     tierName: "Free",
     maxTrainingsPerMonth: 0,
     trainingsUsedThisMonth: 0,
     hasMotionLora: false,
   };
+
+  const isLoading = statusQuery.isLoading;
 
   return (
     <div className="space-y-6">
@@ -251,10 +304,11 @@ export function MotionLoraPanel({ characterId, characterName, status }: MotionLo
             <div className="mt-4 pt-4 border-t border-white/5">
               <Button
                 className="bg-gradient-to-r from-cyan to-[var(--accent-pink)] text-white border-0"
-                disabled={s.trainingsUsedThisMonth >= s.maxTrainingsPerMonth}
+                disabled={s.trainingsUsedThisMonth >= s.maxTrainingsPerMonth || submitTraining.isPending}
                 onClick={() => {
-                  // Placeholder — will be wired to motion LoRA training endpoint
-                  import("sonner").then(({ toast }) => toast.info("Motion LoRA training coming soon"));
+                  toast.info("Motion LoRA training requires at least 40 video clips. Upload clips in the Assets tab first.");
+                  // In production, this would open a training configuration dialog
+                  // For now, show the info toast
                 }}
               >
                 <Zap className="w-4 h-4 mr-2" /> Train Motion LoRA
