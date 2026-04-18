@@ -3107,3 +3107,13 @@
 - [x] Assemble final video: 120.0s, 72.8MB, 4-bus audio, 2.39:1 letterbox Acts 3-4, hard cuts, fade to black
 - [x] QC: -16.43 LUFS integrated, TP -1.41 dBTP, 1920x1080 24fps H.264, stereo 48kHz AAC
 - [x] Delivered: Cloudflare Stream (27772f25174256fc41b6db9043062dfe) + S3 direct download
+
+## Seraphis Recognition — Audio Fix + Lip Sync (v2)
+- [x] Diagnose why voice dialogue is inaudible in final video (amix 1/N division + quiet source clips)
+- [x] Inspect raw voice clips (P04, P05, P11, P30, P31) for content and loudness
+- [x] Inspect intermediate voice_track.wav and mixed_audio.wav for voice presence
+- [x] Fix audio mixing pipeline: adelay+apad per clip, weights=1 1, normalize=0, voice at -14 LUFS
+- [x] Re-assemble video v2 with corrected audio: all 5 dialogue timecodes at -15 to -19 LUFS (audible)
+- [x] Lip sync via Kling API: 4/5 panels (P05, P11, P30, P31). P04 skipped (face visible only from 2100ms, insufficient overlap)
+- [x] Upload v3 final: S3 + Cloudflare Stream (5704a3884c469a5ff4708cf4c891d60e, ready)
+- [x] Document root cause and prevention guidelines for future productions
