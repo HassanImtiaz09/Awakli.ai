@@ -71,6 +71,19 @@ export interface VideoParams {
   seed?: number;
   /** Subject library element IDs for lip-sync (Kling 3 Omni) */
   elementIds?: string[];
+  /** Motion LoRA stack parameters (Prompt 24) */
+  motionLora?: {
+    /** Path/URL to the trained motion LoRA weights */
+    motionLoraPath: string;
+    /** Weight for the motion LoRA layer (0.30–0.85) */
+    motionLoraWeight: number;
+    /** Optional appearance LoRA path (loaded before motion) */
+    appearanceLoraPath?: string;
+    /** Optional style LoRA path (loaded first) */
+    styleLoraPath?: string;
+    /** Scene type that triggered this motion LoRA */
+    sceneType: string;
+  };
 }
 
 export interface VoiceParams {
@@ -160,6 +173,10 @@ export interface ProviderCapabilities {
   formats?: string[];
   upscale?: boolean;
   animeOptimized?: boolean;
+  /** Whether this provider supports motion LoRA injection (Prompt 24) */
+  motionLora?: boolean;
+  /** Whether this provider supports the full 4-layer LoRA stack */
+  loraStack?: boolean;
   [key: string]: unknown;
 }
 

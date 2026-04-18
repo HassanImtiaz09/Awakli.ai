@@ -18,6 +18,7 @@ import { createModelRoutingStat, updatePipelineAssetRouting } from "./db";
 import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
+import { resolveMotionLora, sceneQualifiesForMotionLora, getMotionLoraWeight, type MotionLoraResolution } from "./motion-lora-training";
 import { assembleVideo, type TransitionSpec, type TransitionType } from "./video-assembly";
 import { foleyGenNode } from "./foleyGenerator";
 import { ambientGenNode } from "./ambientDetector";
@@ -206,8 +207,43 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
   } catch { /* use default */ }
 
   const classifications: Map<number, SceneClassification> = new Map();
+  const motionLoraDecisions: Map<number, MotionLoraResolution> = new Map();
   let classificationCost = 0;
   const tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+  // ─── Motion LoRA: Check if character has trained motion LoRA ───────────
+  let motionLoraAvailable = false;
+  let motionLoraPath: string | undefined;
+  let motionLoraCorrupt = false;
+  let hasAppearanceLora = false;
+  let hasStyleLora = false;
+  let userTierAllowsMotionLora = true; // TODO: wire to actual tier check
+
+  try {
+    const characters = await getCharactersByProject(projectId);
+    for (const char of characters) {
+      // Check for motion LoRA in the character's LoRA model URL or settings
+      const charAny = char as any;
+      if (charAny.motionLoraUrl) {
+        motionLoraAvailable = true;
+        motionLoraPath = charAny.motionLoraUrl;
+        motionLoraCorrupt = charAny.motionLoraCorrupt === true;
+      }
+      if (char.loraModelUrl || char.loraStatus === "ready") {
+        hasAppearanceLora = true;
+      }
+      if (charAny.styleLoraPath) {
+        hasStyleLora = true;
+      }
+    }
+    if (motionLoraAvailable) {
+      console.log(`[Pipeline] Motion LoRA available: ${motionLoraPath}`);
+    } else {
+      console.log(`[Pipeline] No motion LoRA found for project ${projectId}`);
+    }
+  } catch (err) {
+    console.warn(`[Pipeline] Motion LoRA lookup failed:`, err);
+  }
 
   for (const panel of panelsToProcess) {
     const dialogue = panel.dialogue as any;
@@ -237,7 +273,23 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     classificationCost += classification.classificationCostUsd;
     tierCounts[classification.tier]++;
 
-    console.log(`[Router] Panel ${panel.id}: Tier ${classification.tier} → ${classification.model} (${classification.deterministic ? "deterministic" : "LLM"}) — ${classification.reasoning}`);
+    // ─── Motion LoRA resolution per panel ───
+    const sceneType = (classification as any).sceneType || "establishing-environment";
+    const motionDecision = resolveMotionLora({
+      hasMotionLora: motionLoraAvailable,
+      motionLoraPath,
+      motionLoraCorrupt,
+      hasAppearanceLora,
+      hasStyleLora,
+      sceneType,
+      userTierAllowsMotionLora,
+    });
+    motionLoraDecisions.set(panel.id, motionDecision);
+
+    const motionLabel = motionDecision.fallback === "applied"
+      ? `motion-LoRA@${motionDecision.motionLoraWeight}`
+      : `motion-LoRA:${motionDecision.fallback}`;
+    console.log(`[Router] Panel ${panel.id}: Tier ${classification.tier} → ${classification.model} (${classification.deterministic ? "deterministic" : "LLM"}) [${motionLabel}] — ${classification.reasoning}`);
   }
 
   console.log(`[Router] Classification complete: T1=${tierCounts[1]} T2=${tierCounts[2]} T3=${tierCounts[3]} T4=${tierCounts[4]}, cost=$${classificationCost.toFixed(3)}`);
@@ -402,6 +454,9 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
                 ? (task.hasNativeLipSync ? "native" : "native")
                 : task.classification.lipSyncBeneficial ? "post_sync" : "none";
 
+              // ─── Motion LoRA metadata for this panel ───
+              const motionDecision = motionLoraDecisions.get(task.panelId);
+
               await createPipelineAsset({
                 pipelineRunId: runId,
                 episodeId,
@@ -420,6 +475,10 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
                   usedSubjectLibrary: task.hasNativeLipSync,
                   complexityTier: task.classification.tier,
                   lipSyncBeneficial: task.classification.lipSyncBeneficial,
+                  motionLoraApplied: motionDecision?.fallback === "applied",
+                  motionLoraWeight: motionDecision?.motionLoraWeight,
+                  motionLoraFallback: motionDecision?.fallback,
+                  motionLoraSceneType: motionDecision?.sceneType,
                 } as any,
                 nodeSource: "video_gen",
                 klingModelUsed: task.classification.model,

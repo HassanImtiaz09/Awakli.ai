@@ -12,6 +12,19 @@
  */
 
 import { invokeLLM } from "./_core/llm";
+import { getMotionLoraWeight, sceneQualifiesForMotionLora } from "./motion-lora-training";
+
+/**
+ * Derive motion LoRA fields from scene type.
+ * Used by all classification return paths.
+ */
+function deriveMotionLoraFields(sceneType: string): { sceneType: string; motionLoraRequired: boolean; motionLoraWeight: number | null } {
+  return {
+    sceneType,
+    motionLoraRequired: sceneQualifiesForMotionLora(sceneType),
+    motionLoraWeight: getMotionLoraWeight(sceneType),
+  };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -37,6 +50,12 @@ export interface SceneClassification {
   lipSyncBeneficial: boolean;
   deterministic: boolean;  // true if no LLM call was needed
   classificationCostUsd: number;
+  /** Scene type classification for motion LoRA routing */
+  sceneType: string;
+  /** Whether this scene type benefits from motion LoRA conditioning */
+  motionLoraRequired: boolean;
+  /** Recommended motion LoRA weight for this scene (null if not applicable) */
+  motionLoraWeight: number | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -130,6 +149,7 @@ export function applyDeterministicRules(panel: PanelScriptData): SceneClassifica
       lipSyncBeneficial: false,
       deterministic: true,
       classificationCostUsd: 0,
+      ...deriveMotionLoraFields("transition"),
     };
   }
 
@@ -146,6 +166,7 @@ export function applyDeterministicRules(panel: PanelScriptData): SceneClassifica
       lipSyncBeneficial: true,
       deterministic: true,
       classificationCostUsd: 0,
+      ...deriveMotionLoraFields("dialogue-static"),
     };
   }
 
@@ -164,6 +185,7 @@ export function applyDeterministicRules(panel: PanelScriptData): SceneClassifica
       lipSyncBeneficial: false,
       deterministic: true,
       classificationCostUsd: 0,
+      ...deriveMotionLoraFields("establishing-environment"),
     };
   }
 
@@ -281,15 +303,15 @@ async function classifyWithLLM(panel: PanelScriptData): Promise<{
     const faceSize = estimateFaceSize(panel.cameraAngle || "", getCharacterCount(panel));
 
     if (hasDialogue && faceSize > 10) {
-      return { tier: 1, reasoning: "Heuristic fallback: dialogue + face > 10% of frame", faceVisible: true, lipSyncNeeded: true, lipSyncBeneficial: true };
+      return { tier: 1, reasoning: "Heuristic fallback: dialogue + face > 10% of frame", faceVisible: true, lipSyncNeeded: true, lipSyncBeneficial: true, ...deriveMotionLoraFields("dialogue-gestured") };
     }
     if (hasDialogue && faceSize >= 5) {
-      return { tier: 2, reasoning: "Heuristic fallback: dialogue + face 5-10% of frame", faceVisible: true, lipSyncNeeded: false, lipSyncBeneficial: true };
+      return { tier: 2, reasoning: "Heuristic fallback: dialogue + face 5-10% of frame", faceVisible: true, lipSyncNeeded: false, lipSyncBeneficial: true, ...deriveMotionLoraFields("dialogue-gestured") };
     }
     if (hasDialogue) {
-      return { tier: 2, reasoning: "Heuristic fallback: dialogue present, face too small for lip sync", faceVisible: false, lipSyncNeeded: false, lipSyncBeneficial: false };
+      return { tier: 2, reasoning: "Heuristic fallback: dialogue present, face too small for lip sync", faceVisible: false, lipSyncNeeded: false, lipSyncBeneficial: false, ...deriveMotionLoraFields("dialogue-static") };
     }
-    return { tier: 3, reasoning: "Heuristic fallback: no dialogue, medium complexity assumed", faceVisible: false, lipSyncNeeded: false, lipSyncBeneficial: false };
+    return { tier: 3, reasoning: "Heuristic fallback: no dialogue, medium complexity assumed", faceVisible: false, lipSyncNeeded: false, lipSyncBeneficial: false, ...deriveMotionLoraFields("establishing-environment") };
   }
 }
 
@@ -331,6 +353,9 @@ export async function classifyScene(panel: PanelScriptData): Promise<SceneClassi
 
   const m = MODEL_MAP[tier];
 
+  // Derive scene type from LLM result or panel data
+  const derivedSceneType = panel.sceneType?.toLowerCase() || (hasDialogue ? "dialogue-gestured" : "establishing-environment");
+
   return {
     tier,
     model: m.model,
@@ -342,6 +367,7 @@ export async function classifyScene(panel: PanelScriptData): Promise<SceneClassi
     lipSyncBeneficial: llmResult.lipSyncBeneficial,
     deterministic: false,
     classificationCostUsd: 0.005,
+    ...deriveMotionLoraFields(derivedSceneType),
   };
 }
 

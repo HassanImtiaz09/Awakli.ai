@@ -83,6 +83,7 @@ const TIERS = [
       { icon: Download, text: "Export all formats (4K, ProRes)" },
       { icon: Star, text: "85% revenue share" },
       { icon: Shield, text: "Priority queue & support" },
+      { icon: Zap, text: "Motion LoRA (20 trainings/mo)" },
     ],
     limits: [],
   },
@@ -109,6 +110,7 @@ const COMPARISON_SECTIONS = [
       { label: "LoRA character models", free: "0", creator: "3", studio: "Unlimited" },
       { label: "Voice clones", free: "0", creator: "2", studio: "Unlimited" },
       { label: "Custom narrator voice", free: false, creator: false, studio: true },
+      { label: "Motion LoRA (character animation)", free: false, creator: false, studio: true },
     ],
   },
   {
@@ -130,6 +132,7 @@ const COMPARISON_SECTIONS = [
       { label: "Publish to Discover", free: true, creator: true, studio: true },
       { label: "Priority generation queue", free: false, creator: false, studio: true },
       { label: "Priority support", free: false, creator: false, studio: true },
+      { label: "Motion LoRA training jobs/mo", free: "—", creator: "—", studio: "20" },
     ],
   },
 ];
@@ -166,6 +169,10 @@ const FAQS = [
   {
     q: "Is there a refund policy?",
     a: "We offer a 7-day money-back guarantee on your first subscription. If you're not satisfied, contact support within 7 days for a full refund.",
+  },
+  {
+    q: "What is Motion LoRA?",
+    a: "Motion LoRA is an advanced AI feature that trains character-specific animation models from your manga panels. It learns how your characters move, gesture, and fight, producing more consistent and expressive anime clips. Motion LoRA is available on Studio plans and above, with a 15% credit surcharge per generation. Each trained model goes through 14 quality gates (M1-M14) before production use.",
   },
 ];
 

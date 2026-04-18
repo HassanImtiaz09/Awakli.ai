@@ -52,6 +52,10 @@ export interface TierConfig {
   rolloverCap: number | null;     // max rollover credits, null=unlimited
   creditExpiryDays: number | null; // null=end of billing period
   packDiscount: number;           // 0.0 to 1.0 discount on credit packs
+  /** Whether this tier allows motion LoRA injection during video generation (Prompt 24) */
+  motionLoraEnabled: boolean;
+  /** Max motion LoRA training jobs per month (0 = not allowed) */
+  maxMotionLoraTrainingsPerMonth: number;
 }
 
 export const TIERS: Record<TierKey, TierConfig> = {
@@ -89,6 +93,8 @@ export const TIERS: Record<TierKey, TierConfig> = {
     rolloverCap: null,
     creditExpiryDays: 14,
     packDiscount: 0,
+    motionLoraEnabled: false,
+    maxMotionLoraTrainingsPerMonth: 0,
   },
   creator: {
     name: "Creator",
@@ -124,6 +130,8 @@ export const TIERS: Record<TierKey, TierConfig> = {
     rolloverCap: null,
     creditExpiryDays: null,         // end of billing period
     packDiscount: 0,
+    motionLoraEnabled: false,
+    maxMotionLoraTrainingsPerMonth: 0,
   },
   creator_pro: {
     name: "Creator Pro",
@@ -159,6 +167,8 @@ export const TIERS: Record<TierKey, TierConfig> = {
     rolloverCap: 240,
     creditExpiryDays: null,
     packDiscount: 0.10,
+    motionLoraEnabled: true,
+    maxMotionLoraTrainingsPerMonth: 5,
   },
   studio: {
     name: "Studio",
@@ -194,6 +204,8 @@ export const TIERS: Record<TierKey, TierConfig> = {
     rolloverCap: 1800,
     creditExpiryDays: null,
     packDiscount: 0.20,
+    motionLoraEnabled: true,
+    maxMotionLoraTrainingsPerMonth: 20,
   },
   enterprise: {
     name: "Enterprise",
@@ -229,6 +241,8 @@ export const TIERS: Record<TierKey, TierConfig> = {
     rolloverCap: null,
     creditExpiryDays: null,
     packDiscount: 0.30,
+    motionLoraEnabled: true,
+    maxMotionLoraTrainingsPerMonth: 999,
   },
 };
 

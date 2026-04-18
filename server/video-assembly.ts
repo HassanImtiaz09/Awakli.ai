@@ -71,6 +71,10 @@ export interface VideoClip {
   panelNumber: number | null;
   duration: number;
   hasNativeAudio: boolean;
+  /** Motion LoRA resolution for this clip (if applicable) */
+  motionLoraApplied?: boolean;
+  motionLoraWeight?: number;
+  motionLoraFallback?: string;
 }
 
 export interface TransitionSpec {
@@ -148,6 +152,17 @@ export interface AssemblyInput {
   enableFoley?: boolean;
   /** Enable ambient audio bus (default: false) */
   enableAmbient?: boolean;
+  /** Motion LoRA stack configuration for video generation */
+  motionLoraConfig?: {
+    /** Path to the trained motion LoRA weights */
+    motionLoraPath: string;
+    /** Default weight (overridden per-panel by scene type) */
+    defaultWeight: number;
+    /** Character ID this motion LoRA belongs to */
+    characterId: number;
+    /** Character name for logging */
+    characterName: string;
+  };
 }
 
 export interface AssemblyResult {
@@ -164,6 +179,21 @@ export interface AssemblyResult {
     passedCount: number;
     failedCount: number;
     summary: string;
+  };
+  /** Motion LoRA application summary */
+  motionLoraSummary?: {
+    totalPanels: number;
+    appliedCount: number;
+    skippedCount: number;
+    blockedCount: number;
+    missingCount: number;
+    decisions: Array<{
+      panelId: number;
+      fallback: string;
+      weight?: number;
+      sceneType?: string;
+      reason: string;
+    }>;
   };
 }
 

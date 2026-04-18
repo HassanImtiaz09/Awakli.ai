@@ -628,6 +628,137 @@ export async function releaseStaleHolds(userId: number): Promise<number> {
   return released;
 }
 
+// ─── Motion LoRA Accounting (Prompt 24) ────────────────────────────
+
+/**
+ * Motion LoRA metadata fields for ledger entries.
+ * Attached to hold/commit metadata when motion LoRA is used.
+ */
+export interface MotionLoraLedgerMetadata {
+  motionLoraUsed: true;
+  motionLoraSceneType: string;
+  motionLoraWeight: number;
+  motionLoraPath: string;
+  /** Additional cost multiplier for motion LoRA (1.15x = 15% surcharge) */
+  motionLoraCostMultiplier: number;
+  /** Base cost before motion LoRA surcharge */
+  baseCostCredits: number;
+  /** Motion LoRA surcharge amount */
+  motionLoraSurchargeCredits: number;
+}
+
+/** Motion LoRA cost multiplier: 15% surcharge on video generation */
+export const MOTION_LORA_COST_MULTIPLIER = 1.15;
+
+/** Motion LoRA training cost in credits */
+export const MOTION_LORA_TRAINING_COST_CREDITS = 8;
+
+/**
+ * Calculate the credit cost for a video generation with optional motion LoRA.
+ * Applies the 15% surcharge when motion LoRA is active.
+ */
+export function calculateMotionLoraCost(
+  baseCostCredits: number,
+  motionLoraActive: boolean
+): {
+  totalCredits: number;
+  surchargeCredits: number;
+  multiplier: number;
+} {
+  if (!motionLoraActive) {
+    return { totalCredits: baseCostCredits, surchargeCredits: 0, multiplier: 1.0 };
+  }
+  const surcharge = baseCostCredits * (MOTION_LORA_COST_MULTIPLIER - 1);
+  const roundedSurcharge = Math.ceil(surcharge * 100) / 100;
+  return {
+    totalCredits: baseCostCredits + roundedSurcharge,
+    surchargeCredits: roundedSurcharge,
+    multiplier: MOTION_LORA_COST_MULTIPLIER,
+  };
+}
+
+/**
+ * Build motion LoRA metadata for a ledger entry.
+ */
+export function buildMotionLoraMetadata(
+  sceneType: string,
+  weight: number,
+  loraPath: string,
+  baseCostCredits: number
+): MotionLoraLedgerMetadata {
+  const { surchargeCredits } = calculateMotionLoraCost(baseCostCredits, true);
+  return {
+    motionLoraUsed: true,
+    motionLoraSceneType: sceneType,
+    motionLoraWeight: weight,
+    motionLoraPath: loraPath,
+    motionLoraCostMultiplier: MOTION_LORA_COST_MULTIPLIER,
+    baseCostCredits,
+    motionLoraSurchargeCredits: surchargeCredits,
+  };
+}
+
+/**
+ * Hold credits for a motion LoRA training job.
+ */
+export async function holdMotionLoraTraining(
+  userId: number,
+  trainingJobId: string
+): Promise<HoldResult> {
+  return holdCredits(
+    userId,
+    MOTION_LORA_TRAINING_COST_CREDITS,
+    "motion_lora_training",
+  );
+}
+
+/**
+ * Get motion LoRA usage summary for a billing period.
+ */
+export async function getMotionLoraUsageSummary(
+  userId: number,
+  periodStart: Date,
+  periodEnd: Date
+): Promise<{
+  totalMotionLoraGenerations: number;
+  totalMotionLoraSurchargeCredits: number;
+  totalMotionLoraTrainings: number;
+  totalMotionLoraTrainingCredits: number;
+}> {
+  const db = (await getDb())!;
+
+  // Count motion LoRA video generations (commits with motionLoraUsed in metadata)
+  const [genResult] = await db.select({
+    count: sql<number>`COALESCE(SUM(CASE WHEN JSON_EXTRACT(metadata, '$.motionLoraUsed') = true THEN 1 ELSE 0 END), 0)`,
+    surcharge: sql<number>`COALESCE(SUM(CASE WHEN JSON_EXTRACT(metadata, '$.motionLoraUsed') = true THEN JSON_EXTRACT(metadata, '$.motionLoraSurchargeCredits') ELSE 0 END), 0)`,
+  }).from(creditLedger)
+    .where(and(
+      eq(creditLedger.userId, userId),
+      eq(creditLedger.transactionType, "commit_consumption"),
+      gte(creditLedger.createdAt, periodStart),
+      lte(creditLedger.createdAt, periodEnd)
+    ));
+
+  // Count motion LoRA training jobs
+  const [trainResult] = await db.select({
+    count: sql<number>`COALESCE(SUM(CASE WHEN referenceId = 'motion_lora_training' THEN 1 ELSE 0 END), 0)`,
+    credits: sql<number>`COALESCE(SUM(CASE WHEN referenceId = 'motion_lora_training' THEN ABS(amountCredits) ELSE 0 END), 0)`,
+  }).from(creditLedger)
+    .where(and(
+      eq(creditLedger.userId, userId),
+      eq(creditLedger.transactionType, "commit_consumption"),
+      gte(creditLedger.createdAt, periodStart),
+      lte(creditLedger.createdAt, periodEnd)
+    ));
+
+  return {
+    totalMotionLoraGenerations: genResult?.count || 0,
+    totalMotionLoraSurchargeCredits: genResult?.surcharge || 0,
+    totalMotionLoraTrainings: trainResult?.count || 0,
+    totalMotionLoraTrainingCredits: trainResult?.credits || 0,
+  };
+}
+
 // ─── Usage Summary ───────────────────────────────────────────────────
 
 /**

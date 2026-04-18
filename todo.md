@@ -3184,3 +3184,42 @@
 - [x] Add comparison toggle mode with Original/Lip-Synced buttons and auto-play
 - [x] Wire originalVideoUrl into getPanelStatuses response + retryCount per panel
 - [x] Write vitest tests: 21/21 passed (retry limits, notifications, comparison data, integration, constants)
+
+## Prompt 24: Motion-LoRA Conditioning for Video Generation
+
+### Phase 0 — Infrastructure (TASK-1 to TASK-5)
+- [ ] TASK-1: Create motion-LoRA training harness — directory structure, Kohya-SS config (Section 4.1), Wan config (Section 4.2), trigger token naming, caption templates
+- [ ] TASK-2: Update Stage 6 video generation loader — accept motion_lora_path + motion_lora_weight, enforce load order (style→appearance→motion→scene), fallback behavior per Section 5.3
+- [ ] TASK-3: Add motion_lora_required flag to Scene-Type Router — return motion_lora_required:bool + motion_lora_weight:float per scene type (9 types from Section 5.1)
+- [ ] TASK-4: Add tier gating to Multi-Provider Router — Premium routes to motion-LoRA-capable providers (AnimateDiff+SDXL, Wan 2.6, HunyuanVideo); Kling/Sora/Veo fallback-only
+- [ ] TASK-5: Add ledger fields for motion-LoRA accounting — motion_lora_used, motion_lora_name, motion_lora_weight, motion_lora_load_time_ms, motion_lora_missing_reason
+
+### Evaluation Gates Framework
+- [ ] Implement M1-M14 evaluation gate definitions and gate runner
+- [ ] Create gate report generator (/awakli/eval/{character}/gate_report.md)
+- [ ] Add identity gates (M1-M4): face consistency, gender drift, style drift, scar position
+- [ ] Add motion gates (M5-M8): motion matches prompt, limb teleport, temporal flicker, gesture vocab
+- [ ] Add efficiency gates (M9-M11): regen ratio, inference overhead, effective cost reduction
+- [ ] Add regression gates (M12-M14): aspect, genre bleed, audio regression
+
+### UI & Studio Integration
+- [x] TASK-14: Expose motion-LoRA as Premium feature in tier comparison page
+- [x] Add Motion LoRA tab in CharacterDetail page with MotionLoraPanel component
+- [x] Add Motion LoRA row to Pricing comparison table (Anime Production, Platform sections)
+- [x] Add Motion LoRA highlight to Studio tier card on Pricing page
+- [x] Add Motion LoRA FAQ entry on Pricing page
+- [x] MotionLoraPanel: tier gate banner, training status card, scene-type weight map, M1-M14 gate grid, LoRA stack diagram
+- [ ] Add motion-LoRA weight control in Assembly Settings panel
+- [ ] Show motion_lora_missing flag in pipeline asset details
+
+### Database & Schema
+- [ ] Add motion_lora DB table for tracking trained LoRA artifacts per character
+- [ ] Add motion_lora_config table for training configs and hyperparameters
+- [ ] Add motion_coverage_matrix table for tracking motion category coverage per character
+
+### Tests
+- [x] Write vitest tests for motion-LoRA training config validation (63 tests in motion-lora.test.ts)
+- [x] Write vitest tests for tier gating and provider routing
+- [x] Write vitest tests for ledger field population (calculateMotionLoraCost, buildMotionLoraMetadata)
+- [x] Write vitest tests for evaluation gate framework (M1-M14 definitions, automated evaluators, report generator)
+- [ ] Write vitest tests for scene-type router motion_lora_required flag (deferred: flag not yet in router-integration.ts)

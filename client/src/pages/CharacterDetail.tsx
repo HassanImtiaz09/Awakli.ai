@@ -30,6 +30,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import LoraComparisonModal from "@/components/awakli/LoraComparisonModal";
+import { MotionLoraPanel } from "@/components/awakli/MotionLoraPanel";
 import { Link } from "wouter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -1027,6 +1028,10 @@ export default function CharacterDetail() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="motion" className="gap-1.5">
+              <Zap className="w-3 h-3" />
+              Motion LoRA
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -1223,6 +1228,14 @@ export default function CharacterDetail() {
                 <p className="text-xs text-muted-foreground mt-1">Upload reference sheets and train LoRAs to build your asset library</p>
               </div>
             )}
+          </TabsContent>
+
+          {/* Motion LoRA Tab */}
+          <TabsContent value="motion" className="mt-6">
+            <MotionLoraPanel
+              characterId={characterId}
+              characterName={character.name}
+            />
           </TabsContent>
         </Tabs>
       </div>
