@@ -682,6 +682,51 @@ const episodesRouter = router({
       await deleteEpisode(input.id);
       return { success: true };
     }),
+
+  // ─── Assembly Settings ─────────────────────────────────────────────
+
+  getAssemblySettings: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      const { mergeAssemblySettings } = await import("@shared/assemblySettings");
+      return mergeAssemblySettings(episode.assemblySettings as any);
+    }),
+
+  updateAssemblySettings: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      settings: z.object({
+        enableLipSync: z.boolean().optional(),
+        enableFoley: z.boolean().optional(),
+        enableAmbient: z.boolean().optional(),
+        voiceLufs: z.number().min(-60).max(0).optional(),
+        musicLufs: z.number().min(-60).max(0).optional(),
+        foleyLufs: z.number().min(-60).max(0).optional(),
+        ambientLufs: z.number().min(-60).max(0).optional(),
+        enableVoiceValidation: z.boolean().optional(),
+        voiceValidationThresholdLufs: z.number().min(-60).max(0).optional(),
+        enableSidechainDucking: z.boolean().optional(),
+        sidechainDuckDb: z.number().min(0).max(24).optional(),
+      }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+
+      const { mergeAssemblySettings } = await import("@shared/assemblySettings");
+      const current = mergeAssemblySettings(episode.assemblySettings as any);
+      const updated = { ...current, ...input.settings };
+
+      await updateEpisode(input.episodeId, { assemblySettings: updated } as any);
+      return updated;
+    }),
 });
 
 // Script generation helper (runs asynchronously)

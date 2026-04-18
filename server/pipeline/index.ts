@@ -18,7 +18,10 @@ export {
   // Audio Mixer
   buildVoiceTrack,
   buildMusicTrack,
+  buildFoleyTrack,
+  buildAmbientTrack,
   mixVoiceAndMusic,
+  mixAllAudioBuses,
   muxVideoWithAudio,
   getAudioDuration,
   measureLoudness,
@@ -26,9 +29,13 @@ export {
   VOICE_LOUDNESS_THRESHOLD_LUFS,
   DEFAULT_VOICE_LUFS,
   DEFAULT_MUSIC_LUFS,
+  DEFAULT_FOLEY_LUFS,
+  DEFAULT_AMBIENT_LUFS,
   SIDECHAIN_DUCK_DB,
   type VoicePlacement,
   type MusicPlacement,
+  type FoleyPlacement,
+  type AmbientPlacement,
   type AudioMixResult,
 } from "./audioMixer";
 

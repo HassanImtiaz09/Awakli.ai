@@ -3125,3 +3125,15 @@
 - [x] Integrate all three modules into video-assembly.ts (overlayVoiceClipsSafe, weights on music amix, validation gate, lip sync step)
 - [x] Write vitest tests — 35/35 passed (audioMixer, voiceValidator, lipSyncProcessor, integration, index re-exports)
 - [x] Deprecated old overlayVoiceClips → overlayVoiceClips_UNSAFE with console.warn
+
+## Foley/Ambient Audio Bus + Lip Sync Studio Toggle
+- [x] Add foley/ambient audio bus to pipeline/audioMixer.ts (buildFoleyTrack, buildAmbientTrack at -28/-32 LUFS)
+- [x] Add FoleyPlacement and AmbientPlacement types to pipeline (audioMixer.ts)
+- [x] Extend to 4-bus mixing: buildFoleyTrack, buildAmbientTrack, mixAllAudioBuses at -28/-32 LUFS
+- [x] Update video-assembly.ts AssemblyInput with foleyClips, ambientClips, enableFoley, enableAmbient
+- [x] Integrate foley/ambient into assembleVideo: 4-bus pipeline (Bus 1-4: voice, music, foley, ambient)
+- [x] Add assembly_settings JSON column to episodes table (migration 0032)
+- [x] Add tRPC procedures: episodes.getAssemblySettings, episodes.updateAssemblySettings
+- [x] Build AssemblySettingsPanel UI: lip sync toggle, 4 audio bus controls, loudness sliders, advanced settings
+- [x] Wire assembly settings into pipelineOrchestrator.ts (reads from DB, passes to assembleVideo)
+- [x] Write vitest tests: 57/57 passed (foley, ambient, 4-bus mixer, assembly settings, integration)

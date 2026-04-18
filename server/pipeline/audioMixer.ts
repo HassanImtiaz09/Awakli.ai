@@ -49,6 +49,40 @@ export interface MusicPlacement {
   label?: string;
 }
 
+export interface FoleyPlacement {
+  /** Absolute path to the foley audio file (e.g., footsteps, door hiss, weapon impact) */
+  filePath: string;
+  /** Start time in seconds where this foley should appear */
+  startTimeSeconds: number;
+  /** Duration of the foley clip in seconds */
+  durationSeconds: number;
+  /** Target loudness in LUFS (default: -28) */
+  targetLufs?: number;
+  /** Foley category for logging (e.g., "footstep", "impact", "door") */
+  category?: string;
+  /** Label for logging */
+  label?: string;
+}
+
+export interface AmbientPlacement {
+  /** Absolute path to the ambient audio file (e.g., ocean hum, city noise, wind) */
+  filePath: string;
+  /** Start time in seconds where this ambient layer begins */
+  startTimeSeconds: number;
+  /** Duration of the ambient layer in seconds (can span entire video) */
+  durationSeconds: number;
+  /** Target loudness in LUFS (default: -32) */
+  targetLufs?: number;
+  /** Whether to loop the ambient file to fill the duration (default: true) */
+  loop?: boolean;
+  /** Fade in duration in seconds (default: 1.0) */
+  fadeInSeconds?: number;
+  /** Fade out duration in seconds (default: 1.5) */
+  fadeOutSeconds?: number;
+  /** Label for logging */
+  label?: string;
+}
+
 export interface AudioMixResult {
   /** Path to the output audio file */
   outputPath: string;
@@ -68,6 +102,12 @@ export const DEFAULT_VOICE_LUFS = -14;
 
 /** Default music target loudness */
 export const DEFAULT_MUSIC_LUFS = -24;
+
+/** Default foley target loudness (footsteps, impacts, doors) */
+export const DEFAULT_FOLEY_LUFS = -28;
+
+/** Default ambient target loudness (ocean hum, wind, city noise) */
+export const DEFAULT_AMBIENT_LUFS = -32;
 
 /** Sidechain ducking: how much to reduce music when voice is present (dB) */
 export const SIDECHAIN_DUCK_DB = 8;
@@ -352,6 +392,288 @@ export async function mixVoiceAndMusic(
     `[voice][ducked_music]amix=inputs=2:duration=longest:weights=1 1:normalize=0[premix];` +
     // Final loudnorm pass
     `[premix]loudnorm=I=${targetLufs}:TP=-1.5:LRA=11[out]`,
+    "-map", "[out]",
+    "-c:a", "pcm_s16le", "-ar", "48000",
+    outputPath,
+  ], 300000);
+}
+
+// ─── Core: Foley Track Builder ─────────────────────────────────────────
+
+/**
+ * Build a foley track by sequentially overlaying foley clips onto a silence base.
+ * Uses the same safe sequential overlay approach as voice mixing.
+ *
+ * Foley clips are short, punctual sound effects (footsteps, impacts, doors, etc.)
+ * placed at precise timecodes. Default target: -28 LUFS.
+ */
+export async function buildFoleyTrack(
+  foleyPlacements: FoleyPlacement[],
+  totalDuration: number,
+  workDir: string,
+): Promise<string> {
+  await fs.mkdir(workDir, { recursive: true });
+
+  const silencePath = path.join(workDir, "foley_silence.wav");
+  await ffmpeg([
+    "-y",
+    "-f", "lavfi", "-i", `anullsrc=channel_layout=stereo:sample_rate=48000`,
+    "-t", totalDuration.toFixed(3),
+    "-c:a", "pcm_s16le",
+    silencePath,
+  ]);
+
+  if (foleyPlacements.length === 0) {
+    return silencePath;
+  }
+
+  let currentPath = silencePath;
+
+  for (let i = 0; i < foleyPlacements.length; i++) {
+    const fp = foleyPlacements[i];
+    const targetLufs = fp.targetLufs ?? DEFAULT_FOLEY_LUFS;
+    const normPath = path.join(workDir, `foley_norm_${i}.wav`);
+    const outputPath = path.join(workDir, `foley_mix_step_${i}.wav`);
+
+    // Trim + normalize foley clip
+    await ffmpeg([
+      "-y", "-i", fp.filePath,
+      "-t", fp.durationSeconds.toFixed(3),
+      "-af", `loudnorm=I=${targetLufs}:TP=-2:LRA=11`,
+      "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le",
+      normPath,
+    ]);
+
+    const delayMs = Math.round(fp.startTimeSeconds * 1000);
+    const label = fp.label || fp.category || `foley_${i}`;
+
+    console.log(
+      `[AudioMixer] Placing foley ${label} at ${fp.startTimeSeconds}s, ` +
+      `dur=${fp.durationSeconds}s, target=${targetLufs} LUFS`
+    );
+
+    await ffmpeg([
+      "-y",
+      "-i", currentPath,
+      "-i", normPath,
+      "-filter_complex",
+      `[1]adelay=${delayMs}|${delayMs},apad[delayed];` +
+      `[0][delayed]amix=inputs=2:duration=first:weights=1 1:normalize=0[out]`,
+      "-map", "[out]",
+      "-c:a", "pcm_s16le", "-ar", "48000",
+      outputPath,
+    ]);
+
+    currentPath = outputPath;
+  }
+
+  const finalPath = path.join(workDir, "foley_track.wav");
+  await fs.rename(currentPath, finalPath);
+
+  return finalPath;
+}
+
+// ─── Core: Ambient Track Builder ───────────────────────────────────────
+
+/**
+ * Build an ambient track by placing ambient layers at specified times.
+ * Ambient clips are long, continuous background sounds (ocean hum, wind, city noise)
+ * that can optionally loop and have fade in/out. Default target: -32 LUFS.
+ */
+export async function buildAmbientTrack(
+  ambientPlacements: AmbientPlacement[],
+  totalDuration: number,
+  workDir: string,
+): Promise<string> {
+  await fs.mkdir(workDir, { recursive: true });
+
+  const silencePath = path.join(workDir, "ambient_silence.wav");
+  await ffmpeg([
+    "-y",
+    "-f", "lavfi", "-i", `anullsrc=channel_layout=stereo:sample_rate=48000`,
+    "-t", totalDuration.toFixed(3),
+    "-c:a", "pcm_s16le",
+    silencePath,
+  ]);
+
+  if (ambientPlacements.length === 0) {
+    return silencePath;
+  }
+
+  let currentPath = silencePath;
+
+  for (let i = 0; i < ambientPlacements.length; i++) {
+    const ap = ambientPlacements[i];
+    const targetLufs = ap.targetLufs ?? DEFAULT_AMBIENT_LUFS;
+    const fadeIn = ap.fadeInSeconds ?? 1.0;
+    const fadeOut = ap.fadeOutSeconds ?? 1.5;
+    const shouldLoop = ap.loop !== false; // default true
+    const normPath = path.join(workDir, `ambient_norm_${i}.wav`);
+    const outputPath = path.join(workDir, `ambient_mix_step_${i}.wav`);
+
+    // Build the filter chain for this ambient clip
+    // If looping: loop the source, trim to desired duration, then normalize
+    // If not looping: just trim and normalize
+    const loopFilter = shouldLoop
+      ? `aloop=loop=-1:size=2e+09,atrim=0:${ap.durationSeconds.toFixed(3)},asetpts=N/SR/TB,`
+      : `atrim=0:${ap.durationSeconds.toFixed(3)},`;
+
+    // Add fade in/out
+    const fadeFilter =
+      `afade=t=in:st=0:d=${fadeIn.toFixed(2)},` +
+      `afade=t=out:st=${Math.max(0, ap.durationSeconds - fadeOut).toFixed(2)}:d=${fadeOut.toFixed(2)},`;
+
+    await ffmpeg([
+      "-y", "-i", ap.filePath,
+      "-af",
+      `${loopFilter}${fadeFilter}loudnorm=I=${targetLufs}:TP=-2:LRA=11`,
+      "-ar", "48000", "-ac", "2", "-c:a", "pcm_s16le",
+      normPath,
+    ]);
+
+    const delayMs = Math.round(ap.startTimeSeconds * 1000);
+    const label = ap.label || `ambient_${i}`;
+
+    console.log(
+      `[AudioMixer] Placing ambient ${label} at ${ap.startTimeSeconds}s, ` +
+      `dur=${ap.durationSeconds}s, loop=${shouldLoop}, fade=${fadeIn}/${fadeOut}s, ` +
+      `target=${targetLufs} LUFS`
+    );
+
+    await ffmpeg([
+      "-y",
+      "-i", currentPath,
+      "-i", normPath,
+      "-filter_complex",
+      `[1]adelay=${delayMs}|${delayMs},apad[delayed];` +
+      `[0][delayed]amix=inputs=2:duration=first:weights=1 1:normalize=0[out]`,
+      "-map", "[out]",
+      "-c:a", "pcm_s16le", "-ar", "48000",
+      outputPath,
+    ]);
+
+    currentPath = outputPath;
+  }
+
+  const finalPath = path.join(workDir, "ambient_track.wav");
+  await fs.rename(currentPath, finalPath);
+
+  return finalPath;
+}
+
+// ─── Core: 4-Bus Audio Mixer ───────────────────────────────────────────
+
+/**
+ * Mix all four audio buses into a single stereo master:
+ *   Bus 1: Voice    (-14 LUFS) — dialogue, narration
+ *   Bus 2: Music    (-24 LUFS) — background music, score
+ *   Bus 3: Foley    (-28 LUFS) — footsteps, impacts, doors
+ *   Bus 4: Ambient  (-32 LUFS) — ocean hum, wind, city noise
+ *
+ * Voice gets priority via sidechain ducking on music.
+ * All buses are mixed with explicit weights and normalize=0.
+ *
+ * @param voiceTrackPath - Path to the voice bus WAV
+ * @param musicTrackPath - Path to the music bus WAV
+ * @param foleyTrackPath - Path to the foley bus WAV (or null to skip)
+ * @param ambientTrackPath - Path to the ambient bus WAV (or null to skip)
+ * @param outputPath - Path for the final mixed audio
+ * @param options - Mix options
+ */
+export async function mixAllAudioBuses(
+  voiceTrackPath: string,
+  musicTrackPath: string,
+  foleyTrackPath: string | null,
+  ambientTrackPath: string | null,
+  outputPath: string,
+  options?: {
+    duckDb?: number;
+    targetLufs?: number;
+  },
+): Promise<void> {
+  const duckDb = options?.duckDb ?? SIDECHAIN_DUCK_DB;
+  const targetLufs = options?.targetLufs ?? -16;
+  const ratio = 4;
+  const threshold = 0.03;
+
+  // Determine how many buses we're mixing
+  const hasFoley = foleyTrackPath !== null;
+  const hasAmbient = ambientTrackPath !== null;
+  const busCount = 2 + (hasFoley ? 1 : 0) + (hasAmbient ? 1 : 0);
+
+  console.log(
+    `[AudioMixer] 4-bus mix: voice + music` +
+    `${hasFoley ? " + foley" : ""}${hasAmbient ? " + ambient" : ""}` +
+    ` (${busCount} buses, target ${targetLufs} LUFS)`
+  );
+
+  // Build the filter graph dynamically based on available buses
+  const inputs: string[] = ["-i", voiceTrackPath, "-i", musicTrackPath];
+  let inputIdx = 2;
+  let foleyIdx = -1;
+  let ambientIdx = -1;
+
+  if (hasFoley) {
+    inputs.push("-i", foleyTrackPath!);
+    foleyIdx = inputIdx++;
+  }
+  if (hasAmbient) {
+    inputs.push("-i", ambientTrackPath!);
+    ambientIdx = inputIdx++;
+  }
+
+  // Build filter graph:
+  // 1. Split voice for sidechain key
+  // 2. Duck music using voice as sidechain
+  // 3. Mix all buses with equal weights, no normalization
+  // 4. Final loudnorm pass
+  let filterParts: string[] = [];
+
+  // Voice split for sidechain
+  filterParts.push(`[0]asplit=2[voice][voicekey]`);
+
+  // Sidechain compress music
+  filterParts.push(
+    `[1][voicekey]sidechaincompress=threshold=${threshold}:ratio=${ratio}:` +
+    `attack=5:release=200:level_sc=1[ducked_music]`
+  );
+
+  // Start building the mix chain
+  // First mix voice + ducked music
+  let mixLabel = "vm_mix";
+  filterParts.push(
+    `[voice][ducked_music]amix=inputs=2:duration=longest:weights=1 1:normalize=0[${mixLabel}]`
+  );
+
+  // Add foley if present
+  if (hasFoley) {
+    const prevLabel = mixLabel;
+    mixLabel = "vmf_mix";
+    filterParts.push(
+      `[${prevLabel}][${foleyIdx}]amix=inputs=2:duration=longest:weights=1 1:normalize=0[${mixLabel}]`
+    );
+  }
+
+  // Add ambient if present
+  if (hasAmbient) {
+    const prevLabel = mixLabel;
+    mixLabel = "vmfa_mix";
+    filterParts.push(
+      `[${prevLabel}][${ambientIdx}]amix=inputs=2:duration=longest:weights=1 1:normalize=0[${mixLabel}]`
+    );
+  }
+
+  // Final loudnorm
+  filterParts.push(
+    `[${mixLabel}]loudnorm=I=${targetLufs}:TP=-1.5:LRA=11[out]`
+  );
+
+  const filterGraph = filterParts.join(";");
+
+  await ffmpeg([
+    "-y",
+    ...inputs,
+    "-filter_complex", filterGraph,
     "-map", "[out]",
     "-c:a", "pcm_s16le", "-ar", "48000",
     outputPath,

@@ -162,6 +162,7 @@ export const episodes = mysqlTable("episodes", {
   nextChapterHook: text("next_chapter_hook"),
   estimatedReadTime: int("estimated_read_time"),  // in seconds
   moodArc: json("mood_arc"),  // string[] e.g. ["tense", "calm", "building", "climax", "cliffhanger"]
+  assemblySettings: json("assembly_settings"),  // {enableLipSync, enableFoley, enableAmbient, voiceLufs, musicLufs, foleyLufs, ambientLufs, enableVoiceValidation}
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

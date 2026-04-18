@@ -575,8 +575,8 @@ describe("Video Assembly Integration", () => {
     expect(source).toContain("overlayVoiceClips_UNSAFE");
     expect(source).toContain("overlayVoiceClipsSafe");
 
-    // The main assembleVideo should call the safe version
-    expect(source).toContain("overlayVoiceClipsSafe(currentPath");
+    // The main assembleVideo should use buildVoiceTrack (the safe approach)
+    expect(source).toContain("buildVoiceTrack(");
   });
 
   it("should verify AssemblyInput supports new pipeline options", async () => {
@@ -642,5 +642,346 @@ describe("Pipeline Index", () => {
     expect(pipeline.MIN_AUDIO_DURATION_SECONDS).toBe(3.0);
     expect(pipeline.SOUND_END_TIME_SAFETY_MARGIN_MS).toBe(50);
     expect(pipeline.MIN_FACE_AUDIO_OVERLAP_MS).toBe(2000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. FOLEY TRACK BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Foley Track Builder", () => {
+  it("should import buildFoleyTrack function", async () => {
+    const mixer = await import("./audioMixer");
+    expect(typeof mixer.buildFoleyTrack).toBe("function");
+  });
+
+  it("should export DEFAULT_FOLEY_LUFS constant", async () => {
+    const mixer = await import("./audioMixer");
+    expect(mixer.DEFAULT_FOLEY_LUFS).toBe(-28);
+  });
+
+  it("should build a foley track with clips at specified timecodes", async () => {
+    const mixer = await import("./audioMixer");
+
+    // Create two foley clips: a footstep at 1s and a door at 5s
+    const footstepPath = path.join(tmpDir, "foley-footstep.wav");
+    const doorPath = path.join(tmpDir, "foley-door.wav");
+    await createTone(footstepPath, 200, 0.3, 0.8);  // Low thud
+    await createTone(doorPath, 800, 0.5, 0.7);       // Higher door sound
+
+    const foleyWorkDir = path.join(tmpDir, "foley-build");
+    const result = await mixer.buildFoleyTrack(
+      [
+        {
+          filePath: footstepPath,
+          startTimeSeconds: 1.0,
+          durationSeconds: 0.3,
+          category: "footstep",
+          label: "P01 footstep",
+        },
+        {
+          filePath: doorPath,
+          startTimeSeconds: 5.0,
+          durationSeconds: 0.5,
+          category: "door",
+          label: "P03 door hiss",
+        },
+      ],
+      10.0,
+      foleyWorkDir,
+    );
+
+    expect(result).toBeTruthy();
+    const stat = await fs.stat(result);
+    expect(stat.size).toBeGreaterThan(100);
+
+    // Verify audio is present at 1s (footstep) and 5s (door)
+    const rmsAt1 = await measureRmsAt(result, 1.0, 0.5);
+    const rmsAt5 = await measureRmsAt(result, 5.0, 0.5);
+    const rmsAt8 = await measureRmsAt(result, 8.0, 0.5);
+
+    expect(rmsAt1).toBeGreaterThan(-50);  // Footstep should be audible
+    expect(rmsAt5).toBeGreaterThan(-50);  // Door should be audible
+    expect(rmsAt8).toBeLessThan(rmsAt1);  // Silence at 8s should be quieter
+  }, 60000);
+
+  it("should return silence track when no foley placements provided", async () => {
+    const mixer = await import("./audioMixer");
+
+    const foleyWorkDir = path.join(tmpDir, "foley-empty");
+    const result = await mixer.buildFoleyTrack([], 5.0, foleyWorkDir);
+
+    expect(result).toBeTruthy();
+    const stat = await fs.stat(result);
+    expect(stat.size).toBeGreaterThan(100);
+
+    // Should be essentially silent
+    const rms = await measureRmsAt(result, 2.0, 1.0);
+    expect(rms).toBeLessThan(-60);
+  }, 30000);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. AMBIENT TRACK BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Ambient Track Builder", () => {
+  it("should import buildAmbientTrack function", async () => {
+    const mixer = await import("./audioMixer");
+    expect(typeof mixer.buildAmbientTrack).toBe("function");
+  });
+
+  it("should export DEFAULT_AMBIENT_LUFS constant", async () => {
+    const mixer = await import("./audioMixer");
+    expect(mixer.DEFAULT_AMBIENT_LUFS).toBe(-32);
+  });
+
+  it("should build an ambient track with fade in/out", async () => {
+    const mixer = await import("./audioMixer");
+
+    // Create an ambient noise clip (pink noise approximation via low tone)
+    const ambientSrc = path.join(tmpDir, "ambient-ocean.wav");
+    await createTone(ambientSrc, 100, 3.0, 0.5);
+
+    const ambientWorkDir = path.join(tmpDir, "ambient-build");
+    const result = await mixer.buildAmbientTrack(
+      [
+        {
+          filePath: ambientSrc,
+          startTimeSeconds: 0,
+          durationSeconds: 8.0,
+          loop: true,
+          fadeInSeconds: 1.0,
+          fadeOutSeconds: 1.5,
+          label: "ocean hum",
+        },
+      ],
+      10.0,
+      ambientWorkDir,
+    );
+
+    expect(result).toBeTruthy();
+    const stat = await fs.stat(result);
+    expect(stat.size).toBeGreaterThan(100);
+
+    // Audio should be present in the middle
+    const rmsMid = await measureRmsAt(result, 4.0, 1.0);
+    expect(rmsMid).toBeGreaterThan(-60);
+
+    // Audio at 9s should be quiet (after the 8s ambient ends)
+    const rmsEnd = await measureRmsAt(result, 9.0, 0.5);
+    expect(rmsEnd).toBeLessThan(rmsMid);
+  }, 60000);
+
+  it("should return silence track when no ambient placements provided", async () => {
+    const mixer = await import("./audioMixer");
+
+    const ambientWorkDir = path.join(tmpDir, "ambient-empty");
+    const result = await mixer.buildAmbientTrack([], 5.0, ambientWorkDir);
+
+    expect(result).toBeTruthy();
+    const rms = await measureRmsAt(result, 2.0, 1.0);
+    expect(rms).toBeLessThan(-60);
+  }, 30000);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. 4-BUS AUDIO MIXER
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("4-Bus Audio Mixer (mixAllAudioBuses)", () => {
+  it("should import mixAllAudioBuses function", async () => {
+    const mixer = await import("./audioMixer");
+    expect(typeof mixer.mixAllAudioBuses).toBe("function");
+  });
+
+  it("should mix voice + music (2-bus minimum)", async () => {
+    const mixer = await import("./audioMixer");
+
+    const voicePath = path.join(tmpDir, "bus-voice.wav");
+    const musicPath = path.join(tmpDir, "bus-music.wav");
+    await createTone(voicePath, 440, 5.0, 0.8);
+    await createTone(musicPath, 220, 5.0, 0.3);
+
+    const outputPath = path.join(tmpDir, "mixed-2bus.wav");
+    await mixer.mixAllAudioBuses(voicePath, musicPath, null, null, outputPath);
+
+    const stat = await fs.stat(outputPath);
+    expect(stat.size).toBeGreaterThan(100);
+
+    const rms = await measureRmsAt(outputPath, 2.0, 1.0);
+    expect(rms).toBeGreaterThan(-30);
+  }, 60000);
+
+  it("should mix all 4 buses (voice + music + foley + ambient)", async () => {
+    const mixer = await import("./audioMixer");
+
+    const voicePath = path.join(tmpDir, "4bus-voice.wav");
+    const musicPath = path.join(tmpDir, "4bus-music.wav");
+    const foleyPath = path.join(tmpDir, "4bus-foley.wav");
+    const ambientPath = path.join(tmpDir, "4bus-ambient.wav");
+
+    await createTone(voicePath, 440, 5.0, 0.8);
+    await createTone(musicPath, 220, 5.0, 0.3);
+    await createTone(foleyPath, 800, 5.0, 0.5);
+    await createTone(ambientPath, 100, 5.0, 0.2);
+
+    const outputPath = path.join(tmpDir, "mixed-4bus.wav");
+    await mixer.mixAllAudioBuses(
+      voicePath, musicPath, foleyPath, ambientPath, outputPath,
+      { targetLufs: -16 },
+    );
+
+    const stat = await fs.stat(outputPath);
+    expect(stat.size).toBeGreaterThan(100);
+
+    const rms = await measureRmsAt(outputPath, 2.0, 1.0);
+    expect(rms).toBeGreaterThan(-30);
+  }, 60000);
+
+  it("should mix 3 buses (voice + music + foley, no ambient)", async () => {
+    const mixer = await import("./audioMixer");
+
+    const voicePath = path.join(tmpDir, "3bus-voice.wav");
+    const musicPath = path.join(tmpDir, "3bus-music.wav");
+    const foleyPath = path.join(tmpDir, "3bus-foley.wav");
+
+    await createTone(voicePath, 440, 5.0, 0.8);
+    await createTone(musicPath, 220, 5.0, 0.3);
+    await createTone(foleyPath, 800, 5.0, 0.5);
+
+    const outputPath = path.join(tmpDir, "mixed-3bus.wav");
+    await mixer.mixAllAudioBuses(
+      voicePath, musicPath, foleyPath, null, outputPath,
+    );
+
+    const stat = await fs.stat(outputPath);
+    expect(stat.size).toBeGreaterThan(100);
+  }, 60000);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. ASSEMBLY SETTINGS (shared type)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Assembly Settings", () => {
+  it("should export DEFAULT_ASSEMBLY_SETTINGS with correct defaults", async () => {
+    const { DEFAULT_ASSEMBLY_SETTINGS } = await import("@shared/assemblySettings");
+
+    expect(DEFAULT_ASSEMBLY_SETTINGS.enableLipSync).toBe(false);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.enableFoley).toBe(false);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.enableAmbient).toBe(false);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.voiceLufs).toBe(-14);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.musicLufs).toBe(-24);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.foleyLufs).toBe(-28);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.ambientLufs).toBe(-32);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.enableVoiceValidation).toBe(true);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.voiceValidationThresholdLufs).toBe(-30);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.enableSidechainDucking).toBe(true);
+    expect(DEFAULT_ASSEMBLY_SETTINGS.sidechainDuckDb).toBe(8);
+  });
+
+  it("should merge partial settings with defaults", async () => {
+    const { mergeAssemblySettings, DEFAULT_ASSEMBLY_SETTINGS } = await import("@shared/assemblySettings");
+
+    const merged = mergeAssemblySettings({ enableLipSync: true, foleyLufs: -26 });
+
+    expect(merged.enableLipSync).toBe(true);
+    expect(merged.foleyLufs).toBe(-26);
+    // Other values should remain default
+    expect(merged.enableFoley).toBe(false);
+    expect(merged.voiceLufs).toBe(-14);
+  });
+
+  it("should return defaults when null is passed", async () => {
+    const { mergeAssemblySettings, DEFAULT_ASSEMBLY_SETTINGS } = await import("@shared/assemblySettings");
+
+    const merged = mergeAssemblySettings(null);
+    expect(merged).toEqual(DEFAULT_ASSEMBLY_SETTINGS);
+  });
+
+  it("should return defaults when undefined is passed", async () => {
+    const { mergeAssemblySettings, DEFAULT_ASSEMBLY_SETTINGS } = await import("@shared/assemblySettings");
+
+    const merged = mergeAssemblySettings(undefined);
+    expect(merged).toEqual(DEFAULT_ASSEMBLY_SETTINGS);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 10. VIDEO ASSEMBLY INTEGRATION (foley/ambient support)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Video Assembly Foley/Ambient Integration", () => {
+  it("should verify AssemblyInput supports foley and ambient clips", async () => {
+    const source = await fs.readFile(
+      path.join(__dirname, "../video-assembly.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("foleyClips");
+    expect(source).toContain("ambientClips");
+    expect(source).toContain("enableFoley");
+    expect(source).toContain("enableAmbient");
+  });
+
+  it("should verify the 4-bus audio pipeline is wired in assembleVideo", async () => {
+    const source = await fs.readFile(
+      path.join(__dirname, "../video-assembly.ts"),
+      "utf-8",
+    );
+
+    // Should have the 4-bus comment markers
+    expect(source).toContain("Bus 1: Voice");
+    expect(source).toContain("Bus 2: Music");
+    expect(source).toContain("Bus 3: Foley");
+    expect(source).toContain("Bus 4: Ambient");
+
+    // Should call buildFoleyTrack and buildAmbientTrack
+    expect(source).toContain("buildFoleyTrack");
+    expect(source).toContain("buildAmbientTrack");
+
+    // Should call mixAllAudioBuses
+    expect(source).toContain("mixAllAudioBuses");
+  });
+
+  it("should verify the orchestrator reads assembly settings", async () => {
+    const source = await fs.readFile(
+      path.join(__dirname, "../pipelineOrchestrator.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("mergeAssemblySettings");
+    expect(source).toContain("assemblySettings.enableLipSync");
+    expect(source).toContain("assemblySettings.enableFoley");
+    expect(source).toContain("assemblySettings.enableAmbient");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 11. PIPELINE INDEX RE-EXPORTS (foley/ambient additions)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Pipeline Index (foley/ambient exports)", () => {
+  it("should re-export foley and ambient track builders", async () => {
+    const pipeline = await import("./index");
+    expect(typeof pipeline.buildFoleyTrack).toBe("function");
+    expect(typeof pipeline.buildAmbientTrack).toBe("function");
+    expect(typeof pipeline.mixAllAudioBuses).toBe("function");
+  });
+
+  it("should re-export foley and ambient constants", async () => {
+    const pipeline = await import("./index");
+    expect(pipeline.DEFAULT_FOLEY_LUFS).toBe(-28);
+    expect(pipeline.DEFAULT_AMBIENT_LUFS).toBe(-32);
+  });
+
+  it("should re-export foley and ambient types", async () => {
+    // TypeScript type exports can't be tested at runtime,
+    // but we can verify the module exports the expected shape
+    const pipeline = await import("./index");
+    // The functions that accept these types exist
+    expect(pipeline.buildFoleyTrack.length).toBeGreaterThanOrEqual(2);
+    expect(pipeline.buildAmbientTrack.length).toBeGreaterThanOrEqual(2);
   });
 });

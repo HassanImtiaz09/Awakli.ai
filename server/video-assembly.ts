@@ -40,8 +40,13 @@ import { nanoid } from "nanoid";
 // Pipeline modules (post-Seraphis Recognition hardening)
 import {
   buildVoiceTrack,
+  buildFoleyTrack,
+  buildAmbientTrack,
+  mixAllAudioBuses,
   muxVideoWithAudio,
   type VoicePlacement,
+  type FoleyPlacement,
+  type AmbientPlacement,
 } from "./pipeline/audioMixer";
 import {
   validateVoicePresence,
@@ -82,6 +87,38 @@ export interface VoiceClip {
   text: string;
 }
 
+export interface FoleyClip {
+  /** URL to the foley audio file */
+  url: string;
+  /** Panel ID this foley is associated with */
+  panelId: number;
+  /** Duration of the foley clip in seconds */
+  duration: number;
+  /** Foley category (e.g., "footstep", "impact", "door") */
+  category: string;
+  /** Target loudness in LUFS (default: -28) */
+  targetLufs?: number;
+}
+
+export interface AmbientClip {
+  /** URL to the ambient audio file */
+  url: string;
+  /** Start time in seconds (relative to video start) */
+  startTimeSeconds: number;
+  /** Duration of the ambient layer in seconds */
+  duration: number;
+  /** Whether to loop the ambient to fill the duration */
+  loop?: boolean;
+  /** Fade in duration in seconds */
+  fadeInSeconds?: number;
+  /** Fade out duration in seconds */
+  fadeOutSeconds?: number;
+  /** Target loudness in LUFS (default: -32) */
+  targetLufs?: number;
+  /** Label for logging */
+  label?: string;
+}
+
 export interface MusicTrack {
   url: string;
   duration: number;
@@ -103,6 +140,14 @@ export interface AssemblyInput {
   voiceValidationThresholdLufs?: number;
   /** Skip voice validation gate (not recommended, default: false) */
   skipVoiceValidation?: boolean;
+  /** Foley clips to place at panel timecodes (footsteps, impacts, doors) */
+  foleyClips?: FoleyClip[];
+  /** Ambient layers to place across the video (ocean hum, wind, city noise) */
+  ambientClips?: AmbientClip[];
+  /** Enable foley audio bus (default: false) */
+  enableFoley?: boolean;
+  /** Enable ambient audio bus (default: false) */
+  enableAmbient?: boolean;
 }
 
 export interface AssemblyResult {
@@ -673,22 +718,31 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       }
     }
 
-    // Step 5: Download voice clips and build voice track (SAFE sequential overlay)
+    // ─── Step 5: 4-Bus Audio Pipeline ────────────────────────────────────
+    // Bus 1: Voice    (-14 LUFS) — dialogue, narration
+    // Bus 2: Music    (-24 LUFS) — background music, score
+    // Bus 3: Foley    (-28 LUFS) — footsteps, impacts, doors
+    // Bus 4: Ambient  (-32 LUFS) — ocean hum, wind, city noise
+
     let currentPath = concatPath;
     let voiceValidationResult: AssemblyResult["voiceValidation"] | undefined;
+    const videoDuration = await getMediaDuration(concatPath);
+    const audioWorkDir = path.join(tmpDir, "audio-buses");
+    await fs.mkdir(audioWorkDir, { recursive: true });
+
+    // Calculate panel start times for audio placement
+    const edgeTransitions = transitions.slice(0, transitions.length - 1);
+    const panelStartTimes = calculateClipStartTimes(actualDurations, edgeTransitions);
+    const panelStartMap: Record<number, number> = {};
+    for (let i = 0; i < sortedClips.length; i++) {
+      panelStartMap[sortedClips[i].panelId] = panelStartTimes[i];
+    }
+
+    // ─── Bus 1: Voice Track ─────────────────────────────────────────────
+    let voiceTrackPath: string | null = null;
 
     if (input.voiceClips.length > 0) {
-      const voiceData: { path: string; startTime: number; duration: number; label?: string }[] = [];
-
-      // Calculate start times accounting for transition overlaps
-      const edgeTransitions = transitions.slice(0, transitions.length - 1);
-      const panelStartTimes = calculateClipStartTimes(actualDurations, edgeTransitions);
-
-      // Map panelId → start time
-      const panelStartMap: Record<number, number> = {};
-      for (let i = 0; i < sortedClips.length; i++) {
-        panelStartMap[sortedClips[i].panelId] = panelStartTimes[i];
-      }
+      const voicePlacements: VoicePlacement[] = [];
 
       for (let i = 0; i < input.voiceClips.length; i++) {
         const vc = input.voiceClips[i];
@@ -697,35 +751,36 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         await downloadFile(vc.url, voicePath);
 
         const startTime = panelStartMap[vc.panelId] ?? 0;
-        const actualDuration = await getMediaDuration(voicePath);
+        const actualDur = await getMediaDuration(voicePath);
 
-        voiceData.push({
-          path: voicePath,
-          startTime,
-          duration: actualDuration,
+        voicePlacements.push({
+          filePath: voicePath,
+          startTimeSeconds: startTime,
+          durationSeconds: actualDur,
           label: `P${String(vc.panelId).padStart(2, "0")} ${vc.text.substring(0, 30)}`,
         });
       }
 
-      // Use SAFE sequential overlay (not bare amix)
-      const voiceMixPath = path.join(tmpDir, "with-voice.mp4");
-      console.log(`[Assembly] Overlaying ${voiceData.length} voice clips (safe sequential overlay)`);
-      await overlayVoiceClipsSafe(currentPath, voiceData, voiceMixPath, tmpDir);
-      currentPath = voiceMixPath;
+      console.log(`[Assembly] Building voice track (${voicePlacements.length} clips, safe sequential overlay)`);
+      voiceTrackPath = await buildVoiceTrack(
+        voicePlacements,
+        videoDuration,
+        path.join(audioWorkDir, "voice"),
+      );
 
-      // VOICE VALIDATION GATE: Check every dialogue timecode
+      // VOICE VALIDATION GATE
       if (!input.skipVoiceValidation) {
         const threshold = input.voiceValidationThresholdLufs ?? -30;
-        const dialogueTimecodes: DialogueTimecode[] = voiceData.map((vd, i) => ({
+        const dialogueTimecodes: DialogueTimecode[] = voicePlacements.map((vp, i) => ({
           panelId: input.voiceClips[i].panelId,
           character: input.voiceClips[i].text.split(":")[0]?.trim(),
           text: input.voiceClips[i].text,
-          startTimeSeconds: vd.startTime,
-          measureDurationSeconds: Math.max(vd.duration, 2.0),
+          startTimeSeconds: vp.startTimeSeconds,
+          measureDurationSeconds: Math.max(vp.durationSeconds, 2.0),
         }));
 
         console.log(`[Assembly] Running voice validation gate (threshold: ${threshold} LUFS)`);
-        const validation = await validateVoicePresence(currentPath, dialogueTimecodes, threshold);
+        const validation = await validateVoicePresence(voiceTrackPath, dialogueTimecodes, threshold);
 
         voiceValidationResult = {
           allPassed: validation.allPassed,
@@ -737,27 +792,137 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
 
         if (!validation.allPassed) {
           console.error(`[Assembly] VOICE VALIDATION FAILED: ${validation.summary}`);
-          // Use assertVoicePresence to throw a detailed error
-          await assertVoicePresence(currentPath, dialogueTimecodes, threshold);
+          await assertVoicePresence(voiceTrackPath, dialogueTimecodes, threshold);
         } else {
           console.log(`[Assembly] Voice validation PASSED: ${validation.summary}`);
         }
       }
     }
 
-    // Step 6: Mix background music
+    // ─── Bus 2: Music Track ──────────────────────────────────────────────
+    let musicTrackPath: string | null = null;
+
     if (input.musicTrack && !input.musicTrack.isFallback && input.musicTrack.duration > 0) {
       const musicPath = path.join(tmpDir, "bgm.mp3");
       console.log("[Assembly] Downloading background music");
       await downloadFile(input.musicTrack.url, musicPath);
 
-      const finalWithMusic = path.join(tmpDir, "with-music.mp4");
-      console.log("[Assembly] Mixing background music");
-      await mixBackgroundMusic(currentPath, musicPath, finalWithMusic);
-      currentPath = finalWithMusic;
+      // Build music track using safe sequential overlay
+      const { buildMusicTrack } = await import("./pipeline/audioMixer");
+      musicTrackPath = await buildMusicTrack(
+        [{
+          filePath: musicPath,
+          startTimeSeconds: 0,
+          durationSeconds: videoDuration,
+        }],
+        videoDuration,
+        path.join(audioWorkDir, "music"),
+      );
     }
 
-    // Step 7: Read final video
+    // ─── Bus 3: Foley Track ──────────────────────────────────────────────
+    let foleyTrackPath: string | null = null;
+
+    if (input.enableFoley && input.foleyClips && input.foleyClips.length > 0) {
+      const foleyPlacements: FoleyPlacement[] = [];
+
+      for (let i = 0; i < input.foleyClips.length; i++) {
+        const fc = input.foleyClips[i];
+        const foleyPath = path.join(tmpDir, `foley-${i}.mp3`);
+        console.log(`[Assembly] Downloading foley clip ${i + 1}/${input.foleyClips.length}: ${fc.category} @ panel ${fc.panelId}`);
+        await downloadFile(fc.url, foleyPath);
+
+        const startTime = panelStartMap[fc.panelId] ?? 0;
+        const actualDur = await getMediaDuration(foleyPath);
+
+        foleyPlacements.push({
+          filePath: foleyPath,
+          startTimeSeconds: startTime,
+          durationSeconds: actualDur,
+          targetLufs: fc.targetLufs,
+          category: fc.category,
+          label: `P${String(fc.panelId).padStart(2, "0")} ${fc.category}`,
+        });
+      }
+
+      console.log(`[Assembly] Building foley track (${foleyPlacements.length} clips at -28 LUFS)`);
+      foleyTrackPath = await buildFoleyTrack(
+        foleyPlacements,
+        videoDuration,
+        path.join(audioWorkDir, "foley"),
+      );
+    }
+
+    // ─── Bus 4: Ambient Track ────────────────────────────────────────────
+    let ambientTrackPath: string | null = null;
+
+    if (input.enableAmbient && input.ambientClips && input.ambientClips.length > 0) {
+      const ambientPlacements: AmbientPlacement[] = [];
+
+      for (let i = 0; i < input.ambientClips.length; i++) {
+        const ac = input.ambientClips[i];
+        const ambientPath = path.join(tmpDir, `ambient-${i}.mp3`);
+        console.log(`[Assembly] Downloading ambient clip ${i + 1}/${input.ambientClips.length}: ${ac.label || "ambient"}`);
+        await downloadFile(ac.url, ambientPath);
+
+        ambientPlacements.push({
+          filePath: ambientPath,
+          startTimeSeconds: ac.startTimeSeconds,
+          durationSeconds: ac.duration,
+          targetLufs: ac.targetLufs,
+          loop: ac.loop,
+          fadeInSeconds: ac.fadeInSeconds,
+          fadeOutSeconds: ac.fadeOutSeconds,
+          label: ac.label || `ambient_${i}`,
+        });
+      }
+
+      console.log(`[Assembly] Building ambient track (${ambientPlacements.length} layers at -32 LUFS)`);
+      ambientTrackPath = await buildAmbientTrack(
+        ambientPlacements,
+        videoDuration,
+        path.join(audioWorkDir, "ambient"),
+      );
+    }
+
+    // ─── Step 6: Mix all audio buses ─────────────────────────────────────
+    const hasAnyAudio = voiceTrackPath || musicTrackPath || foleyTrackPath || ambientTrackPath;
+
+    if (hasAnyAudio) {
+      // Ensure we have at least silence tracks for voice and music (required by mixer)
+      const silenceTrackPath = path.join(audioWorkDir, "silence_bus.wav");
+      await execFileAsync("ffmpeg", [
+        "-y",
+        "-f", "lavfi", "-i", `anullsrc=channel_layout=stereo:sample_rate=48000`,
+        "-t", videoDuration.toFixed(3),
+        "-c:a", "pcm_s16le",
+        silenceTrackPath,
+      ], { timeout: 30000 });
+
+      const effectiveVoice = voiceTrackPath || silenceTrackPath;
+      const effectiveMusic = musicTrackPath || silenceTrackPath;
+
+      const mixedAudioPath = path.join(audioWorkDir, "mixed_master.wav");
+
+      const busCount = 2 + (foleyTrackPath ? 1 : 0) + (ambientTrackPath ? 1 : 0);
+      console.log(`[Assembly] Mixing ${busCount}-bus audio master (voice + music${foleyTrackPath ? " + foley" : ""}${ambientTrackPath ? " + ambient" : ""})`);
+
+      await mixAllAudioBuses(
+        effectiveVoice,
+        effectiveMusic,
+        foleyTrackPath,
+        ambientTrackPath,
+        mixedAudioPath,
+        { targetLufs: -16 },
+      );
+
+      // Mux the mixed audio onto the concatenated video
+      const finalMuxPath = path.join(tmpDir, "final-muxed.mp4");
+      await muxVideoWithAudio(concatPath, mixedAudioPath, finalMuxPath);
+      currentPath = finalMuxPath;
+    }
+
+    // ─── Step 7: Read final video ────────────────────────────────────────
     const finalBuffer = await fs.readFile(currentPath);
     const totalDuration = await getMediaDuration(currentPath);
 

@@ -692,12 +692,60 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
     // Run the real ffmpeg assembly
     const episode = await getEpisodeById(episodeId);
+
+    // Read per-episode assembly settings (lip sync, foley, ambient, loudness)
+    const { mergeAssemblySettings } = await import("@shared/assemblySettings");
+    const assemblySettings = mergeAssemblySettings(episode?.assemblySettings as any);
+    console.log(`[Pipeline] Assembly settings: lipSync=${assemblySettings.enableLipSync}, foley=${assemblySettings.enableFoley}, ambient=${assemblySettings.enableAmbient}`);
+
+    // Collect foley assets from pipeline run (if foley is enabled)
+    let foleyClips: any[] = [];
+    if (assemblySettings.enableFoley) {
+      const allAssets = await getPipelineAssetsByRun(runId);
+      foleyClips = allAssets
+        .filter((a: any) => a.assetType === "foley" || a.assetType === "sfx")
+        .map((a: any) => ({
+          url: a.url,
+          panelId: (a.metadata as any)?.panelId || 0,
+          duration: (a.metadata as any)?.duration || 1.0,
+          category: (a.metadata as any)?.category || "sfx",
+          targetLufs: assemblySettings.foleyLufs,
+        }));
+      console.log(`[Pipeline] Found ${foleyClips.length} foley clips for assembly`);
+    }
+
+    // Collect ambient assets from pipeline run (if ambient is enabled)
+    let ambientClips: any[] = [];
+    if (assemblySettings.enableAmbient) {
+      const allAssets = await getPipelineAssetsByRun(runId);
+      ambientClips = allAssets
+        .filter((a: any) => a.assetType === "ambient")
+        .map((a: any) => ({
+          url: a.url,
+          startTimeSeconds: (a.metadata as any)?.startTimeSeconds || 0,
+          duration: (a.metadata as any)?.duration || 30,
+          loop: (a.metadata as any)?.loop !== false,
+          fadeInSeconds: (a.metadata as any)?.fadeInSeconds || 1.0,
+          fadeOutSeconds: (a.metadata as any)?.fadeOutSeconds || 1.5,
+          targetLufs: assemblySettings.ambientLufs,
+          label: (a.metadata as any)?.label || "ambient",
+        }));
+      console.log(`[Pipeline] Found ${ambientClips.length} ambient clips for assembly`);
+    }
+
     const result = await assembleVideo({
       videoClips,
       voiceClips,
       musicTrack,
       episodeTitle: episode?.title || "Untitled Episode",
       transitions,
+      enableLipSync: assemblySettings.enableLipSync,
+      enableFoley: assemblySettings.enableFoley,
+      enableAmbient: assemblySettings.enableAmbient,
+      foleyClips: foleyClips.length > 0 ? foleyClips : undefined,
+      ambientClips: ambientClips.length > 0 ? ambientClips : undefined,
+      voiceValidationThresholdLufs: assemblySettings.voiceValidationThresholdLufs,
+      skipVoiceValidation: !assemblySettings.enableVoiceValidation,
     });
 
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 90, totalCost, nodeCosts);

@@ -19,6 +19,7 @@ import { ModerationBanner } from "@/components/awakli/ModerationBanner";
 import { ModelRoutingWidget } from "@/components/awakli/ModelRoutingWidget";
 import { RoutingPreviewModal } from "@/components/awakli/RoutingPreviewModal";
 import { SceneTypePanel } from "@/components/awakli/SceneTypePanel";
+import { AssemblySettingsPanel } from "@/components/awakli/AssemblySettingsPanel";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
@@ -977,6 +978,15 @@ export default function PipelineDashboard() {
               </div>
             </div>
           </AwakliCard>
+        </div>
+      )}
+
+      {/* Assembly Settings (per-episode audio & lip sync config) */}
+      {episodesQuery.data && episodesQuery.data.length > 0 && !activeRun && (
+        <div className="space-y-4">
+          {episodesQuery.data.slice(0, 1).map((ep: any) => (
+            <AssemblySettingsPanel key={`asm-${ep.id}`} episodeId={ep.id} />
+          ))}
         </div>
       )}
 
