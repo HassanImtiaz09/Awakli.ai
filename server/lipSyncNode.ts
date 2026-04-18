@@ -116,7 +116,7 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
  * Match voice_clip assets to video_clip assets by panelId to identify
  * which panels have dialogue and need lip sync.
  */
-async function identifyDialoguePanels(
+export async function identifyDialoguePanels(
   runId: number,
   episodeId: number,
 ): Promise<DialoguePanelMatch[]> {
@@ -188,24 +188,195 @@ async function identifyDialoguePanels(
   return matches;
 }
 
-// ─── Main Node Function ─────────────────────────────────────────────────────
+// ─── Retry Failed Panels ───────────────────────────────────────────────────
 
 /**
- * Run the automated lip sync node for a pipeline run.
- *
- * Flow:
- * 1. Identify dialogue panels (panels with both video_clip and voice_clip assets)
- * 2. Skip panels that already have native lip sync (from Kling V3 Omni)
- * 3. Download video + voice files to temp directory
- * 4. Run face detection + lip sync via Kling API
- * 5. Upload lip-synced clips to S3 and store as pipeline_assets
- * 6. Assembly pipeline will automatically prefer synced_clip over video_clip
+ * Retry lip sync for specific panels that previously failed.
+ * Deletes old synced_clip assets for those panels and re-runs lip sync.
  *
  * @param runId - Pipeline run ID
  * @param episodeId - Episode ID
+ * @param panelIds - Array of panel IDs to retry
  * @param options - Lip sync configuration
- * @returns Result with per-panel outcomes and cost
+ * @param onProgress - Optional callback for per-panel progress updates
+ * @returns Result with per-panel outcomes
  */
+export async function retryFailedLipSync(
+  runId: number,
+  episodeId: number,
+  panelIds: number[],
+  options: LipSyncNodeOptions = {},
+  onProgress?: (panelId: number, status: "started" | "success" | "failed", detail?: string) => void,
+): Promise<LipSyncNodeResult> {
+  const {
+    voiceVolume = 2,
+    originalAudioVolume = 0,
+  } = options;
+
+  console.log(`[LipSync Retry] Retrying ${panelIds.length} panels for run ${runId}`);
+
+  // Step 1: Get all dialogue panels for this run
+  const allDialoguePanels = await identifyDialoguePanels(runId, episodeId);
+
+  // Step 2: Filter to only the requested panel IDs
+  const panelsToRetry = allDialoguePanels.filter((p) => panelIds.includes(p.panelId));
+
+  if (panelsToRetry.length === 0) {
+    return {
+      dialoguePanelsFound: allDialoguePanels.length,
+      nativeLipSyncSkipped: 0,
+      panelsSubmitted: 0,
+      panelsSucceeded: 0,
+      panelsFailed: 0,
+      results: [],
+      totalCostCents: 0,
+      summary: `No matching dialogue panels found for IDs: ${panelIds.join(", ")}`,
+    };
+  }
+
+  // Step 3: Delete old synced_clip assets for these panels
+  const { deletePipelineAssetsByPanelAndType } = await import("./db");
+  for (const panel of panelsToRetry) {
+    await deletePipelineAssetsByPanelAndType(runId, panel.panelId, "synced_clip");
+    console.log(`[LipSync Retry] Deleted old synced_clip for panel ${panel.panelId}`);
+  }
+
+  // Step 4: Create working directory
+  const workDir = path.join(os.tmpdir(), `lipsync-retry-${runId}-${nanoid(6)}`);
+  await fs.mkdir(workDir, { recursive: true });
+
+  const results: LipSyncPanelResult[] = [];
+  let totalCostCents = 0;
+
+  try {
+    // Step 5: Process each panel sequentially
+    for (let i = 0; i < panelsToRetry.length; i++) {
+      const panel = panelsToRetry[i];
+      const panelLabel = `P${panel.sceneNumber}.${panel.panelNumber} [${panel.character}]`;
+      const panelWorkDir = path.join(workDir, `panel-${panel.panelId}`);
+      await fs.mkdir(panelWorkDir, { recursive: true });
+
+      console.log(
+        `[LipSync Retry] Processing ${i + 1}/${panelsToRetry.length}: ` +
+        `${panelLabel} — "${panel.dialogueText.slice(0, 50)}..."`
+      );
+
+      onProgress?.(panel.panelId, "started", panelLabel);
+
+      try {
+        // Download video clip
+        const videoPath = path.join(panelWorkDir, `video.mp4`);
+        await downloadFile(panel.videoUrl, videoPath);
+
+        // Download voice clip
+        const voicePath = path.join(panelWorkDir, `voice.mp3`);
+        await downloadFile(panel.voiceUrl, voicePath);
+
+        // Build lip sync input
+        const input: LipSyncPanelInput = {
+          panelId: panel.panelId,
+          character: panel.character,
+          dialogueText: panel.dialogueText,
+          videoClipPath: videoPath,
+          voiceAudioPath: voicePath,
+          audioInsertTimeMs: 0,
+          voiceVolume,
+          originalAudioVolume,
+        };
+
+        // Run face detection + lip sync
+        const result = await processLipSyncPanel(input, panelWorkDir, uploadToS3);
+        results.push(result);
+
+        if (result.success && result.outputUrl) {
+          // Store lip-synced clip as pipeline asset
+          const s3Key = `pipeline/${runId}/lipsync-retry-${panel.panelId}-${nanoid(6)}.mp4`;
+
+          let storedUrl = result.outputUrl;
+          if (result.outputPath) {
+            try {
+              storedUrl = await uploadToS3(result.outputPath, s3Key, "video/mp4");
+            } catch (uploadErr) {
+              console.warn(
+                `[LipSync Retry] S3 upload failed for ${panelLabel}, using Kling CDN URL:`,
+                uploadErr
+              );
+            }
+          }
+
+          await createPipelineAsset({
+            pipelineRunId: runId,
+            episodeId,
+            panelId: panel.panelId,
+            assetType: "synced_clip",
+            url: storedUrl,
+            metadata: {
+              panelNumber: panel.panelNumber,
+              sceneNumber: panel.sceneNumber,
+              character: panel.character,
+              dialogueText: panel.dialogueText.slice(0, 100),
+              hasLipSync: true,
+              lipSyncMethod: "kling_advanced",
+              faceCount: result.faceDetection?.faces.length || 0,
+              processingTimeMs: result.processingTimeMs,
+              originalVideoAssetId: panel.videoAssetId,
+              originalVoiceAssetId: panel.voiceAssetId,
+              isRetry: true,
+            } as any,
+            nodeSource: "lip_sync",
+            lipSyncMethod: "kling_advanced",
+          });
+
+          totalCostCents += COST_PER_PANEL_CENTS;
+          console.log(`[LipSync Retry] ${panelLabel}: Success (${result.processingTimeMs}ms)`);
+          onProgress?.(panel.panelId, "success", `Lip-synced in ${result.processingTimeMs}ms`);
+        } else {
+          console.warn(`[LipSync Retry] ${panelLabel}: Skipped — ${result.skipReason}`);
+          onProgress?.(panel.panelId, "failed", result.skipReason || "Unknown error");
+        }
+      } catch (panelErr: any) {
+        console.error(`[LipSync Retry] ${panelLabel}: Error — ${panelErr.message}`);
+        results.push({
+          panelId: panel.panelId,
+          success: false,
+          skipReason: `Error: ${panelErr.message}`,
+          processingTimeMs: 0,
+        });
+        onProgress?.(panel.panelId, "failed", panelErr.message);
+      }
+    }
+  } finally {
+    try {
+      await fs.rm(workDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  const succeeded = results.filter((r) => r.success).length;
+  const failed = results.length - succeeded;
+
+  const summary =
+    succeeded === panelsToRetry.length
+      ? `Retry complete: all ${succeeded} panels lip-synced successfully`
+      : `Retry: ${succeeded}/${panelsToRetry.length} succeeded, ${failed} failed`;
+
+  console.log(`[LipSync Retry] ${summary}`);
+
+  return {
+    dialoguePanelsFound: allDialoguePanels.length,
+    nativeLipSyncSkipped: 0,
+    panelsSubmitted: panelsToRetry.length,
+    panelsSucceeded: succeeded,
+    panelsFailed: failed,
+    results,
+    totalCostCents,
+    summary,
+  };
+}
+
+// ─── Main Node Function ─────────────────────────────────────────────────────
+
 export async function lipSyncNode(
   runId: number,
   episodeId: number,

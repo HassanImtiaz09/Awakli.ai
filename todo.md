@@ -3161,3 +3161,15 @@
 - [x] Wire enableLipSync assembly setting to control the lip sync node (default: false)
 - [x] Update Pipeline Dashboard UI: 7-node graph with dedicated Lip Sync detail panel
 - [x] Write vitest tests: 23/23 passed (module exports, node ordering, padding, overlap, dedup, settings, HITL, non-blocking)
+
+## Batch Re-generation for Failed Lip Sync Panels
+- [x] Audit lipSyncNode.ts, pipeline_assets schema, and PipelineDashboard for integration points
+- [x] Add tRPC procedure: lipSync.getPanelStatuses — list all dialogue panels with lip sync status per run
+- [x] Add tRPC procedure: lipSync.retryBatch — accept array of panelIds, async with in-memory progress tracking
+- [x] Add tRPC procedure: lipSync.getRetryStatus — poll active retry progress
+- [x] Add server-side retryFailedLipSync function in lipSyncNode.ts with onProgress callback
+- [x] Handle asset replacement: deletePipelineAssetsByPanelAndType + store new synced_clip with isRetry flag
+- [x] Replaced LipSyncDetail with full retry UI: per-panel status grid, select/deselect, retry confirmation
+- [x] Show per-panel status (synced/failed/skipped/retrying) with failure reasons, video preview, processing time
+- [x] Add "Select All Failed" + "Retry N Panel(s)" buttons with confirmation dialog and real-time polling (5s)
+- [x] Write vitest tests: 26/26 passed (module exports, router structure, type coverage, edge cases, DB helpers, UI integration)

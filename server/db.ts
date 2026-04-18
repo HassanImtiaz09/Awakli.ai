@@ -778,6 +778,28 @@ export async function getPipelineAssetsByEpisode(episodeId: number) {
     .orderBy(pipelineAssets.createdAt);
 }
 
+export async function deletePipelineAsset(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pipelineAssets).where(eq(pipelineAssets.id, id));
+}
+
+export async function deletePipelineAssetsByPanelAndType(
+  pipelineRunId: number,
+  panelId: number,
+  assetType: string,
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pipelineAssets).where(
+    and(
+      eq(pipelineAssets.pipelineRunId, pipelineRunId),
+      eq(pipelineAssets.panelId, panelId),
+      eq(pipelineAssets.assetType, assetType as any),
+    )
+  );
+}
+
 // ─── Voice Cloning ─────────────────────────────────────────────────────
 
 export async function updateCharacterVoice(id: number, data: {

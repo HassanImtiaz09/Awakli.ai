@@ -249,26 +249,254 @@ function VoiceGenDetail({ assets }: { assets: any[] }) {
   );
 }
 
-function LipSyncDetail({ assets }: { assets: any[] }) {
-  const syncAssets = assets.filter((a: any) => a.assetType === "synced_clip" || (a.metadata as any)?.hasLipSync);
-  if (syncAssets.length === 0) return <p className="text-gray-500 text-sm">No lip-synced clips yet. Panels with dialogue use Kling V3 Omni for native lip sync.</p>;
+function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: number; episodeId: number }) {
+  const [selectedPanels, setSelectedPanels] = useState<Set<number>>(new Set());
+  const [showRetryConfirm, setShowRetryConfirm] = useState(false);
+
+  // Fetch per-panel lip sync statuses
+  const statusQuery = trpc.lipSync.getPanelStatuses.useQuery(
+    { runId, episodeId },
+    { refetchInterval: 5000 }
+  );
+
+  const retryMut = trpc.lipSync.retryBatch.useMutation({
+    onSuccess: (data) => {
+      if (data.started) {
+        toast.success(`Lip sync retry started for ${selectedPanels.size} panel(s)`);
+        setSelectedPanels(new Set());
+        setShowRetryConfirm(false);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => toast.error(`Retry failed: ${err.message}`),
+  });
+
+  const utils = trpc.useUtils();
+
+  const panels = statusQuery.data?.panels || [];
+  const failedPanels = panels.filter((p) => p.status === "failed");
+  const syncedPanels = panels.filter((p) => p.status === "synced");
+  const retryingPanels = panels.filter((p) => p.status === "retrying");
+  const skippedPanels = panels.filter((p) => p.status === "skipped");
+
+  const togglePanel = (panelId: number) => {
+    setSelectedPanels((prev) => {
+      const next = new Set(prev);
+      if (next.has(panelId)) next.delete(panelId);
+      else next.add(panelId);
+      return next;
+    });
+  };
+
+  const selectAllFailed = () => {
+    setSelectedPanels(new Set(failedPanels.map((p) => p.panelId)));
+  };
+
+  const handleRetry = () => {
+    retryMut.mutate({
+      runId,
+      episodeId,
+      panelIds: Array.from(selectedPanels),
+    });
+  };
+
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case "synced": return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case "failed": return <XCircle className="w-4 h-4 text-red-400" />;
+      case "skipped": return <Ban className="w-4 h-4 text-gray-500" />;
+      case "retrying": return <Loader2 className="w-4 h-4 text-accent-cyan animate-spin" />;
+      default: return <Clock className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "synced": return "border-green-500/30 bg-green-950/20";
+      case "failed": return "border-red-500/30 bg-red-950/20";
+      case "skipped": return "border-gray-600/30 bg-gray-900/20";
+      case "retrying": return "border-accent-cyan/30 bg-cyan-950/20";
+      default: return "border-gray-700/30 bg-gray-800/20";
+    }
+  };
+
+  if (statusQuery.isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading lip sync panel statuses...</span>
+      </div>
+    );
+  }
+
+  if (panels.length === 0) {
+    return <p className="text-gray-500 text-sm">No dialogue panels found for this pipeline run.</p>;
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {syncAssets.map((asset: any, i: number) => (
-        <div key={asset.id || i} className="bg-gray-800/60 rounded-lg p-4 border border-gray-700/50">
-          <p className="text-sm text-white mb-2">Lip-Synced Clip {i + 1} — Kling V3 Omni</p>
-          <div className="aspect-video bg-gray-900 rounded flex items-center justify-center border border-accent-cyan/30 relative overflow-hidden">
-            {asset.url ? (
-              <video src={asset.url} className="w-full h-full object-cover" preload="metadata" controls />
-            ) : (
-              <span className="text-xs text-accent-cyan">Processing...</span>
-            )}
+    <div className="space-y-4">
+      {/* Summary bar */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+          <span className="text-xs text-green-400">{syncedPanels.length} synced</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <XCircle className="w-3.5 h-3.5 text-red-400" />
+          <span className="text-xs text-red-400">{failedPanels.length} failed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Ban className="w-3.5 h-3.5 text-gray-500" />
+          <span className="text-xs text-gray-500">{skippedPanels.length} skipped</span>
+        </div>
+        {retryingPanels.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Loader2 className="w-3.5 h-3.5 text-accent-cyan animate-spin" />
+            <span className="text-xs text-accent-cyan">{retryingPanels.length} retrying</span>
           </div>
-          {(asset.metadata as any)?.klingModel && (
-            <p className="text-xs text-gray-400 mt-2">Model: {(asset.metadata as any).klingModel}</p>
+        )}
+      </div>
+
+      {/* Retry controls */}
+      {failedPanels.length > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-950/20 border border-red-500/20">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <span className="text-sm text-red-300 flex-1">
+            {failedPanels.length} panel(s) failed lip sync. Select panels below and retry.
+          </span>
+          <button
+            onClick={selectAllFailed}
+            className="text-xs text-accent-cyan hover:text-white transition-colors px-2 py-1 rounded border border-accent-cyan/30 hover:border-accent-cyan/60"
+          >
+            Select All Failed
+          </button>
+          {selectedPanels.size > 0 && (
+            <button
+              onClick={() => setShowRetryConfirm(true)}
+              disabled={retryMut.isPending}
+              className="flex items-center gap-1.5 text-xs text-white bg-accent-cyan/20 hover:bg-accent-cyan/30 border border-accent-cyan/40 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+            >
+              {retryMut.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RotateCcw className="w-3 h-3" />
+              )}
+              Retry {selectedPanels.size} Panel(s)
+            </button>
           )}
         </div>
-      ))}
+      )}
+
+      {/* Retry confirmation dialog */}
+      {showRetryConfirm && (
+        <div className="p-4 rounded-lg bg-gray-800/80 border border-accent-cyan/30">
+          <p className="text-sm text-white mb-3">
+            Retry lip sync for <strong>{selectedPanels.size}</strong> panel(s)? This will delete existing synced clips for these panels and re-run face detection + lip sync via Kling API.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRetry}
+              disabled={retryMut.isPending}
+              className="flex items-center gap-1.5 text-xs text-white bg-accent-cyan/30 hover:bg-accent-cyan/40 border border-accent-cyan/50 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+            >
+              {retryMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              Confirm Retry
+            </button>
+            <button
+              onClick={() => setShowRetryConfirm(false)}
+              className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded border border-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Panel grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {panels.map((panel) => {
+          const isSelected = selectedPanels.has(panel.panelId);
+          const canSelect = panel.status === "failed";
+
+          return (
+            <div
+              key={panel.panelId}
+              onClick={() => canSelect && togglePanel(panel.panelId)}
+              className={`rounded-lg p-3 border transition-all ${
+                statusColor(panel.status)
+              } ${
+                isSelected ? "ring-2 ring-accent-cyan/60 border-accent-cyan/50" : ""
+              } ${
+                canSelect ? "cursor-pointer hover:border-accent-cyan/40" : ""
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {canSelect && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => togglePanel(panel.panelId)}
+                      className="w-3.5 h-3.5 rounded border-gray-600 text-accent-cyan focus:ring-accent-cyan/30"
+                    />
+                  )}
+                  {statusIcon(panel.status)}
+                  <span className="text-sm font-medium text-white">
+                    P{panel.sceneNumber}.{panel.panelNumber}
+                  </span>
+                  <span className="text-xs text-gray-400">[{panel.character}]</span>
+                  {panel.isRetry && (
+                    <span className="text-[10px] text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded">
+                      Retried
+                    </span>
+                  )}
+                </div>
+                <span className={`text-[10px] uppercase font-medium tracking-wider ${
+                  panel.status === "synced" ? "text-green-400" :
+                  panel.status === "failed" ? "text-red-400" :
+                  panel.status === "retrying" ? "text-accent-cyan" :
+                  "text-gray-500"
+                }`}>
+                  {panel.status}
+                </span>
+              </div>
+
+              {/* Dialogue text */}
+              <p className="text-xs text-gray-300 mb-2 line-clamp-2 italic">
+                "{panel.dialogueText}"
+              </p>
+
+              {/* Video preview for synced panels */}
+              {panel.status === "synced" && panel.syncedClipUrl && (
+                <div className="aspect-video bg-gray-900 rounded overflow-hidden border border-green-500/20 mb-2">
+                  <video
+                    src={panel.syncedClipUrl}
+                    className="w-full h-full object-cover"
+                    preload="metadata"
+                    controls
+                  />
+                </div>
+              )}
+
+              {/* Failure reason */}
+              {panel.status === "failed" && panel.failureReason && (
+                <p className="text-[11px] text-red-400/80 mt-1">
+                  {panel.failureReason}
+                </p>
+              )}
+
+              {/* Processing time for synced panels */}
+              {panel.processingTimeMs && panel.processingTimeMs > 0 && (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Processed in {(panel.processingTimeMs / 1000).toFixed(1)}s
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -460,6 +688,7 @@ function NodeDetailPanel({
   nodeTimings,
   errors,
   runId,
+  episodeId,
 }: {
   node: NodeName;
   assets: any[];
@@ -467,6 +696,7 @@ function NodeDetailPanel({
   nodeTimings: Record<string, number>;
   errors: any[];
   runId: number;
+  episodeId: number;
 }) {
   const nodeAssets = assets.filter((a: any) => {
     const source = a.nodeSource || a.assetType;
@@ -500,7 +730,7 @@ function NodeDetailPanel({
     switch (node) {
       case "video_gen": return <VideoGenDetail assets={nodeAssets} />;
       case "voice_gen": return <VoiceGenDetail assets={nodeAssets} />;
-      case "lip_sync": return <LipSyncDetail assets={nodeAssets} />;
+      case "lip_sync": return <LipSyncDetail assets={nodeAssets} runId={runId} episodeId={episodeId} />;
       case "music_gen": return <MusicGenDetail assets={nodeAssets} />;
       case "foley_gen": return <FoleyGenDetail assets={nodeAssets} />;
       case "ambient_gen": return <AmbientGenDetail assets={nodeAssets} />;
@@ -1027,6 +1257,7 @@ export default function PipelineDashboard() {
                 nodeTimings={nodeTimings}
                 errors={errors}
                 runId={activeRun.id}
+                episodeId={activeRun.episodeId}
               />
             )}
           </AnimatePresence>

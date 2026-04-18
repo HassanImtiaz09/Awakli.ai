@@ -74,6 +74,7 @@ import { localInfraRouter } from "./routers-local-infra";
 import { sceneTypeRouter } from "./routers-scene-type";
 import { characterLibraryRouter } from "./routers-character-library";
 import { lineartPipelineRouter } from "./routers-lineart-pipeline";
+import { lipSyncRouter } from "./routers-lipsync";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2012,6 +2013,9 @@ export const appRouter = router({
 
   // Phase 17: Kling Subject Library (Native Lip Sync)
   subjectLibrary: subjectLibraryRouter,
+
+  // Lip Sync Batch Retry
+  lipSync: lipSyncRouter,
 
   // Phase 18: Harness Engineering (Quality Gates)
   harness: harnessRouter,
