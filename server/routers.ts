@@ -77,6 +77,7 @@ import { lineartPipelineRouter } from "./routers-lineart-pipeline";
 import { lipSyncRouter } from "./routers-lipsync";
 import { motionLoraRouter } from "./routers-motion-lora";
 import { imageRouterTrpc } from "./routers-image-router";
+import { abTestingRouter } from "./routers-ab-testing";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2053,6 +2054,9 @@ export const appRouter = router({
 
   // Prompt 25: Multi-Surface Image Router
   imageRouter: imageRouterTrpc,
+
+  // Prompt 29: A/B Testing
+  abTesting: abTestingRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

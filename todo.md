@@ -3364,3 +3364,48 @@
 - [x] Write vitest tests for M1-M12 evaluation gates (14 tests)
 - [x] Write vitest tests for tRPC registration (2 tests)
 - [x] Total: 75 tests passing in image-router.test.ts
+
+## Prompt 29: Provider A/B Testing & Async Webhook Generation
+
+### A/B Testing Engine
+- [ ] Create A/B experiment config type (experimentId, name, providers[], trafficSplit%, workloadTypes[], status)
+- [ ] Implement traffic splitter that routes jobs to control vs variant providers based on split percentage
+- [ ] Implement result collector that aggregates quality/cost/latency metrics per experiment arm
+- [ ] Add statistical significance calculator (chi-squared or z-test for conversion, t-test for latency/cost)
+
+### A/B Testing Database
+- [ ] Create ab_experiments table (id, name, controlProvider, variantProvider, trafficSplit, workloadTypes, status, startedAt, endedAt)
+- [ ] Create ab_experiment_results table (id, experimentId, providerId, jobId, latencyMs, costUsd, qualityScore, workloadType)
+- [ ] Run migrations for new tables
+
+### A/B Testing tRPC Procedures
+- [x] Wire abTest.create procedure (create new experiment)
+- [x] Wire abTest.list procedure (list all experiments)
+- [x] Wire abTest.get procedure (get experiment with aggregated results)
+- [x] Wire abTest.stop procedure (stop running experiment via updateStatus)
+- [x] Wire abTest.compare procedure (side-by-side comparison with stats)
+
+### A/B Testing UI
+- [x] Build A/B Experiments tab in Cost Dashboard
+- [x] Build side-by-side comparison cards (quality, cost, latency per provider)
+- [x] Build experiment creation dialog (select providers, split %, workload types)
+- [x] Build statistical significance indicators (confidence intervals, p-values)
+
+### Webhook Endpoints for Async Generation
+- [x] Create POST /api/webhooks/image-generation/:providerId endpoint (Runware, TensorArt, Fal, generic batch-complete)
+- [x] Implement webhook signature verification (HMAC-SHA256) and provider-specific payload parsers
+- [x] Implement job status update on webhook receipt (pending → completed/failed)
+
+### Batch Job Management
+- [x] Create batch_jobs and batch_job_items tables with full schema
+- [x] Implement batch job submission via abTesting.submitBatch tRPC procedure
+- [x] Implement batch progress tracking with outbound webhook callbacks on completion
+- [x] Add batch job tRPC procedures (submitBatch, listBatches, getBatch, cancelBatch)
+- [x] Add batch progress UI in Cost Dashboard (BatchJobsTab)
+
+### Tests
+- [x] Write vitest tests for A/B traffic splitter (assignArm, matchesExperiment, routeWithExperiment)
+- [x] Write vitest tests for result collector and statistical significance (computeArmStats, proportionZTest, welchTTest, generateComparison)
+- [x] Write vitest tests for webhook signature verification (verifyWebhookSignature, signWebhookPayload)
+- [x] Write vitest tests for batch job schema and webhook handler exports
+- [x] Write vitest tests for tRPC procedure registration (51 tests, all passing)

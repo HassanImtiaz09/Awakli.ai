@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleStripeWebhook } from "../stripe/webhook";
+import { registerImageWebhookRoutes } from "../image-router/webhooks";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -94,6 +95,9 @@ async function startServer() {
   registerCronRoutes(app);
   registerShutdownHandlers();
   startCronScheduler(); // 5-min interval, runs first tick immediately
+
+  // Image generation webhooks (after JSON parser)
+  registerImageWebhookRoutes(app);
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);

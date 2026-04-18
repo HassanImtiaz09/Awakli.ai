@@ -1797,3 +1797,93 @@ export const generationCosts = mysqlTable("generation_costs", {
 });
 export type GenerationCost = typeof generationCosts.$inferSelect;
 export type InsertGenerationCost = typeof generationCosts.$inferInsert;
+
+
+// ─── A/B Experiments ─────────────────────────────────────────────────────
+
+export const abExperiments = mysqlTable("ab_experiments", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  controlProvider: varchar("control_provider", { length: 50 }).notNull(),
+  variantProvider: varchar("variant_provider", { length: 50 }).notNull(),
+  trafficSplitPercent: int("traffic_split_percent").notNull().default(20),
+  workloadTypes: json("workload_types").$type<string[]>().default([]),
+  status: mysqlEnum("status", ["draft", "running", "paused", "completed", "cancelled"]).notNull().default("draft"),
+  minSampleSize: int("min_sample_size").notNull().default(30),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+});
+export type ABExperiment = typeof abExperiments.$inferSelect;
+export type InsertABExperiment = typeof abExperiments.$inferInsert;
+
+// ─── A/B Experiment Results ──────────────────────────────────────────────
+
+export const abExperimentResults = mysqlTable("ab_experiment_results", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  experimentId: varchar("experiment_id", { length: 36 }).notNull(),
+  arm: mysqlEnum("arm", ["control", "variant"]).notNull(),
+  providerId: varchar("provider_id", { length: 50 }).notNull(),
+  jobId: varchar("job_id", { length: 36 }).notNull(),
+  workloadType: varchar("workload_type", { length: 50 }).notNull(),
+  latencyMs: int("latency_ms").notNull().default(0),
+  costUsd: decimal("cost_usd", { precision: 10, scale: 6 }).notNull().default("0"),
+  qualityScore: int("quality_score"),
+  succeeded: int("succeeded").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type ABExperimentResult = typeof abExperimentResults.$inferSelect;
+export type InsertABExperimentResult = typeof abExperimentResults.$inferInsert;
+
+// ─── Batch Jobs ──────────────────────────────────────────────────────────
+
+export const batchJobs = mysqlTable("batch_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "completed", "failed", "cancelled"]).notNull().default("pending"),
+  totalItems: int("total_items").notNull().default(0),
+  completedItems: int("completed_items").notNull().default(0),
+  failedItems: int("failed_items").notNull().default(0),
+  totalCostUsd: decimal("total_cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
+  /** Webhook URL to notify on batch completion */
+  webhookUrl: text("webhook_url"),
+  /** Secret for signing webhook payloads */
+  webhookSecret: varchar("webhook_secret", { length: 128 }),
+  /** Batch configuration (workload type, prompts, etc.) */
+  config: json("config").$type<Record<string, unknown>>(),
+  /** Error summary if batch failed */
+  errorSummary: text("error_summary"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+export type BatchJob = typeof batchJobs.$inferSelect;
+export type InsertBatchJob = typeof batchJobs.$inferInsert;
+
+// ─── Batch Job Items ─────────────────────────────────────────────────────
+
+export const batchJobItems = mysqlTable("batch_job_items", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  batchId: varchar("batch_id", { length: 36 }).notNull(),
+  /** Index within the batch (0-based) */
+  itemIndex: int("item_index").notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "succeeded", "failed"]).notNull().default("pending"),
+  prompt: text("prompt").notNull(),
+  workloadType: varchar("workload_type", { length: 50 }).notNull(),
+  width: int("width").notNull().default(1024),
+  height: int("height").notNull().default(1024),
+  /** Provider that handled this item */
+  providerId: varchar("provider_id", { length: 50 }),
+  /** Result image URL */
+  resultUrl: text("result_url"),
+  costUsd: decimal("cost_usd", { precision: 10, scale: 6 }).notNull().default("0"),
+  latencyMs: int("latency_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+export type BatchJobItem = typeof batchJobItems.$inferSelect;
+export type InsertBatchJobItem = typeof batchJobItems.$inferInsert;
