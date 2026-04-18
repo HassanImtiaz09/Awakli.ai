@@ -3117,3 +3117,11 @@
 - [x] Lip sync via Kling API: 4/5 panels (P05, P11, P30, P31). P04 skipped (face visible only from 2100ms, insufficient overlap)
 - [x] Upload v3 final: S3 + Cloudflare Stream (5704a3884c469a5ff4708cf4c891d60e, ready)
 - [x] Document root cause and prevention guidelines for future productions
+
+## Pipeline Improvements — Audio Safety + Lip Sync Robustness
+- [x] Create server/pipeline/audioMixer.ts — safe sequential overlay mixing (never bare amix)
+- [x] Create server/pipeline/voiceValidator.ts — loudness gate at every dialogue timecode (>-30 LUFS) + fixed input seeking bug
+- [x] Create server/pipeline/lipSyncProcessor.ts — robust Kling lip sync with 3s padding, end_time safety, overlap checks
+- [x] Integrate all three modules into video-assembly.ts (overlayVoiceClipsSafe, weights on music amix, validation gate, lip sync step)
+- [x] Write vitest tests — 35/35 passed (audioMixer, voiceValidator, lipSyncProcessor, integration, index re-exports)
+- [x] Deprecated old overlayVoiceClips → overlayVoiceClips_UNSAFE with console.warn

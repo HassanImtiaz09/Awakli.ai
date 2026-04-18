@@ -12,6 +12,22 @@
  * When every transition is "cut" the fast concat-demuxer path is used.
  * Otherwise a complex xfade filter graph is built so adjacent clips
  * overlap by `transitionDuration` seconds.
+ *
+ * ─── Pipeline Hardening (post-Seraphis Recognition) ─────────────────────
+ *
+ * Three production rules are enforced:
+ *
+ * 1. SAFE AUDIO MIXING: Never use bare `amix`. Voice overlay uses the
+ *    sequential overlay approach (one clip at a time onto a silence base
+ *    with `weights=1 1:normalize=0`). Music mixing uses explicit weights.
+ *
+ * 2. VOICE VALIDATION GATE: After building the voice track, every dialogue
+ *    timecode is validated to be above -30 LUFS before proceeding to
+ *    final mux. If any timecode fails, assembly halts with a clear error.
+ *
+ * 3. ROBUST LIP SYNC: Optional lip sync step pads audio to >=3s, uses
+ *    floor(duration_ms)-50 for sound_end_time, and validates face-audio
+ *    overlap >=2s before submitting to Kling.
  */
 
 import { execFile } from "child_process";
@@ -20,6 +36,23 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import { nanoid } from "nanoid";
+
+// Pipeline modules (post-Seraphis Recognition hardening)
+import {
+  buildVoiceTrack,
+  muxVideoWithAudio,
+  type VoicePlacement,
+} from "./pipeline/audioMixer";
+import {
+  validateVoicePresence,
+  assertVoicePresence,
+  type DialogueTimecode,
+} from "./pipeline/voiceValidator";
+import {
+  processLipSyncBatch,
+  type LipSyncPanelInput,
+  type LipSyncBatchResult,
+} from "./pipeline/lipSyncProcessor";
 
 const execFileAsync = promisify(execFile);
 
@@ -62,6 +95,14 @@ export interface AssemblyInput {
   episodeTitle: string;
   /** One entry per videoClip (same order). If omitted, all cuts. */
   transitions?: TransitionSpec[];
+  /** Enable lip sync for dialogue panels (requires Kling API credentials) */
+  enableLipSync?: boolean;
+  /** S3 upload function for lip sync (required if enableLipSync is true) */
+  uploadFn?: (localPath: string, s3Key: string, contentType: string) => Promise<string>;
+  /** Voice validation threshold in LUFS (default: -30) */
+  voiceValidationThresholdLufs?: number;
+  /** Skip voice validation gate (not recommended, default: false) */
+  skipVoiceValidation?: boolean;
 }
 
 export interface AssemblyResult {
@@ -69,6 +110,16 @@ export interface AssemblyResult {
   totalDuration: number;
   resolution: string;
   format: string;
+  /** Lip sync results (if enableLipSync was true) */
+  lipSyncResult?: LipSyncBatchResult;
+  /** Voice validation results */
+  voiceValidation?: {
+    allPassed: boolean;
+    totalChecked: number;
+    passedCount: number;
+    failedCount: number;
+    summary: string;
+  };
 }
 
 // ─── FFmpeg xfade mapping ──────────────────────────────────────────────
@@ -330,13 +381,65 @@ async function assembleWithTransitions(
   await execFileAsync("ffmpeg", args, { timeout: 600000, maxBuffer: 50 * 1024 * 1024 });
 }
 
-// ─── Voice overlay ─────────────────────────────────────────────────────
+// ─── Voice overlay (SAFE: sequential overlay approach) ────────────────
+//
+// RULE: Never use bare `amix` for sparse voice placement.
+// The old implementation used `amix=inputs=N+1` which divides each
+// input's amplitude by (N+1). For 6 inputs, each voice was at 1/6 volume.
+//
+// The new implementation uses the pipeline/audioMixer module which:
+//   1. Creates a silence base track
+//   2. Overlays each voice clip one at a time using
+//      `amix=inputs=2:weights=1 1:normalize=0`
+//   3. Normalizes each voice to -14 LUFS before overlay
+//
+// This preserves the full amplitude of every voice clip.
 
-async function overlayVoiceClips(
+async function overlayVoiceClipsSafe(
+  videoPath: string,
+  voiceClips: { path: string; startTime: number; duration: number; label?: string }[],
+  outputPath: string,
+  workDir: string,
+): Promise<void> {
+  if (voiceClips.length === 0) {
+    await fs.copyFile(videoPath, outputPath);
+    return;
+  }
+
+  // Get video duration for the voice track length
+  const videoDuration = await getMediaDuration(videoPath);
+
+  // Convert to VoicePlacement format for the safe mixer
+  const placements: VoicePlacement[] = voiceClips.map((vc, i) => ({
+    filePath: vc.path,
+    startTimeSeconds: vc.startTime,
+    durationSeconds: vc.duration,
+    targetLufs: -14, // Normalize all voices to -14 LUFS
+    label: vc.label || `voice_${i}`,
+  }));
+
+  // Build voice track using sequential overlay (safe approach)
+  const voiceWorkDir = path.join(workDir, "voice-mix");
+  const voiceTrackPath = await buildVoiceTrack(placements, videoDuration, voiceWorkDir);
+
+  // Mux voice track onto video
+  await muxVideoWithAudio(videoPath, voiceTrackPath, outputPath);
+}
+
+/**
+ * @deprecated Use overlayVoiceClipsSafe instead. This function uses bare `amix`
+ * which divides amplitude by the number of inputs, causing inaudible dialogue.
+ * Kept only for reference — DO NOT USE in production.
+ */
+async function overlayVoiceClips_UNSAFE(
   videoPath: string,
   voiceClips: { path: string; startTime: number; duration: number }[],
   outputPath: string,
 ): Promise<void> {
+  console.warn(
+    "[Assembly] WARNING: overlayVoiceClips_UNSAFE called — this uses bare amix " +
+    "which divides amplitude by N inputs. Use overlayVoiceClipsSafe instead."
+  );
   if (voiceClips.length === 0) {
     await fs.copyFile(videoPath, outputPath);
     return;
@@ -369,7 +472,11 @@ async function overlayVoiceClips(
   ], { timeout: 300000 });
 }
 
-// ─── Music mix ─────────────────────────────────────────────────────────
+// ─── Music mix (SAFE: explicit weights, no normalization) ─────────────
+//
+// RULE: Always use `weights=1 1:normalize=0` with amix.
+// The old implementation used bare `amix=inputs=2:duration=first` which
+// halves both the voice and music amplitude.
 
 async function mixBackgroundMusic(
   videoPath: string,
@@ -384,7 +491,9 @@ async function mixBackgroundMusic(
     "-i", videoPath,
     "-i", musicPath,
     "-filter_complex",
-    `[1:a]volume=${musicVolume},aloop=loop=-1:size=2e+09,atrim=0:${videoDuration}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=3[out]`,
+    // SAFE: weights=1 1:normalize=0 prevents amplitude division
+    `[1:a]volume=${musicVolume},aloop=loop=-1:size=2e+09,atrim=0:${videoDuration}[bgm];` +
+    `[0:a][bgm]amix=inputs=2:duration=first:weights=1 1:normalize=0:dropout_transition=3[out]`,
     "-map", "0:v",
     "-map", "[out]",
     "-c:v", "copy",
@@ -497,10 +606,79 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       await assembleWithTransitions(normalizedClips, actualDurations, edgeTransitions, concatPath);
     }
 
-    // Step 4: Download voice clips and calculate timestamps
+    // Step 4: Optional lip sync for dialogue panels
+    let lipSyncResult: LipSyncBatchResult | undefined;
+    const lipSyncedClipPaths = new Map<number, string>(); // panelId → lip-synced clip path
+
+    if (input.enableLipSync && input.voiceClips.length > 0 && input.uploadFn) {
+      console.log(`[Assembly] Running lip sync for ${input.voiceClips.length} dialogue panels`);
+
+      const lipSyncWorkDir = path.join(tmpDir, "lipsync");
+      const lipSyncInputs: LipSyncPanelInput[] = [];
+
+      // Download voice clips for lip sync
+      for (let i = 0; i < input.voiceClips.length; i++) {
+        const vc = input.voiceClips[i];
+        const voicePath = path.join(tmpDir, `voice-lipsync-${i}.mp3`);
+        await downloadFile(vc.url, voicePath);
+
+        // Find the corresponding normalized video clip
+        const clipIdx = sortedClips.findIndex(c => c.panelId === vc.panelId);
+        if (clipIdx >= 0) {
+          lipSyncInputs.push({
+            panelId: vc.panelId,
+            character: vc.text.split(":")[0]?.trim() || "Unknown",
+            dialogueText: vc.text,
+            videoClipPath: normalizedClips[clipIdx],
+            voiceAudioPath: voicePath,
+          });
+        }
+      }
+
+      if (lipSyncInputs.length > 0) {
+        lipSyncResult = await processLipSyncBatch(
+          lipSyncInputs,
+          lipSyncWorkDir,
+          input.uploadFn,
+        );
+
+        // Replace normalized clips with lip-synced versions where successful
+        for (const panel of lipSyncResult.panels) {
+          if (panel.success && panel.outputPath) {
+            const clipIdx = sortedClips.findIndex(c => c.panelId === panel.panelId);
+            if (clipIdx >= 0) {
+              // Re-normalize the lip-synced clip to match format
+              const reNormPath = path.join(tmpDir, `lipsync-norm-${clipIdx}.mp4`);
+              await normalizeClip(panel.outputPath, reNormPath);
+              normalizedClips[clipIdx] = reNormPath;
+              actualDurations[clipIdx] = await getMediaDuration(reNormPath);
+              lipSyncedClipPaths.set(panel.panelId as number, reNormPath);
+              console.log(`[Assembly] Replaced clip ${clipIdx} with lip-synced version for panel ${panel.panelId}`);
+            }
+          }
+        }
+
+        // If lip sync replaced clips, re-concatenate
+        if (lipSyncedClipPaths.size > 0) {
+          console.log(`[Assembly] Re-concatenating with ${lipSyncedClipPaths.size} lip-synced clips`);
+          if (normalizedClips.length === 1) {
+            await fs.copyFile(normalizedClips[0], concatPath);
+          } else if (!hasRealTransitions) {
+            await concatenateClips(normalizedClips, concatPath);
+          } else {
+            const edgeTrans = transitions.slice(0, transitions.length - 1);
+            await assembleWithTransitions(normalizedClips, actualDurations, edgeTrans, concatPath);
+          }
+        }
+      }
+    }
+
+    // Step 5: Download voice clips and build voice track (SAFE sequential overlay)
     let currentPath = concatPath;
+    let voiceValidationResult: AssemblyResult["voiceValidation"] | undefined;
+
     if (input.voiceClips.length > 0) {
-      const voiceData: { path: string; startTime: number; duration: number }[] = [];
+      const voiceData: { path: string; startTime: number; duration: number; label?: string }[] = [];
 
       // Calculate start times accounting for transition overlaps
       const edgeTransitions = transitions.slice(0, transitions.length - 1);
@@ -521,16 +699,53 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         const startTime = panelStartMap[vc.panelId] ?? 0;
         const actualDuration = await getMediaDuration(voicePath);
 
-        voiceData.push({ path: voicePath, startTime, duration: actualDuration });
+        voiceData.push({
+          path: voicePath,
+          startTime,
+          duration: actualDuration,
+          label: `P${String(vc.panelId).padStart(2, "0")} ${vc.text.substring(0, 30)}`,
+        });
       }
 
+      // Use SAFE sequential overlay (not bare amix)
       const voiceMixPath = path.join(tmpDir, "with-voice.mp4");
-      console.log(`[Assembly] Overlaying ${voiceData.length} voice clips`);
-      await overlayVoiceClips(currentPath, voiceData, voiceMixPath);
+      console.log(`[Assembly] Overlaying ${voiceData.length} voice clips (safe sequential overlay)`);
+      await overlayVoiceClipsSafe(currentPath, voiceData, voiceMixPath, tmpDir);
       currentPath = voiceMixPath;
+
+      // VOICE VALIDATION GATE: Check every dialogue timecode
+      if (!input.skipVoiceValidation) {
+        const threshold = input.voiceValidationThresholdLufs ?? -30;
+        const dialogueTimecodes: DialogueTimecode[] = voiceData.map((vd, i) => ({
+          panelId: input.voiceClips[i].panelId,
+          character: input.voiceClips[i].text.split(":")[0]?.trim(),
+          text: input.voiceClips[i].text,
+          startTimeSeconds: vd.startTime,
+          measureDurationSeconds: Math.max(vd.duration, 2.0),
+        }));
+
+        console.log(`[Assembly] Running voice validation gate (threshold: ${threshold} LUFS)`);
+        const validation = await validateVoicePresence(currentPath, dialogueTimecodes, threshold);
+
+        voiceValidationResult = {
+          allPassed: validation.allPassed,
+          totalChecked: validation.totalChecked,
+          passedCount: validation.passedCount,
+          failedCount: validation.failedCount,
+          summary: validation.summary,
+        };
+
+        if (!validation.allPassed) {
+          console.error(`[Assembly] VOICE VALIDATION FAILED: ${validation.summary}`);
+          // Use assertVoicePresence to throw a detailed error
+          await assertVoicePresence(currentPath, dialogueTimecodes, threshold);
+        } else {
+          console.log(`[Assembly] Voice validation PASSED: ${validation.summary}`);
+        }
+      }
     }
 
-    // Step 5: Mix background music
+    // Step 6: Mix background music
     if (input.musicTrack && !input.musicTrack.isFallback && input.musicTrack.duration > 0) {
       const musicPath = path.join(tmpDir, "bgm.mp3");
       console.log("[Assembly] Downloading background music");
@@ -542,7 +757,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       currentPath = finalWithMusic;
     }
 
-    // Step 6: Read final video
+    // Step 7: Read final video
     const finalBuffer = await fs.readFile(currentPath);
     const totalDuration = await getMediaDuration(currentPath);
 
@@ -553,6 +768,8 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       totalDuration,
       resolution: "1920x1080",
       format: "mp4",
+      lipSyncResult,
+      voiceValidation: voiceValidationResult,
     };
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
