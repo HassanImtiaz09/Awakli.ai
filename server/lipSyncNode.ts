@@ -43,6 +43,9 @@ const COST_PER_PANEL_CENTS = 15;
 /** Minimum voice clip duration to attempt lip sync (seconds) */
 const MIN_VOICE_DURATION_SECONDS = 0.5;
 
+/** Maximum retry attempts per panel before escalating to manual review */
+export const MAX_RETRY_ATTEMPTS = 3;
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface LipSyncNodeOptions {
@@ -67,12 +70,16 @@ export interface LipSyncNodeResult {
   panelsSucceeded: number;
   /** Number of panels that failed or were skipped */
   panelsFailed: number;
+  /** Number of panels that exceeded retry limit and need manual review */
+  panelsNeedingReview: number;
   /** Per-panel results */
   results: LipSyncPanelResult[];
   /** Total cost in cents */
   totalCostCents: number;
   /** Summary message */
   summary: string;
+  /** Processing time in milliseconds */
+  processingTimeMs: number;
 }
 
 interface DialoguePanelMatch {
@@ -213,6 +220,7 @@ export async function retryFailedLipSync(
     originalAudioVolume = 0,
   } = options;
 
+  const startTime = Date.now();
   console.log(`[LipSync Retry] Retrying ${panelIds.length} panels for run ${runId}`);
 
   // Step 1: Get all dialogue panels for this run
@@ -228,15 +236,64 @@ export async function retryFailedLipSync(
       panelsSubmitted: 0,
       panelsSucceeded: 0,
       panelsFailed: 0,
+      panelsNeedingReview: 0,
       results: [],
       totalCostCents: 0,
       summary: `No matching dialogue panels found for IDs: ${panelIds.join(", ")}`,
+      processingTimeMs: Date.now() - startTime,
     };
   }
 
-  // Step 3: Delete old synced_clip assets for these panels
-  const { deletePipelineAssetsByPanelAndType } = await import("./db");
+  // Step 2b: Check retry counts — block panels that exceeded MAX_RETRY_ATTEMPTS
+  const allAssets = await getPipelineAssetsByRun(runId);
+  const retryCountByPanel = new Map<number, number>();
+  for (const asset of allAssets) {
+    if (asset.assetType === "synced_clip" && asset.panelId) {
+      const meta = (asset.metadata || {}) as any;
+      const count = meta.retryCount || (meta.isRetry ? 1 : 0);
+      const existing = retryCountByPanel.get(asset.panelId) || 0;
+      retryCountByPanel.set(asset.panelId, Math.max(existing, count));
+    }
+  }
+
+  const blockedPanels: number[] = [];
+  const allowedPanels: typeof panelsToRetry = [];
   for (const panel of panelsToRetry) {
+    const currentCount = retryCountByPanel.get(panel.panelId) || 0;
+    if (currentCount >= MAX_RETRY_ATTEMPTS) {
+      blockedPanels.push(panel.panelId);
+      console.warn(
+        `[LipSync Retry] Panel ${panel.panelId} blocked — already retried ${currentCount} times (max: ${MAX_RETRY_ATTEMPTS}). Needs manual review.`
+      );
+      onProgress?.(panel.panelId, "failed", `Exceeded max retries (${MAX_RETRY_ATTEMPTS}). Needs manual review.`);
+    } else {
+      allowedPanels.push(panel);
+    }
+  }
+
+  if (allowedPanels.length === 0) {
+    return {
+      dialoguePanelsFound: allDialoguePanels.length,
+      nativeLipSyncSkipped: 0,
+      panelsSubmitted: 0,
+      panelsSucceeded: 0,
+      panelsFailed: 0,
+      panelsNeedingReview: blockedPanels.length,
+      results: blockedPanels.map((id) => ({
+        panelId: id,
+        success: false,
+        skipReason: `Exceeded max retries (${MAX_RETRY_ATTEMPTS}). Needs manual review.`,
+        processingTimeMs: 0,
+      })),
+      totalCostCents: 0,
+      summary: `All ${blockedPanels.length} panel(s) exceeded retry limit (${MAX_RETRY_ATTEMPTS}). Manual review required.`,
+      processingTimeMs: Date.now() - startTime,
+    };
+  }
+
+  // Step 3: Delete old synced_clip assets for allowed panels
+  const { deletePipelineAssetsByPanelAndType } = await import("./db");
+  for (const panel of allowedPanels) {
     await deletePipelineAssetsByPanelAndType(runId, panel.panelId, "synced_clip");
     console.log(`[LipSync Retry] Deleted old synced_clip for panel ${panel.panelId}`);
   }
@@ -249,15 +306,16 @@ export async function retryFailedLipSync(
   let totalCostCents = 0;
 
   try {
-    // Step 5: Process each panel sequentially
-    for (let i = 0; i < panelsToRetry.length; i++) {
-      const panel = panelsToRetry[i];
-      const panelLabel = `P${panel.sceneNumber}.${panel.panelNumber} [${panel.character}]`;
+    // Step 5: Process each allowed panel sequentially
+    for (let i = 0; i < allowedPanels.length; i++) {
+      const panel = allowedPanels[i];
+      const currentRetryCount = (retryCountByPanel.get(panel.panelId) || 0) + 1;
+      const panelLabel = `P${panel.sceneNumber}.${panel.panelNumber} [${panel.character}] (attempt ${currentRetryCount}/${MAX_RETRY_ATTEMPTS})`;
       const panelWorkDir = path.join(workDir, `panel-${panel.panelId}`);
       await fs.mkdir(panelWorkDir, { recursive: true });
 
       console.log(
-        `[LipSync Retry] Processing ${i + 1}/${panelsToRetry.length}: ` +
+        `[LipSync Retry] Processing ${i + 1}/${allowedPanels.length}: ` +
         `${panelLabel} — "${panel.dialogueText.slice(0, 50)}..."`
       );
 
@@ -322,6 +380,7 @@ export async function retryFailedLipSync(
               originalVideoAssetId: panel.videoAssetId,
               originalVoiceAssetId: panel.voiceAssetId,
               isRetry: true,
+              retryCount: currentRetryCount,
             } as any,
             nodeSource: "lip_sync",
             lipSyncMethod: "kling_advanced",
@@ -355,23 +414,38 @@ export async function retryFailedLipSync(
 
   const succeeded = results.filter((r) => r.success).length;
   const failed = results.length - succeeded;
+  const totalProcessingTimeMs = Date.now() - startTime;
+
+  // Add blocked panels to results
+  for (const blockedId of blockedPanels) {
+    results.push({
+      panelId: blockedId,
+      success: false,
+      skipReason: `Exceeded max retries (${MAX_RETRY_ATTEMPTS}). Needs manual review.`,
+      processingTimeMs: 0,
+    });
+  }
 
   const summary =
-    succeeded === panelsToRetry.length
-      ? `Retry complete: all ${succeeded} panels lip-synced successfully`
-      : `Retry: ${succeeded}/${panelsToRetry.length} succeeded, ${failed} failed`;
+    succeeded === allowedPanels.length && blockedPanels.length === 0
+      ? `Retry complete: all ${succeeded} panels lip-synced successfully (${(totalProcessingTimeMs / 1000).toFixed(1)}s)`
+      : `Retry: ${succeeded}/${allowedPanels.length} succeeded, ${failed} failed` +
+        (blockedPanels.length > 0 ? `, ${blockedPanels.length} need manual review` : "") +
+        ` (${(totalProcessingTimeMs / 1000).toFixed(1)}s)`;
 
   console.log(`[LipSync Retry] ${summary}`);
 
   return {
     dialoguePanelsFound: allDialoguePanels.length,
     nativeLipSyncSkipped: 0,
-    panelsSubmitted: panelsToRetry.length,
+    panelsSubmitted: allowedPanels.length,
     panelsSucceeded: succeeded,
     panelsFailed: failed,
+    panelsNeedingReview: blockedPanels.length,
     results,
     totalCostCents,
     summary,
+    processingTimeMs: totalProcessingTimeMs,
   };
 }
 
@@ -394,6 +468,8 @@ export async function lipSyncNode(
   const dialoguePanels = await identifyDialoguePanels(runId, episodeId);
   console.log(`[LipSync Node] Found ${dialoguePanels.length} dialogue panels with video + voice assets`);
 
+  const nodeStartTime = Date.now();
+
   if (dialoguePanels.length === 0) {
     return {
       dialoguePanelsFound: 0,
@@ -401,9 +477,11 @@ export async function lipSyncNode(
       panelsSubmitted: 0,
       panelsSucceeded: 0,
       panelsFailed: 0,
+      panelsNeedingReview: 0,
       results: [],
       totalCostCents: 0,
       summary: "No dialogue panels found — nothing to lip sync",
+      processingTimeMs: Date.now() - nodeStartTime,
     };
   }
 
@@ -444,9 +522,11 @@ export async function lipSyncNode(
       panelsSubmitted: 0,
       panelsSucceeded: 0,
       panelsFailed: 0,
+      panelsNeedingReview: 0,
       results: [],
       totalCostCents: 0,
       summary: `All ${dialoguePanels.length} dialogue panels already have native lip sync — no additional processing needed`,
+      processingTimeMs: Date.now() - nodeStartTime,
     };
   }
 
@@ -588,8 +668,10 @@ export async function lipSyncNode(
     panelsSubmitted: panelsToProcess.length,
     panelsSucceeded: succeeded,
     panelsFailed: failed,
+    panelsNeedingReview: 0,
     results,
     totalCostCents,
     summary,
+    processingTimeMs: Date.now() - nodeStartTime,
   };
 }

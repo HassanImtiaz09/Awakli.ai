@@ -3173,3 +3173,14 @@
 - [x] Show per-panel status (synced/failed/skipped/retrying) with failure reasons, video preview, processing time
 - [x] Add "Select All Failed" + "Retry N Panel(s)" buttons with confirmation dialog and real-time polling (5s)
 - [x] Write vitest tests: 26/26 passed (module exports, router structure, type coverage, edge cases, DB helpers, UI integration)
+
+## Before/After Comparison + Retry Limits + Batch Notifications
+- [x] Audit current LipSyncDetail UI, retryFailedLipSync logic, and notifyOwner helper
+- [x] Add retry attempt tracking: retryCount field per panel in pipeline_assets metadata
+- [x] Enforce max 3 retries per panel (MAX_RETRY_ATTEMPTS=3) — block + escalate to needs_review
+- [x] Add "Needs Manual Review" (needs_review) status with amber ShieldAlert indicator
+- [x] Integrate notifyOwner into retryBatch: Markdown table with success/fail/review counts, cost, timing
+- [x] Build before/after comparison modal: side-by-side + toggle modes with video controls
+- [x] Add comparison toggle mode with Original/Lip-Synced buttons and auto-play
+- [x] Wire originalVideoUrl into getPanelStatuses response + retryCount per panel
+- [x] Write vitest tests: 21/21 passed (retry limits, notifications, comparison data, integration, constants)

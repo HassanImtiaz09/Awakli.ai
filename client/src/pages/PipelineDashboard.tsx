@@ -10,7 +10,8 @@ import { AwakliiBadge } from "@/components/awakli/AwakliiBadge";
 import {
   Play, RotateCcw, CheckCircle, XCircle, Clock, DollarSign,
   ChevronDown, ChevronUp, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
-  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu, BarChart3
+  Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu, BarChart3,
+  Columns2, Maximize2, Pause, ShieldAlert
 } from "lucide-react";
 import { QualityBadge } from "@/components/awakli/QualityBadge";
 import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
@@ -252,6 +253,9 @@ function VoiceGenDetail({ assets }: { assets: any[] }) {
 function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: number; episodeId: number }) {
   const [selectedPanels, setSelectedPanels] = useState<Set<number>>(new Set());
   const [showRetryConfirm, setShowRetryConfirm] = useState(false);
+  const [comparisonPanel, setComparisonPanel] = useState<number | null>(null);
+  const [comparisonMode, setComparisonMode] = useState<"side-by-side" | "toggle">("side-by-side");
+  const [showOriginal, setShowOriginal] = useState(false);
 
   // Fetch per-panel lip sync statuses
   const statusQuery = trpc.lipSync.getPanelStatuses.useQuery(
@@ -272,13 +276,13 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
     onError: (err) => toast.error(`Retry failed: ${err.message}`),
   });
 
-  const utils = trpc.useUtils();
-
   const panels = statusQuery.data?.panels || [];
   const failedPanels = panels.filter((p) => p.status === "failed");
   const syncedPanels = panels.filter((p) => p.status === "synced");
   const retryingPanels = panels.filter((p) => p.status === "retrying");
   const skippedPanels = panels.filter((p) => p.status === "skipped");
+  const needsReviewPanels = panels.filter((p) => p.status === "needs_review");
+  const retryablePanels = panels.filter((p) => p.status === "failed");
 
   const togglePanel = (panelId: number) => {
     setSelectedPanels((prev) => {
@@ -290,7 +294,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
   };
 
   const selectAllFailed = () => {
-    setSelectedPanels(new Set(failedPanels.map((p) => p.panelId)));
+    setSelectedPanels(new Set(retryablePanels.map((p) => p.panelId)));
   };
 
   const handleRetry = () => {
@@ -307,6 +311,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
       case "failed": return <XCircle className="w-4 h-4 text-red-400" />;
       case "skipped": return <Ban className="w-4 h-4 text-gray-500" />;
       case "retrying": return <Loader2 className="w-4 h-4 text-accent-cyan animate-spin" />;
+      case "needs_review": return <ShieldAlert className="w-4 h-4 text-amber-400" />;
       default: return <Clock className="w-4 h-4 text-gray-400" />;
     }
   };
@@ -317,9 +322,15 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
       case "failed": return "border-red-500/30 bg-red-950/20";
       case "skipped": return "border-gray-600/30 bg-gray-900/20";
       case "retrying": return "border-accent-cyan/30 bg-cyan-950/20";
+      case "needs_review": return "border-amber-500/30 bg-amber-950/20";
       default: return "border-gray-700/30 bg-gray-800/20";
     }
   };
+
+  // Before/After Comparison Modal
+  const comparisonPanelData = comparisonPanel !== null
+    ? panels.find((p) => p.panelId === comparisonPanel)
+    : null;
 
   if (statusQuery.isLoading) {
     return (
@@ -356,14 +367,36 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
             <span className="text-xs text-accent-cyan">{retryingPanels.length} retrying</span>
           </div>
         )}
+        {needsReviewPanels.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-xs text-amber-400">{needsReviewPanels.length} needs review</span>
+          </div>
+        )}
       </div>
 
+      {/* Needs review warning */}
+      {needsReviewPanels.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-950/20 border border-amber-500/20">
+          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="text-sm text-amber-300 font-medium">
+              {needsReviewPanels.length} panel(s) need manual review
+            </span>
+            <p className="text-xs text-amber-400/70 mt-1">
+              These panels have exceeded the maximum retry limit (3 attempts). They may require
+              re-generating the source video clip with better face visibility, or manual lip sync adjustment.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Retry controls */}
-      {failedPanels.length > 0 && (
+      {retryablePanels.length > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-lg bg-red-950/20 border border-red-500/20">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
           <span className="text-sm text-red-300 flex-1">
-            {failedPanels.length} panel(s) failed lip sync. Select panels below and retry.
+            {retryablePanels.length} panel(s) failed lip sync. Select panels below and retry.
           </span>
           <button
             onClick={selectAllFailed}
@@ -392,7 +425,10 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
       {showRetryConfirm && (
         <div className="p-4 rounded-lg bg-gray-800/80 border border-accent-cyan/30">
           <p className="text-sm text-white mb-3">
-            Retry lip sync for <strong>{selectedPanels.size}</strong> panel(s)? This will delete existing synced clips for these panels and re-run face detection + lip sync via Kling API.
+            Retry lip sync for <strong>{selectedPanels.size}</strong> panel(s)? This will delete existing synced clips and re-run face detection + lip sync via Kling API.
+          </p>
+          <p className="text-xs text-gray-400 mb-3">
+            Each panel has a maximum of 3 retry attempts. Panels exceeding this limit will be escalated to manual review.
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -413,11 +449,164 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
         </div>
       )}
 
+      {/* Before/After Comparison Modal */}
+      {comparisonPanelData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setComparisonPanel(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl max-w-5xl w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Columns2 className="w-5 h-5 text-accent-cyan" />
+                <h3 className="text-lg font-semibold text-white">
+                  Before / After — P{comparisonPanelData.sceneNumber}.{comparisonPanelData.panelNumber}
+                  <span className="text-sm text-gray-400 ml-2">[{comparisonPanelData.character}]</span>
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Mode toggle */}
+                <div className="flex items-center bg-gray-800 rounded-lg p-0.5 border border-gray-700">
+                  <button
+                    onClick={() => setComparisonMode("side-by-side")}
+                    className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                      comparisonMode === "side-by-side"
+                        ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <Columns2 className="w-3 h-3 inline mr-1" />
+                    Side by Side
+                  </button>
+                  <button
+                    onClick={() => { setComparisonMode("toggle"); setShowOriginal(false); }}
+                    className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                      comparisonMode === "toggle"
+                        ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <Eye className="w-3 h-3 inline mr-1" />
+                    Toggle
+                  </button>
+                </div>
+                <button onClick={() => setComparisonPanel(null)} className="text-gray-400 hover:text-white transition-colors">
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Dialogue text */}
+            <p className="text-sm text-gray-300 italic mb-4">"{comparisonPanelData.dialogueText}"</p>
+
+            {/* Comparison view */}
+            {comparisonMode === "side-by-side" ? (
+              <div className="grid grid-cols-2 gap-4">
+                {/* Original */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Original</span>
+                    <span className="text-[10px] text-gray-500">(No lip sync)</span>
+                  </div>
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden border border-red-500/20">
+                    {comparisonPanelData.originalVideoUrl || comparisonPanelData.videoClipUrl ? (
+                      <video
+                        src={comparisonPanelData.originalVideoUrl || comparisonPanelData.videoClipUrl}
+                        className="w-full h-full object-contain"
+                        controls
+                        preload="metadata"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+                        Original clip not available
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Lip-synced */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-medium text-green-400 uppercase tracking-wider">Lip-Synced</span>
+                    {comparisonPanelData.retryCount && comparisonPanelData.retryCount > 0 && (
+                      <span className="text-[10px] text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded">
+                        Attempt #{(comparisonPanelData.retryCount || 0) + 1}
+                      </span>
+                    )}
+                  </div>
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden border border-green-500/20">
+                    {comparisonPanelData.syncedClipUrl ? (
+                      <video
+                        src={comparisonPanelData.syncedClipUrl}
+                        className="w-full h-full object-contain"
+                        controls
+                        preload="metadata"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+                        Synced clip not available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Toggle mode */
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => setShowOriginal(false)}
+                    className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                      !showOriginal
+                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                        : "text-gray-400 hover:text-white border border-gray-700"
+                    }`}
+                  >
+                    Lip-Synced
+                  </button>
+                  <button
+                    onClick={() => setShowOriginal(true)}
+                    className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                      showOriginal
+                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                        : "text-gray-400 hover:text-white border border-gray-700"
+                    }`}
+                  >
+                    Original
+                  </button>
+                  <span className="text-[10px] text-gray-500">
+                    Showing: {showOriginal ? "Original (no lip sync)" : "Lip-synced version"}
+                  </span>
+                </div>
+                <div className="aspect-video bg-black rounded-lg overflow-hidden border border-gray-700">
+                  <video
+                    key={showOriginal ? "original" : "synced"}
+                    src={showOriginal
+                      ? (comparisonPanelData.originalVideoUrl || comparisonPanelData.videoClipUrl)
+                      : comparisonPanelData.syncedClipUrl
+                    }
+                    className="w-full h-full object-contain"
+                    controls
+                    autoPlay
+                    preload="metadata"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Processing info */}
+            {comparisonPanelData.processingTimeMs && comparisonPanelData.processingTimeMs > 0 && (
+              <p className="text-[10px] text-gray-500 mt-3">
+                Lip sync processed in {(comparisonPanelData.processingTimeMs / 1000).toFixed(1)}s
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Panel grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {panels.map((panel) => {
           const isSelected = selectedPanels.has(panel.panelId);
           const canSelect = panel.status === "failed";
+          const canCompare = panel.status === "synced" && panel.syncedClipUrl && (panel.originalVideoUrl || panel.videoClipUrl);
 
           return (
             <div
@@ -452,15 +641,33 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                       Retried
                     </span>
                   )}
+                  {panel.retryCount !== undefined && panel.retryCount > 0 && (
+                    <span className="text-[10px] text-gray-500">
+                      ({panel.retryCount}/3 attempts)
+                    </span>
+                  )}
                 </div>
-                <span className={`text-[10px] uppercase font-medium tracking-wider ${
-                  panel.status === "synced" ? "text-green-400" :
-                  panel.status === "failed" ? "text-red-400" :
-                  panel.status === "retrying" ? "text-accent-cyan" :
-                  "text-gray-500"
-                }`}>
-                  {panel.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {canCompare && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setComparisonPanel(panel.panelId); }}
+                      className="flex items-center gap-1 text-[10px] text-accent-cyan hover:text-white transition-colors px-1.5 py-0.5 rounded border border-accent-cyan/20 hover:border-accent-cyan/40 bg-accent-cyan/5"
+                      title="Compare before/after lip sync"
+                    >
+                      <Columns2 className="w-3 h-3" />
+                      Compare
+                    </button>
+                  )}
+                  <span className={`text-[10px] uppercase font-medium tracking-wider ${
+                    panel.status === "synced" ? "text-green-400" :
+                    panel.status === "failed" ? "text-red-400" :
+                    panel.status === "retrying" ? "text-accent-cyan" :
+                    panel.status === "needs_review" ? "text-amber-400" :
+                    "text-gray-500"
+                  }`}>
+                    {panel.status === "needs_review" ? "REVIEW" : panel.status}
+                  </span>
+                </div>
               </div>
 
               {/* Dialogue text */}
@@ -481,8 +688,10 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
               )}
 
               {/* Failure reason */}
-              {panel.status === "failed" && panel.failureReason && (
-                <p className="text-[11px] text-red-400/80 mt-1">
+              {(panel.status === "failed" || panel.status === "needs_review") && panel.failureReason && (
+                <p className={`text-[11px] mt-1 ${
+                  panel.status === "needs_review" ? "text-amber-400/80" : "text-red-400/80"
+                }`}>
                   {panel.failureReason}
                 </p>
               )}

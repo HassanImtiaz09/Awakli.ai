@@ -9,11 +9,12 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getPipelineAssetsByRun, getPanelsByEpisode, getPipelineRunById } from "./db";
-import { identifyDialoguePanels, retryFailedLipSync } from "./lipSyncNode";
+import { identifyDialoguePanels, retryFailedLipSync, MAX_RETRY_ATTEMPTS } from "./lipSyncNode";
+import { notifyOwner } from "./_core/notification";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-export type LipSyncPanelStatus = "synced" | "failed" | "skipped" | "pending" | "retrying";
+export type LipSyncPanelStatus = "synced" | "failed" | "skipped" | "pending" | "retrying" | "needs_review";
 
 export interface LipSyncPanelInfo {
   panelId: number;
@@ -30,6 +31,8 @@ export interface LipSyncPanelInfo {
   hasNativeLipSync: boolean;
   processingTimeMs?: number;
   isRetry?: boolean;
+  retryCount?: number;
+  originalVideoUrl?: string;
 }
 
 // ─── In-memory retry tracking ───────────────────────────────────────────
@@ -94,6 +97,7 @@ export const lipSyncRouter = router({
 
         let status: LipSyncPanelStatus;
         let failureReason: string | undefined;
+        const retryCount = meta?.retryCount || (meta?.isRetry ? 1 : 0);
 
         if (retryPanelStatus?.status === "started" || retryPanelStatus?.status === "pending") {
           status = "retrying";
@@ -105,6 +109,9 @@ export const lipSyncRouter = router({
         } else if (panel.voiceDuration < 0.5) {
           status = "skipped";
           failureReason = `Voice clip too short (${panel.voiceDuration}s)`;
+        } else if (retryCount >= MAX_RETRY_ATTEMPTS) {
+          status = "needs_review";
+          failureReason = `Exceeded max retries (${MAX_RETRY_ATTEMPTS}). Manual review required.`;
         } else {
           // No synced clip exists — either failed or pending
           status = "failed";
@@ -126,6 +133,8 @@ export const lipSyncRouter = router({
           hasNativeLipSync: panel.hasNativeLipSync,
           processingTimeMs: meta?.processingTimeMs,
           isRetry: meta?.isRetry === true,
+          retryCount: retryCount || undefined,
+          originalVideoUrl: panel.videoUrl,
         };
       });
 
@@ -143,6 +152,7 @@ export const lipSyncRouter = router({
         failedCount: panelInfos.filter((p) => p.status === "failed").length,
         skippedCount: panelInfos.filter((p) => p.status === "skipped").length,
         retryingCount: panelInfos.filter((p) => p.status === "retrying").length,
+        needsReviewCount: panelInfos.filter((p) => p.status === "needs_review").length,
         activeRetry: retryInfo,
       };
     }),
@@ -207,7 +217,7 @@ export const lipSyncRouter = router({
           }
         },
       )
-        .then((result) => {
+        .then(async (result) => {
           const retry = activeRetries.get(retryKey);
           if (retry) {
             retry.status = "complete";
@@ -215,18 +225,55 @@ export const lipSyncRouter = router({
           }
           console.log(`[LipSync Retry] Batch complete: ${result.summary}`);
 
+          // Send notification to project owner
+          const processingTimeSec = (result.processingTimeMs / 1000).toFixed(1);
+          const reviewNote = result.panelsNeedingReview > 0
+            ? `\n\n⚠️ ${result.panelsNeedingReview} panel(s) exceeded the retry limit (${MAX_RETRY_ATTEMPTS}) and need manual review.`
+            : "";
+          try {
+            await notifyOwner({
+              title: `Lip Sync Retry Complete — ${result.panelsSucceeded}/${result.panelsSubmitted} succeeded`,
+              content: [
+                `**Run #${runId}** lip sync retry batch finished in ${processingTimeSec}s.`,
+                ``,
+                `| Metric | Count |`,
+                `|--------|-------|`,
+                `| Panels submitted | ${result.panelsSubmitted} |`,
+                `| Succeeded | ${result.panelsSucceeded} |`,
+                `| Failed | ${result.panelsFailed} |`,
+                `| Needs manual review | ${result.panelsNeedingReview} |`,
+                `| API cost | $${(result.totalCostCents / 100).toFixed(2)} |`,
+                `| Processing time | ${processingTimeSec}s |`,
+                reviewNote,
+              ].join("\n"),
+            });
+            console.log(`[LipSync Retry] Owner notification sent`);
+          } catch (notifErr) {
+            console.warn(`[LipSync Retry] Failed to send owner notification:`, notifErr);
+          }
+
           // Clean up after 5 minutes
           setTimeout(() => {
             activeRetries.delete(retryKey);
           }, 5 * 60 * 1000);
         })
-        .catch((err) => {
+        .catch(async (err) => {
           const retry = activeRetries.get(retryKey);
           if (retry) {
             retry.status = "failed";
             retry.result = { error: err.message };
           }
           console.error(`[LipSync Retry] Batch failed:`, err);
+
+          // Notify owner of failure
+          try {
+            await notifyOwner({
+              title: `❌ Lip Sync Retry Failed — Run #${runId}`,
+              content: `The lip sync retry batch for **Run #${runId}** (${panelIds.length} panels) failed with error:\n\n\`${err.message}\`\n\nPlease check the pipeline logs for details.`,
+            });
+          } catch (notifErr) {
+            console.warn(`[LipSync Retry] Failed to send failure notification:`, notifErr);
+          }
 
           setTimeout(() => {
             activeRetries.delete(retryKey);
