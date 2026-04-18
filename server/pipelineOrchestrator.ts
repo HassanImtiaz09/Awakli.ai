@@ -21,6 +21,7 @@ import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import { assembleVideo, type TransitionSpec, type TransitionType } from "./video-assembly";
 import { foleyGenNode } from "./foleyGenerator";
 import { ambientGenNode } from "./ambientDetector";
+import { lipSyncNode } from "./lipSyncNode";
 import { getOrCompileProductionBible, lockProductionBible, type ProductionBibleData } from "./production-bible";
 import { runHarnessLayer, updateAssetHarnessScore, type HarnessContext, type HarnessRunSummary } from "./harness-runner";
 import { scriptChecks, visualChecks, videoChecks, audioChecks, integrationChecks } from "./harness-checks";
@@ -50,23 +51,25 @@ import {
 } from "./hitl";
 import type { GenerateResult, ScoreContext } from "./hitl";
 
-type NodeName = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeStatuses {
   video_gen: NodeStatus;
   voice_gen: NodeStatus;
+  lip_sync: NodeStatus;
   music_gen: NodeStatus;
   foley_gen: NodeStatus;
   ambient_gen: NodeStatus;
   assembly: NodeStatus;
 }
 
-const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "music_gen", "foley_gen", "ambient_gen", "assembly"];
+const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "lip_sync", "music_gen", "foley_gen", "ambient_gen", "assembly"];
 
 const NODE_COSTS: Record<NodeName, number> = {
   video_gen: 200,   // cents — higher because V3 Omni includes audio/lip sync
   voice_gen: 80,
+  lip_sync: 50,     // ~$0.15/panel × ~5 dialogue panels average
   music_gen: 40,
   foley_gen: 60,    // ~$0.05/clip × ~12 clips average
   ambient_gen: 30,  // ~$0.05/clip × ~6 scenes average
@@ -76,6 +79,7 @@ const NODE_COSTS: Record<NodeName, number> = {
 const NODE_DURATIONS: Record<NodeName, number> = {
   video_gen: 12000,  // longer — Omni generates video + audio together
   voice_gen: 5000,
+  lip_sync: 15000,   // face detection + lip sync per dialogue panel (sequential)
   music_gen: 3000,
   foley_gen: 8000,   // LLM cue extraction + MiniMax generation per clip
   ambient_gen: 6000, // LLM scene detection + MiniMax generation per scene
@@ -638,7 +642,9 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
     const allAssets = await getPipelineAssetsByRun(runId);
 
     // Collect video clips (sorted by panel number)
-    const videoClips = allAssets
+    // When both a video_clip and synced_clip exist for the same panel,
+    // prefer the lip-synced version (synced_clip) over the original.
+    const rawVideoAssets = allAssets
       .filter(a => a.assetType === "video_clip" || a.assetType === "synced_clip")
       .map(a => {
         const meta = (a.metadata || {}) as any;
@@ -648,8 +654,23 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
           panelNumber: meta.panelNumber ?? a.panelId ?? 0,
           duration: meta.duration || 5,
           hasNativeAudio: meta.hasNativeAudio || false,
+          assetType: a.assetType as string,
         };
       });
+
+    // Deduplicate: for each panelId, prefer synced_clip over video_clip
+    const panelClipMap = new Map<number, typeof rawVideoAssets[0]>();
+    for (const clip of rawVideoAssets) {
+      const existing = panelClipMap.get(clip.panelId);
+      if (!existing) {
+        panelClipMap.set(clip.panelId, clip);
+      } else if (clip.assetType === "synced_clip" && existing.assetType === "video_clip") {
+        // Lip-synced version takes priority
+        panelClipMap.set(clip.panelId, clip);
+        console.log(`[Assembly] Panel ${clip.panelNumber}: using lip-synced clip over original`);
+      }
+    }
+    const videoClips = Array.from(panelClipMap.values());
 
     // Collect voice clips
     const voiceClips = allAssets
@@ -832,6 +853,7 @@ export async function runPipeline(runId: number) {
   const nodeStatuses: NodeStatuses = {
     video_gen: "pending",
     voice_gen: "pending",
+    lip_sync: "pending",
     music_gen: "pending",
     foley_gen: "pending",
     ambient_gen: "pending",
@@ -1035,9 +1057,43 @@ export async function runPipeline(runId: number) {
     if (audioSummary.shouldBlock) {
       throw new Error(`Pipeline blocked by Audio Quality harness: ${audioSummary.flaggedItems.map(f => f.checkName).join(", ")}`);
     }
-    await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 50, totalCost, nodeCosts);
+    await updateNodeProgress(runId, "voice_gen", "complete", nodeStatuses, 47, totalCost, nodeCosts);
 
-    // Node 3: Music Generation (MiniMax Music 2.6)
+    // Node 3: Automated Lip Sync (Kling face detection + advanced lip sync)
+    // Runs after voice_gen (needs voice clips) and video_gen (needs video clips)
+    // Gated by enableLipSync in assembly settings (default: false)
+    {
+      const episodeForLipSync = await getEpisodeById(run.episodeId);
+      const { mergeAssemblySettings: mergeLipSyncSettings } = await import("@shared/assemblySettings");
+      const lipSyncSettings = mergeLipSyncSettings(episodeForLipSync?.assemblySettings as any);
+
+      if (lipSyncSettings.enableLipSync) {
+        await updateNodeProgress(runId, "lip_sync", "running", nodeStatuses, 48, totalCost, nodeCosts);
+        try {
+          const lipSyncResult = await lipSyncNode(runId, run.episodeId, {
+            voiceVolume: 2,
+            originalAudioVolume: 0,
+            skipNativeLipSync: true,
+          });
+          nodeStatuses.lip_sync = "complete";
+          nodeCosts.lip_sync = lipSyncResult.totalCostCents;
+          totalCost += lipSyncResult.totalCostCents;
+          console.log(`[Pipeline] Lip sync: ${lipSyncResult.summary}`);
+          await updateNodeProgress(runId, "lip_sync", "complete", nodeStatuses, 52, totalCost, nodeCosts);
+        } catch (lipSyncErr: any) {
+          console.error(`[Pipeline] Lip sync node failed (non-blocking):`, lipSyncErr.message);
+          nodeStatuses.lip_sync = "failed";
+          await updateNodeProgress(runId, "lip_sync", "failed", nodeStatuses, 52, totalCost, nodeCosts);
+          // Non-blocking: assembly will use original video clips without lip sync
+        }
+      } else {
+        nodeStatuses.lip_sync = "skipped";
+        console.log(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
+        await updateNodeProgress(runId, "lip_sync", "skipped", nodeStatuses, 52, totalCost, nodeCosts);
+      }
+    }
+
+    // Node 4: Music Generation (MiniMax Music 2.6)
     await updateNodeProgress(runId, "music_gen", "running", nodeStatuses, 55, totalCost, nodeCosts);
     totalCost = await musicGenAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.music_gen = "complete";
@@ -1240,6 +1296,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
   const nodeStatuses: NodeStatuses = savedStatuses || {
     video_gen: "pending",
     voice_gen: "pending",
+    lip_sync: "pending",
     music_gen: "pending",
     foley_gen: "pending",
     ambient_gen: "pending",
@@ -1324,6 +1381,25 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
         case "voice_gen":
           totalCost = await voiceGenAgent(runId, run.episodeId, run.projectId, nodeStatuses, nodeCosts);
           break;
+        case "lip_sync": {
+          const epForLs = await getEpisodeById(run.episodeId);
+          const { mergeAssemblySettings: mergeLs } = await import("@shared/assemblySettings");
+          const lsSettings = mergeLs(epForLs?.assemblySettings as any);
+          if (lsSettings.enableLipSync) {
+            await updateNodeProgress(runId, "lip_sync", "running", nodeStatuses, 48, totalCost, nodeCosts);
+            const lsResult = await lipSyncNode(runId, run.episodeId, {
+              voiceVolume: 2,
+              originalAudioVolume: 0,
+              skipNativeLipSync: true,
+            });
+            totalCost += lsResult.totalCostCents;
+            console.log(`[Pipeline] Lip sync: ${lsResult.summary}`);
+          } else {
+            nodeStatuses.lip_sync = "skipped";
+            console.log(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
+          }
+          break;
+        }
         case "music_gen":
           totalCost = await musicGenAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
           break;
@@ -1352,7 +1428,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
       }
 
       // HITL gate check after each node
-      const stageMap: Record<NodeName, number> = { video_gen: 5, voice_gen: 6, music_gen: 7, foley_gen: 8, ambient_gen: 8, assembly: 10 };
+      const stageMap: Record<NodeName, number> = { video_gen: 5, voice_gen: 6, lip_sync: 6, music_gen: 7, foley_gen: 8, ambient_gen: 8, assembly: 10 };
       const gateResult = await completeNodeWithGate({
         pipelineRunId: runId,
         node,

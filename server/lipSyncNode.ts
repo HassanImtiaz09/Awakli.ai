@@ -1,0 +1,424 @@
+/**
+ * Automated Lip Sync Pipeline Node
+ *
+ * Integrates the lip sync processor into the production pipeline as a dedicated node
+ * that runs between voice_gen and music_gen. Automatically:
+ *
+ * 1. Identifies dialogue panels by matching voice_clip assets to video_clip assets
+ * 2. Downloads video clips and voice clips to local working directory
+ * 3. Runs face detection + lip sync via Kling API (with 3s padding, overlap validation)
+ * 4. Stores lip-synced clips as pipeline_assets (assetType: "synced_clip")
+ * 5. Assembly pipeline automatically prefers synced_clip over video_clip for those panels
+ *
+ * Gated by `enableLipSync` in assembly settings (default: false).
+ * Non-blocking: failures are logged but don't halt the pipeline.
+ */
+
+import { storagePut } from "./storage";
+import {
+  processLipSyncPanel,
+  type LipSyncPanelInput,
+  type LipSyncPanelResult,
+} from "./pipeline/lipSyncProcessor";
+import {
+  getPipelineAssetsByRun,
+  createPipelineAsset,
+  getPanelsByEpisode,
+  getCharactersByProject,
+  getEpisodeById,
+} from "./db";
+import { nanoid } from "nanoid";
+import * as fs from "fs/promises";
+import * as path from "path";
+import * as os from "os";
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+/** Maximum concurrent lip sync tasks (sequential to avoid Kling rate limits) */
+const MAX_CONCURRENT = 1;
+
+/** Cost per lip sync panel in cents (face detection + lip sync API call) */
+const COST_PER_PANEL_CENTS = 15;
+
+/** Minimum voice clip duration to attempt lip sync (seconds) */
+const MIN_VOICE_DURATION_SECONDS = 0.5;
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface LipSyncNodeOptions {
+  /** Target LUFS for voice in lip-synced output (default: -14) */
+  targetLufs?: number;
+  /** Voice volume multiplier for Kling (default: 2) */
+  voiceVolume?: number;
+  /** Original audio volume (default: 0 = mute) */
+  originalAudioVolume?: number;
+  /** Skip panels where video already has native lip sync (default: true) */
+  skipNativeLipSync?: boolean;
+}
+
+export interface LipSyncNodeResult {
+  /** Number of dialogue panels identified */
+  dialoguePanelsFound: number;
+  /** Number of panels that already had native lip sync (skipped) */
+  nativeLipSyncSkipped: number;
+  /** Number of panels submitted for lip sync */
+  panelsSubmitted: number;
+  /** Number of successful lip syncs */
+  panelsSucceeded: number;
+  /** Number of panels that failed or were skipped */
+  panelsFailed: number;
+  /** Per-panel results */
+  results: LipSyncPanelResult[];
+  /** Total cost in cents */
+  totalCostCents: number;
+  /** Summary message */
+  summary: string;
+}
+
+interface DialoguePanelMatch {
+  panelId: number;
+  panelNumber: number;
+  sceneNumber: number;
+  character: string;
+  dialogueText: string;
+  videoAssetId: number;
+  videoUrl: string;
+  voiceAssetId: number;
+  voiceUrl: string;
+  hasNativeLipSync: boolean;
+  voiceDuration: number;
+}
+
+// ─── Upload Helper ──────────────────────────────────────────────────────────
+
+async function uploadToS3(
+  localPath: string,
+  s3Key: string,
+  contentType: string,
+): Promise<string> {
+  const fileBuffer = await fs.readFile(localPath);
+  const { url } = await storagePut(s3Key, fileBuffer, contentType);
+  return url;
+}
+
+// ─── Download Helper ────────────────────────────────────────────────────────
+
+async function downloadFile(url: string, destPath: string): Promise<void> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Download failed: ${res.status} ${url}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  await fs.writeFile(destPath, buffer);
+}
+
+// ─── Dialogue Panel Matching ────────────────────────────────────────────────
+
+/**
+ * Match voice_clip assets to video_clip assets by panelId to identify
+ * which panels have dialogue and need lip sync.
+ */
+async function identifyDialoguePanels(
+  runId: number,
+  episodeId: number,
+): Promise<DialoguePanelMatch[]> {
+  const allAssets = await getPipelineAssetsByRun(runId);
+  const panels = await getPanelsByEpisode(episodeId);
+
+  // Index video clips by panelId
+  const videoClipsByPanel = new Map<number, any>();
+  for (const asset of allAssets) {
+    if (asset.assetType === "video_clip" && asset.panelId) {
+      videoClipsByPanel.set(asset.panelId, asset);
+    }
+  }
+
+  // Index voice clips by panelId
+  const voiceClipsByPanel = new Map<number, any>();
+  for (const asset of allAssets) {
+    if (asset.assetType === "voice_clip" && asset.panelId) {
+      voiceClipsByPanel.set(asset.panelId, asset);
+    }
+  }
+
+  const matches: DialoguePanelMatch[] = [];
+
+  for (const panel of panels) {
+    const videoAsset = videoClipsByPanel.get(panel.id);
+    const voiceAsset = voiceClipsByPanel.get(panel.id);
+
+    if (!videoAsset || !voiceAsset) continue;
+
+    // Extract dialogue text from panel
+    const dialogue = panel.dialogue as any;
+    let dialogueText = "";
+    let character = "Unknown";
+
+    if (Array.isArray(dialogue)) {
+      dialogueText = dialogue.map((d: any) => d.text || d.line || d).join(". ");
+      character = dialogue[0]?.character || dialogue[0]?.speaker || "Unknown";
+    } else if (typeof dialogue === "string") {
+      dialogueText = dialogue;
+    } else if (dialogue && typeof dialogue === "object") {
+      dialogueText = dialogue.text || dialogue.line || JSON.stringify(dialogue);
+      character = dialogue.character || dialogue.speaker || "Unknown";
+    }
+
+    if (!dialogueText.trim()) continue;
+
+    const videoMeta = (videoAsset.metadata || {}) as any;
+    const voiceMeta = (voiceAsset.metadata || {}) as any;
+
+    matches.push({
+      panelId: panel.id,
+      panelNumber: panel.panelNumber,
+      sceneNumber: panel.sceneNumber,
+      character,
+      dialogueText: dialogueText.slice(0, 200),
+      videoAssetId: videoAsset.id,
+      videoUrl: videoAsset.url,
+      voiceAssetId: voiceAsset.id,
+      voiceUrl: voiceAsset.url,
+      hasNativeLipSync: videoMeta.hasNativeLipSync === true || videoMeta.hasLipSync === true,
+      voiceDuration: voiceMeta.duration || 0,
+    });
+  }
+
+  // Sort by scene number, then panel number
+  matches.sort((a, b) => a.sceneNumber - b.sceneNumber || a.panelNumber - b.panelNumber);
+
+  return matches;
+}
+
+// ─── Main Node Function ─────────────────────────────────────────────────────
+
+/**
+ * Run the automated lip sync node for a pipeline run.
+ *
+ * Flow:
+ * 1. Identify dialogue panels (panels with both video_clip and voice_clip assets)
+ * 2. Skip panels that already have native lip sync (from Kling V3 Omni)
+ * 3. Download video + voice files to temp directory
+ * 4. Run face detection + lip sync via Kling API
+ * 5. Upload lip-synced clips to S3 and store as pipeline_assets
+ * 6. Assembly pipeline will automatically prefer synced_clip over video_clip
+ *
+ * @param runId - Pipeline run ID
+ * @param episodeId - Episode ID
+ * @param options - Lip sync configuration
+ * @returns Result with per-panel outcomes and cost
+ */
+export async function lipSyncNode(
+  runId: number,
+  episodeId: number,
+  options: LipSyncNodeOptions = {},
+): Promise<LipSyncNodeResult> {
+  const {
+    voiceVolume = 2,
+    originalAudioVolume = 0,
+    skipNativeLipSync = true,
+  } = options;
+
+  console.log(`[LipSync Node] Starting automated lip sync for run ${runId}, episode ${episodeId}`);
+
+  // Step 1: Identify dialogue panels
+  const dialoguePanels = await identifyDialoguePanels(runId, episodeId);
+  console.log(`[LipSync Node] Found ${dialoguePanels.length} dialogue panels with video + voice assets`);
+
+  if (dialoguePanels.length === 0) {
+    return {
+      dialoguePanelsFound: 0,
+      nativeLipSyncSkipped: 0,
+      panelsSubmitted: 0,
+      panelsSucceeded: 0,
+      panelsFailed: 0,
+      results: [],
+      totalCostCents: 0,
+      summary: "No dialogue panels found — nothing to lip sync",
+    };
+  }
+
+  // Step 2: Filter out panels with native lip sync
+  let nativeLipSyncSkipped = 0;
+  const panelsToProcess: DialoguePanelMatch[] = [];
+
+  for (const panel of dialoguePanels) {
+    if (skipNativeLipSync && panel.hasNativeLipSync) {
+      nativeLipSyncSkipped++;
+      console.log(
+        `[LipSync Node] Skipping P${panel.sceneNumber}.${panel.panelNumber} ` +
+        `(${panel.character}) — already has native lip sync from V3 Omni`
+      );
+      continue;
+    }
+
+    if (panel.voiceDuration < MIN_VOICE_DURATION_SECONDS) {
+      console.log(
+        `[LipSync Node] Skipping P${panel.sceneNumber}.${panel.panelNumber} ` +
+        `— voice clip too short (${panel.voiceDuration}s < ${MIN_VOICE_DURATION_SECONDS}s)`
+      );
+      continue;
+    }
+
+    panelsToProcess.push(panel);
+  }
+
+  console.log(
+    `[LipSync Node] Processing ${panelsToProcess.length} panels ` +
+    `(${nativeLipSyncSkipped} skipped with native lip sync)`
+  );
+
+  if (panelsToProcess.length === 0) {
+    return {
+      dialoguePanelsFound: dialoguePanels.length,
+      nativeLipSyncSkipped,
+      panelsSubmitted: 0,
+      panelsSucceeded: 0,
+      panelsFailed: 0,
+      results: [],
+      totalCostCents: 0,
+      summary: `All ${dialoguePanels.length} dialogue panels already have native lip sync — no additional processing needed`,
+    };
+  }
+
+  // Step 3: Create working directory
+  const workDir = path.join(os.tmpdir(), `lipsync-node-${runId}-${nanoid(6)}`);
+  await fs.mkdir(workDir, { recursive: true });
+
+  const results: LipSyncPanelResult[] = [];
+  let totalCostCents = 0;
+
+  try {
+    // Step 4: Process each panel sequentially
+    for (let i = 0; i < panelsToProcess.length; i++) {
+      const panel = panelsToProcess[i];
+      const panelLabel = `P${panel.sceneNumber}.${panel.panelNumber} [${panel.character}]`;
+      const panelWorkDir = path.join(workDir, `panel-${panel.panelId}`);
+      await fs.mkdir(panelWorkDir, { recursive: true });
+
+      console.log(
+        `[LipSync Node] Processing ${i + 1}/${panelsToProcess.length}: ` +
+        `${panelLabel} — "${panel.dialogueText.slice(0, 50)}..."`
+      );
+
+      try {
+        // Download video clip
+        const videoPath = path.join(panelWorkDir, `video.mp4`);
+        await downloadFile(panel.videoUrl, videoPath);
+
+        // Download voice clip
+        const voicePath = path.join(panelWorkDir, `voice.mp3`);
+        await downloadFile(panel.voiceUrl, voicePath);
+
+        // Build lip sync input
+        const input: LipSyncPanelInput = {
+          panelId: panel.panelId,
+          character: panel.character,
+          dialogueText: panel.dialogueText,
+          videoClipPath: videoPath,
+          voiceAudioPath: voicePath,
+          audioInsertTimeMs: 0,
+          voiceVolume,
+          originalAudioVolume,
+        };
+
+        // Run face detection + lip sync
+        const result = await processLipSyncPanel(input, panelWorkDir, uploadToS3);
+        results.push(result);
+
+        if (result.success && result.outputUrl) {
+          // Step 5: Store lip-synced clip as pipeline asset
+          const s3Key = `pipeline/${runId}/lipsync-${panel.panelId}-${nanoid(6)}.mp4`;
+
+          // Upload the lip-synced clip to our S3 (Kling CDN URL may expire)
+          let storedUrl = result.outputUrl;
+          if (result.outputPath) {
+            try {
+              storedUrl = await uploadToS3(result.outputPath, s3Key, "video/mp4");
+            } catch (uploadErr) {
+              console.warn(
+                `[LipSync Node] S3 upload failed for ${panelLabel}, using Kling CDN URL:`,
+                uploadErr
+              );
+            }
+          }
+
+          await createPipelineAsset({
+            pipelineRunId: runId,
+            episodeId,
+            panelId: panel.panelId,
+            assetType: "synced_clip",
+            url: storedUrl,
+            metadata: {
+              panelNumber: panel.panelNumber,
+              sceneNumber: panel.sceneNumber,
+              character: panel.character,
+              dialogueText: panel.dialogueText.slice(0, 100),
+              hasLipSync: true,
+              lipSyncMethod: "kling_advanced",
+              faceCount: result.faceDetection?.faces.length || 0,
+              processingTimeMs: result.processingTimeMs,
+              originalVideoAssetId: panel.videoAssetId,
+              originalVoiceAssetId: panel.voiceAssetId,
+            } as any,
+            nodeSource: "lip_sync",
+            lipSyncMethod: "kling_advanced",
+          });
+
+          totalCostCents += COST_PER_PANEL_CENTS;
+          console.log(
+            `[LipSync Node] ${panelLabel}: Lip-synced clip stored (${result.processingTimeMs}ms)`
+          );
+        } else {
+          console.warn(
+            `[LipSync Node] ${panelLabel}: Skipped — ${result.skipReason}`
+          );
+        }
+      } catch (panelErr: any) {
+        console.error(
+          `[LipSync Node] ${panelLabel}: Error — ${panelErr.message}`
+        );
+        results.push({
+          panelId: panel.panelId,
+          success: false,
+          skipReason: `Error: ${panelErr.message}`,
+          processingTimeMs: 0,
+        });
+      }
+    }
+  } finally {
+    // Cleanup temp directory
+    try {
+      await fs.rm(workDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  // Step 6: Build summary
+  const succeeded = results.filter((r) => r.success).length;
+  const failed = results.length - succeeded;
+
+  const skippedDetails = results
+    .filter((r) => !r.success)
+    .map((r) => `${r.panelId}: ${r.skipReason}`)
+    .join("; ");
+
+  const summary =
+    succeeded === panelsToProcess.length
+      ? `Lip sync complete: all ${succeeded} dialogue panels processed successfully`
+      : `Lip sync: ${succeeded}/${panelsToProcess.length} succeeded, ${failed} skipped` +
+        (nativeLipSyncSkipped > 0 ? `, ${nativeLipSyncSkipped} already had native lip sync` : "") +
+        (skippedDetails ? ` (${skippedDetails.slice(0, 300)})` : "");
+
+  console.log(`[LipSync Node] ${summary}`);
+
+  return {
+    dialoguePanelsFound: dialoguePanels.length,
+    nativeLipSyncSkipped,
+    panelsSubmitted: panelsToProcess.length,
+    panelsSucceeded: succeeded,
+    panelsFailed: failed,
+    results,
+    totalCostCents,
+    summary,
+  };
+}

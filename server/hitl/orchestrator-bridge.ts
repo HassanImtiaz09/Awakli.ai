@@ -57,7 +57,7 @@ import { STAGE_NAMES, STAGE_CREDIT_ESTIMATES, TOTAL_STAGES } from "./stage-confi
 
 // ─── Node-to-Stage Mapping ─────────────────────────────────────────────
 
-export type OrchestratorNode = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
+export type OrchestratorNode = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 
 /**
  * Maps each orchestrator node to its primary HITL stage(s).
@@ -68,6 +68,7 @@ export type OrchestratorNode = "video_gen" | "voice_gen" | "music_gen" | "foley_
 export const NODE_TO_PRIMARY_STAGE: Record<OrchestratorNode, number> = {
   video_gen: 5,     // Stage 5: video_generation (stages 3-4 are pre-flight for this node)
   voice_gen: 6,     // Stage 6: voice_synthesis
+  lip_sync: 6,      // Stage 6: shares voice_synthesis stage (lip sync is post-processing of voice+video)
   music_gen: 7,     // Stage 7: music_scoring
   foley_gen: 8,     // Stage 8: sfx_foley (was secondary to music_gen, now its own node)
   ambient_gen: 8,   // Stage 8: shares sfx_foley stage (ambient is part of SFX pipeline)
@@ -97,7 +98,7 @@ export const STAGE_TO_NODE: Record<number, OrchestratorNode> = {
   3: "video_gen",
   4: "video_gen",
   5: "video_gen",
-  6: "voice_gen",
+  6: "voice_gen",  // lip_sync also maps here but voice_gen is the primary for resume
   7: "music_gen",
   8: "foley_gen",  // Stage 8 now maps to foley_gen (ambient_gen shares this stage)
   9: "assembly",

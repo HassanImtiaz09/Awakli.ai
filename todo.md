@@ -3148,3 +3148,16 @@
 - [x] Wire foley/ambient assets into assembly pipeline (reads from assembly settings, passes to 4-bus mixer)
 - [x] Add pipeline_assets types: sfx_clip/foley for foley, ambient for ambient (nodeSource: sfx_gen)
 - [x] Write vitest tests: 46/46 passed (FOLEY_PROMPT_MAP, FoleyCue validation, AMBIENT_LIBRARY, matchAmbientByTags, pipeline integration, cross-module consistency)
+
+## Automated Lip Sync Pipeline Integration
+- [x] Audit existing lip sync code (pipeline/lipSyncProcessor.ts, kling.ts, seraphis scripts)
+- [x] Create server/lipSyncNode.ts — automated lip sync pipeline node with face detection + sync
+- [x] Identify dialogue panels automatically from voice_clip assets + panel metadata
+- [x] Implement face detection via Kling /v1/videos/identify-face for each dialogue panel
+- [x] Implement lip sync via Kling /v1/videos/advanced-lip-sync with 3s padding + safety margins
+- [x] Store lip-synced clips as pipeline_assets (assetType: synced_clip, nodeSource: lip_sync)
+- [x] Add lip_sync node to pipeline orchestrator (between voice_gen and music_gen, non-blocking)
+- [x] Update assembly pipeline: synced_clip preferred over video_clip via panelClipMap deduplication
+- [x] Wire enableLipSync assembly setting to control the lip sync node (default: false)
+- [x] Update Pipeline Dashboard UI: 7-node graph with dedicated Lip Sync detail panel
+- [x] Write vitest tests: 23/23 passed (module exports, node ordering, padding, overlap, dedup, settings, HITL, non-blocking)

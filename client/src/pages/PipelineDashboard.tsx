@@ -25,7 +25,7 @@ import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-type NodeName = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeConfig {
@@ -37,15 +37,16 @@ interface NodeConfig {
 }
 
 const NODES: NodeConfig[] = [
-  { id: "video_gen", label: "Video + Lip Sync", icon: Film, x: 50, y: 100 },
-  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 230, y: 100 },
-  { id: "music_gen", label: "Music Gen", icon: Music, x: 410, y: 100 },
-  { id: "foley_gen", label: "Foley SFX", icon: Volume2, x: 590, y: 100 },
-  { id: "ambient_gen", label: "Ambient", icon: Layers, x: 770, y: 100 },
+  { id: "video_gen", label: "Video Gen", icon: Film, x: 50, y: 100 },
+  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 200, y: 100 },
+  { id: "lip_sync", label: "Lip Sync", icon: Mic, x: 350, y: 100 },
+  { id: "music_gen", label: "Music Gen", icon: Music, x: 500, y: 100 },
+  { id: "foley_gen", label: "Foley SFX", icon: Volume2, x: 650, y: 100 },
+  { id: "ambient_gen", label: "Ambient", icon: Layers, x: 800, y: 100 },
   { id: "assembly", label: "Assembly", icon: Clapperboard, x: 950, y: 100 },
 ];
 
-const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]];
+const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]];
 
 // ─── Node Graph Component ───────────────────────────────────────────────
 
@@ -470,8 +471,9 @@ function NodeDetailPanel({
   const nodeAssets = assets.filter((a: any) => {
     const source = a.nodeSource || a.assetType;
     const nodeTypeMap: Record<NodeName, string[]> = {
-      video_gen: ["video_clip", "video", "synced_clip"],
+      video_gen: ["video_clip", "video"],
       voice_gen: ["voice_clip", "voice"],
+      lip_sync: ["synced_clip"],
       music_gen: ["music", "bgm"],
       foley_gen: ["sfx_clip", "foley", "sfx"],
       ambient_gen: ["ambient"],
@@ -485,8 +487,9 @@ function NodeDetailPanel({
   const nodeErrors = errors.filter((e: any) => e.node === node);
 
   const nodeLabels: Record<NodeName, string> = {
-    video_gen: "Video + Lip Sync (Kling V3 Omni)",
+    video_gen: "Video Generation (Kling V3 Omni)",
     voice_gen: "Voice Generation",
+    lip_sync: "Lip Sync (Face Detection + Audio Sync)",
     music_gen: "Background Music",
     foley_gen: "Foley Sound Effects",
     ambient_gen: "Ambient Scene Audio",
@@ -495,15 +498,9 @@ function NodeDetailPanel({
 
   const renderNodeContent = () => {
     switch (node) {
-      case "video_gen": {
-        const videoOnly = nodeAssets.filter((a: any) => a.assetType === "video_clip");
-        const lipSynced = nodeAssets.filter((a: any) => a.assetType === "synced_clip" || (a.metadata as any)?.hasLipSync);
-        return <>
-          <VideoGenDetail assets={videoOnly} />
-          {lipSynced.length > 0 && <div className="mt-4"><h4 className="text-sm font-semibold text-accent-cyan mb-2">Lip-Synced Clips (Native Audio)</h4><LipSyncDetail assets={lipSynced} /></div>}
-        </>;
-      }
+      case "video_gen": return <VideoGenDetail assets={nodeAssets} />;
       case "voice_gen": return <VoiceGenDetail assets={nodeAssets} />;
+      case "lip_sync": return <LipSyncDetail assets={nodeAssets} />;
       case "music_gen": return <MusicGenDetail assets={nodeAssets} />;
       case "foley_gen": return <FoleyGenDetail assets={nodeAssets} />;
       case "ambient_gen": return <AmbientGenDetail assets={nodeAssets} />;
@@ -870,7 +867,7 @@ export default function PipelineDashboard() {
   const activeRun = activeRunQuery.data;
   const nodeStatuses: Record<NodeName, NodeStatus> = useMemo(() => {
     if (!activeRun?.nodeStatuses) {
-      return { video_gen: "pending", voice_gen: "pending", music_gen: "pending", foley_gen: "pending", ambient_gen: "pending", assembly: "pending" };
+      return { video_gen: "pending", voice_gen: "pending", lip_sync: "pending", music_gen: "pending", foley_gen: "pending", ambient_gen: "pending", assembly: "pending" };
     }
     return activeRun.nodeStatuses as Record<NodeName, NodeStatus>;
   }, [activeRun]);
