@@ -686,3 +686,82 @@ describe("tier gating for motion LoRA", () => {
     }
   });
 });
+
+// ─── Scene-Type Router Motion LoRA Tests ──────────────────────────────
+
+describe("scene-type router motion LoRA hints", () => {
+  it("getMotionLoraHint returns required=true for action scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("action");
+    expect(hint.motionLoraRequired).toBe(true);
+    expect(hint.motionLoraWeight).toBe(0.75);
+  });
+
+  it("getMotionLoraHint returns required=true for dialogue scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("dialogue");
+    expect(hint.motionLoraRequired).toBe(true);
+    expect(hint.motionLoraWeight).toBe(0.55);
+  });
+
+  it("getMotionLoraHint returns required=true for reaction scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("reaction");
+    expect(hint.motionLoraRequired).toBe(true);
+    expect(hint.motionLoraWeight).toBe(0.60);
+  });
+
+  it("getMotionLoraHint returns required=true for montage scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("montage");
+    expect(hint.motionLoraRequired).toBe(true);
+    expect(hint.motionLoraWeight).toBe(0.65);
+  });
+
+  it("getMotionLoraHint returns required=false for establishing scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("establishing");
+    expect(hint.motionLoraRequired).toBe(false);
+    expect(hint.motionLoraWeight).toBe(0.0);
+  });
+
+  it("getMotionLoraHint returns required=false for transition scenes", async () => {
+    const { getMotionLoraHint } = await import("./scene-type-router/router-integration");
+    const hint = getMotionLoraHint("transition");
+    expect(hint.motionLoraRequired).toBe(false);
+    expect(hint.motionLoraWeight).toBe(0.0);
+  });
+
+  it("getPipelineExecutionConfig includes motionLoraHint", async () => {
+    const { getPipelineExecutionConfig } = await import("./scene-type-router/router-integration");
+    const config = getPipelineExecutionConfig("action", 10);
+    expect(config.motionLoraHint).toBeDefined();
+    expect(config.motionLoraHint.motionLoraRequired).toBe(true);
+    expect(config.motionLoraHint.motionLoraWeight).toBe(0.75);
+  });
+
+  it("all scene types have motion LoRA hints defined", async () => {
+    const { getAllPipelineConfigs } = await import("./scene-type-router/router-integration");
+    const configs = getAllPipelineConfigs();
+    expect(configs.length).toBe(6);
+    for (const config of configs) {
+      expect(config.motionLoraHint).toBeDefined();
+      expect(typeof config.motionLoraHint.motionLoraRequired).toBe("boolean");
+      expect(typeof config.motionLoraHint.motionLoraWeight).toBe("number");
+    }
+  });
+
+  it("motion LoRA weights are within valid range", async () => {
+    const { getAllPipelineConfigs } = await import("./scene-type-router/router-integration");
+    const configs = getAllPipelineConfigs();
+    for (const config of configs) {
+      const w = config.motionLoraHint.motionLoraWeight;
+      if (config.motionLoraHint.motionLoraRequired) {
+        expect(w).toBeGreaterThanOrEqual(0.30);
+        expect(w).toBeLessThanOrEqual(0.85);
+      } else {
+        expect(w).toBe(0.0);
+      }
+    }
+  });
+});

@@ -11,7 +11,7 @@ import {
   Play, RotateCcw, CheckCircle, XCircle, Clock, DollarSign,
   ChevronDown, ChevronUp, AlertTriangle, Film, Mic, Music, Layers, Clapperboard,
   Loader2, Eye, Ban, Timer, AlertCircle, Volume2, Shield, ArrowUp, Cpu, BarChart3,
-  Columns2, Maximize2, Pause, ShieldAlert
+  Columns2, Maximize2, Pause, ShieldAlert, Zap,
 } from "lucide-react";
 import { QualityBadge } from "@/components/awakli/QualityBadge";
 import { CostEstimationCard } from "@/components/awakli/CostEstimationCard";
@@ -188,31 +188,97 @@ function NodeGraph({
 function VideoGenDetail({ assets }: { assets: any[] }) {
   const videoAssets = assets.filter((a: any) => a.assetType === "video_clip" || a.assetType === "video");
   if (videoAssets.length === 0) return <p className="text-gray-500 text-sm">No video clips generated yet.</p>;
+
+  // Count motion LoRA statuses across all video assets
+  const motionLoraStats = useMemo(() => {
+    let applied = 0, missing = 0, skipped = 0;
+    for (const asset of videoAssets) {
+      const meta = asset.metadata as any;
+      if (meta?.motionLoraUsed) applied++;
+      else if (meta?.motionLoraMissing) missing++;
+      else if (meta?.motionLoraSkipped) skipped++;
+    }
+    return { applied, missing, skipped, total: videoAssets.length };
+  }, [videoAssets]);
+
+  const MISSING_REASON_LABELS: Record<string, string> = {
+    tier_blocked: "Tier does not include Motion LoRA",
+    missing: "No motion LoRA trained for this character",
+    corrupt: "Motion LoRA file is corrupt",
+    scene_skip: "Scene type does not use motion LoRA",
+    no_lora: "No LoRA models available",
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {videoAssets.map((asset: any, i: number) => (
-        <div key={asset.id || i} className="group relative bg-gray-800/60 rounded-lg overflow-hidden border border-gray-700/50">
-          <div className="aspect-video bg-gray-900 flex items-center justify-center">
-            {asset.url ? (
-              <video src={asset.url} className="w-full h-full object-cover" preload="metadata" />
-            ) : (
-              <Film className="w-8 h-8 text-gray-600" />
-            )}
-            {asset.url && (
-              <a href={asset.url} target="_blank" rel="noopener noreferrer"
-                className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Play className="w-10 h-10 text-white" />
-              </a>
-            )}
-          </div>
-          <div className="p-2">
-            <p className="text-xs text-gray-400 truncate">Panel {(asset.metadata as any)?.panelNumber || i + 1}</p>
-            {(asset.metadata as any)?.duration && (
-              <p className="text-xs text-accent-cyan">{(asset.metadata as any).duration}s</p>
-            )}
-          </div>
+    <div className="space-y-3">
+      {/* Motion LoRA summary banner */}
+      {(motionLoraStats.missing > 0 || motionLoraStats.applied > 0) && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+          motionLoraStats.missing > 0
+            ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+            : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+        }`}>
+          <Zap className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Motion LoRA: {motionLoraStats.applied} applied
+            {motionLoraStats.missing > 0 && `, ${motionLoraStats.missing} missing`}
+            {motionLoraStats.skipped > 0 && `, ${motionLoraStats.skipped} skipped`}
+            {" "}of {motionLoraStats.total} clips
+          </span>
         </div>
-      ))}
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {videoAssets.map((asset: any, i: number) => {
+          const meta = asset.metadata as any;
+          const motionMissing = meta?.motionLoraMissing;
+          const motionReason = meta?.motionLoraMissingReason;
+          const motionUsed = meta?.motionLoraUsed;
+          const motionWeight = meta?.motionLoraWeight;
+
+          return (
+            <div key={asset.id || i} className={`group relative bg-gray-800/60 rounded-lg overflow-hidden border ${
+              motionMissing ? "border-amber-500/40" : "border-gray-700/50"
+            }`}>
+              <div className="aspect-video bg-gray-900 flex items-center justify-center">
+                {asset.url ? (
+                  <video src={asset.url} className="w-full h-full object-cover" preload="metadata" />
+                ) : (
+                  <Film className="w-8 h-8 text-gray-600" />
+                )}
+                {asset.url && (
+                  <a href={asset.url} target="_blank" rel="noopener noreferrer"
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Play className="w-10 h-10 text-white" />
+                  </a>
+                )}
+                {/* Motion LoRA indicator badge */}
+                {motionUsed && (
+                  <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-medium bg-orange-500/80 text-white">
+                    LoRA {motionWeight ? `w=${motionWeight}` : ""}
+                  </span>
+                )}
+                {motionMissing && (
+                  <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[8px] font-medium bg-amber-500/80 text-white" title={MISSING_REASON_LABELS[motionReason] || motionReason}>
+                    LoRA Missing
+                  </span>
+                )}
+              </div>
+              <div className="p-2">
+                <p className="text-xs text-gray-400 truncate">Panel {meta?.panelNumber || i + 1}</p>
+                {meta?.duration && (
+                  <p className="text-xs text-accent-cyan">{meta.duration}s</p>
+                )}
+                {motionMissing && motionReason && (
+                  <p className="text-[9px] text-amber-400/80 mt-0.5 truncate" title={MISSING_REASON_LABELS[motionReason] || motionReason}>
+                    {MISSING_REASON_LABELS[motionReason] || motionReason}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

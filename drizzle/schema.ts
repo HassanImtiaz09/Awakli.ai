@@ -1657,3 +1657,96 @@ export const samplerAbAssignments = mysqlTable("sampler_ab_assignments", {
 
 export type SamplerAbAssignment = typeof samplerAbAssignments.$inferSelect;
 export type InsertSamplerAbAssignment = typeof samplerAbAssignments.$inferInsert;
+
+// ─── Motion LoRA (Prompt 24) ──────────────────────────────────────────────
+
+/**
+ * Tracks trained motion LoRA artifacts per character.
+ * Each character may have multiple versions; only the latest "promoted" one is active.
+ */
+export const motionLoras = mysqlTable("motion_loras", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  version: int("version").notNull().default(1),
+  trainingPath: mysqlEnum("trainingPath", ["sdxl_kohya", "wan_fork"]).notNull(),
+  status: mysqlEnum("status", [
+    "queued",       // Waiting for GPU slot
+    "training",     // Training in progress
+    "evaluating",   // Running M1-M14 gates
+    "promoted",     // Passed evaluation, active for use
+    "blocked",      // Failed critical gates
+    "needs_review", // Passed but flagged for manual review
+    "retired",      // Superseded by newer version
+  ]).notNull().default("queued"),
+  artifactUrl: text("artifactUrl"),           // S3 URL to .safetensors file
+  artifactKey: text("artifactKey"),           // S3 key for the artifact
+  triggerToken: varchar("triggerToken", { length: 100 }),
+  trainingSteps: int("trainingSteps").default(3500),
+  trainingClipCount: int("trainingClipCount"),
+  frameCount: int("frameCount").default(16),
+  baseWeight: float("baseWeight").default(0.60),
+  /** JSON: evaluation gate results { gateId, pass, score, notes }[] */
+  evaluationResults: json("evaluationResults"),
+  /** Final verdict from evaluation: promoted | blocked | needs_review */
+  evaluationVerdict: mysqlEnum("evaluationVerdict", ["promoted", "blocked", "needs_review"]),
+  evaluationCostUsd: float("evaluationCostUsd"),
+  trainingCostCredits: float("trainingCostCredits"),
+  trainingStartedAt: timestamp("trainingStartedAt"),
+  trainingCompletedAt: timestamp("trainingCompletedAt"),
+  evaluatedAt: timestamp("evaluatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MotionLora = typeof motionLoras.$inferSelect;
+export type InsertMotionLora = typeof motionLoras.$inferInsert;
+
+/**
+ * Training configuration snapshots for motion LoRA jobs.
+ * Stores the exact hyperparameters used for reproducibility.
+ */
+export const motionLoraConfigs = mysqlTable("motion_lora_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  motionLoraId: int("motionLoraId").notNull().references(() => motionLoras.id, { onDelete: "cascade" }),
+  /** JSON: full Kohya-SS or Wan config snapshot */
+  config: json("config").notNull(),
+  /** Training path determines config schema */
+  trainingPath: mysqlEnum("trainingPath", ["sdxl_kohya", "wan_fork"]).notNull(),
+  /** Key hyperparameters extracted for quick access */
+  learningRate: float("learningRate"),
+  rank: int("rank"),
+  alpha: int("alpha"),
+  networkDim: int("networkDim"),
+  batchSize: int("batchSize"),
+  resolution: varchar("resolution", { length: 20 }),  // e.g., "512x512"
+  schedulerType: varchar("schedulerType", { length: 50 }),
+  optimizerType: varchar("optimizerType", { length: 50 }),
+  /** Caption template used for training */
+  captionTemplate: text("captionTemplate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MotionLoraConfig = typeof motionLoraConfigs.$inferSelect;
+export type InsertMotionLoraConfig = typeof motionLoraConfigs.$inferInsert;
+
+/**
+ * Tracks which motion categories (scene types) are covered by a character's
+ * trained motion LoRA. Used to identify coverage gaps and prioritize retraining.
+ */
+export const motionCoverageMatrix = mysqlTable("motion_coverage_matrix", {
+  id: int("id").autoincrement().primaryKey(),
+  characterId: int("characterId").notNull().references(() => characters.id, { onDelete: "cascade" }),
+  motionLoraId: int("motionLoraId").notNull().references(() => motionLoras.id, { onDelete: "cascade" }),
+  sceneType: varchar("sceneType", { length: 50 }).notNull(),  // e.g., "action-combat", "dialogue-gestured"
+  /** Number of training clips for this scene type */
+  clipCount: int("clipCount").notNull().default(0),
+  /** Average quality score from evaluation gates for this scene type */
+  qualityScore: float("qualityScore"),
+  /** Whether this scene type passed evaluation */
+  passed: int("passed").default(0),  // 0 = not evaluated, 1 = passed, -1 = failed
+  /** Last evaluation timestamp */
+  evaluatedAt: timestamp("evaluatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MotionCoverageMatrix = typeof motionCoverageMatrix.$inferSelect;
+export type InsertMotionCoverageMatrix = typeof motionCoverageMatrix.$inferInsert;

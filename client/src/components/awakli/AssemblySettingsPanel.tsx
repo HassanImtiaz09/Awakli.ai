@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   Mic, Music, Footprints, Wind, Volume2, Shield, ChevronDown,
-  Settings2, Loader2, Save, RotateCcw, Sparkles,
+  Settings2, Loader2, Save, RotateCcw, Sparkles, Zap, Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +35,9 @@ const DEFAULTS = {
   voiceValidationThresholdLufs: -30,
   enableSidechainDucking: true,
   sidechainDuckDb: 8,
+  enableMotionLora: false,
+  motionLoraWeight: 0.60,
+  motionLoraAutoWeight: true,
 };
 
 export function AssemblySettingsPanel({ episodeId }: AssemblySettingsPanelProps) {
@@ -125,6 +128,11 @@ export function AssemblySettingsPanel({ episodeId }: AssemblySettingsPanelProps)
                     Ambient
                   </span>
                 )}
+                {localSettings.enableMotionLora && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                    Motion LoRA
+                  </span>
+                )}
               </div>
               {isDirty && (
                 <span className="w-2 h-2 rounded-full bg-accent-pink animate-pulse" />
@@ -164,6 +172,76 @@ export function AssemblySettingsPanel({ episodeId }: AssemblySettingsPanelProps)
                   onCheckedChange={(v) => updateLocal("enableLipSync", v)}
                 />
               </div>
+
+              <Separator className="bg-zinc-800/50" />
+
+              {/* ─── Motion LoRA ─── */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/10 to-amber-500/10 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-orange-400" />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-200">Motion LoRA</Label>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                      Character-specific motion conditioning for video generation
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={localSettings.enableMotionLora}
+                  onCheckedChange={(v) => updateLocal("enableMotionLora", v)}
+                />
+              </div>
+
+              {localSettings.enableMotionLora && (
+                <div className="pl-6 space-y-3">
+                  {/* Auto weight toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-3 h-3 text-zinc-500" />
+                      <Label className="text-[10px] text-zinc-400">
+                        Auto weight per scene type
+                      </Label>
+                    </div>
+                    <Switch
+                      checked={localSettings.motionLoraAutoWeight}
+                      onCheckedChange={(v) => updateLocal("motionLoraAutoWeight", v)}
+                    />
+                  </div>
+
+                  {/* Manual weight slider (only when auto is off) */}
+                  {!localSettings.motionLoraAutoWeight && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[10px] text-zinc-500">LoRA Weight</Label>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          {localSettings.motionLoraWeight.toFixed(2)}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[localSettings.motionLoraWeight * 100]}
+                        onValueChange={([v]) => updateLocal("motionLoraWeight", v / 100)}
+                        min={30}
+                        max={85}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between mt-0.5">
+                        <span className="text-[8px] text-zinc-600">0.30 (subtle)</span>
+                        <span className="text-[8px] text-zinc-600">0.85 (strong)</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {localSettings.motionLoraAutoWeight && (
+                    <p className="text-[9px] text-zinc-600 italic">
+                      Weight is set automatically per scene type (e.g., 0.75 for action-combat, 0.55 for dialogue-gestured).
+                      Static scenes skip motion LoRA entirely.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <Separator className="bg-zinc-800/50" />
 

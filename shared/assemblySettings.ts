@@ -37,6 +37,14 @@ export interface AssemblySettings {
   enableSidechainDucking: boolean;
   /** Sidechain duck amount in dB (default: 8) */
   sidechainDuckDb: number;
+
+  // ─── Motion LoRA (Prompt 24) ─────────────────────────────────────────
+  /** Enable motion LoRA conditioning for video generation (default: false) */
+  enableMotionLora: boolean;
+  /** Motion LoRA weight override (0.30 - 0.85, default: 0.60 = auto per scene type) */
+  motionLoraWeight: number;
+  /** Use auto weight per scene type instead of fixed weight (default: true) */
+  motionLoraAutoWeight: boolean;
 }
 
 /** Default assembly settings for new episodes */
@@ -52,6 +60,9 @@ export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
   voiceValidationThresholdLufs: -30,
   enableSidechainDucking: true,
   sidechainDuckDb: 8,
+  enableMotionLora: false,
+  motionLoraWeight: 0.60,
+  motionLoraAutoWeight: true,
 };
 
 /** Merge partial settings with defaults */

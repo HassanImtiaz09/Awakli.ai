@@ -280,12 +280,62 @@ export function generateCostForecast(
 
 // ─── Scene-Type-Aware Pipeline Executor Config ──────────────────────────
 
+export interface MotionLoraHint {
+  /** Whether this scene type benefits from motion LoRA conditioning */
+  motionLoraRequired: boolean;
+  /** Recommended motion LoRA weight for this scene type (0.0 if not required) */
+  motionLoraWeight: number;
+}
+
+/**
+ * Motion LoRA requirement mapping per scene type.
+ * Based on Prompt 24 Section 5.1 scene-type weight map.
+ *
+ * Scene types that involve character motion get motion LoRA;
+ * static/compositing-only scenes skip it.
+ */
+const MOTION_LORA_HINT_MAP: Record<SceneType, MotionLoraHint> = {
+  dialogue: {
+    motionLoraRequired: true,
+    motionLoraWeight: 0.55,  // Subtle gestures for dialogue
+  },
+  action: {
+    motionLoraRequired: true,
+    motionLoraWeight: 0.75,  // Strong motion for action scenes
+  },
+  establishing: {
+    motionLoraRequired: false,
+    motionLoraWeight: 0.0,   // Ken Burns — no character motion
+  },
+  transition: {
+    motionLoraRequired: false,
+    motionLoraWeight: 0.0,   // Compositing only — no AI generation
+  },
+  reaction: {
+    motionLoraRequired: true,
+    motionLoraWeight: 0.60,  // Moderate for reaction expressions
+  },
+  montage: {
+    motionLoraRequired: true,
+    motionLoraWeight: 0.65,  // Moderate-high for montage sequences
+  },
+};
+
+/**
+ * Get motion LoRA hints for a scene type.
+ */
+export function getMotionLoraHint(sceneType: SceneType): MotionLoraHint {
+  return MOTION_LORA_HINT_MAP[sceneType];
+}
+
 export interface PipelineExecutionConfig {
   sceneType: SceneType;
   providerHints: ProviderHints;
   stageSkips: StageSkipConfig;
   estimatedCredits: number;
   pipelineTemplate: string;
+  /** Motion LoRA hints for this scene type */
+  motionLoraHint: MotionLoraHint;
 }
 
 /**
@@ -315,6 +365,7 @@ export function getPipelineExecutionConfig(
     stageSkips: skips,
     estimatedCredits: Math.round(estimatedCredits * 10000) / 10000,
     pipelineTemplate: templateNames[sceneType],
+    motionLoraHint: getMotionLoraHint(sceneType),
   };
 }
 
