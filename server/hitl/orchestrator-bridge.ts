@@ -57,7 +57,7 @@ import { STAGE_NAMES, STAGE_CREDIT_ESTIMATES, TOTAL_STAGES } from "./stage-confi
 
 // ─── Node-to-Stage Mapping ─────────────────────────────────────────────
 
-export type OrchestratorNode = "video_gen" | "voice_gen" | "music_gen" | "assembly";
+export type OrchestratorNode = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 
 /**
  * Maps each orchestrator node to its primary HITL stage(s).
@@ -66,10 +66,12 @@ export type OrchestratorNode = "video_gen" | "voice_gen" | "music_gen" | "assemb
  * Post-node stages within a node group are auto-advanced with the node result.
  */
 export const NODE_TO_PRIMARY_STAGE: Record<OrchestratorNode, number> = {
-  video_gen: 5,   // Stage 5: video_generation (stages 3-4 are pre-flight for this node)
-  voice_gen: 6,   // Stage 6: voice_synthesis
-  music_gen: 7,   // Stage 7: music_scoring (stage 8 sfx_foley is secondary)
-  assembly: 10,   // Stage 10: video_composite (stages 9, 11, 12 are secondary)
+  video_gen: 5,     // Stage 5: video_generation (stages 3-4 are pre-flight for this node)
+  voice_gen: 6,     // Stage 6: voice_synthesis
+  music_gen: 7,     // Stage 7: music_scoring
+  foley_gen: 8,     // Stage 8: sfx_foley (was secondary to music_gen, now its own node)
+  ambient_gen: 8,   // Stage 8: shares sfx_foley stage (ambient is part of SFX pipeline)
+  assembly: 10,     // Stage 10: video_composite (stages 9, 11, 12 are secondary)
 };
 
 /**
@@ -84,7 +86,7 @@ export const PRE_FLIGHT_STAGES = [1, 2]; // manga_analysis, scene_planning
  */
 export const SECONDARY_STAGES: Record<number, number[]> = {
   5: [3, 4],      // video_gen: character_sheet_gen + keyframe_gen are pre-stages
-  7: [8],         // music_gen: sfx_foley is secondary
+  // Stage 8 (sfx_foley) is now handled by foley_gen + ambient_gen nodes directly
   10: [9, 11, 12], // assembly: audio_mix, subtitle_render, episode_publish
 };
 
@@ -97,7 +99,7 @@ export const STAGE_TO_NODE: Record<number, OrchestratorNode> = {
   5: "video_gen",
   6: "voice_gen",
   7: "music_gen",
-  8: "music_gen",
+  8: "foley_gen",  // Stage 8 now maps to foley_gen (ambient_gen shares this stage)
   9: "assembly",
   10: "assembly",
   11: "assembly",

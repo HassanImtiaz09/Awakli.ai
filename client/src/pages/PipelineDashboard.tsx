@@ -25,7 +25,7 @@ import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-type NodeName = "video_gen" | "voice_gen" | "music_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeConfig {
@@ -37,13 +37,15 @@ interface NodeConfig {
 }
 
 const NODES: NodeConfig[] = [
-  { id: "video_gen", label: "Video + Lip Sync", icon: Film, x: 80, y: 100 },
-  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 330, y: 100 },
-  { id: "music_gen", label: "Music Gen", icon: Music, x: 580, y: 100 },
-  { id: "assembly", label: "Assembly", icon: Clapperboard, x: 830, y: 100 },
+  { id: "video_gen", label: "Video + Lip Sync", icon: Film, x: 50, y: 100 },
+  { id: "voice_gen", label: "Voice Gen", icon: Mic, x: 230, y: 100 },
+  { id: "music_gen", label: "Music Gen", icon: Music, x: 410, y: 100 },
+  { id: "foley_gen", label: "Foley SFX", icon: Volume2, x: 590, y: 100 },
+  { id: "ambient_gen", label: "Ambient", icon: Layers, x: 770, y: 100 },
+  { id: "assembly", label: "Assembly", icon: Clapperboard, x: 950, y: 100 },
 ];
 
-const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3]];
+const CONNECTIONS: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]];
 
 // ─── Node Graph Component ───────────────────────────────────────────────
 
@@ -311,6 +313,101 @@ function MusicGenDetail({ assets }: { assets: any[] }) {
   );
 }
 
+function FoleyGenDetail({ assets }: { assets: any[] }) {
+  const foleyAssets = assets.filter((a: any) => a.assetType === "sfx_clip" || a.assetType === "foley" || a.assetType === "sfx" || a.nodeSource === "sfx_gen");
+  if (foleyAssets.length === 0) return <p className="text-gray-500 text-sm">No foley sound effects generated yet.</p>;
+
+  const categories = new Map<string, any[]>();
+  for (const a of foleyAssets) {
+    const cat = (a.metadata as any)?.category || (a.metadata as any)?.ambientCategory || "sfx";
+    if ((a.metadata as any)?.isAmbient) continue; // Skip ambient assets
+    if (!categories.has(cat)) categories.set(cat, []);
+    categories.get(cat)!.push(a);
+  }
+
+  const categoryIcons: Record<string, string> = {
+    impact: "\u{1F4A5}", human: "\u{1F9CD}", mechanical: "\u{2699}\uFE0F", nature: "\u{1F33F}", ui: "\u{2728}",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-sm text-gray-400">
+        <Volume2 className="w-4 h-4" />
+        <span>{foleyAssets.filter((a: any) => !(a.metadata as any)?.isAmbient).length} foley clips generated</span>
+      </div>
+      {Array.from(categories.entries()).map(([cat, catAssets]) => (
+        <div key={cat}>
+          <h4 className="text-xs font-semibold text-accent-cyan/80 uppercase tracking-wider mb-2">
+            {categoryIcons[cat] || "\u{1F50A}"} {cat}
+          </h4>
+          <div className="space-y-1">
+            {catAssets.map((asset: any, i: number) => (
+              <div key={asset.id || i} className="flex items-center gap-3 bg-gray-800/60 rounded-lg p-2 border border-gray-700/50">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">
+                    {(asset.metadata as any)?.sfxType || `SFX ${i + 1}`}
+                    {(asset.metadata as any)?.panelNumber && (
+                      <span className="text-gray-500 ml-1">P{(asset.metadata as any).sceneNumber}.{(asset.metadata as any).panelNumber}</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{(asset.metadata as any)?.audioPrompt || ""}</p>
+                </div>
+                {(asset.metadata as any)?.duration && (
+                  <span className="text-xs text-gray-400 shrink-0">{Number((asset.metadata as any).duration).toFixed(1)}s</span>
+                )}
+                {asset.url && <audio controls preload="none" src={asset.url} className="h-7 w-32 shrink-0" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AmbientGenDetail({ assets }: { assets: any[] }) {
+  const ambientAssets = assets.filter((a: any) =>
+    (a.metadata as any)?.isAmbient || a.assetType === "ambient" || a.nodeSource === "ambient_gen"
+  );
+  if (ambientAssets.length === 0) return <p className="text-gray-500 text-sm">No ambient audio generated yet.</p>;
+
+  const primary = ambientAssets.filter((a: any) => (a.metadata as any)?.isPrimary !== false);
+  const secondary = ambientAssets.filter((a: any) => (a.metadata as any)?.isPrimary === false);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-sm text-gray-400">
+        <Layers className="w-4 h-4" />
+        <span>{primary.length} scene{primary.length !== 1 ? "s" : ""} detected{secondary.length > 0 ? `, ${secondary.length} secondary layers` : ""}</span>
+      </div>
+      {ambientAssets.map((asset: any, i: number) => (
+        <div key={asset.id || i} className="bg-gray-800/60 rounded-lg p-3 border border-gray-700/50">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Layers className={`w-4 h-4 ${(asset.metadata as any)?.isPrimary !== false ? "text-accent-cyan" : "text-gray-500"}`} />
+              <span className="text-sm text-white">
+                Scene {(asset.metadata as any)?.sceneNumber || "?"}: {(asset.metadata as any)?.ambientLabel || "Ambient"}
+              </span>
+              {(asset.metadata as any)?.isPrimary === false && (
+                <span className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">secondary</span>
+              )}
+            </div>
+            {(asset.metadata as any)?.duration && (
+              <span className="text-xs text-gray-400">{Number((asset.metadata as any).duration).toFixed(1)}s</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            {(asset.metadata as any)?.location && <span>{(asset.metadata as any).location}</span>}
+            {(asset.metadata as any)?.timeOfDay && <span>| {(asset.metadata as any).timeOfDay}</span>}
+            {(asset.metadata as any)?.mood && <span>| {(asset.metadata as any).mood}</span>}
+          </div>
+          {asset.url && <audio controls preload="none" src={asset.url} className="w-full h-8 mt-2" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AssemblyDetail({ assets, runId }: { assets: any[]; runId: number }) {
   const finalAsset = assets.find((a: any) => a.assetType === "final_video" || a.assetType === "assembled");
   const subtitleAsset = assets.find((a: any) => a.assetType === "subtitle" || a.assetType === "srt");
@@ -376,6 +473,8 @@ function NodeDetailPanel({
       video_gen: ["video_clip", "video", "synced_clip"],
       voice_gen: ["voice_clip", "voice"],
       music_gen: ["music", "bgm"],
+      foley_gen: ["sfx_clip", "foley", "sfx"],
+      ambient_gen: ["ambient"],
       assembly: ["final_video", "assembled", "subtitle", "srt", "thumbnail"],
     };
     return nodeTypeMap[node]?.includes(source) || a.nodeSource === node;
@@ -389,6 +488,8 @@ function NodeDetailPanel({
     video_gen: "Video + Lip Sync (Kling V3 Omni)",
     voice_gen: "Voice Generation",
     music_gen: "Background Music",
+    foley_gen: "Foley Sound Effects",
+    ambient_gen: "Ambient Scene Audio",
     assembly: "Final Assembly",
   };
 
@@ -404,6 +505,8 @@ function NodeDetailPanel({
       }
       case "voice_gen": return <VoiceGenDetail assets={nodeAssets} />;
       case "music_gen": return <MusicGenDetail assets={nodeAssets} />;
+      case "foley_gen": return <FoleyGenDetail assets={nodeAssets} />;
+      case "ambient_gen": return <AmbientGenDetail assets={nodeAssets} />;
       case "assembly": return <AssemblyDetail assets={nodeAssets} runId={runId} />;
     }
   };
@@ -767,7 +870,7 @@ export default function PipelineDashboard() {
   const activeRun = activeRunQuery.data;
   const nodeStatuses: Record<NodeName, NodeStatus> = useMemo(() => {
     if (!activeRun?.nodeStatuses) {
-      return { video_gen: "pending", voice_gen: "pending", music_gen: "pending", assembly: "pending" };
+      return { video_gen: "pending", voice_gen: "pending", music_gen: "pending", foley_gen: "pending", ambient_gen: "pending", assembly: "pending" };
     }
     return activeRun.nodeStatuses as Record<NodeName, NodeStatus>;
   }, [activeRun]);

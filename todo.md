@@ -3137,3 +3137,14 @@
 - [x] Build AssemblySettingsPanel UI: lip sync toggle, 4 audio bus controls, loudness sliders, advanced settings
 - [x] Wire assembly settings into pipelineOrchestrator.ts (reads from DB, passes to assembleVideo)
 - [x] Write vitest tests: 57/57 passed (foley, ambient, 4-bus mixer, assembly settings, integration)
+
+## Foley Generation Node + Ambient Scene Detection
+- [x] Research and select AI SFX API — MiniMax Music API for SFX generation (same as BGM, different prompts)
+- [x] Create server/foleyGenerator.ts — LLM-based foley cue extraction (40+ SFX types in FOLEY_PROMPT_MAP)
+- [x] Create server/foleyGenerator.ts — MiniMax SFX generation with batched processing (3 concurrent)
+- [x] Create server/ambientDetector.ts — LLM-based scene classification + deterministic tag matching fallback
+- [x] Create server/ambientDetector.ts — 24-category AMBIENT_LIBRARY with tags, prompts, fade durations
+- [x] Add foley_gen and ambient_gen nodes to orchestrator (between music_gen and assembly, non-blocking)
+- [x] Wire foley/ambient assets into assembly pipeline (reads from assembly settings, passes to 4-bus mixer)
+- [x] Add pipeline_assets types: sfx_clip/foley for foley, ambient for ambient (nodeSource: sfx_gen)
+- [x] Write vitest tests: 46/46 passed (FOLEY_PROMPT_MAP, FoleyCue validation, AMBIENT_LIBRARY, matchAmbientByTags, pipeline integration, cross-module consistency)

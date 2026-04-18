@@ -19,6 +19,8 @@ import { buildLipSyncPrompt } from "./kling-subjects";
 import { generateSceneBGM } from "./minimax-music";
 import { uploadFromUrl as cfUploadFromUrl } from "./cloudflare-stream";
 import { assembleVideo, type TransitionSpec, type TransitionType } from "./video-assembly";
+import { foleyGenNode } from "./foleyGenerator";
+import { ambientGenNode } from "./ambientDetector";
 import { getOrCompileProductionBible, lockProductionBible, type ProductionBibleData } from "./production-bible";
 import { runHarnessLayer, updateAssetHarnessScore, type HarnessContext, type HarnessRunSummary } from "./harness-runner";
 import { scriptChecks, visualChecks, videoChecks, audioChecks, integrationChecks } from "./harness-checks";
@@ -48,22 +50,26 @@ import {
 } from "./hitl";
 import type { GenerateResult, ScoreContext } from "./hitl";
 
-type NodeName = "video_gen" | "voice_gen" | "music_gen" | "assembly";
+type NodeName = "video_gen" | "voice_gen" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
 
 interface NodeStatuses {
   video_gen: NodeStatus;
   voice_gen: NodeStatus;
   music_gen: NodeStatus;
+  foley_gen: NodeStatus;
+  ambient_gen: NodeStatus;
   assembly: NodeStatus;
 }
 
-const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "music_gen", "assembly"];
+const NODE_ORDER: NodeName[] = ["video_gen", "voice_gen", "music_gen", "foley_gen", "ambient_gen", "assembly"];
 
 const NODE_COSTS: Record<NodeName, number> = {
   video_gen: 200,   // cents — higher because V3 Omni includes audio/lip sync
   voice_gen: 80,
   music_gen: 40,
+  foley_gen: 60,    // ~$0.05/clip × ~12 clips average
+  ambient_gen: 30,  // ~$0.05/clip × ~6 scenes average
   assembly: 20,
 };
 
@@ -71,6 +77,8 @@ const NODE_DURATIONS: Record<NodeName, number> = {
   video_gen: 12000,  // longer — Omni generates video + audio together
   voice_gen: 5000,
   music_gen: 3000,
+  foley_gen: 8000,   // LLM cue extraction + MiniMax generation per clip
+  ambient_gen: 6000, // LLM scene detection + MiniMax generation per scene
   assembly: 2000,
 };
 
@@ -95,7 +103,7 @@ async function updateNodeProgress(
     .reduce((sum, n) => sum + NODE_DURATIONS[n], 0);
 
   await updatePipelineRun(runId, {
-    currentNode: node,
+    currentNode: node as any,
     nodeStatuses: nodeStatuses as any,
     progress,
     estimatedTimeRemaining: Math.round(remaining / 1000),
@@ -825,6 +833,8 @@ export async function runPipeline(runId: number) {
     video_gen: "pending",
     voice_gen: "pending",
     music_gen: "pending",
+    foley_gen: "pending",
+    ambient_gen: "pending",
     assembly: "pending",
   };
   const nodeCosts: Record<string, number> = {};
@@ -1052,7 +1062,75 @@ export async function runPipeline(runId: number) {
       }
     }
 
-    // Node 4: Assembly (final video + Cloudflare Stream + thumbnail)
+    // Node 4: Foley Generation (AI sound effects per panel)
+    // Read assembly settings to check if foley is enabled
+    const episodeForSettings = await getEpisodeById(run.episodeId);
+    const { mergeAssemblySettings: mergeSettings } = await import("@shared/assemblySettings");
+    const pipelineSettings = mergeSettings(episodeForSettings?.assemblySettings as any);
+
+    if (pipelineSettings.enableFoley) {
+      await updateNodeProgress(runId, "foley_gen", "running", nodeStatuses, 76, totalCost, nodeCosts);
+      try {
+        const foleyResult = await foleyGenNode(runId, run.episodeId, {
+          targetLufs: pipelineSettings.foleyLufs,
+          minConfidence: 0.3,
+        });
+        totalCost += foleyResult.totalCostCents;
+        nodeStatuses.foley_gen = "complete";
+        nodeCosts.foley_gen = foleyResult.totalCostCents;
+        console.log(`[Pipeline] Foley generation complete: ${foleyResult.clipsGenerated} clips, ${foleyResult.clipsFailed} failed, cost $${(foleyResult.totalCostCents / 100).toFixed(2)}`);
+      } catch (foleyErr: any) {
+        console.error(`[Pipeline] Foley generation failed (non-blocking):`, foleyErr.message);
+        nodeStatuses.foley_gen = "failed";
+      }
+      await updateNodeProgress(runId, "foley_gen", nodeStatuses.foley_gen, nodeStatuses, 79, totalCost, nodeCosts);
+    } else {
+      nodeStatuses.foley_gen = "skipped";
+      console.log(`[Pipeline] Foley generation skipped (disabled in assembly settings)`);
+    }
+
+    // Node 5: Ambient Detection & Generation (scene-matched ambient loops)
+    if (pipelineSettings.enableAmbient) {
+      await updateNodeProgress(runId, "ambient_gen", "running", nodeStatuses, 79, totalCost, nodeCosts);
+      try {
+        const ambientResult = await ambientGenNode(runId, run.episodeId, {
+          targetLufs: pipelineSettings.ambientLufs,
+          enableSecondaryLayers: true,
+          minConfidence: 0.2,
+        });
+        totalCost += ambientResult.totalCostCents;
+        nodeStatuses.ambient_gen = "complete";
+        nodeCosts.ambient_gen = ambientResult.totalCostCents;
+        console.log(`[Pipeline] Ambient generation complete: ${ambientResult.clipsGenerated} clips for ${ambientResult.scenesDetected} scenes, cost $${(ambientResult.totalCostCents / 100).toFixed(2)}`);
+      } catch (ambientErr: any) {
+        console.error(`[Pipeline] Ambient generation failed (non-blocking):`, ambientErr.message);
+        nodeStatuses.ambient_gen = "failed";
+      }
+      await updateNodeProgress(runId, "ambient_gen", nodeStatuses.ambient_gen, nodeStatuses, 80, totalCost, nodeCosts);
+    } else {
+      nodeStatuses.ambient_gen = "skipped";
+      console.log(`[Pipeline] Ambient generation skipped (disabled in assembly settings)`);
+    }
+
+    // ── HITL Gate: Foley + Ambient (stage 8) ──
+    if (hitlEnabled && (nodeStatuses.foley_gen === "complete" || nodeStatuses.ambient_gen === "complete")) {
+      const sfxGateResult = await completeNodeWithGate({
+        pipelineRunId: runId,
+        node: "foley_gen",
+        userId: run.userId,
+        tierName: userTier,
+        generationResult: { requestType: "music", outputUrl: "", outputFileSize: 3_000_000 },
+        scoreContext: { stageNumber: 8 },
+        creditsActual: (nodeCosts.foley_gen || 0) + (nodeCosts.ambient_gen || 0),
+      });
+      if (sfxGateResult.blocked) {
+        console.log(`[Pipeline] HITL gate blocked after foley/ambient_gen (stage ${sfxGateResult.primaryStage})`);
+        await pausePipelineForGate(runId, sfxGateResult.gateResult.gateId, sfxGateResult.primaryStage);
+        return; // Pipeline paused
+      }
+    }
+
+    // Node 6: Assembly (final video + Cloudflare Stream + thumbnail)
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 80, totalCost, nodeCosts);
     totalCost = await assemblyAgent(runId, run.episodeId, nodeStatuses, nodeCosts);
     nodeStatuses.assembly = "complete";
@@ -1163,6 +1241,8 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
     video_gen: "pending",
     voice_gen: "pending",
     music_gen: "pending",
+    foley_gen: "pending",
+    ambient_gen: "pending",
     assembly: "pending",
   };
   const nodeCosts: Record<string, number> = (run.nodeCosts as any) || {};
@@ -1178,7 +1258,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
   // Mark pipeline as running again
   await updatePipelineRun(runId, {
     status: "running",
-    currentNode: action === "regenerate" ? fromNode : undefined,
+    currentNode: action === "regenerate" ? fromNode as any : undefined,
   });
 
   // Compile Production Bible for harness checks
@@ -1272,7 +1352,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
       }
 
       // HITL gate check after each node
-      const stageMap: Record<NodeName, number> = { video_gen: 5, voice_gen: 6, music_gen: 7, assembly: 10 };
+      const stageMap: Record<NodeName, number> = { video_gen: 5, voice_gen: 6, music_gen: 7, foley_gen: 8, ambient_gen: 8, assembly: 10 };
       const gateResult = await completeNodeWithGate({
         pipelineRunId: runId,
         node,
