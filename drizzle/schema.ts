@@ -859,7 +859,7 @@ export const characterElements = mysqlTable("character_elements", {
 
   // Kling Element API
   klingElementTaskId: varchar("klingElementTaskId", { length: 255 }),
-  klingElementId: int("klingElementId"),  // the element_id from Kling API
+  klingElementId: bigint("klingElementId", { mode: "number" }),  // the element_id from Kling API
   referenceImageUrl: text("referenceImageUrl"),  // frontal image used
   additionalImageUrls: json("additionalImageUrls"),  // string[] of additional reference images
 

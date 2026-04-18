@@ -3071,3 +3071,29 @@
 - [x] Vary transitions per scene type (0.8s dissolve between scenes, 0.3s fade for action, 0.5s fade for others)
 - [x] Re-assemble final video with corrected mix (117.43s, 37MB compressed)
 - [x] Upload to Cloudflare Stream (uid=7df6d64a14735a18022a8d4d8e1890b7) and S3
+
+## Kaelis v1 Character LoRA Training
+
+### Step 1 — Render 15 Training Images
+- [x] All 15 images rendered via FLUX image generation API
+- [x] Visual inspection passed (5 images reviewed in detail)
+
+### Step 2 — Curate & Caption
+- [x] 15 caption .txt files created with Kohya-SS format
+- [x] Dataset folder prepared: kaelis_v1_training/dataset/
+
+### Step 3 — Kling Element (Alternative to Local LoRA)
+- [x] Uploaded 4 reference images to S3 (1 frontal + 3 angles)
+- [x] Created Kling Element via /v1/general/advanced-custom-elements
+- [x] Element ID: 308485829798538, Task ID: 874452908459958339
+- [x] Element status: succeed (created in 13s)
+- [x] Fixed klingElementId column to BIGINT for large IDs
+
+### Step 4 — Validate
+- [x] Test render with V3 Omni + element_list (5s video, 103s generation)
+- [x] Character identity preserved in test output
+
+### Step 5 — Promote
+- [x] Registered in character_elements table (record ID: 1, status: ready)
+- [x] Bound to pipeline via getReadyElementMapForProject (returns {Kaelis → 308485829798538})
+- [x] Pipeline will auto-inject element_list for Tier 1 panels
