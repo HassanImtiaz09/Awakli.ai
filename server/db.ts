@@ -13,6 +13,7 @@ import {
 } from "../drizzle/schema";
 import { like, or, asc, count, isNull, ne } from "drizzle-orm";
 import { ENV } from "./_core/env";
+import { serverLog } from "./observability/logger";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -21,7 +22,7 @@ export async function getDb() {
     try {
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      serverLog.warn("Failed to connect", { error: String(error) });
       _db = null;
     }
   }
@@ -48,7 +49,7 @@ async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
       msg.includes("Connection lost") ||
       msg.includes("Cannot enqueue")
     ) {
-      console.warn("[Database] Connection error detected, retrying with fresh connection...");
+      serverLog.warn("Connection error detected, retrying with fresh connection");
       resetDbConnection();
       return await operation();
     }
@@ -61,7 +62,7 @@ async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
+  if (!db) { serverLog.warn("Cannot upsert user: database not available"); return; }
 
   try {
     const values: InsertUser = { openId: user.openId };
@@ -82,7 +83,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
   } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
+    serverLog.error("Failed to upsert user", { error: String(error) });
     throw error;
   }
 }

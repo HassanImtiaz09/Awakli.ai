@@ -800,11 +800,8 @@ async function getUserTier(userId: number): Promise<string> {
   return tier || "free_trial";
 }
 
-const TIER_HIERARCHY = ["free_trial", "creator", "creator_pro", "studio", "enterprise"];
-
-function tierMeetsMinimum(userTier: string, minTier: string): boolean {
-  return TIER_HIERARCHY.indexOf(userTier) >= TIER_HIERARCHY.indexOf(minTier);
-}
+// P2: Use shared tier hierarchy (single source of truth)
+import { meetsMinTier as tierMeetsMinimum } from "@shared/tiers";
 
 export const downloadsRouter = router({
   // Get available formats for a project based on user's tier

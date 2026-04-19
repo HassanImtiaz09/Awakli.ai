@@ -11,7 +11,7 @@ import { handleStripeWebhook } from "../stripe/webhook";
 import { registerImageWebhookRoutes } from "../image-router/webhooks";
 import { rateLimitMiddleware } from "./rate-limit";
 import { requestTimingMiddleware, healthHandler } from "../observability";
-import { startCanaryScheduler } from "../image-router/canary-probes";
+import { startCanaryScheduler, startIdempotencyCleanupScheduler } from "../image-router/canary-probes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -140,6 +140,9 @@ async function startServer() {
 
     // Start canary probe scheduler after server is listening
     startCanaryScheduler();
+
+    // Start idempotency cleanup scheduler (unconditional, not gated by ENABLE_CANARIES)
+    startIdempotencyCleanupScheduler();
   });
 }
 

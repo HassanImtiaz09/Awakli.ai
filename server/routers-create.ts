@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { nanoid } from "nanoid";
+import { pipelineLog } from "./observability/logger";
 import {
   createProject,
   updateProject,
@@ -192,7 +193,7 @@ Return a JSON array of character profiles. Each profile should have:
       seed: hashStringToSeed(c.name + style + genre),
     }));
   } catch (error) {
-    console.warn("[QuickCreate] Character extraction failed, falling back to basic prompts:", error);
+    pipelineLog.warn("Character extraction failed, falling back to basic prompts", { error: String(error) });
     return charNamesArray.map((name, i) => ({
       name,
       role: i === 0 ? "protagonist" : "supporting",
@@ -228,7 +229,7 @@ async function generateCharacterReferenceSheet(
     const { url } = await generateImage({ prompt });
     return url;
   } catch (error) {
-    console.warn("[QuickCreate] Character reference sheet generation failed:", error);
+    pipelineLog.warn("Character reference sheet generation failed", { error: String(error) });
     return undefined;
   }
 }
@@ -362,7 +363,7 @@ export const quickCreateRouter = router({
         genre: input.genre,
         style: input.style,
       }).catch(err => {
-        console.error(`[QuickCreate] Background generation failed:`, err);
+        pipelineLog.error("Background generation failed", { error: String(err) });
         const progress = activeGenerations.get(projectId);
         if (progress) {
           progress.phase = "error";
@@ -626,7 +627,7 @@ export const quickCreateRouter = router({
           attempt: currentAttempts + 1,
         };
       } catch (error) {
-        console.error(`[Regenerate] Panel ${panel.id} regeneration failed:`, error);
+        pipelineLog.error("Panel regeneration failed", { panelId: panel.id, error: String(error) });
         // Restore previous state on failure
         await updatePanel(panel.id, {
           imageUrl: previousImageUrl,
@@ -860,7 +861,7 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
       characterRefUrl = await generateCharacterReferenceSheet(protagonist, meta.style);
       if (characterRefUrl) {
         progress.characterRefUrl = characterRefUrl;
-        console.log(`[QuickCreate] Character reference sheet generated for ${protagonist.name}`);
+        pipelineLog.info("Character reference sheet generated", { character: protagonist.name });
       }
     }
 
@@ -925,7 +926,7 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
           progress.phaseMessage = `Generated ${completed}/${allPanels.length} panels`;
 
         } catch (error) {
-          console.error(`[QuickCreate] Panel ${panel.id} generation failed:`, error);
+          pipelineLog.error("Panel generation failed", { panelId: panel.id, error: String(error) });
           updatePanelStep(projectId, panel.id, "retrying");
 
           // One retry with simplified prompt
@@ -961,13 +962,13 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
 
     progress.phase = "complete";
     progress.phaseMessage = "Your manga is ready!";
-    console.log(`[QuickCreate] Project ${projectId} Chapter 1 generation complete`);
+    pipelineLog.info("Chapter 1 generation complete", { projectId });
 
     // Clean up after 5 minutes
     setTimeout(() => activeGenerations.delete(projectId), 5 * 60 * 1000);
 
   } catch (error) {
-    console.error(`[QuickCreate] Generation failed for project ${projectId}:`, error);
+    pipelineLog.error("Generation failed", { projectId, error: String(error) });
     progress.phase = "error";
     progress.phaseMessage = "Generation failed. Please try again.";
     await updateEpisode(episodeId, { status: "draft" } as any).catch(() => {});

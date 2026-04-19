@@ -8,6 +8,7 @@
  */
 import { imageHealthMonitor } from "./health";
 import { generateImage } from "../_core/imageGeneration";
+import { routerLog } from "../observability/logger";
 
 // ─── Configuration ──────────────────────────────────────────────────────
 
@@ -129,11 +130,11 @@ export function startCanaryScheduler(): void {
   // Delta audit: guard behind ENABLE_CANARIES env to prevent unwanted API spend
   const enableCanaries = process.env.ENABLE_CANARIES;
   if (!enableCanaries || enableCanaries === "false" || enableCanaries === "0") {
-    console.log("[Canary] Probe scheduler disabled (set ENABLE_CANARIES=true to activate)");
+    routerLog.info("Canary probe scheduler disabled (set ENABLE_CANARIES=true to activate)");
     return;
   }
 
-  console.log(`[Canary] Starting probe scheduler (interval: ${CANARY_CONFIG.intervalMs / 1000}s)`);
+  routerLog.info("Starting canary probe scheduler", { intervalSec: CANARY_CONFIG.intervalMs / 1000 });
 
   // Run immediately on start
   runAllCanaryProbes().then((results) => {
@@ -141,25 +142,14 @@ export function startCanaryScheduler(): void {
     logCanaryResults(results);
   });
 
-  // Schedule recurring probes + idempotency cleanup
+  // Schedule recurring probes
   canaryInterval = setInterval(async () => {
     try {
       const results = await runAllCanaryProbes();
       lastResults = results;
       logCanaryResults(results);
-
-      // Piggyback idempotency cleanup on canary interval
-      try {
-        const { cleanupExpiredIdempotency } = await import("./idempotency");
-        const deleted = await cleanupExpiredIdempotency();
-        if (deleted > 0) {
-          console.log(`[Cleanup] Removed ${deleted} expired idempotency records`);
-        }
-      } catch (cleanupErr) {
-        console.error("[Cleanup] Idempotency cleanup error:", cleanupErr);
-      }
     } catch (err) {
-      console.error("[Canary] Scheduler error:", err);
+      routerLog.error("Canary scheduler error", { error: String(err) });
     }
   }, CANARY_CONFIG.intervalMs);
 }
@@ -171,7 +161,7 @@ export function stopCanaryScheduler(): void {
   if (canaryInterval) {
     clearInterval(canaryInterval);
     canaryInterval = null;
-    console.log("[Canary] Probe scheduler stopped");
+    routerLog.info("Canary probe scheduler stopped");
   }
 }
 
@@ -189,13 +179,58 @@ function logCanaryResults(results: CanaryResult[]): void {
   const total = results.length;
 
   if (healthy === total) {
-    console.log(`[Canary] All ${total} providers healthy`);
+    routerLog.info("All canary probes healthy", { healthy, total });
   } else {
     const unhealthy = results.filter((r) => !r.success);
-    console.warn(
-      `[Canary] ${healthy}/${total} healthy. Unhealthy: ${unhealthy
-        .map((r) => `${r.providerId} (${r.error})`)
-        .join(", ")}`
-    );
+    routerLog.warn("Unhealthy canary probes detected", {
+      healthy,
+      total,
+      unhealthy: unhealthy.map((r) => `${r.providerId} (${r.error})`).join(", "),
+    });
+  }
+}
+
+// ─── Idempotency Cleanup Scheduler (unconditional) ─────────────────────
+
+const CLEANUP_INTERVAL_MS = 15 * 60_000; // Every 15 minutes
+let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start the idempotency cleanup scheduler.
+ * Runs unconditionally (not gated by ENABLE_CANARIES) since it's pure DB housekeeping.
+ * @see Delta Audit v1.3 MED-1
+ */
+export function startIdempotencyCleanupScheduler(): void {
+  if (cleanupInterval) return; // Already running
+
+  routerLog.info("Starting idempotency cleanup scheduler", { intervalMin: CLEANUP_INTERVAL_MS / 60_000 });
+
+  // Run immediately on start
+  runIdempotencyCleanup();
+
+  // Schedule recurring cleanup
+  cleanupInterval = setInterval(runIdempotencyCleanup, CLEANUP_INTERVAL_MS);
+}
+
+/**
+ * Stop the idempotency cleanup scheduler.
+ */
+export function stopIdempotencyCleanupScheduler(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+    routerLog.info("Idempotency cleanup scheduler stopped");
+  }
+}
+
+async function runIdempotencyCleanup(): Promise<void> {
+  try {
+    const { cleanupExpiredIdempotency } = await import("./idempotency");
+    const deleted = await cleanupExpiredIdempotency();
+    if (deleted > 0) {
+      routerLog.info("Removed expired idempotency records", { deleted });
+    }
+  } catch (err) {
+    routerLog.error("Idempotency cleanup error", { error: String(err) });
   }
 }

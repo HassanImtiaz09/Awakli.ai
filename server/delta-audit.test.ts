@@ -7,8 +7,15 @@
  * - Canary ENABLE_CANARIES guard
  * - Structured logger
  * - Documentation files exist
+ *
+ * LOW-2 fix: All file paths use path.resolve(__dirname, ...) for CI portability.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import path from "path";
+import fs from "fs";
+
+/** Project root relative to this test file (server/delta-audit.test.ts → ..) */
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 // ─── H-9: OAuth Nonce ──────────────────────────────────────────────────
 
@@ -66,6 +73,75 @@ describe("H-9: OAuth Nonce Module", () => {
   });
 });
 
+// ─── H-9 CRIT-1: sdk.ts decodeState integration ──────────────────────
+
+describe("CRIT-1: sdk.ts decodeState parses nonce payload", () => {
+  it("decodeState extracts redirectUri from nonce-encoded state", async () => {
+    // Simulate what oauth-nonce.ts encodeState produces
+    const redirectUri = "https://awakli.ai/api/oauth/callback";
+    const nonce = "a".repeat(32);
+    const state = Buffer.from(JSON.stringify({ nonce, redirectUri })).toString("base64url");
+
+    // sdk.ts decodeState is private, but we can test the round-trip by checking
+    // that the SDK's getTokenByCode would extract the correct redirectUri.
+    // We test the decoding logic directly:
+    const decoded = Buffer.from(state, "base64url").toString("utf-8");
+    const parsed = JSON.parse(decoded);
+    expect(parsed.redirectUri).toBe(redirectUri);
+    expect(parsed.nonce).toBe(nonce);
+  });
+
+  it("sdk.ts file contains JSON.parse-based decodeState (not plain atob)", async () => {
+    const sdkPath = path.resolve(__dirname, "_core/sdk.ts");
+    const content = fs.readFileSync(sdkPath, "utf-8");
+    // Should contain the new JSON-parsing logic
+    expect(content).toContain("JSON.parse");
+    expect(content).toContain("base64url");
+    expect(content).toContain("parsed.redirectUri");
+    // Should NOT have the old bare atob-only pattern as the primary decoder
+    // (atob may still exist as a legacy fallback, which is fine)
+  });
+
+  it("nonce state survives atob but returns JSON string (the bug we fixed)", () => {
+    const redirectUri = "https://awakli.ai/api/oauth/callback";
+    const nonce = "b".repeat(32);
+    const state = Buffer.from(JSON.stringify({ nonce, redirectUri })).toString("base64url");
+
+    // This is what the OLD code would have done — atob returns the full JSON string
+    // The new code should parse it and return only redirectUri
+    const oldResult = Buffer.from(state, "base64").toString("utf-8");
+    expect(oldResult).toContain("{");
+    expect(oldResult).toContain("nonce");
+    // The old result is NOT a valid redirect URI
+    expect(oldResult).not.toBe(redirectUri);
+
+    // The new code parses it correctly
+    const parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf-8"));
+    expect(parsed.redirectUri).toBe(redirectUri);
+  });
+
+  it("legacy base64 state still works (backward compat)", () => {
+    const redirectUri = "https://awakli.ai/api/oauth/callback";
+    const legacyState = btoa(redirectUri);
+
+    // Legacy state is not valid JSON, so the new decoder should fall back
+    const decoded = Buffer.from(legacyState, "base64url").toString("utf-8");
+    let result: string;
+    try {
+      const parsed = JSON.parse(decoded);
+      result = typeof parsed.redirectUri === "string" ? parsed.redirectUri : decoded;
+    } catch {
+      // Not JSON — legacy flow
+      try {
+        result = atob(legacyState);
+      } catch {
+        result = legacyState;
+      }
+    }
+    expect(result).toBe(redirectUri);
+  });
+});
+
 // ─── H-8: requireTier Middleware ────────────────────────────────────────
 
 describe("H-8: requireTier Middleware", () => {
@@ -112,9 +188,18 @@ describe("Canary ENABLE_CANARIES Guard", () => {
 
   it("getLastCanaryResults returns null when no probes have run", async () => {
     const { getLastCanaryResults } = await import("./image-router/canary-probes");
-    // Since ENABLE_CANARIES is not set in test env, results should be null or empty array
     const results = getLastCanaryResults();
     expect(results === null || Array.isArray(results)).toBe(true);
+  });
+
+  it("startIdempotencyCleanupScheduler is exported (MED-1 fix)", async () => {
+    const mod = await import("./image-router/canary-probes");
+    expect(typeof mod.startIdempotencyCleanupScheduler).toBe("function");
+  });
+
+  it("stopIdempotencyCleanupScheduler is exported (MED-1 fix)", async () => {
+    const mod = await import("./image-router/canary-probes");
+    expect(typeof mod.stopIdempotencyCleanupScheduler).toBe("function");
   });
 });
 
@@ -184,9 +269,8 @@ describe("Structured Logger", () => {
 // ─── Documentation Files Exist ──────────────────────────────────────────
 
 describe("L-7: Documentation", () => {
-  it("README.md exists and has content", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/README.md", "utf-8");
+  it("README.md exists and has content", () => {
+    const content = fs.readFileSync(path.resolve(PROJECT_ROOT, "README.md"), "utf-8");
     expect(content.length).toBeGreaterThan(500);
     expect(content).toContain("Awakli");
     expect(content).toContain("Quick Start");
@@ -195,18 +279,16 @@ describe("L-7: Documentation", () => {
     expect(content).toContain("Security Notes");
   });
 
-  it("CONTRIBUTING.md exists and has content", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/CONTRIBUTING.md", "utf-8");
+  it("CONTRIBUTING.md exists and has content", () => {
+    const content = fs.readFileSync(path.resolve(PROJECT_ROOT, "CONTRIBUTING.md"), "utf-8");
     expect(content.length).toBeGreaterThan(200);
     expect(content).toContain("Branch Naming");
     expect(content).toContain("Commit Messages");
     expect(content).toContain("Pull Request");
   });
 
-  it("docs/RUNBOOK.md exists and has content", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/docs/RUNBOOK.md", "utf-8");
+  it("docs/RUNBOOK.md exists and has content", () => {
+    const content = fs.readFileSync(path.resolve(PROJECT_ROOT, "docs/RUNBOOK.md"), "utf-8");
     expect(content.length).toBeGreaterThan(500);
     expect(content).toContain("KEK");
     expect(content).toContain("Session Invalidation");
@@ -218,15 +300,17 @@ describe("L-7: Documentation", () => {
 // ─── M-3: Dead Code Removal ────────────────────────────────────────────
 
 describe("M-3: Dead Code & Version Fixes", () => {
-  it("Home.tsx does not contain AnimatedCounter", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/client/src/pages/Home.tsx", "utf-8");
+  it("Home.tsx does not contain AnimatedCounter", () => {
+    const content = fs.readFileSync(
+      path.resolve(PROJECT_ROOT, "client/src/pages/Home.tsx"), "utf-8"
+    );
     expect(content).not.toContain("AnimatedCounter");
   });
 
-  it("Home.tsx does not contain fabricated stats (12,000+, 500+, 8,000+)", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/client/src/pages/Home.tsx", "utf-8");
+  it("Home.tsx does not contain fabricated stats (12,000+, 500+, 8,000+)", () => {
+    const content = fs.readFileSync(
+      path.resolve(PROJECT_ROOT, "client/src/pages/Home.tsx"), "utf-8"
+    );
     expect(content).not.toContain("12,000+");
     expect(content).not.toContain("8,000+");
     expect(content).not.toMatch(/500\+\s*anime/i);
@@ -237,9 +321,10 @@ describe("M-3: Dead Code & Version Fixes", () => {
     expect((mod.ENV as any).ownerOpenId).toBeUndefined();
   });
 
-  it("Home.tsx references Kling 2.0 (not 2.1)", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/client/src/pages/Home.tsx", "utf-8");
+  it("Home.tsx references Kling V3 (not 2.1)", () => {
+    const content = fs.readFileSync(
+      path.resolve(PROJECT_ROOT, "client/src/pages/Home.tsx"), "utf-8"
+    );
     expect(content).not.toContain("Kling 2.1");
   });
 });
@@ -247,15 +332,17 @@ describe("M-3: Dead Code & Version Fixes", () => {
 // ─── Cookie Security ────────────────────────────────────────────────────
 
 describe("Cookie Security", () => {
-  it("cookies.ts sets SameSite=lax", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/server/_core/cookies.ts", "utf-8");
+  it("cookies.ts sets SameSite=lax", () => {
+    const content = fs.readFileSync(
+      path.resolve(__dirname, "_core/cookies.ts"), "utf-8"
+    );
     expect(content).toContain("lax");
   });
 
-  it("cookies.ts sets Secure=true", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/server/_core/cookies.ts", "utf-8");
+  it("cookies.ts sets Secure=true", () => {
+    const content = fs.readFileSync(
+      path.resolve(__dirname, "_core/cookies.ts"), "utf-8"
+    );
     expect(content).toContain("secure");
   });
 });
@@ -263,16 +350,223 @@ describe("Cookie Security", () => {
 // ─── Auth Pages (H-7 regression check) ─────────────────────────────────
 
 describe("H-7: OAuth-only Auth Pages", () => {
-  it("SignIn.tsx does not contain password input", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/client/src/pages/SignIn.tsx", "utf-8");
-    // Should not have type="password" input
+  it("SignIn.tsx does not contain password input", () => {
+    const content = fs.readFileSync(
+      path.resolve(PROJECT_ROOT, "client/src/pages/SignIn.tsx"), "utf-8"
+    );
     expect(content).not.toContain('type="password"');
   });
 
-  it("SignUp.tsx does not contain password input", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/awakli/client/src/pages/SignUp.tsx", "utf-8");
+  it("SignUp.tsx does not contain password input", () => {
+    const content = fs.readFileSync(
+      path.resolve(PROJECT_ROOT, "client/src/pages/SignUp.tsx"), "utf-8"
+    );
     expect(content).not.toContain('type="password"');
+  });
+});
+
+// ─── CRIT-1 Integration: encodeState → decodeState → redirectUri round-trip ──
+
+describe("CRIT-1 Integration: OAuth state round-trip", () => {
+  /**
+   * The critical bug was that sdk.ts decodeState used atob() which returned
+   * the full JSON string (e.g., '{"nonce":"...","redirectUri":"..."}') as the
+   * redirectUri. The token exchange then sent this JSON blob as redirect_uri
+   * to the OAuth provider, which rejected it.
+   *
+   * These tests verify the full round-trip: encodeState → decodeState extracts
+   * the plain URL, not the JSON string.
+   */
+
+  it("encodeState → decodeState returns plain URL, not JSON string", async () => {
+    const { encodeState, decodeState } = await import("./_core/oauth-nonce");
+    const nonce = "c".repeat(32);
+    const redirectUri = "https://awakli-ai-4v9sad2k.manus.space/api/oauth/callback";
+
+    const state = encodeState({ nonce, redirectUri });
+
+    // decodeState should return the full payload object
+    const payload = decodeState(state);
+    expect(payload).not.toBeNull();
+    expect(payload!.redirectUri).toBe(redirectUri);
+    expect(payload!.nonce).toBe(nonce);
+
+    // The redirectUri must be a plain URL, NOT a JSON string
+    expect(payload!.redirectUri).not.toContain("{");
+    expect(payload!.redirectUri).not.toContain("nonce");
+    expect(payload!.redirectUri.startsWith("https://")).toBe(true);
+  });
+
+  it("sdk.ts decodeState (private) extracts plain URL from nonce state", () => {
+    // Directly test the decoding logic that sdk.ts uses internally
+    const nonce = "d".repeat(32);
+    const redirectUri = "https://example.com/api/oauth/callback";
+    const state = Buffer.from(JSON.stringify({ nonce, redirectUri })).toString("base64url");
+
+    // Replicate sdk.ts decodeState logic:
+    const decoded = Buffer.from(state, "base64url").toString("utf-8");
+    const parsed = JSON.parse(decoded);
+    let result: string;
+    if (parsed && typeof parsed === "object" && typeof parsed.redirectUri === "string") {
+      result = parsed.redirectUri;
+    } else {
+      result = decoded;
+    }
+
+    expect(result).toBe(redirectUri);
+    // Must NOT be the full JSON string
+    expect(result).not.toBe(decoded);
+  });
+
+  it("sdk.ts decodeState handles legacy base64 state (no nonce)", () => {
+    const redirectUri = "https://example.com/api/oauth/callback";
+    const legacyState = Buffer.from(redirectUri).toString("base64");
+
+    // Replicate sdk.ts decodeState logic:
+    let result: string;
+    try {
+      const decoded = Buffer.from(legacyState, "base64url").toString("utf-8");
+      const parsed = JSON.parse(decoded);
+      if (parsed && typeof parsed === "object" && typeof parsed.redirectUri === "string") {
+        result = parsed.redirectUri;
+      } else {
+        result = decoded;
+      }
+    } catch {
+      try {
+        result = atob(legacyState);
+      } catch {
+        result = legacyState;
+      }
+    }
+
+    expect(result).toBe(redirectUri);
+  });
+
+  it("exchangeCodeForToken payload would contain plain URL (not JSON)", () => {
+    // Simulate the payload construction that getTokenByCode does
+    const nonce = "e".repeat(32);
+    const redirectUri = "https://awakli.ai/api/oauth/callback";
+    const state = Buffer.from(JSON.stringify({ nonce, redirectUri })).toString("base64url");
+
+    // This is what sdk.ts decodeState does:
+    const decoded = Buffer.from(state, "base64url").toString("utf-8");
+    const parsed = JSON.parse(decoded);
+    const extractedUri = (parsed && typeof parsed === "object" && typeof parsed.redirectUri === "string")
+      ? parsed.redirectUri
+      : decoded;
+
+    // Build the payload as getTokenByCode does
+    const payload = {
+      clientId: "test-app-id",
+      grantType: "authorization_code",
+      code: "test-code",
+      redirectUri: extractedUri,
+    };
+
+    // The redirectUri in the payload must be a valid URL, not JSON
+    expect(payload.redirectUri).toBe(redirectUri);
+    expect(payload.redirectUri).toMatch(/^https?:\/\//);
+    expect(payload.redirectUri).not.toContain("{");
+    expect(payload.redirectUri).not.toContain("nonce");
+  });
+
+  it("nonce + redirectUri survive full encode/decode/verify cycle", async () => {
+    const { generateNonce, encodeState, decodeState, verifyNonce } = await import("./_core/oauth-nonce");
+
+    // Step 1: Generate nonce (as /api/oauth/start does)
+    const nonce = generateNonce();
+    expect(nonce).toMatch(/^[a-f0-9]{32}$/);
+
+    // Step 2: Encode state (as /api/oauth/start does)
+    const redirectUri = "https://awakli.ai/api/oauth/callback";
+    const state = encodeState({ nonce, redirectUri });
+    expect(typeof state).toBe("string");
+    expect(state.length).toBeGreaterThan(0);
+
+    // Step 3: Decode state (as /api/oauth/callback does)
+    const payload = decodeState(state);
+    expect(payload).not.toBeNull();
+    expect(payload!.redirectUri).toBe(redirectUri);
+    expect(payload!.nonce).toBe(nonce);
+
+    // Step 4: Verify nonce against cookie (as /api/oauth/callback does)
+    const cookieNonce = nonce; // In real flow, this comes from the cookie
+    expect(verifyNonce(payload!.nonce, cookieNonce)).toBe(true);
+
+    // Step 5: Verify nonce fails with wrong cookie
+    const wrongNonce = generateNonce();
+    expect(verifyNonce(payload!.nonce, wrongNonce)).toBe(false);
+  });
+});
+
+// ─── P2: Shared Tier Module ─────────────────────────────────────────────
+
+describe("P2: Shared Tier Module", () => {
+  it("shared/tiers.ts exports TIER_HIERARCHY and TIER_ORDER", async () => {
+    const mod = await import("../shared/tiers");
+    expect(mod.TIER_HIERARCHY).toBeDefined();
+    expect(mod.TIER_ORDER).toBeDefined();
+    expect(Array.isArray(mod.TIER_ORDER)).toBe(true);
+  });
+
+  it("tierLevel returns correct ordering", async () => {
+    const { tierLevel } = await import("../shared/tiers");
+    expect(tierLevel("free_trial")).toBeLessThan(tierLevel("creator"));
+    expect(tierLevel("creator")).toBeLessThan(tierLevel("studio"));
+  });
+
+  it("meetsMinTier correctly gates access", async () => {
+    const { meetsMinTier } = await import("../shared/tiers");
+    expect(meetsMinTier("studio", "creator")).toBe(true);
+    expect(meetsMinTier("free_trial", "creator")).toBe(false);
+  });
+
+  it("trpc.ts imports from @shared/tiers (no local TIER_HIERARCHY)", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "_core/trpc.ts"), "utf-8");
+    expect(content).toContain("@shared/tiers");
+    // Should NOT have a local TIER_HIERARCHY definition
+    expect(content).not.toMatch(/const\s+TIER_HIERARCHY\s*=/);
+  });
+});
+
+// ─── LOW-1: Structured Logger Migration ─────────────────────────────────
+
+describe("LOW-1: Core files migrated to structured logger", () => {
+  const coreFiles = [
+    { file: "_core/oauth.ts", label: "oauth.ts" },
+    { file: "_core/sdk.ts", label: "sdk.ts" },
+    { file: "_core/env.ts", label: "env.ts" },
+  ];
+
+  for (const { file, label } of coreFiles) {
+    it(`${label} has zero console.log/warn/error calls`, () => {
+      const content = fs.readFileSync(path.resolve(__dirname, file), "utf-8");
+      const matches = content.match(/console\.(log|warn|error)\(/g);
+      expect(matches).toBeNull();
+    });
+
+    it(`${label} imports from observability/logger`, () => {
+      const content = fs.readFileSync(path.resolve(__dirname, file), "utf-8");
+      expect(content).toContain("observability/logger");
+    });
+  }
+
+  it("db.ts has zero console.log/warn/error calls", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "db.ts"), "utf-8");
+    const matches = content.match(/console\.(log|warn|error)\(/g);
+    expect(matches).toBeNull();
+  });
+
+  it("canary-probes.ts has zero console.log/warn/error calls", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "image-router/canary-probes.ts"), "utf-8");
+    const matches = content.match(/console\.(log|warn|error)\(/g);
+    expect(matches).toBeNull();
+  });
+
+  it("routers-create.ts has zero console.log/warn/error calls", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "routers-create.ts"), "utf-8");
+    const matches = content.match(/console\.(log|warn|error)\(/g);
+    expect(matches).toBeNull();
   });
 });

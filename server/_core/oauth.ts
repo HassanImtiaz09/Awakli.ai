@@ -1,4 +1,5 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { authLog } from "../observability/logger";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
@@ -79,9 +80,7 @@ export function registerOAuthRoutes(app: Express) {
         const legacyRedirectUri = atob(state);
         if (legacyRedirectUri.includes("/api/oauth/callback")) {
           // Legacy flow — proceed without nonce verification but log a warning
-          console.warn(
-            "[OAuth] Legacy state format detected (no nonce). Allowing for backward compatibility."
-          );
+          authLog.warn("Legacy state format detected (no nonce). Allowing for backward compatibility.");
           await handleTokenExchange(req, res, code, state, "/");
           return;
         }
@@ -97,7 +96,7 @@ export function registerOAuthRoutes(app: Express) {
     const cookieNonce = cookies.get(NONCE_COOKIE_NAME);
 
     if (!verifyNonce(statePayload.nonce, cookieNonce)) {
-      console.warn("[OAuth] Nonce mismatch — possible CSRF attempt", {
+      authLog.warn("Nonce mismatch — possible CSRF attempt", {
         stateNonce: statePayload.nonce?.substring(0, 8) + "...",
         hasCookieNonce: !!cookieNonce,
       });
@@ -160,7 +159,7 @@ async function handleTokenExchange(
     const safePath = returnPath.startsWith("/") ? returnPath : "/";
     res.redirect(302, safePath);
   } catch (error) {
-    console.error("[OAuth] Callback failed", error);
+    authLog.error("Callback failed", { error: String(error) });
     res.status(500).json({ error: "OAuth callback failed" });
   }
 }

@@ -47,18 +47,9 @@ export const adminProcedure = t.procedure.use(
 // ─── H-8: Tier-gated procedures ────────────────────────────────────────────
 // Usage: requireTier("creator") returns a procedure that checks the user's
 // subscription tier meets the minimum required level.
+// @see shared/tiers.ts for the single source of truth (P2 dedup)
 
-const TIER_HIERARCHY: Record<string, number> = {
-  free_trial: 0,
-  creator: 1,
-  creator_pro: 2,
-  studio: 3,
-  enterprise: 4,
-};
-
-function tierLevel(tier: string): number {
-  return TIER_HIERARCHY[tier] ?? 0;
-}
+import { TIER_HIERARCHY, tierLevel } from "@shared/tiers";
 
 /**
  * Creates a tRPC procedure that requires the user's subscription tier
@@ -98,5 +89,5 @@ export const creatorProProcedure = requireTier("creator_pro");
 export const studioProcedure = requireTier("studio");
 export const enterpriseProcedure = requireTier("enterprise");
 
-// Export tier hierarchy for testing
+// Re-export tier hierarchy for testing and downstream consumers
 export { TIER_HIERARCHY, tierLevel };

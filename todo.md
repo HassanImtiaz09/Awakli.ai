@@ -3653,3 +3653,36 @@
 - [x] L-2: Social links show toast placeholder (already done in previous audit)
 - [x] M-12: /create anon access is intentional design (guest user flow for frictionless onboarding)
 - [x] L-6: Request timing middleware + health endpoint implemented (full OTel deferred to post-beta)
+
+## Delta Audit v1.3 Fixes
+
+### CRIT-1 (BLOCKING): sdk.ts decodeState incompatible with nonce payload
+- [x] Update sdk.ts decodeState to parse JSON payload and return only redirectUri field
+- [x] Add integration test: state round-trips through sdk with correct redirectUri (not JSON string)
+
+### MED-1: Idempotency cleanup gated behind ENABLE_CANARIES
+- [x] Extract startIdempotencyCleanupScheduler() to run every 15min unconditionally
+- [x] Call from server/_core/index.ts alongside startCanaryScheduler()
+
+### LOW-1: Structured logger migration incomplete (378 console.* calls remain)
+- [ ] Migrate pipelineOrchestrator.ts console.* calls to pipelineLog (74 sites)
+- [ ] Migrate video-assembly.ts console.* calls to pipelineLog (22 sites)
+- [ ] Migrate lipSyncNode.ts console.* calls to pipelineLog (20 sites)
+- [ ] Migrate routers.ts console.* calls to routerLog (16 sites)
+- [ ] Migrate hitl/orchestrator-bridge.ts console.* calls to pipelineLog (16 sites)
+
+### LOW-2: delta-audit.test.ts uses hardcoded absolute paths
+- [x] Replace /home/ubuntu/awakli/... with path.resolve(__dirname, ...) in delta-audit.test.ts
+
+### P2: Extract TIER_HIERARCHY to shared module
+- [x] Create shared/tiers.ts with TIER_HIERARCHY and TIER_LEVEL type
+- [x] Update trpc.ts and routers-phase13.ts to import from shared/tiers.ts
+
+### LOW-1 Core File Logger Migration (v1.3 scope)
+- [x] Migrate server/_core/oauth.ts console.* to authLog (3 sites)
+- [x] Migrate server/_core/sdk.ts console.* to authLog (7 sites)
+- [x] Migrate server/_core/env.ts console.* to serverLog (3 sites)
+- [x] Migrate server/db.ts console.* to serverLog (5 sites)
+- [x] Migrate server/image-router/canary-probes.ts console.* to routerLog (10 sites)
+- [x] Migrate server/routers-create.ts console.* to pipelineLog (8 sites)
+- [x] Add 57 vitest tests for delta-audit v1.3 (CRIT-1 round-trip, P2 tiers, LOW-1 migration verification)

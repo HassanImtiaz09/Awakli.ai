@@ -4,6 +4,7 @@
  * Audit fixes: C-1 (removed ownerOpenId), C-2 (JWT_SECRET required), C-3 (KEK required)
  */
 import crypto from "crypto";
+import { serverLog } from "../observability/logger";
 
 // ─── Validation Helpers ─────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ function requireEnv(name: string, minLength: number = 1): string {
   if (!value || value.length < minLength) {
     const msg = `[FATAL] ${name} must be set to a ${minLength}+ character secret. Server cannot start.\n` +
       `  Hint: generate with \`openssl rand -hex ${Math.ceil(minLength / 2)}\``;
-    console.error(msg);
+    serverLog.error(msg);
     throw new Error(msg);
   }
   return value;
@@ -50,12 +51,12 @@ function kekSelfTest(): void {
     if (decrypted !== canary) {
       throw new Error("Round-trip mismatch");
     }
-    console.log("[Boot] KEK canary self-test passed");
+    serverLog.info("KEK canary self-test passed");
   } catch (err) {
     const msg = `[FATAL] KEK canary self-test FAILED. Encryption key is broken or rotated.\n` +
       `  If the KEK was rotated, existing encrypted provider credentials must be re-entered.\n` +
       `  Error: ${err}`;
-    console.error(msg);
+    serverLog.error(msg);
     throw new Error(msg);
   }
 }

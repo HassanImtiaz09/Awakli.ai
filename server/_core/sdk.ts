@@ -1,4 +1,5 @@
 import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { authLog } from "../observability/logger";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -30,17 +31,30 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
+    authLog.info("Initialized with baseURL", { baseURL: ENV.oAuthServerUrl });
     if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
+      authLog.error("OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable.");
     }
   }
 
   private decodeState(state: string): string {
-    const redirectUri = atob(state);
-    return redirectUri;
+    try {
+      // New nonce-based flow: state is base64url(JSON.stringify({ nonce, redirectUri }))
+      const decoded = Buffer.from(state, "base64url").toString("utf-8");
+      const parsed = JSON.parse(decoded);
+      if (parsed && typeof parsed === "object" && typeof parsed.redirectUri === "string") {
+        return parsed.redirectUri;
+      }
+      // Fallback: if parsed but no redirectUri field, treat as legacy
+      return decoded;
+    } catch {
+      // Legacy flow: state is plain base64(redirectUri)
+      try {
+        return atob(state);
+      } catch {
+        return state;
+      }
+    }
   }
 
   async getTokenByCode(
@@ -201,7 +215,7 @@ class SDKServer {
     cookieValue: string | undefined | null
   ): Promise<{ openId: string; appId: string; name: string } | null> {
     if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
+      authLog.warn("Missing session cookie");
       return null;
     }
 
@@ -217,7 +231,7 @@ class SDKServer {
         !isNonEmptyString(appId) ||
         !isNonEmptyString(name)
       ) {
-        console.warn("[Auth] Session payload missing required fields");
+        authLog.warn("Session payload missing required fields");
         return null;
       }
 
@@ -227,7 +241,7 @@ class SDKServer {
         name,
       };
     } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
+      authLog.warn("Session verification failed", { error: String(error) });
       return null;
     }
   }
@@ -283,7 +297,7 @@ class SDKServer {
         });
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
+        authLog.error("Failed to sync user from OAuth", { error: String(error) });
         throw ForbiddenError("Failed to sync user info");
       }
     }
