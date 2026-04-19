@@ -81,6 +81,47 @@ function useTypewriterPlaceholder(prompts: string[], cycleMs = 4000) {
   return displayed;
 }
 
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}
+
+function PlatformStats() {
+  const { data, isLoading } = trpc.platformStats.useQuery(undefined, {
+    staleTime: 60_000, // cache for 1 minute
+    refetchOnWindowFocus: false,
+  });
+
+  const stats = useMemo(() => [
+    { label: "Manga Created", value: data ? formatCount(data.totalProjects) : null },
+    { label: "Panels Generated", value: data ? formatCount(data.totalPanels) : null },
+    { label: "Active Creators", value: data ? formatCount(data.activeCreators) : null },
+  ], [data]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 1 }}
+      className="mt-8 flex justify-center gap-8 text-center"
+    >
+      {stats.map((stat) => (
+        <div key={stat.label}>
+          <div className="text-[#F0F0F5]/80 font-semibold text-lg font-mono">
+            {isLoading || stat.value === null ? (
+              <span className="inline-block w-12 h-5 rounded bg-white/5 skeleton-shimmer" />
+            ) : (
+              stat.value
+            )}
+          </div>
+          <div className="text-[#9494B8]/40 text-xs">{stat.label}</div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
 export default function Create() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -417,24 +458,8 @@ export default function Create() {
                 </div>
               </motion.div>
 
-              {/* Stats */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="mt-8 flex justify-center gap-8 text-center"
-              >
-                {[
-                  { label: "Manga Created", value: "12K+" },
-                  { label: "Panels Generated", value: "180K+" },
-                  { label: "Active Creators", value: "3.2K" },
-                ].map((stat) => (
-                  <div key={stat.label}>
-                    <div className="text-[#F0F0F5]/80 font-semibold text-lg font-mono">{stat.value}</div>
-                    <div className="text-[#9494B8]/40 text-xs">{stat.label}</div>
-                  </div>
-                ))}
-              </motion.div>
+              {/* Live Platform Stats */}
+              <PlatformStats />
             </motion.div>
           ) : (
             /* Customize Flow */

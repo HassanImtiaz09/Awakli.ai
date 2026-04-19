@@ -1310,3 +1310,22 @@ export async function deleteUploadedAssetsByProject(projectId: number) {
   if (!db) return;
   await db.delete(uploadedAssets).where(eq(uploadedAssets.projectId, projectId));
 }
+
+// ─── Platform Stats (public, for Create page) ──────────────────────────────
+
+export async function getPlatformStats() {
+  const db = await getDb();
+  if (!db) return { totalProjects: 0, totalPanels: 0, activeCreators: 0 };
+
+  const [[projectRow], [panelRow], [creatorRow]] = await Promise.all([
+    db.select({ cnt: count() }).from(projects),
+    db.select({ cnt: count() }).from(panels),
+    db.select({ cnt: sql<number>`COUNT(DISTINCT ${projects.userId})` }).from(projects),
+  ]);
+
+  return {
+    totalProjects: Number(projectRow?.cnt ?? 0),
+    totalPanels: Number(panelRow?.cnt ?? 0),
+    activeCreators: Number(creatorRow?.cnt ?? 0),
+  };
+}

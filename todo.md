@@ -3739,3 +3739,8 @@
 - [x] Tier taglines updated per vision doc
 - [x] Empty states: "The director is scouting locations..."
 - [x] HTML title and meta tags updated
+
+## Live Platform Stats on Create Page
+- [x] Add tRPC public procedure to query platform stats (total projects, total panels, active creators)
+- [x] Wire Create page stats section to live backend data with loading skeleton
+- [x] Write vitest test for the stats procedure

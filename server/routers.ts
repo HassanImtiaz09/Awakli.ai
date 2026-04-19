@@ -2060,6 +2060,12 @@ export const appRouter = router({
   // Prompt 29: A/B Testing
   abTesting: abTestingRouter,
 
+  // Platform Stats (public, for Create page)
+  platformStats: publicProcedure.query(async () => {
+    const { getPlatformStats } = await import("./db");
+    return getPlatformStats();
+  }),
+
   // P26: Character Bible & Spatial Consistency
   characterBible: characterBibleRouter,
   creditGateway: router({
