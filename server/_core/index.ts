@@ -9,6 +9,9 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleStripeWebhook } from "../stripe/webhook";
 import { registerImageWebhookRoutes } from "../image-router/webhooks";
+import { rateLimitMiddleware } from "./rate-limit";
+import { requestTimingMiddleware, healthHandler } from "../observability";
+import { startCanaryScheduler } from "../image-router/canary-probes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +43,12 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // Observability: request timing
+  app.use(requestTimingMiddleware);
+
+  // Health endpoint (before auth/rate-limit)
+  app.get("/api/health", healthHandler);
 
   // Security headers
   app.use((req, res, next) => {
@@ -96,6 +105,9 @@ async function startServer() {
   registerShutdownHandlers();
   startCronScheduler(); // 5-min interval, runs first tick immediately
 
+  // H-4: Rate limiting on API routes
+  app.use(rateLimitMiddleware);
+
   // Image generation webhooks (after JSON parser)
   registerImageWebhookRoutes(app);
 
@@ -125,6 +137,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+
+    // Start canary probe scheduler after server is listening
+    startCanaryScheduler();
   });
 }
 

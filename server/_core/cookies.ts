@@ -42,7 +42,7 @@ export function getSessionCookieOptions(
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite: "lax",  // H-2: lax prevents CSRF while allowing top-level navigations
+    secure: true,       // H-2: always secure (platform is HTTPS-only)
   };
 }

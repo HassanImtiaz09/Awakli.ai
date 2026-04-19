@@ -55,6 +55,9 @@ import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import TierSampler from "./pages/TierSampler";
 import CostDashboard from "./pages/CostDashboard";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Refund from "./pages/Refund";
 import { StudioLayout } from "./components/awakli/Layouts";
 
 function Router() {
@@ -113,6 +116,11 @@ function Router() {
         <Route path="/admin/gates" component={AdminGateAnalytics} />
         <Route path="/studio/quality-insights" component={QualityInsights} />
         <Route path="/demo-recording" component={DemoRecording} />
+
+        {/* Legal */}
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/refund" component={Refund} />
 
         {/* Studio */}
         <Route path="/studio" component={StudioDashboard} />

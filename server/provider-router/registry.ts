@@ -198,13 +198,15 @@ export async function getActiveApiKey(providerId: string): Promise<{
 // ─── Encryption Helpers ──────────────────────────────────────────────────
 
 import crypto from "crypto";
+import { PROVIDER_ENCRYPTION_KEY } from "../_core/env";
 
-const ENCRYPTION_KEY = process.env.JWT_SECRET?.slice(0, 32).padEnd(32, "0") ?? "0".repeat(32);
+// C-3: KEK is now derived from validated JWT_SECRET via SHA-256 (32 bytes).
+// No more all-zeros fallback. Boot fails if JWT_SECRET is missing.
 const ALGORITHM = "aes-256-gcm";
 
 export function encryptApiKey(plaintext: string): string {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "utf8"), iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, PROVIDER_ENCRYPTION_KEY, iv);
   let encrypted = cipher.update(plaintext, "utf8", "base64");
   encrypted += cipher.final("base64");
   const tag = cipher.getAuthTag();
@@ -221,7 +223,7 @@ export function decryptApiKey(encrypted: string): string {
     }
     const iv = Buffer.from(ivB64, "base64");
     const tag = Buffer.from(tagB64, "base64");
-    const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "utf8"), iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, PROVIDER_ENCRYPTION_KEY, iv);
     decipher.setAuthTag(tag);
     let decrypted = decipher.update(ciphertext, "base64", "utf8");
     decrypted += decipher.final("utf8");

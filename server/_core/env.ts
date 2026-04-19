@@ -1,21 +1,91 @@
+/**
+ * Validated environment variables — fail fast at boot if critical secrets are missing.
+ *
+ * Audit fixes: C-1 (removed ownerOpenId), C-2 (JWT_SECRET required), C-3 (KEK required)
+ */
+import crypto from "crypto";
+
+// ─── Validation Helpers ─────────────────────────────────────────────────
+
+function requireEnv(name: string, minLength: number = 1): string {
+  const value = process.env[name] ?? "";
+  if (!value || value.length < minLength) {
+    const msg = `[FATAL] ${name} must be set to a ${minLength}+ character secret. Server cannot start.\n` +
+      `  Hint: generate with \`openssl rand -hex ${Math.ceil(minLength / 2)}\``;
+    console.error(msg);
+    throw new Error(msg);
+  }
+  return value;
+}
+
+function optionalEnv(name: string, fallback: string = ""): string {
+  return process.env[name] ?? fallback;
+}
+
+// ─── Boot-time Validation ───────────────────────────────────────────────
+
+// C-2: JWT_SECRET must be non-empty, min 16 chars (platform provides 22-char secrets)
+const jwtSecret = requireEnv("JWT_SECRET", 16);
+
+// C-3: Provider-router KEK derived from JWT_SECRET (must be 32 bytes for AES-256)
+// The KEK is the first 32 bytes of the SHA-256 hash of JWT_SECRET
+const kekBuffer = crypto.createHash("sha256").update(jwtSecret).digest();
+const PROVIDER_KEK = kekBuffer.subarray(0, 32);
+
+// C-3: Boot-time canary self-test — encrypt then decrypt a known value
+function kekSelfTest(): void {
+  const canary = "awakli-kek-canary-" + Date.now();
+  try {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv("aes-256-gcm", PROVIDER_KEK, iv);
+    let encrypted = cipher.update(canary, "utf8", "base64");
+    encrypted += cipher.final("base64");
+    const tag = cipher.getAuthTag();
+
+    const decipher = crypto.createDecipheriv("aes-256-gcm", PROVIDER_KEK, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(encrypted, "base64", "utf8");
+    decrypted += decipher.final("utf8");
+
+    if (decrypted !== canary) {
+      throw new Error("Round-trip mismatch");
+    }
+    console.log("[Boot] KEK canary self-test passed");
+  } catch (err) {
+    const msg = `[FATAL] KEK canary self-test FAILED. Encryption key is broken or rotated.\n` +
+      `  If the KEK was rotated, existing encrypted provider credentials must be re-entered.\n` +
+      `  Error: ${err}`;
+    console.error(msg);
+    throw new Error(msg);
+  }
+}
+
+// Run self-test at module load (boot time)
+kekSelfTest();
+
+// ─── Exported ENV ───────────────────────────────────────────────────────
+
 export const ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  appId: optionalEnv("VITE_APP_ID"),
+  cookieSecret: jwtSecret,
+  databaseUrl: optionalEnv("DATABASE_URL"),
+  oAuthServerUrl: optionalEnv("OAUTH_SERVER_URL"),
+  ownerOpenId: optionalEnv("OWNER_OPEN_ID"),  // Kept for reference only, NOT used for admin bypass (C-1)
   isProduction: process.env.NODE_ENV === "production",
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
-  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
-  klingAccessKey: process.env.KLING_ACCESS_KEY ?? "",
-  klingSecretKey: process.env.KLING_SECRET_KEY ?? "",
-  minimaxApiKey: process.env.MINIMAX_API_KEY ?? "",
-  cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
-  cloudflareStreamToken: process.env.CLOUDFLARE_STREAM_TOKEN ?? "",
-  falApiKey: process.env.FAL_API_KEY ?? "",
-  fishAudioApiKey: process.env.FISH_AUDIO_API_KEY ?? "",
-  runwayApiKey: process.env.RUNWAY_API_KEY ?? "",
+  forgeApiUrl: optionalEnv("BUILT_IN_FORGE_API_URL"),
+  forgeApiKey: optionalEnv("BUILT_IN_FORGE_API_KEY"),
+  stripeSecretKey: optionalEnv("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: optionalEnv("STRIPE_WEBHOOK_SECRET"),
+  elevenLabsApiKey: optionalEnv("ELEVENLABS_API_KEY"),
+  klingAccessKey: optionalEnv("KLING_ACCESS_KEY"),
+  klingSecretKey: optionalEnv("KLING_SECRET_KEY"),
+  minimaxApiKey: optionalEnv("MINIMAX_API_KEY"),
+  cloudflareAccountId: optionalEnv("CLOUDFLARE_ACCOUNT_ID"),
+  cloudflareStreamToken: optionalEnv("CLOUDFLARE_STREAM_TOKEN"),
+  falApiKey: optionalEnv("FAL_API_KEY"),
+  fishAudioApiKey: optionalEnv("FISH_AUDIO_API_KEY"),
+  runwayApiKey: optionalEnv("RUNWAY_API_KEY"),
 };
+
+/** Provider-router encryption key (32 bytes, derived from JWT_SECRET) */
+export const PROVIDER_ENCRYPTION_KEY = PROVIDER_KEK;

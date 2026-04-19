@@ -1,17 +1,17 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Chrome, Github } from "lucide-react";
-import React, { useState } from "react";
+import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
 import { AwakliButton } from "@/components/awakli/AwakliButton";
-import { AwakliInput } from "@/components/awakli/AwakliInput";
 import { StarField } from "@/components/awakli/StarField";
 
-export default function SignUp() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const BENEFITS = [
+  { icon: Sparkles, text: "Character consistency with LoRA training" },
+  { icon: Zap, text: "Priority generation queue & batch processing" },
+  { icon: Shield, text: "Save projects, export high-res panels" },
+];
 
+export default function SignUp() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#08080F]">
       <StarField count={120} />
@@ -29,85 +29,42 @@ export default function SignUp() {
         <div className="bg-[#0D0D1A] border border-white/8 rounded-2xl p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)]">
           <div className="text-center mb-8">
             <span className="font-display text-2xl font-bold text-gradient-pink">AWAKLI</span>
-            <p className="text-sm text-[#5C5C7A] mt-1">Create your free account</p>
+            <p className="text-sm text-[#5C5C7A] mt-2">Create your free account</p>
           </div>
 
+          {/* Benefits */}
           <div className="space-y-3 mb-6">
-            <a href={getLoginUrl()} className="block">
-              <motion.button
-                className="w-full flex items-center justify-center gap-3 h-11 bg-[#151528] border border-white/10 rounded-lg text-sm text-[#F0F0F5] hover:bg-[#1C1C35] hover:border-white/20 transition-all"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-              >
-                <Chrome size={18} className="text-[#4285F4]" />
-                Sign up with Google
-              </motion.button>
-            </a>
-            <a href={getLoginUrl()} className="block">
-              <motion.button
-                className="w-full flex items-center justify-center gap-3 h-11 bg-[#151528] border border-white/10 rounded-lg text-sm text-[#F0F0F5] hover:bg-[#1C1C35] hover:border-white/20 transition-all"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-              >
-                <Github size={18} className="text-[#9494B8]" />
-                Sign up with GitHub
-              </motion.button>
-            </a>
+            {BENEFITS.map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-3 text-sm text-[#9494B8]">
+                <Icon size={16} className="text-[#E94560] shrink-0" />
+                <span>{text}</span>
+              </div>
+            ))}
           </div>
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-white/8" />
-            <span className="text-xs text-[#5C5C7A]">or continue with email</span>
-            <div className="flex-1 h-px bg-white/8" />
-          </div>
-
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); window.location.href = getLoginUrl(); }}>
-            <AwakliInput
-              label="Full name"
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-            />
-            <AwakliInput
-              label="Email address"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-            <AwakliInput
-              label="Password"
-              type="password"
-              placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              hint="Use 8+ characters with a mix of letters, numbers and symbols"
-            />
-
-            <p className="text-xs text-[#5C5C7A]">
-              By signing up, you agree to our{" "}
-              <a href="/terms" className="text-[#00D4FF] hover:text-[#33DFFF]">Terms of Service</a>{" "}
-              and{" "}
-              <a href="/privacy" className="text-[#00D4FF] hover:text-[#33DFFF]">Privacy Policy</a>.
-            </p>
-
+          {/* OAuth sign-up */}
+          <a href={getLoginUrl()} className="block mb-6">
             <AwakliButton
-              type="submit"
               variant="primary"
               size="md"
               className="w-full"
               icon={<ArrowRight size={16} />}
               iconPosition="right"
             >
-              Create Account
+              Get Started with Manus Account
             </AwakliButton>
-          </form>
+          </a>
 
-          <p className="text-center text-sm text-[#9494B8] mt-6">
+          {/* Terms */}
+          <p className="text-xs text-[#5C5C7A] text-center mb-6">
+            By signing up, you agree to our{" "}
+            <Link href="/terms"><span className="text-[#00D4FF] hover:text-[#33DFFF] cursor-pointer">Terms of Service</span></Link>{" "}
+            and{" "}
+            <Link href="/privacy"><span className="text-[#00D4FF] hover:text-[#33DFFF] cursor-pointer">Privacy Policy</span></Link>.
+          </p>
+
+          {/* Sign in link */}
+          <p className="text-center text-sm text-[#9494B8]">
             Already have an account?{" "}
             <Link href="/signin">
               <span className="text-[#E94560] hover:text-[#FF5A7A] transition-colors cursor-pointer font-medium">

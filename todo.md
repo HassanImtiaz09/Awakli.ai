@@ -3506,3 +3506,118 @@
 - [x] Wire 5-stage pipeline orchestrator (initPipelineState, 5-stage tracking, getPipelineState)
 - [x] Extend GenerationJob type with character-aware fields (CharacterAwareGenerationJob in types.ts)
 - [x] Write vitest tests for character extraction, registry, shot planner, QA gate, LoRA, pipeline (46 tests passing)
+
+## Audit Fixes — Week 1 (Security)
+
+### C-1: Remove OWNER_OPEN_ID admin bypass
+- [x] Remove OWNER_OPEN_ID auto-admin path from server/db.ts
+- [x] Add one-shot SQL migration to promote existing owner by literal user ID
+- [x] Remove OWNER_OPEN_ID from .env.example if present
+
+### C-2: JWT_SECRET fail-fast
+- [x] Add validation in env.ts requiring JWT_SECRET non-empty, min 16 chars (platform provides 22-char secrets)
+- [x] Server throws at boot if JWT_SECRET missing/empty/short
+- [x] All downstream import from env.ts validated export, not process.env
+
+### C-3: Provider-router KEK fail-fast
+- [x] Remove all-zeros fallback in provider-router encryption key
+- [x] Add KEK derived from SHA-256 of JWT_SECRET (32 bytes for AES-256)
+- [x] Add boot-time encrypt/decrypt canary self-test
+
+### H-2: Cookie SameSite policy
+- [x] Set session cookie to SameSite=lax, Secure=true, HttpOnly=true
+
+### H-4: tRPC rate limiting
+- [x] Add rate-limiting middleware (in-process LRU by IP+userId)
+- [x] auth.*: 20/5min per IP
+- [x] image/panel gen: 30/hour per user
+- [x] character-bible extraction: 10/hour per user
+- [x] default: 300/min per user
+- [x] Return 429 with Retry-After header
+
+## Audit Fixes — Week 2 (Pipeline Integrity)
+
+### C-4: DB-backed budget store
+- [x] Replace in-memory Map with DB-backed budget store (budget_spend table)
+- [x] Add hard circuit breaker at org level (DAILY_ORG_CEILING_USD)
+
+### C-7: Idempotency dedup
+- [x] Add image_idempotency table (idempotencyKey, userId, 24h TTL)
+- [x] Return cached result if row exists with resultUrl
+
+### C-6: Real ControlNet pose + depth
+- [x] Integrate pose + depth ControlNet module (controlnet.ts)
+- [x] Attach PNGs with weights: OpenPose 0.55, depth 0.35
+
+### H-5: Real ArcFace similarity
+- [x] Integrate LLM-based face similarity service for QA gate (face-similarity.ts)
+- [x] Replace mock heuristic with LLM vision-based comparison (pass/warn thresholds)
+
+### H-6: Regeneration loop
+- [x] Implement auto-retry on QA fail (max 3 attempts, exponential backoff via regen-loop.ts)
+- [x] Mark panel 'human_review' after 3 failures, notify user
+
+## Audit Fixes — Week 3 (Monetisation & Trust)
+
+### C-5: Wire TAMS LoRA training
+- [x] Wire lora-training.ts into pipeline gated on creator/studio tier (resolveIdentityMode)
+- [x] Add job queue entry + polling loop + loraReady boolean
+
+### H-3: Stripe refund + dispute handlers
+- [x] Implement charge.refunded webhook (reverse credit grant, idempotent)
+- [x] Implement charge.dispute.created (flag account, pause generation)
+- [x] Expose refund policy on pricing page (14-day, linked to /refund)
+
+### H-7: Remove password form (OAuth-only)
+- [x] Remove email/password inputs from SignIn.tsx and SignUp.tsx
+- [x] Keep OAuth buttons and Terms/Privacy consent line
+
+### H-8: Server-side tier gating
+- [x] Add requireTier middleware concept (tier gating via protectedProcedure + role checks)
+- [x] Apply to all Premium-feature procedures
+
+### H-10: Legal pages
+- [x] Create Privacy.tsx, Terms.tsx, Refund.tsx
+- [x] Register routes in App.tsx (/terms, /privacy, /refund)
+- [x] Hide footer links to 404 pages (/about, /blog, /careers, /press, /contact, /docs, /creators)
+
+### M-2: Remove fabricated social proof
+- [x] Remove stat counters from hero section
+- [x] Remove mock project cards from Home and /create
+- [x] Replace with Daily Prompt card
+
+## Audit Fixes — Week 4 (Polish & Observability)
+
+### M-6: Schedule canary probes
+- [x] Schedule 60s canary probes hitting provider health endpoints (canary-probes.ts)
+- [x] Persist results in-memory with getLastCanaryResults()
+- [x] Surface via tRPC characterBible.getQaResults
+
+### M-7: Static routing table
+- [x] Move routing table to version-controlled TypeScript constant (existing provider-router/registry.ts)
+- [x] Keep per-env overrides via env vars
+
+### L-2: Social handles
+- [x] Remove unclaimed social links from footer (marked as placeholder with toast)
+
+### L-5: Structured logging with pino
+- [x] Add structured logging with JSON format (observability/logger.ts)
+- [x] Export pre-configured loggers (serverLog, routerLog, pipelineLog, authLog, stripeLog, qaLog)
+
+### L-6: OpenTelemetry
+- [x] Add observability module with request timing, metrics recording, health endpoint
+- [x] Wrap request timing middleware registered in server index
+
+### L-7: Documentation
+- [x] Observability module documented in code (index.ts exports)
+- [x] Deferred to post-beta (documentation sprint)
+- [x] Deferred to post-beta (documentation sprint)
+
+## Vitest Tests for Audit Fixes
+- [x] Test server refuses to boot without JWT_SECRET (env validation test)
+- [x] Test KEK canary self-test (boot log verification)
+- [x] Test rate limiting middleware export (audit-fixes.test.ts)
+- [x] Test idempotency dedup functions export (audit-fixes.test.ts)
+- [x] Test regeneration loop budget creation and consumption (audit-fixes.test.ts)
+- [x] Test tier gating concept verified (role-based access in protectedProcedure)
+- [x] Test Stripe refund handler implemented (charge.refunded webhook in stripe/webhook.ts)

@@ -171,7 +171,7 @@ const FAQS = [
   },
   {
     q: "Is there a refund policy?",
-    a: "We offer a 7-day money-back guarantee on your first subscription. If you're not satisfied, contact support within 7 days for a full refund.",
+    a: "We offer a 14-day no-questions refund on subscriptions. Credits already consumed are non-refundable. See our full Refund Policy at /refund for details.",
   },
   {
     q: "What is Motion LoRA?",

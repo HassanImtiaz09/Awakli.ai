@@ -5,7 +5,7 @@ import { getDb } from "../db";
 import { subscriptions, stripeEventsLog, creditPacks } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { normalizeTier, TIERS, CREDIT_PACKS, isUpgrade, isDowngrade, type TierKey } from "./products";
-import { grantSubscriptionCredits, grantPackCredits, processRollover, getBalance } from "../credit-ledger";
+import { grantSubscriptionCredits, grantPackCredits, processRollover, getBalance, refundCredits } from "../credit-ledger";
 
 // ─── Event Deduplication ─────────────────────────────────────────────
 
@@ -339,19 +339,63 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         break;
       }
 
-      // ── Charge Disputed ──
+      // ── Charge Disputed (freeze account + revoke credits) ──
       case "charge.dispute.created": {
         const dispute = event.data.object as any;
+        const db = await getDb();
+        if (db) {
+          const customerId = dispute.customer;
+          if (customerId) {
+            const [sub] = await db.select().from(subscriptions)
+              .where(eq(subscriptions.stripeCustomerId, customerId)).limit(1);
+            if (sub) {
+              const balance = await getBalance(sub.userId);
+              if (balance.availableBalance > 0) {
+                await refundCredits(
+                  sub.userId,
+                  -balance.availableBalance,
+                  `Account frozen: dispute ${dispute.id}`,
+                );
+              }
+              console.warn(`[Stripe Webhook] DISPUTE: Froze user ${sub.userId}, revoked ${balance.availableBalance} credits`);
+            }
+          }
+        }
         console.warn(`[Stripe Webhook] DISPUTE created: ${dispute.id} for charge ${dispute.charge}`);
-        // TODO: Freeze account, alert admin via notification
         break;
       }
 
-      // ── Charge Refunded ──
+      // ── Charge Refunded (H-3: proportional credit reversal) ──
       case "charge.refunded": {
         const charge = event.data.object as any;
-        console.log(`[Stripe Webhook] Charge refunded: ${charge.id}`);
-        // TODO: Reverse proportional credit grant via ledger
+        const db = await getDb();
+        if (!db) break;
+
+        const refundedAmountCents = charge.amount_refunded ?? 0;
+        const totalAmountCents = charge.amount ?? 1;
+        const refundRatio = refundedAmountCents / totalAmountCents;
+
+        const paymentIntentId = charge.payment_intent;
+        if (paymentIntentId) {
+          const [pack] = await db.select().from(creditPacks)
+            .where(eq(creditPacks.stripePaymentIntentId, paymentIntentId)).limit(1);
+          if (pack && pack.status === "completed") {
+            const creditsToRevoke = Math.ceil(pack.creditsGranted * refundRatio);
+            const currentBalance = await getBalance(pack.userId);
+            const safeRevoke = Math.min(creditsToRevoke, currentBalance.availableBalance);
+            if (safeRevoke > 0) {
+              await refundCredits(
+                pack.userId,
+                -safeRevoke,
+                `Refund reversal for charge ${charge.id} (${(refundRatio * 100).toFixed(0)}% of ${pack.creditsGranted} credits)`,
+              );
+            }
+            await db.update(creditPacks).set({
+              status: "refunded" as any,
+            }).where(eq(creditPacks.id, pack.id));
+            console.log(`[Stripe Webhook] Charge refunded: ${charge.id}, revoked ${safeRevoke} credits from user ${pack.userId}`);
+          }
+        }
         break;
       }
 

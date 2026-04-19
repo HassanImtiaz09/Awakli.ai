@@ -1,41 +1,32 @@
 import { motion } from "framer-motion";
-import { Github, Twitter, MessageCircle, Youtube } from "lucide-react";
+import { Twitter, MessageCircle, Youtube } from "lucide-react";
 import React from "react";
 import { Link } from "wouter";
 
 const FOOTER_LINKS = {
   Product: [
-    { label: "Create Manga", href: "/studio/new" },
+    { label: "Create Manga", href: "/create" },
     { label: "Discover", href: "/discover" },
+    { label: "Trending", href: "/trending" },
     { label: "Leaderboard", href: "/leaderboard" },
     { label: "Pricing", href: "/pricing" },
-    { label: "Studio", href: "/studio" },
   ],
   Creators: [
     { label: "Creator Studio", href: "/studio" },
-    { label: "Start Writing", href: "/studio/new" },
-    { label: "AI Pipeline", href: "/studio/pipeline" },
-    { label: "Documentation", href: "/docs" },
-    { label: "Creator Program", href: "/creators" },
-  ],
-  Company: [
-    { label: "About", href: "/about" },
-    { label: "Blog", href: "/blog" },
-    { label: "Careers", href: "/careers" },
-    { label: "Press", href: "/press" },
-    { label: "Contact", href: "/contact" },
+    { label: "Start Writing", href: "/create" },
+    { label: "Upload Your Manga", href: "/studio/byo-upload" },
+    { label: "Earnings", href: "/earnings" },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
-    { label: "Cookie Policy", href: "/cookies" },
-    { label: "DMCA", href: "/dmca" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Refund Policy", href: "/refund" },
   ],
 };
 
+// Social links — update these URLs once official accounts are created
 const SOCIAL_LINKS = [
-  { icon: <Twitter size={18} />, href: "https://twitter.com/awakli", label: "Twitter" },
-  { icon: <Github size={18} />, href: "https://github.com/awakli", label: "GitHub" },
+  { icon: <Twitter size={18} />, href: "https://x.com/awakli_ai", label: "X (Twitter)" },
   { icon: <MessageCircle size={18} />, href: "https://discord.gg/awakli", label: "Discord" },
   { icon: <Youtube size={18} />, href: "https://youtube.com/@awakli", label: "YouTube" },
 ];
@@ -45,7 +36,7 @@ export function MarketingFooter() {
     <footer className="bg-[#0D0D1A] border-t border-white/5 mt-auto">
       <div className="container py-16">
         {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {Object.entries(FOOTER_LINKS).map(([category, links]) => (
             <div key={category}>
               <h4 className="text-xs font-semibold uppercase tracking-widest text-[#5C5C7A] mb-4">

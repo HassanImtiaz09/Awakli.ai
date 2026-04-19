@@ -224,27 +224,21 @@ function HeroSection() {
             <InlinePromptInput size="lg" />
           </motion.div>
 
-          {/* Social proof */}
+          {/* Daily Prompt card */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.4, duration: 0.8 }}
-            className="mt-10 flex items-center justify-center gap-6 text-sm text-gray-500"
+            className="mt-10 flex items-center justify-center"
           >
-            <span className="flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-[#E94560]" />
-              <span className="text-white font-semibold"><AnimatedCounter target={12000} suffix="+" /></span> manga created
-            </span>
-            <span className="w-px h-4 bg-white/10" />
-            <span className="flex items-center gap-1.5">
-              <Film className="w-4 h-4 text-[#00D4FF]" />
-              <span className="text-white font-semibold"><AnimatedCounter target={500} suffix="+" /></span> anime voted
-            </span>
-            <span className="w-px h-4 bg-white/10 hidden sm:block" />
-            <span className="items-center gap-1.5 hidden sm:flex">
-              <Users className="w-4 h-4 text-[#FFB800]" />
-              <span className="text-white font-semibold"><AnimatedCounter target={8000} suffix="+" /></span> creators
-            </span>
+            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/8 bg-white/3">
+              <Sparkles className="w-4 h-4 text-[#FFB800]" />
+              <span className="text-sm text-gray-400">
+                <span className="text-white font-medium">Daily Prompt:</span>{" "}
+                "A time-traveling samurai discovers modern Tokyo"
+              </span>
+              <ArrowRight className="w-4 h-4 text-gray-500" />
+            </div>
           </motion.div>
         </div>
       </div>
@@ -275,14 +269,7 @@ function ShowcaseGallery() {
   const items = showcase.data ?? [];
 
   // Create a masonry-like grid with placeholder items
-  const galleryItems = items.length > 0 ? items.slice(0, 8) : [
-    { id: 1, title: "Neon Samurai Chronicles", creator: "AkiraFan", votes: 2340, img: HERO_IMAGES[0], tall: true },
-    { id: 2, title: "Dreamwalker Academy", creator: "MangaQueen", votes: 1890, img: HERO_IMAGES[1], tall: false },
-    { id: 3, title: "Celestial Blade", creator: "StarWriter", votes: 3120, img: HERO_IMAGES[2], tall: false },
-    { id: 4, title: "Cyber Ronin", creator: "NeoTokyo", votes: 1560, img: MANGA_IMG, tall: true },
-    { id: 5, title: "Spirit Hunters", creator: "YokaiLord", votes: 2780, img: ANIME_IMG, tall: false },
-    { id: 6, title: "Quantum Hearts", creator: "SciFiDreamer", votes: 1920, img: HERO_IMAGES[0], tall: true },
-  ];
+  const galleryItems = items.slice(0, 8);
 
   return (
     <section className="py-24 relative overflow-hidden">
@@ -300,6 +287,17 @@ function ShowcaseGallery() {
         </ScrollReveal>
 
         {/* Masonry grid */}
+        {galleryItems.length === 0 && (
+          <div className="text-center py-16">
+            <Sparkles className="w-10 h-10 text-[#E94560]/40 mx-auto mb-4" />
+            <p className="text-gray-400 text-lg mb-2">The gallery is waiting for its first stories.</p>
+            <Link href="/create">
+              <span className="text-[#E94560] hover:text-[#FF6B81] transition-colors cursor-pointer font-medium text-sm">
+                Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
+              </span>
+            </Link>
+          </div>
+        )}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {galleryItems.map((item: any, i: number) => (
             <ScrollReveal key={item.id ?? i} delay={i * 0.08}>
