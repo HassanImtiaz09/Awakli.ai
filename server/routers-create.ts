@@ -19,6 +19,7 @@ import {
   getOrCreateGuestUser,
   createCharacter,
   getCharactersByProject,
+  getPanelById,
 } from "./db";
 import { projects, episodes, panels, characters } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -550,6 +551,113 @@ export const quickCreateRouter = router({
         ))
         .orderBy(desc(projects.createdAt))
         .limit(input?.limit ?? 10);
+    }),
+
+  // Regenerate a single panel with an optional tweaked prompt
+  regeneratePanel: publicProcedure
+    .input(z.object({
+      panelId: z.number(),
+      prompt: z.string().min(5).max(2000).optional(),
+      style: z.enum(["shonen", "seinen", "shoujo", "chibi", "cyberpunk", "watercolor", "noir", "realistic", "mecha", "default"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const panel = await getPanelById(input.panelId);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+
+      // Save previous image URL for undo capability
+      const previousImageUrl = panel.imageUrl;
+      const previousPrompt = panel.fluxPrompt;
+      const currentAttempts = panel.generationAttempts ?? 1;
+
+      // Mark as generating
+      await updatePanel(panel.id, { status: "generating" });
+
+      try {
+        // Determine the prompt to use
+        let finalPrompt: string;
+        if (input.prompt) {
+          // User provided a custom prompt — prepend style prefix
+          const style = input.style ?? "default";
+          const stylePrefix = style === "default" ? "manga style" : `${style} manga style`;
+          finalPrompt = `${stylePrefix}, ${input.prompt}, high quality manga panel, detailed linework, dramatic composition, consistent character design`;
+        } else if (panel.fluxPrompt) {
+          // Re-use the existing prompt (simple retry)
+          finalPrompt = panel.fluxPrompt;
+        } else {
+          // Fallback: build from visual description
+          const stylePrefix = input.style && input.style !== "default" ? `${input.style} manga style` : "manga style";
+          finalPrompt = `${stylePrefix}, ${panel.visualDescription ?? "manga panel"}, high quality manga panel, detailed linework`;
+        }
+
+        // Try to get character reference from the project's characters
+        let referenceUrl: string | undefined;
+        try {
+          const chars = await getCharactersByProject(panel.projectId);
+          const protagonist = chars.find((c: any) => c.role === "protagonist");
+          if (protagonist?.referenceImages && Array.isArray(protagonist.referenceImages) && protagonist.referenceImages.length > 0) {
+            referenceUrl = protagonist.referenceImages[0];
+          }
+        } catch {
+          // Non-critical
+        }
+
+        const generateOptions: any = { prompt: finalPrompt };
+        if (referenceUrl) {
+          generateOptions.originalImages = [{ url: referenceUrl, mimeType: "image/png" }];
+        }
+
+        const { url } = await generateImage(generateOptions);
+
+        await updatePanel(panel.id, {
+          imageUrl: url,
+          fluxPrompt: finalPrompt,
+          status: "generated",
+          reviewStatus: "pending",
+          generationAttempts: currentAttempts + 1,
+        });
+
+        return {
+          success: true,
+          panelId: panel.id,
+          imageUrl: url,
+          prompt: finalPrompt,
+          previousImageUrl,
+          previousPrompt,
+          attempt: currentAttempts + 1,
+        };
+      } catch (error) {
+        console.error(`[Regenerate] Panel ${panel.id} regeneration failed:`, error);
+        // Restore previous state on failure
+        await updatePanel(panel.id, {
+          imageUrl: previousImageUrl,
+          status: previousImageUrl ? "generated" : "draft",
+        });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Panel regeneration failed. Previous image has been restored.",
+        });
+      }
+    }),
+
+  // Undo a panel regeneration (restore previous image)
+  undoRegenerate: publicProcedure
+    .input(z.object({
+      panelId: z.number(),
+      previousImageUrl: z.string(),
+      previousPrompt: z.string().nullish(),
+    }))
+    .mutation(async ({ input }) => {
+      const panel = await getPanelById(input.panelId);
+      if (!panel) throw new TRPCError({ code: "NOT_FOUND", message: "Panel not found" });
+
+      await updatePanel(panel.id, {
+        imageUrl: input.previousImageUrl,
+        fluxPrompt: input.previousPrompt ?? panel.fluxPrompt,
+        status: "generated",
+        generationAttempts: Math.max(1, (panel.generationAttempts ?? 1) - 1),
+      });
+
+      return { success: true, panelId: panel.id, imageUrl: input.previousImageUrl };
     }),
 });
 

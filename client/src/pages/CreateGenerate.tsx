@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Loader2, CheckCircle2, Sparkles, Eye, X, ArrowRight, AlertCircle, Clock, Zap, User2, Timer } from "lucide-react";
+import { BookOpen, Loader2, CheckCircle2, Sparkles, Eye, X, ArrowRight, AlertCircle, Clock, Zap, User2, Timer, RefreshCw, Undo2, Pencil } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 interface ScriptScene {
   scene_number: number;
@@ -48,6 +49,220 @@ function getStepLabel(step: string): { label: string; color: string } {
   }
 }
 
+// ─── Regenerate Panel Dialog ─────────────────────────────────────────
+
+interface RegenerateDialogProps {
+  panel: {
+    id: number;
+    sceneNumber: number;
+    panelNumber: number;
+    imageUrl: string | null;
+    fluxPrompt: string | null;
+    visualDescription: string | null;
+    generationAttempts: number | null;
+  };
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function RegenerateDialog({ panel, onClose, onSuccess }: RegenerateDialogProps) {
+  const [prompt, setPrompt] = useState(panel.fluxPrompt ?? panel.visualDescription ?? "");
+  const [isCustom, setIsCustom] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const regenerateMut = trpc.quickCreate.regeneratePanel.useMutation({
+    onSuccess: (data) => {
+      toast.success("Panel regenerated!", {
+        description: `Attempt #${data.attempt}`,
+        action: data.previousImageUrl ? {
+          label: "Undo",
+          onClick: () => {
+            undoMut.mutate({
+              panelId: data.panelId,
+              previousImageUrl: data.previousImageUrl!,
+              previousPrompt: data.previousPrompt,
+            });
+          },
+        } : undefined,
+      });
+      onSuccess();
+      onClose();
+    },
+    onError: (err) => {
+      toast.error("Regeneration failed", { description: err.message });
+    },
+  });
+
+  const undoMut = trpc.quickCreate.undoRegenerate.useMutation({
+    onSuccess: () => {
+      toast.success("Reverted to previous image");
+      onSuccess();
+    },
+    onError: (err) => {
+      toast.error("Undo failed", { description: err.message });
+    },
+  });
+
+  const handleRegenerate = useCallback(() => {
+    regenerateMut.mutate({
+      panelId: panel.id,
+      prompt: isCustom ? prompt : undefined,
+    });
+  }, [panel.id, prompt, isCustom, regenerateMut]);
+
+  // Focus textarea when switching to custom mode
+  useEffect(() => {
+    if (isCustom && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
+    }
+  }, [isCustom]);
+
+  const isLoading = regenerateMut.isPending;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="bg-[#12121A] rounded-2xl border border-white/10 w-full max-w-lg overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+          <div>
+            <h3 className="text-white font-semibold text-base">Regenerate Panel</h3>
+            <p className="text-white/40 text-xs mt-0.5">
+              S{panel.sceneNumber}P{panel.panelNumber}
+              {panel.generationAttempts && panel.generationAttempts > 1 && (
+                <span className="ml-2 text-amber-400/60">
+                  {panel.generationAttempts} previous attempts
+                </span>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white/60 transition">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Current image preview */}
+        {panel.imageUrl && (
+          <div className="px-5 pt-4">
+            <div className="relative rounded-lg overflow-hidden border border-white/5">
+              <img
+                src={panel.imageUrl}
+                alt={`Panel S${panel.sceneNumber}P${panel.panelNumber}`}
+                className="w-full h-40 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <span className="absolute bottom-2 left-2 text-white/60 text-[10px] font-mono bg-black/40 px-1.5 py-0.5 rounded">
+                Current image
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Prompt section */}
+        <div className="px-5 py-4 space-y-3">
+          {/* Quick retry vs custom prompt toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsCustom(false)}
+              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition border ${
+                !isCustom
+                  ? "bg-[#E94560]/10 border-[#E94560]/30 text-[#E94560]"
+                  : "bg-white/[0.03] border-white/5 text-white/40 hover:text-white/60"
+              }`}
+            >
+              <RefreshCw className="w-3.5 h-3.5 inline mr-1.5" />
+              Quick Retry
+            </button>
+            <button
+              onClick={() => setIsCustom(true)}
+              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition border ${
+                isCustom
+                  ? "bg-[#6C63FF]/10 border-[#6C63FF]/30 text-[#6C63FF]"
+                  : "bg-white/[0.03] border-white/5 text-white/40 hover:text-white/60"
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5 inline mr-1.5" />
+              Edit Prompt
+            </button>
+          </div>
+
+          {!isCustom && (
+            <div className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
+              <p className="text-white/40 text-xs leading-relaxed">
+                Re-generates the panel using the same prompt. The AI may produce a different result due to natural variation.
+              </p>
+              {panel.fluxPrompt && (
+                <p className="text-white/20 text-[10px] font-mono mt-2 line-clamp-2">{panel.fluxPrompt}</p>
+              )}
+            </div>
+          )}
+
+          {isCustom && (
+            <div>
+              <label className="text-white/50 text-xs font-medium mb-1.5 block">
+                Edit the generation prompt
+              </label>
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={4}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2.5 text-white/80 text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-[#6C63FF]/40 resize-none"
+                placeholder="Describe what you want to see in this panel..."
+              />
+              <p className="text-white/20 text-[10px] mt-1">
+                Tip: Be specific about character appearance, pose, camera angle, and mood for best results.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 pb-5 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="flex-1 px-4 py-2.5 rounded-lg bg-white/[0.05] text-white/50 text-sm font-medium hover:bg-white/[0.08] transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRegenerate}
+            disabled={isLoading || (isCustom && prompt.trim().length < 5)}
+            className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white text-sm font-medium shadow-lg shadow-[#E94560]/20 hover:shadow-[#E94560]/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Regenerate
+              </>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
+
 export default function CreateGenerate() {
   const [, params] = useRoute("/create/:projectId");
   const [, navigate] = useLocation();
@@ -55,7 +270,10 @@ export default function CreateGenerate() {
 
   const [expandedScene, setExpandedScene] = useState<number | null>(null);
   const [lightboxPanel, setLightboxPanel] = useState<string | null>(null);
+  const [regeneratePanel, setRegeneratePanel] = useState<any | null>(null);
   const scriptEndRef = useRef<HTMLDivElement>(null);
+
+  const utils = trpc.useUtils();
 
   // Poll for status every 2 seconds (faster for better progress updates)
   const { data: status, isLoading: statusLoading } = trpc.quickCreate.status.useQuery(
@@ -112,7 +330,6 @@ export default function CreateGenerate() {
     if (livePhase === "characters") return 20;
     if (livePhase === "reference_sheet") return 25;
     if (livePhase === "complete") return 100;
-    // panels phase: 30-100
     const panelProgress = status.totalPanels > 0
       ? (status.generatedPanels / status.totalPanels) * 70
       : 0;
@@ -129,6 +346,12 @@ export default function CreateGenerate() {
     }
     return map;
   }, [status?.panelSteps]);
+
+  // Invalidate panels after regeneration
+  const handleRegenerateSuccess = useCallback(() => {
+    utils.quickCreate.getPanels.invalidate({ projectId, episodeId: firstChapterId });
+    utils.quickCreate.status.invalidate({ projectId });
+  }, [utils, projectId, firstChapterId]);
 
   if (statusLoading) {
     return (
@@ -169,14 +392,12 @@ export default function CreateGenerate() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {/* ETA display */}
             {!isComplete && status.estimatedRemainingMs > 0 && (
               <div className="hidden sm:flex items-center gap-1.5 text-white/30 text-xs">
                 <Timer className="w-3.5 h-3.5" />
                 <span>~{formatDuration(status.estimatedRemainingMs)} remaining</span>
               </div>
             )}
-            {/* Elapsed time */}
             {!isComplete && status.elapsedMs > 0 && (
               <div className="hidden sm:flex items-center gap-1.5 text-white/30 text-xs">
                 <Clock className="w-3.5 h-3.5" />
@@ -390,7 +611,6 @@ export default function CreateGenerate() {
                     {Math.round((generatedPanels.length / panels.length) * 100)}%
                   </span>
                 )}
-                {/* Avg panel time */}
                 {status.avgPanelTimeMs > 0 && status.generatedPanels > 0 && (
                   <span className="text-white/20 text-[10px] font-mono">
                     ~{formatDuration(status.avgPanelTimeMs)}/panel
@@ -435,7 +655,6 @@ export default function CreateGenerate() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.05 }}
                       className="aspect-[3/4] rounded-xl overflow-hidden border border-white/5 relative group cursor-pointer"
-                      onClick={() => panel.imageUrl && setLightboxPanel(panel.imageUrl)}
                     >
                       {panel.status === "generated" && panel.imageUrl ? (
                         <>
@@ -446,16 +665,38 @@ export default function CreateGenerate() {
                             src={panel.imageUrl}
                             alt={`Panel ${panel.sceneNumber}-${panel.panelNumber}`}
                             className="w-full h-full object-cover"
+                            onClick={() => setLightboxPanel(panel.imageUrl)}
                           />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <Eye className="w-6 h-6 text-white" />
+                          {/* Hover overlay with actions */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setLightboxPanel(panel.imageUrl); }}
+                              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition"
+                              title="View full size"
+                            >
+                              <Eye className="w-5 h-5 text-white" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setRegeneratePanel(panel); }}
+                              className="w-10 h-10 rounded-full bg-[#E94560]/20 backdrop-blur-sm flex items-center justify-center hover:bg-[#E94560]/40 transition"
+                              title="Regenerate this panel"
+                            >
+                              <RefreshCw className="w-5 h-5 text-[#E94560]" />
+                            </button>
                           </div>
+                          {/* Labels */}
                           <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-white/70 text-[10px] font-mono">
                             S{panel.sceneNumber}P{panel.panelNumber}
                           </div>
                           <div className="absolute top-2 right-2">
                             <CheckCircle2 className="w-4 h-4 text-green-400" />
                           </div>
+                          {/* Attempt badge */}
+                          {panel.generationAttempts && panel.generationAttempts > 1 && (
+                            <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-amber-400/70 text-[9px] font-mono">
+                              #{panel.generationAttempts}
+                            </div>
+                          )}
                         </>
                       ) : panel.status === "generating" ? (
                         <div className="w-full h-full bg-white/[0.03] flex flex-col items-center justify-center">
@@ -547,11 +788,11 @@ export default function CreateGenerate() {
                 </p>
               )}
 
-              {/* Character consistency note */}
               <div className="bg-white/[0.05] rounded-lg p-3 mb-6 text-left border border-white/10">
                 <p className="text-white/40 text-xs leading-relaxed">
-                  <span className="text-[#E94560] font-medium">Character Consistency:</span> Characters were designed with detailed visual profiles and reference sheets.
-                  For even better consistency in future chapters, <span className="text-white/60">create an account</span> to train a custom LoRA model for your characters — this ensures pixel-perfect identity across panels and video.
+                  <span className="text-[#E94560] font-medium">Not happy with a panel?</span> Hover over any completed panel and click the
+                  <RefreshCw className="w-3 h-3 inline mx-1 text-[#E94560]" />
+                  button to regenerate it with a tweaked prompt.
                 </p>
               </div>
 
@@ -566,7 +807,7 @@ export default function CreateGenerate() {
                 onClick={() => setShowCompleteOverlay(false)}
                 className="block mx-auto mt-4 text-white/40 hover:text-white/60 text-sm transition"
               >
-                Continue watching
+                Continue editing panels
               </button>
             </motion.div>
           </motion.div>
@@ -599,6 +840,17 @@ export default function CreateGenerate() {
               onClick={(e) => e.stopPropagation()}
             />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Regenerate Panel Dialog */}
+      <AnimatePresence>
+        {regeneratePanel && (
+          <RegenerateDialog
+            panel={regeneratePanel}
+            onClose={() => setRegeneratePanel(null)}
+            onSuccess={handleRegenerateSuccess}
+          />
         )}
       </AnimatePresence>
     </div>

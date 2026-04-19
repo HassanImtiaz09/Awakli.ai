@@ -3440,3 +3440,12 @@
 - [x] Write vitest tests for progress tracking logic (getOrCreateProgress, updatePanelStep, rolling average)
 - [x] Write vitest tests for character consistency prompt builder (buildConsistentPanelPrompt, 11 tests)
 - [x] Write vitest tests for reference image anchoring flow (referenceUrl, hashStringToSeed, 28 tests total)
+
+## Prompt 31: Regenerate Panel
+
+- [x] Add regeneratePanel tRPC procedure (accepts panelId + tweaked prompt, regenerates image, updates DB)
+- [x] Track generation attempts and store previous image URLs for undo (undoRegenerate procedure)
+- [x] Build regenerate dialog UI (RegenerateDialog component with Quick Retry / Edit Prompt modes)
+- [x] Add regenerate button overlay on completed panels in CreateGenerate.tsx (hover actions: Eye + RefreshCw)
+- [x] Add regenerate button in manga reader view for completed panels (via completion overlay hint)
+- [x] Write vitest tests for regeneratePanel procedure (25 tests: retrieval, update, generation, character ref, prompt building, undo, attempts)
