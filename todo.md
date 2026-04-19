@@ -3449,3 +3449,60 @@
 - [x] Add regenerate button overlay on completed panels in CreateGenerate.tsx (hover actions: Eye + RefreshCw)
 - [x] Add regenerate button in manga reader view for completed panels (via completion overlay hint)
 - [x] Write vitest tests for regeneratePanel procedure (25 tests: retrieval, update, generation, character ref, prompt building, undo, attempts)
+
+## Prompt 26 (P26): Character Bible & Spatial Consistency Pipeline
+
+### T1-T2: Character Registry DB & Types
+- [x] Create character_registries table (project_id PK, registry_json JSON, version INT, created_at, spatial_qa_results table)
+- [x] Implement CharacterAttributes, CharacterIdentity, CharacterEntry, CharacterRegistry TypeScript interfaces (types.ts)
+- [x] Add DB helpers: getCharacterRegistry, upsertCharacterRegistry, getRegistryHistory, getQaResultsForPanel/Project (db.ts)
+
+### T3: LLM Character Extraction
+- [x] Implement extractCharactersFromPrompt() using LLM with structured JSON output (extraction.ts)
+- [x] System prompt template per §3.3 (height defaults, build inference, distinguishing features cap at 5)
+- [x] Flag inferred fields so UI can surface them for user override (inferredFields array)
+
+### T4-T6: Reference Sheet Generator
+- [x] Create triple-pose reference sheet prompt (front T-pose, 3-quarter relaxed, side left-facing)
+- [x] Implement generateReferenceSheet() calling image generation with 4 candidates + auto-selection
+- [x] Implement auto-selection ranker (pose compliance, attribute fidelity, multi-view consistency scoring)
+- [x] Extract face crops via buildFaceCropPrompt and store ipAdapterRefUrl in registry
+- [x] Upload sheet + face crops to S3 via storagePut
+
+### T7: IP-Adapter Identity Injection
+- [x] Implement IP-Adapter injection into panel requests (weight 0.65, front-view face crop)
+- [x] Plumb identity.ipAdapterRefUrl through the generation pipeline (applyIdentityLock)
+
+### T8-T10: Shot Planner
+- [x] Implement height-ratio skeleton composition (scaleFactor = heightCm / tallestHeightCm)
+- [x] Ground-plane anchor: all feet share same Y coordinate (computePlacements)
+- [x] Implement depth map generation for Z-order enforcement (depthLayer in placements)
+- [x] Implement regional prompting for multi-character panels (buildRegionalPrompts with bounding boxes)
+- [x] Implement seed governance hand-off (hashToSeed deterministic per character+style)
+
+### T11: Provider Unification & Batch Dispatch
+- [x] Extend router with characterBible tRPC sub-router (routers-character-bible.ts)
+- [x] Implement parallel batch dispatch via buildGenerationJobs (pipeline.ts)
+- [x] Implement draft vs hero quality tiers (QUALITY_TIERS in types.ts)
+
+### T12-T13: TAMS LoRA Training Path (Premium)
+- [x] Implement TAMS training job submission with training data assembly (assembleTrainingData, buildTrainingConfig)
+- [x] Implement webhook handler for training completion (applyLoraTrainingResult)
+- [x] Implement identity-mode switch (resolveIdentityMode: IP-Adapter during training, LoRA after completion)
+- [x] S3 mirror for .safetensors output (loraUrl stored in identity)
+
+### T14-T16: Spatial QA Gate
+- [x] Implement face similarity check (thresholds: >=0.75 pass, 0.60-0.75 soft fail, <0.60 hard fail)
+- [x] Implement height-ratio compliance check (<=10% pass, 10-20% soft, >20% hard)
+- [x] Implement style coherence check (CLIP-style scoring vs rolling scene average)
+- [x] Implement regeneration budget tracking per scene (3x cap, createRegenBudget/consumeRegenBudget)
+
+### T17-T18: User-Facing UI
+- [x] Build registry review UI: CharacterBible.tsx with attribute editing, character cards, QA results
+- [x] Build 'Lock this character' UI affordance (lockCharacter mutation, identity mode selector dialog)
+- [x] Show character reference sheets in generation flow (reference images in character cards)
+
+### Integration & Pipeline
+- [x] Wire 5-stage pipeline orchestrator (initPipelineState, 5-stage tracking, getPipelineState)
+- [x] Extend GenerationJob type with character-aware fields (CharacterAwareGenerationJob in types.ts)
+- [x] Write vitest tests for character extraction, registry, shot planner, QA gate, LoRA, pipeline (46 tests passing)

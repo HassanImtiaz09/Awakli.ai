@@ -78,6 +78,7 @@ import { lipSyncRouter } from "./routers-lipsync";
 import { motionLoraRouter } from "./routers-motion-lora";
 import { imageRouterTrpc } from "./routers-image-router";
 import { abTestingRouter } from "./routers-ab-testing";
+import { characterBibleRouter } from "./routers-character-bible";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2057,6 +2058,9 @@ export const appRouter = router({
 
   // Prompt 29: A/B Testing
   abTesting: abTestingRouter,
+
+  // P26: Character Bible & Spatial Consistency
+  characterBible: characterBibleRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

@@ -43,6 +43,7 @@ import MusicStudio from "./pages/MusicStudio";
 import VocalRecordingStudio from "./pages/VocalRecordingStudio";
 import CreateGenerate from "./pages/CreateGenerate";
 import CreateReader from "./pages/CreateReader";
+import CharacterBible from "./pages/CharacterBible";
 import DemoRecording from "./pages/DemoRecording";
 import Trending from "./pages/Trending";
 import BYOUpload from "./pages/BYOUpload";
@@ -86,6 +87,7 @@ function Router() {
         <Route path="/create" component={Create} />
         <Route path="/create/:projectId" component={CreateGenerate} />
         <Route path="/create/:projectId/read" component={CreateReader} />
+        <Route path="/create/:projectId/character-bible" component={CharacterBible} />
 
         {/* Watch / community */}
         <Route path="/watch/:slug" component={WatchProject} />

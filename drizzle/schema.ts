@@ -1887,3 +1887,62 @@ export const batchJobItems = mysqlTable("batch_job_items", {
 });
 export type BatchJobItem = typeof batchJobItems.$inferSelect;
 export type InsertBatchJobItem = typeof batchJobItems.$inferInsert;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMPT 26: Character Bible & Spatial Consistency Pipeline
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Character Registries (P26 §3.2) ────────────────────────────────────
+// Authoritative structured representation of every character in a story.
+// Created in Stage 1 (Character Bible), read by Stages 2-5.
+// Immutable once generation begins; mutations create a new version.
+export const characterRegistries = mysqlTable("character_registries", {
+  id: int("id").autoincrement().primaryKey(),
+  storyId: int("story_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  registryJson: json("registry_json").notNull(), // CharacterRegistry JSON
+  version: int("version").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type CharacterRegistryRow = typeof characterRegistries.$inferSelect;
+export type InsertCharacterRegistryRow = typeof characterRegistries.$inferInsert;
+
+// ─── Spatial QA Results (P26 §8) ────────────────────────────────────────
+// Stores QA gate check results per panel for audit and debugging.
+export const spatialQaResults = mysqlTable("spatial_qa_results", {
+  id: int("id").autoincrement().primaryKey(),
+  panelId: int("panel_id").notNull().references(() => panels.id, { onDelete: "cascade" }),
+  episodeId: int("episode_id").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  // Check 1: Face similarity
+  faceSimilarityScore: float("face_similarity_score"),
+  faceSimilarityVerdict: mysqlEnum("face_similarity_verdict", ["pass", "soft_fail", "hard_fail", "skipped"]).default("skipped"),
+  // Check 2: Height ratio compliance
+  heightRatioDeviation: float("height_ratio_deviation"),
+  heightRatioVerdict: mysqlEnum("height_ratio_verdict", ["pass", "soft_fail", "hard_fail", "skipped"]).default("skipped"),
+  // Check 3: Style coherence
+  styleCoherenceScore: float("style_coherence_score"),
+  styleCoherenceVerdict: mysqlEnum("style_coherence_verdict", ["pass", "soft_fail", "hard_fail", "skipped"]).default("skipped"),
+  // Overall
+  overallVerdict: mysqlEnum("overall_verdict", ["pass", "soft_fail", "hard_fail"]).default("pass"),
+  regenerationCount: int("regeneration_count").default(0),
+  details: json("details"), // Full check details JSON
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SpatialQaResult = typeof spatialQaResults.$inferSelect;
+export type InsertSpatialQaResult = typeof spatialQaResults.$inferInsert;
+
+// ─── Scene Provider Pins (P26 §7.2) ─────────────────────────────────────
+// Tracks which provider was pinned for each scene to enforce consistency.
+export const sceneProviderPins = mysqlTable("scene_provider_pins", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  episodeId: int("episode_id").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  sceneNumber: int("scene_number").notNull(),
+  providerId: varchar("provider_id", { length: 50 }).notNull(),
+  qualityTier: mysqlEnum("quality_tier", ["draft", "hero"]).default("draft").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SceneProviderPin = typeof sceneProviderPins.$inferSelect;
+export type InsertSceneProviderPin = typeof sceneProviderPins.$inferInsert;
