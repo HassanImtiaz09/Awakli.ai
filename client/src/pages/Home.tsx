@@ -39,32 +39,6 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
   );
 }
 
-// ─── Counter Animation ─────────────────────────────────────────────────────
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    let start = 0;
-    const duration = 2000;
-    const step = Math.ceil(target / (duration / 16));
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(start);
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [isInView, target]);
-
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
-}
-
 // ─── Cycling Word ──────────────────────────────────────────────────────────
 const CYCLING_WORDS = ["Ideas", "Stories", "Dreams", "Worlds"];
 
@@ -723,7 +697,7 @@ function TwoAudiences() {
 const FEATURES = [
   { name: "Claude Opus 4", desc: "Writes screenplays and scripts from your ideas", icon: Brain, color: "#9B59B6" },
   { name: "FLUX 1.1 Pro", desc: "Generates stunning manga panels in any style", icon: ImageIcon, color: "#E94560" },
-  { name: "Kling 2.1", desc: "Transforms still panels into animated video", icon: Film, color: "#00D4FF" },
+  { name: "Kling V3", desc: "Transforms still panels into animated video", icon: Film, color: "#00D4FF" },
   { name: "ElevenLabs", desc: "Gives your characters unique voices", icon: Mic, color: "#FFB800" },
   { name: "Community", desc: "Votes decide which stories deserve anime", icon: Users, color: "#2ECC71" },
   { name: "Awakli Pipeline", desc: "Orchestrates everything into polished anime episodes", icon: Layers, color: "#E94560" },

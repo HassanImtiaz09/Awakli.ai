@@ -126,6 +126,13 @@ let lastResults: CanaryResult[] = [];
 export function startCanaryScheduler(): void {
   if (canaryInterval) return; // Already running
 
+  // Delta audit: guard behind ENABLE_CANARIES env to prevent unwanted API spend
+  const enableCanaries = process.env.ENABLE_CANARIES;
+  if (!enableCanaries || enableCanaries === "false" || enableCanaries === "0") {
+    console.log("[Canary] Probe scheduler disabled (set ENABLE_CANARIES=true to activate)");
+    return;
+  }
+
   console.log(`[Canary] Starting probe scheduler (interval: ${CANARY_CONFIG.intervalMs / 1000}s)`);
 
   // Run immediately on start
@@ -134,12 +141,23 @@ export function startCanaryScheduler(): void {
     logCanaryResults(results);
   });
 
-  // Schedule recurring probes
+  // Schedule recurring probes + idempotency cleanup
   canaryInterval = setInterval(async () => {
     try {
       const results = await runAllCanaryProbes();
       lastResults = results;
       logCanaryResults(results);
+
+      // Piggyback idempotency cleanup on canary interval
+      try {
+        const { cleanupExpiredIdempotency } = await import("./idempotency");
+        const deleted = await cleanupExpiredIdempotency();
+        if (deleted > 0) {
+          console.log(`[Cleanup] Removed ${deleted} expired idempotency records`);
+        }
+      } catch (cleanupErr) {
+        console.error("[Cleanup] Idempotency cleanup error:", cleanupErr);
+      }
     } catch (err) {
       console.error("[Canary] Scheduler error:", err);
     }

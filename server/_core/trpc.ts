@@ -43,3 +43,60 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+// ─── H-8: Tier-gated procedures ────────────────────────────────────────────
+// Usage: requireTier("creator") returns a procedure that checks the user's
+// subscription tier meets the minimum required level.
+
+const TIER_HIERARCHY: Record<string, number> = {
+  free_trial: 0,
+  creator: 1,
+  creator_pro: 2,
+  studio: 3,
+  enterprise: 4,
+};
+
+function tierLevel(tier: string): number {
+  return TIER_HIERARCHY[tier] ?? 0;
+}
+
+/**
+ * Creates a tRPC procedure that requires the user's subscription tier
+ * to be at or above the specified minimum tier.
+ *
+ * Example: requireTier("creator") blocks free_trial users.
+ * Example: requireTier("studio") blocks free_trial, creator, and creator_pro users.
+ */
+export function requireTier(minTier: string) {
+  return protectedProcedure.use(
+    t.middleware(async ({ ctx, next }) => {
+      // Lazy import to avoid circular dependency
+      const { getUserSubscriptionTier } = await import("../db");
+      const userTier = await getUserSubscriptionTier(ctx.user!.id);
+
+      if (tierLevel(userTier) < tierLevel(minTier)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `This feature requires a ${minTier} subscription or higher. Your current tier: ${userTier}.`,
+        });
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user: ctx.user,
+          userTier,
+        },
+      });
+    }),
+  );
+}
+
+// Pre-built tier-gated procedures for common use
+export const creatorProcedure = requireTier("creator");
+export const creatorProProcedure = requireTier("creator_pro");
+export const studioProcedure = requireTier("studio");
+export const enterpriseProcedure = requireTier("enterprise");
+
+// Export tier hierarchy for testing
+export { TIER_HIERARCHY, tierLevel };

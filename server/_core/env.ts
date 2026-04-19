@@ -70,7 +70,6 @@ export const ENV = {
   cookieSecret: jwtSecret,
   databaseUrl: optionalEnv("DATABASE_URL"),
   oAuthServerUrl: optionalEnv("OAUTH_SERVER_URL"),
-  ownerOpenId: optionalEnv("OWNER_OPEN_ID"),  // Kept for reference only, NOT used for admin bypass (C-1)
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: optionalEnv("BUILT_IN_FORGE_API_URL"),
   forgeApiKey: optionalEnv("BUILT_IN_FORGE_API_KEY"),

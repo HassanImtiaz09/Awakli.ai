@@ -3,25 +3,19 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // SessionStorage key for post-login redirect
 export const STORAGE_KEY_RETURN_PATH = "awakli_return_path";
 
-// Generate login URL at runtime so redirect URI reflects the current origin.
-// Accepts an optional returnPath — stored in sessionStorage so the app can
-// redirect after OAuth completes (the redirect URI itself stays clean).
+/**
+ * Generate login URL that routes through the server-side /api/oauth/start
+ * endpoint. This ensures the OAuth state parameter contains a cryptographically
+ * random nonce bound to a session cookie (H-9 CSRF protection).
+ *
+ * The server generates the nonce, sets it as an HttpOnly cookie, and redirects
+ * to the OAuth portal with a properly signed state parameter.
+ */
 export const getLoginUrl = (returnPath?: string) => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
-
-  // Store the desired return path so we can redirect after OAuth callback
+  const url = new URL("/api/oauth/start", window.location.origin);
+  url.searchParams.set("origin", window.location.origin);
   if (returnPath) {
-    sessionStorage.setItem(STORAGE_KEY_RETURN_PATH, returnPath);
+    url.searchParams.set("returnPath", returnPath);
   }
-
-  const url = new URL(`${oauthPortalUrl}/app-auth`);
-  url.searchParams.set("appId", appId);
-  url.searchParams.set("redirectUri", redirectUri);
-  url.searchParams.set("state", state);
-  url.searchParams.set("type", "signIn");
-
   return url.toString();
 };

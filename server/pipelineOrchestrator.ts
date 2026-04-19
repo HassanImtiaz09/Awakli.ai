@@ -217,7 +217,24 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
   let motionLoraCorrupt = false;
   let hasAppearanceLora = false;
   let hasStyleLora = false;
-  let userTierAllowsMotionLora = true; // TODO: wire to actual tier check
+  // H-8: Wire to actual tier check — motion LoRA requires creator_pro or higher
+  let userTierAllowsMotionLora = false;
+  try {
+    const dbMod = await import("./db");
+    const db = await dbMod.getDb();
+    if (db) {
+      const { projects } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const [project] = await db.select({ userId: projects.userId }).from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (project?.userId) {
+        const userTier = await dbMod.getUserSubscriptionTier(project.userId);
+        const TIER_LEVEL: Record<string, number> = { free_trial: 0, creator: 1, creator_pro: 2, studio: 3, enterprise: 4 };
+        userTierAllowsMotionLora = (TIER_LEVEL[userTier] ?? 0) >= (TIER_LEVEL["creator_pro"] ?? 2);
+      }
+    }
+  } catch {
+    userTierAllowsMotionLora = false;
+  }
 
   try {
     const characters = await getCharactersByProject(projectId);

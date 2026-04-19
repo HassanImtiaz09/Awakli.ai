@@ -3621,3 +3621,35 @@
 - [x] Test regeneration loop budget creation and consumption (audit-fixes.test.ts)
 - [x] Test tier gating concept verified (role-based access in protectedProcedure)
 - [x] Test Stripe refund handler implemented (charge.refunded webhook in stripe/webhook.ts)
+
+## Delta Audit v1.2 Fixes (Blocking + Must-Fix)
+
+### H-9: OAuth state CSRF (BLOCKING)
+- [x] Replace atob(state) with session-bound nonce (oauth-nonce.ts + oauth.ts rewrite)
+- [x] Store nonce in cookie at OAuth start, verify at callback (/api/oauth/start → nonce cookie → /api/oauth/callback verify)
+- [x] Bind redirect_uri to nonce in base64url-encoded state payload
+
+### M-3: Kling version drift
+- [x] Update "Kling 2.1" in Home.tsx to "Kling 2.0" (current released version)
+
+### H-8: requireTier middleware (proper implementation)
+- [x] Create requireTier(minTier) middleware in server/_core/trpc.ts
+- [x] Export creatorProcedure and studioProcedure from trpc.ts
+- [x] Fix pipelineOrchestrator.ts tier check with real getUserSubscriptionTier call
+
+### L-7: Documentation (BLOCKING)
+- [x] Write README.md (setup, run, architecture overview, env vars, security notes)
+- [x] Write CONTRIBUTING.md (branch naming, commit messages, PR template, code style)
+- [x] Write docs/RUNBOOK.md (deploy, rollback, KEK rotation, session invalidation, Stripe ops, rate limits, logging)
+
+### Regressions / Cleanup
+- [x] Remove AnimatedCounter dead code from Home.tsx
+- [x] Remove ownerOpenId from ENV export in env.ts
+- [x] Wire cleanupExpiredIdempotency to canary scheduler interval (piggyback on 60s cycle)
+- [x] Add ENABLE_CANARIES env guard to canary scheduler
+- [x] Migrate stripe/webhook.ts console.log callsites to stripeLog structured logger
+
+### Low Priority (defer decisions)
+- [x] L-2: Social links show toast placeholder (already done in previous audit)
+- [x] M-12: /create anon access is intentional design (guest user flow for frictionless onboarding)
+- [x] L-6: Request timing middleware + health endpoint implemented (full OTel deferred to post-beta)

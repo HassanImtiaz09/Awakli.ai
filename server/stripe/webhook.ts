@@ -6,6 +6,7 @@ import { subscriptions, stripeEventsLog, creditPacks } from "../../drizzle/schem
 import { eq } from "drizzle-orm";
 import { normalizeTier, TIERS, CREDIT_PACKS, isUpgrade, isDowngrade, type TierKey } from "./products";
 import { grantSubscriptionCredits, grantPackCredits, processRollover, getBalance, refundCredits } from "../credit-ledger";
+import { stripeLog } from "../observability/logger";
 
 // ─── Event Deduplication ─────────────────────────────────────────────
 
@@ -63,21 +64,21 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       ENV.stripeWebhookSecret
     );
   } catch (err: any) {
-    console.error("[Stripe Webhook] Signature verification failed:", err.message);
+    stripeLog.error("Signature verification failed", { error: err.message });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   // Handle test events
   if (event.id.startsWith("evt_test_")) {
-    console.log("[Webhook] Test event detected, returning verification response");
+    stripeLog.info("Test event detected, returning verification response");
     return res.json({ verified: true });
   }
 
-  console.log(`[Stripe Webhook] Received event: ${event.type} (${event.id})`);
+  stripeLog.info("Received event", { type: event.type, eventId: event.id });
 
   // ── Idempotency check ──
   if (await isEventProcessed(event.id)) {
-    console.log(`[Stripe Webhook] Event ${event.id} already processed, skipping`);
+    stripeLog.info("Event already processed, skipping", { eventId: event.id });
     return res.json({ received: true, deduplicated: true });
   }
 
@@ -94,7 +95,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const metadata = sub.metadata || {};
         const userId = parseInt(metadata.user_id || "0");
         if (!userId) {
-          console.warn("[Stripe Webhook] No user_id in subscription metadata");
+          stripeLog.warn("No user_id in subscription metadata");
           break;
         }
 
@@ -129,7 +130,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             ...defaults,
           });
         }
-        console.log(`[Stripe Webhook] Subscription created for user ${userId}: ${tier}`);
+        stripeLog.info("Subscription created", { userId, tier });
         break;
       }
 
@@ -175,7 +176,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 ...defaults,
               });
             }
-            console.log(`[Stripe Webhook] Checkout completed for user ${userId}: ${tier}`);
+            stripeLog.info("Checkout completed", { userId, tier });
           }
         }
         break;
@@ -214,7 +215,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         await db.update(subscriptions).set(tierUpdate)
           .where(eq(subscriptions.stripeSubscriptionId, subId));
 
-        console.log(`[Stripe Webhook] Subscription updated: ${subId} → ${status}`);
+        stripeLog.info("Subscription updated", { subId, status });
         break;
       }
 
@@ -232,7 +233,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           ...defaults,
         }).where(eq(subscriptions.stripeSubscriptionId, sub.id));
 
-        console.log(`[Stripe Webhook] Subscription deleted: ${sub.id}`);
+        stripeLog.info("Subscription deleted", { subId: sub.id });
         break;
       }
 
@@ -266,7 +267,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             periodLabel
           );
 
-          console.log(`[Stripe Webhook] Invoice paid: granted ${tierConfig.credits} credits to user ${subRecord.userId} (${tier})`);
+          stripeLog.info("Invoice paid, credits granted", { userId: subRecord.userId, credits: tierConfig.credits, tier });
         }
         break;
       }
@@ -280,8 +281,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         await db.update(subscriptions).set({
           status: "past_due",
         }).where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
-
-        console.log(`[Stripe Webhook] Payment failed for subscription: ${invoice.subscription}`);
+        stripeLog.warn("Payment failed for subscription", { subscriptionId: invoice.subscription });
         break;
       }
 
@@ -316,7 +316,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
               ledgerEntryId,
             }).where(eq(creditPacks.id, pack.id));
 
-            console.log(`[Stripe Webhook] Credit pack fulfilled: ${pack.creditsGranted} credits to user ${pack.userId}`);
+            stripeLog.info("Credit pack fulfilled", { userId: pack.userId, credits: pack.creditsGranted });
           }
         }
         break;
@@ -334,7 +334,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             status: "failed",
           }).where(eq(creditPacks.stripePaymentIntentId, pi.id));
 
-          console.log(`[Stripe Webhook] Credit pack payment failed: ${pi.id}`);
+          stripeLog.warn("Credit pack payment failed", { paymentIntentId: pi.id });
         }
         break;
       }
@@ -357,11 +357,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                   `Account frozen: dispute ${dispute.id}`,
                 );
               }
-              console.warn(`[Stripe Webhook] DISPUTE: Froze user ${sub.userId}, revoked ${balance.availableBalance} credits`);
+              stripeLog.warn("DISPUTE: Froze user and revoked credits", { userId: sub.userId, revokedCredits: balance.availableBalance });
             }
           }
         }
-        console.warn(`[Stripe Webhook] DISPUTE created: ${dispute.id} for charge ${dispute.charge}`);
+        stripeLog.warn("DISPUTE created", { disputeId: dispute.id, chargeId: dispute.charge });
         break;
       }
 
@@ -393,21 +393,21 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             await db.update(creditPacks).set({
               status: "refunded" as any,
             }).where(eq(creditPacks.id, pack.id));
-            console.log(`[Stripe Webhook] Charge refunded: ${charge.id}, revoked ${safeRevoke} credits from user ${pack.userId}`);
+            stripeLog.info("Charge refunded, credits revoked", { chargeId: charge.id, revokedCredits: safeRevoke, userId: pack.userId });
           }
         }
         break;
       }
 
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+        stripeLog.info("Unhandled event type", { type: event.type });
     }
 
     // Log event as processed (idempotency)
     await logEvent(event.id, event.type, { id: event.id, type: event.type });
 
   } catch (err: any) {
-    console.error(`[Stripe Webhook] Error processing ${event.type}:`, err.message);
+    stripeLog.error(`Error processing event`, { type: event.type, error: err.message });
     // Still log the event to prevent infinite retries on permanent failures
     await logEvent(event.id, event.type, { id: event.id, type: event.type, error: err.message });
   }
