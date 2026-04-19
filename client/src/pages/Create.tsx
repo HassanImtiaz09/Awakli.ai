@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Wand2, ChevronDown, Loader2, BookOpen, Zap,
   ArrowLeft, ArrowRight, Palette, Drama, Settings2, ChevronRight,
+  Clapperboard,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -18,8 +19,20 @@ const GENRES = [
   "Comedy", "Mystery", "Slice of Life", "Thriller", "Adventure",
 ];
 
+/* ─── Rotating placeholder prompts — §3.4 ─────────────────────────── */
+const PLACEHOLDER_PROMPTS = [
+  "A samurai who can see 10 seconds into the future must protect a blind oracle from an army of shadow assassins...",
+  "In a world where dreams are currency, a broke teenager discovers she can forge them from thin air...",
+  "Two rival chefs compete in a cooking tournament where the dishes come alive and fight each other...",
+  "A detective in Neo-Tokyo discovers that every unsolved case leads back to the same AI that runs the city...",
+  "A girl wakes up in a manga she drew as a child, but the villain remembers her too...",
+  "The last librarian on Earth guards a book that rewrites reality every time someone reads it aloud...",
+  "A street musician's songs literally change the weather, and a secret agency wants to weaponize her voice...",
+  "In a floating city above the clouds, a mechanic discovers the engines are powered by trapped souls...",
+];
+
 type FlowMode = "prompt" | "customize";
-type CustomizeStep = 0 | 1 | 2 | 3; // 0=style, 1=tone, 2=chapter, 3=summary
+type CustomizeStep = 0 | 1 | 2 | 3;
 
 const STEP_TITLES = [
   { title: "Choose Your Art Style", subtitle: "How should your manga look?" },
@@ -28,18 +41,51 @@ const STEP_TITLES = [
   { title: "Ready to Create", subtitle: "Review your settings and generate!" },
 ];
 
-// SessionStorage keys for persisting state across OAuth redirects
 const STORAGE_KEY_PROMPT = "awakli_create_prompt";
 const STORAGE_KEY_GENRE = "awakli_create_genre";
 const STORAGE_KEY_PENDING = "awakli_create_pending";
 const STORAGE_KEY_AUTH_ATTEMPT = "awakli_auth_attempt";
+
+/* ─── Typewriter placeholder hook ──────────────────────────────────── */
+function useTypewriterPlaceholder(prompts: string[], cycleMs = 4000) {
+  const [index, setIndex] = useState(0);
+  const [displayed, setDisplayed] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const target = prompts[index];
+    if (isTyping) {
+      if (displayed.length < target.length) {
+        const timer = setTimeout(() => {
+          setDisplayed(target.slice(0, displayed.length + 1));
+        }, 22);
+        return () => clearTimeout(timer);
+      } else {
+        // Pause at full text before erasing
+        const timer = setTimeout(() => setIsTyping(false), cycleMs);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      if (displayed.length > 0) {
+        const timer = setTimeout(() => {
+          setDisplayed(displayed.slice(0, -1));
+        }, 12);
+        return () => clearTimeout(timer);
+      } else {
+        setIndex((i) => (i + 1) % prompts.length);
+        setIsTyping(true);
+      }
+    }
+  }, [displayed, isTyping, index, prompts, cycleMs]);
+
+  return displayed;
+}
 
 export default function Create() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const hasAutoTriggered = useRef(false);
 
-  // Prompt state — restore from sessionStorage if available
   const [prompt, setPrompt] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const urlPrompt = params.get("prompt");
@@ -52,11 +98,9 @@ export default function Create() {
     return saved || "Fantasy";
   });
 
-  // Flow mode
   const [flowMode, setFlowMode] = useState<FlowMode>("prompt");
   const [customizeStep, setCustomizeStep] = useState<CustomizeStep>(0);
 
-  // Customization state
   const [style, setStyle] = useState<StyleKey>("shonen");
   const [previewGender, setPreviewGender] = useState<"male" | "female">("male");
   const [tone, setTone] = useState<ToneKey>("epic");
@@ -65,10 +109,11 @@ export default function Create() {
   const [pacingStyle, setPacingStyle] = useState<"action_heavy" | "dialogue_heavy" | "balanced">("balanced");
   const [endingStyle, setEndingStyle] = useState<"cliffhanger" | "resolution" | "serialized">("cliffhanger");
 
-  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Persist prompt and genre to sessionStorage whenever they change
+  // Typewriter placeholder — only active when prompt is empty
+  const placeholder = useTypewriterPlaceholder(PLACEHOLDER_PROMPTS, 4000);
+
   useEffect(() => {
     if (prompt) sessionStorage.setItem(STORAGE_KEY_PROMPT, prompt);
   }, [prompt]);
@@ -78,7 +123,6 @@ export default function Create() {
 
   const quickCreate = trpc.quickCreate.start.useMutation({
     onSuccess: (data) => {
-      // Clear saved state on successful creation
       sessionStorage.removeItem(STORAGE_KEY_PROMPT);
       sessionStorage.removeItem(STORAGE_KEY_GENRE);
       sessionStorage.removeItem(STORAGE_KEY_PENDING);
@@ -93,8 +137,6 @@ export default function Create() {
 
   const handleGenerate = useCallback((useCustomization: boolean) => {
     if (!prompt.trim() || prompt.trim().length < 10) return;
-
-    // No auth required — guests can generate freely
     setIsSubmitting(true);
     quickCreate.mutate({
       prompt: prompt.trim(),
@@ -111,18 +153,14 @@ export default function Create() {
   const handleQuickGenerate = useCallback(() => handleGenerate(false), [handleGenerate]);
   const handleCustomGenerate = useCallback(() => handleGenerate(true), [handleGenerate]);
 
-  // Auto-trigger generation after OAuth redirect if there was a pending action
   useEffect(() => {
     if (hasAutoTriggered.current) return;
-
     const pending = sessionStorage.getItem(STORAGE_KEY_PENDING);
     if (!pending) return;
     if (!prompt.trim() || prompt.trim().length < 10) return;
-
     hasAutoTriggered.current = true;
     sessionStorage.removeItem(STORAGE_KEY_PENDING);
     sessionStorage.removeItem(STORAGE_KEY_AUTH_ATTEMPT);
-
     const timer = setTimeout(() => {
       handleGenerate(pending === "customize");
     }, 500);
@@ -151,39 +189,49 @@ export default function Create() {
     }
   }, [customizeStep]);
 
-  // Progress bar
   const progress = useMemo(() => ((customizeStep + 1) / 4) * 100, [customizeStep]);
 
   return (
-    <div className="min-h-screen bg-[#08080F] relative overflow-hidden">
-      {/* Animated gradient background */}
+    <div className="min-h-screen bg-[#05050C] relative overflow-hidden">
+      {/* §3.4 — Full-viewport dark canvas with character silhouette */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-[#E94560]/5 blur-[150px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-[#6C63FF]/5 blur-[150px] animate-pulse" style={{ animationDelay: "2s" }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[#00D4AA]/3 blur-[200px] animate-pulse" style={{ animationDelay: "4s" }} />
+        {/* Moonrise gradient vignette */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#05050C] via-[#0D0D1A] to-[#05050C]" />
+
+        {/* Soft character silhouette glow — centre */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[#E94560]/[0.04] blur-[180px]" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[600px] rounded-full bg-[#7C3AED]/[0.03] blur-[160px]" />
+
+        {/* Subtle floating particles */}
+        <div className="absolute top-20 left-[15%] w-1 h-1 rounded-full bg-[#E94560]/30 animate-float" />
+        <div className="absolute top-40 right-[20%] w-1.5 h-1.5 rounded-full bg-[#00D4FF]/20 animate-float" style={{ animationDelay: "2s" }} />
+        <div className="absolute bottom-32 left-[30%] w-1 h-1 rounded-full bg-[#7C3AED]/25 animate-float" style={{ animationDelay: "4s" }} />
+        <div className="absolute top-[60%] right-[10%] w-0.5 h-0.5 rounded-full bg-[#FF5A7A]/30 animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
       {/* Subtle grid pattern */}
-      <div className="absolute inset-0 opacity-[0.02]" style={{
+      <div className="absolute inset-0 opacity-[0.015]" style={{
         backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
         backgroundSize: "60px 60px",
       }} />
 
       {/* Top nav */}
       <div className="relative z-10 pt-6 px-6 flex items-center justify-between">
-        <button onClick={() => flowMode === "customize" ? handleBack() : navigate("/")} className="text-white/40 hover:text-white/70 transition text-sm flex items-center gap-1">
+        <button
+          onClick={() => flowMode === "customize" ? handleBack() : navigate("/")}
+          className="text-[#9494B8]/60 hover:text-[#F0F0F5] transition text-sm flex items-center gap-1"
+        >
           <ArrowLeft className="w-4 h-4" />
           {flowMode === "customize" ? (customizeStep === 0 ? "Back to prompt" : "Previous step") : "Back to Awakli"}
         </button>
 
-        {/* Progress indicator for customize mode */}
         {flowMode === "customize" && (
           <div className="flex items-center gap-2">
             {[0, 1, 2, 3].map((step) => (
               <div
                 key={step}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  step <= customizeStep ? "bg-[#E94560] w-8" : "bg-white/10 w-4"
+                  step <= customizeStep ? "bg-opening-sequence w-8" : "bg-white/10 w-4"
                 }`}
               />
             ))}
@@ -201,59 +249,68 @@ export default function Create() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.5 }}
-              className="w-full max-w-2xl mt-8"
+              className="w-full max-w-2xl mt-8 md:mt-16"
             >
-              {/* Heading */}
+              {/* Heading — §10 copy */}
               <div className="text-center mb-8">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm mb-6"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#9494B8] text-sm mb-6"
                 >
-                  <Sparkles className="w-4 h-4 text-[#E94560]" />
+                  <Clapperboard className="w-4 h-4 text-[#E94560]" />
                   No artistic skill needed
                 </motion.div>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                <h1 className="text-display text-[#F0F0F5] leading-tight">
                   What story will{" "}
-                  <span className="bg-gradient-to-r from-[#E94560] via-[#FF6B81] to-[#6C63FF] bg-clip-text text-transparent">
+                  <span className="text-gradient-opening">
                     you tell?
                   </span>
                 </h1>
-                <p className="text-white/40 mt-3 text-lg">
-                  Describe your story and AI will create the manga panels for you.
+                <p className="text-[#9494B8] mt-3 text-lg">
+                  Type a sentence. We will animate it. Before you go to bed.
                 </p>
               </div>
 
-              {/* Auto-generating indicator */}
+              {/* Generating indicator */}
               {isSubmitting && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-4 px-4 py-3 rounded-xl bg-[#E94560]/10 border border-[#E94560]/20 text-center"
                 >
-                  <span className="flex items-center justify-center gap-2 text-[#E94560]">
+                  <span className="flex items-center justify-center gap-2 text-[#E94560] font-mono text-sm">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Creating your manga...
+                    Frame 01 is inking. Frame 02 is loading voice. Hold.
                   </span>
                 </motion.div>
               )}
 
-              {/* Prompt textarea */}
+              {/* Prompt textarea — §3.4 glass card with typewriter placeholder */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
                 className="relative"
               >
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="A young hacker discovers that the city's AI defense system is actually sentient and has been protecting a secret for 50 years..."
-                  className="w-full min-h-[180px] p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-lg placeholder:text-white/20 focus:outline-none focus:border-[#E94560]/40 focus:ring-1 focus:ring-[#E94560]/20 resize-none transition-all"
-                  maxLength={5000}
-                />
-                <div className="absolute bottom-3 right-4 text-white/20 text-xs">
+                <div className="relative rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm overflow-hidden focus-within:border-[#E94560]/40 focus-within:ring-1 focus-within:ring-[#E94560]/20 transition-all">
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder=""
+                    className="w-full min-h-[180px] p-6 bg-transparent text-[#F0F0F5] text-lg placeholder:text-transparent focus:outline-none resize-none"
+                    maxLength={5000}
+                  />
+                  {/* Typewriter placeholder overlay */}
+                  {!prompt && (
+                    <div className="absolute top-6 left-6 right-6 pointer-events-none text-lg text-[#9494B8]/40">
+                      {placeholder}
+                      <span className="inline-block w-0.5 h-5 bg-[#00D4FF] ml-0.5 animate-pulse" />
+                    </div>
+                  )}
+                </div>
+                <div className="absolute bottom-3 right-4 text-[#9494B8]/30 text-xs font-mono">
                   {prompt.length}/5000
                 </div>
               </motion.div>
@@ -271,8 +328,8 @@ export default function Create() {
                     onClick={() => setGenre(g)}
                     className={`px-3 py-1 rounded-full text-sm transition-all ${
                       genre === g
-                        ? "bg-[#E94560] text-white shadow-lg shadow-[#E94560]/25"
-                        : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        ? "bg-opening-sequence text-white shadow-lg shadow-[#E94560]/25"
+                        : "bg-white/5 text-[#9494B8]/60 hover:bg-white/10 hover:text-[#F0F0F5]/70"
                     }`}
                   >
                     {g}
@@ -280,18 +337,19 @@ export default function Create() {
                 ))}
               </motion.div>
 
-              {/* Two-path buttons */}
+              {/* Two-path buttons — §10 "Write the first scene" */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
                 className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
-                {/* Generate Now */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(233,69,96,0.3)" }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={handleQuickGenerate}
                   disabled={!canProceed || isSubmitting}
-                  className="py-4 px-6 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
+                  className="py-4 px-6 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -301,33 +359,34 @@ export default function Create() {
                   ) : (
                     <span className="flex items-center justify-center gap-2">
                       <Zap className="w-5 h-5" />
-                      Generate Now
+                      Write the First Scene
                     </span>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                </button>
+                </motion.button>
 
-                {/* Customize First */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={handleStartCustomize}
                   disabled={!canProceed || isSubmitting}
                   className="py-4 px-6 rounded-xl bg-white/[0.05] border border-white/15 text-white font-semibold text-lg hover:bg-white/[0.08] hover:border-white/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
                 >
                   <span className="flex items-center justify-center gap-2">
-                    <Palette className="w-5 h-5 text-[#6C63FF]" />
+                    <Palette className="w-5 h-5 text-[#7C3AED]" />
                     Customize First
-                    <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-[#9494B8]/40 group-hover:translate-x-0.5 transition-transform" />
                   </span>
-                </button>
+                </motion.button>
               </motion.div>
 
               {canProceed && (
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center text-white/25 text-xs mt-3"
+                  className="text-center text-[#9494B8]/30 text-xs mt-3 font-mono"
                 >
-                  "Generate Now" uses smart defaults. "Customize First" lets you pick art style, tone, and more.
+                  "Write the First Scene" uses smart defaults. "Customize First" lets you pick art style, tone, and more.
                 </motion.p>
               )}
 
@@ -344,17 +403,13 @@ export default function Create() {
                 transition={{ delay: 0.8 }}
                 className="mt-10 text-center"
               >
-                <p className="text-white/30 text-sm mb-3">Need inspiration? Try one of these:</p>
+                <p className="text-[#9494B8]/40 text-sm mb-3">Need inspiration? Try one of these:</p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {[
-                    "A samurai who can see 10 seconds into the future must protect a blind oracle",
-                    "In a world where dreams are currency, a broke teenager discovers she can forge them",
-                    "Two rival chefs compete in a cooking tournament where the dishes come alive",
-                  ].map((idea, i) => (
+                  {PLACEHOLDER_PROMPTS.slice(0, 3).map((idea, i) => (
                     <button
                       key={i}
                       onClick={() => setPrompt(idea)}
-                      className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-white/30 text-xs hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left max-w-[280px] truncate"
+                      className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-[#9494B8]/40 text-xs hover:text-[#F0F0F5]/60 hover:bg-white/[0.06] hover:border-white/10 transition-all text-left max-w-[280px] truncate"
                     >
                       {idea}
                     </button>
@@ -375,8 +430,8 @@ export default function Create() {
                   { label: "Active Creators", value: "3.2K" },
                 ].map((stat) => (
                   <div key={stat.label}>
-                    <div className="text-white/80 font-semibold text-lg">{stat.value}</div>
-                    <div className="text-white/30 text-xs">{stat.label}</div>
+                    <div className="text-[#F0F0F5]/80 font-semibold text-lg font-mono">{stat.value}</div>
+                    <div className="text-[#9494B8]/40 text-xs">{stat.label}</div>
                   </div>
                 ))}
               </motion.div>
@@ -391,23 +446,20 @@ export default function Create() {
               transition={{ duration: 0.4 }}
               className="w-full max-w-3xl mt-6"
             >
-              {/* Step header */}
               <div className="text-center mb-6">
-                <h2 className="text-2xl md:text-3xl font-bold text-white">
+                <h2 className="text-h2 text-[#F0F0F5]">
                   {STEP_TITLES[customizeStep].title}
                 </h2>
-                <p className="text-white/40 mt-1">
+                <p className="text-[#9494B8] mt-1">
                   {STEP_TITLES[customizeStep].subtitle}
                 </p>
               </div>
 
-              {/* Prompt preview pill */}
               <div className="mb-6 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-3">
                 <BookOpen className="w-4 h-4 text-[#E94560] mt-0.5 shrink-0" />
-                <p className="text-white/50 text-sm line-clamp-2">{prompt}</p>
+                <p className="text-[#9494B8]/60 text-sm line-clamp-2">{prompt}</p>
               </div>
 
-              {/* Step content */}
               <div className="min-h-[400px]">
                 {customizeStep === 0 && (
                   <StylePicker
@@ -447,34 +499,39 @@ export default function Create() {
                 )}
               </div>
 
-              {/* Navigation buttons */}
               <div className="mt-6 flex gap-3">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={handleBack}
-                  className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-medium hover:bg-white/10 hover:text-white transition-all"
+                  className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-[#9494B8] font-medium hover:bg-white/10 hover:text-[#F0F0F5] transition-all"
                 >
                   <ArrowLeft className="w-4 h-4 inline mr-1.5" />
                   Back
-                </button>
+                </motion.button>
 
                 {customizeStep < 3 ? (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleNext}
                     className="flex-1 py-3 rounded-xl bg-white/10 border border-white/15 text-white font-semibold hover:bg-white/15 transition-all"
                   >
                     Next Step
                     <ArrowRight className="w-4 h-4 inline ml-1.5" />
-                  </button>
+                  </motion.button>
                 ) : (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(233,69,96,0.3)" }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleCustomGenerate}
                     disabled={isSubmitting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all disabled:opacity-40 relative overflow-hidden group"
+                    className="flex-1 py-3 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 transition-all disabled:opacity-40 relative overflow-hidden group"
                   >
                     {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
+                      <span className="flex items-center justify-center gap-2 font-mono text-sm">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Creating your manga...
+                        Frame 01 is inking. Hold.
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-2">
@@ -483,15 +540,13 @@ export default function Create() {
                       </span>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
-
     </div>
   );
 }

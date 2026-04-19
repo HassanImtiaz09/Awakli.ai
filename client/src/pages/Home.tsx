@@ -1,36 +1,33 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { motion, AnimatePresence, useInView } from "framer-motion";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence, useInView, useScroll, useTransform } from "framer-motion";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Play, Star, ChevronRight, ChevronLeft, Sparkles, Zap, Palette,
+  Play, Star, ChevronRight, ChevronLeft, Sparkles, Zap,
   Film, Users, TrendingUp, Clock, ArrowRight, BookOpen, Eye,
-  Wand2, Layers, Mic, Shield, Crown, Check, PenTool, Heart,
-  Vote, Clapperboard, Brain, ImageIcon, Upload
+  Wand2, Heart, PenTool, Check, ImageIcon, Crown, Swords,
+  Globe, Mic, Brain
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
-import DemoShowcase from "@/components/awakli/DemoShowcase";
 
-// CDN URLs
+/* ─── CDN Assets ──────────────────────────────────────────────────────── */
 const HERO_IMAGES = [
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-1-XN9AD8awyDsfJqHWbpYC62.webp",
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-2-QdURdQe7Jt7HAmkqTwkZPR.webp",
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-anime-3-hNUTRdmkipoQoDb6xCjikH.webp",
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-character-1-mYoMVXD46WNd6gsY6gCyep.webp",
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-character-2-ZM9cCXhV5CNxu5X5xyaD72.webp",
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/hero-character-3-K3nBEx4a2qUCSu564zqeL5.webp",
 ];
-const MANGA_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/showcase-manga-panel-2MQngyo53ERNqBY8jmTBxR.webp";
-const ANIME_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/showcase-anime-result-bEJ68nzw6DFXDMX3bEHsFD.webp";
 
-// ─── Scroll Reveal ─────────────────────────────────────────────────────────
+/* ─── Scroll Reveal ───────────────────────────────────────────────────── */
 function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 40, scale: 0.96 }}
+      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 40, scale: 0.96 }}
       transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
@@ -39,180 +36,153 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
   );
 }
 
-// ─── Cycling Word ──────────────────────────────────────────────────────────
-const CYCLING_WORDS = ["Ideas", "Stories", "Dreams", "Worlds"];
-
-function CyclingWord() {
-  const [index, setIndex] = useState(0);
+/* ─── Chromatic Reveal — triggers beat animation on viewport entry ──── */
+function ChromaticReveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [hasBeat, setHasBeat] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setIndex((p) => (p + 1) % CYCLING_WORDS.length), 3000);
-    return () => clearInterval(timer);
-  }, []);
+    if (isInView && !hasBeat) {
+      setHasBeat(true);
+      const timer = setTimeout(() => setHasBeat(false), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isInView, hasBeat]);
 
   return (
-    <span className="relative inline-block w-[4.5em] text-left align-bottom overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={CYCLING_WORDS[index]}
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: "0%", opacity: 1 }}
-          exit={{ y: "-100%", opacity: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-[#E94560] to-[#FF6B81]"
-        >
-          {CYCLING_WORDS[index]}
-        </motion.span>
-      </AnimatePresence>
-    </span>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0 }}
+      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      className={`${className} ${hasBeat ? "animate-beat" : ""}`}
+    >
+      {children}
+    </motion.div>
   );
 }
 
-// ─── Inline Prompt Input ───────────────────────────────────────────────────
-function InlinePromptInput({ size = "lg" }: { size?: "lg" | "md" }) {
-  const [prompt, setPrompt] = useState("");
+/* ═══════════════════════════════════════════════════════════════════════
+   ACT ONE — THE HOOK
+   Full-viewport hero with cinematic character art
+   ═══════════════════════════════════════════════════════════════════════ */
+function ActOneHero() {
+  const [bgIndex, setBgIndex] = useState(0);
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const handleCreate = useCallback(() => {
-    if (!prompt.trim()) {
-      navigate("/create");
-      return;
-    }
-    // Encode prompt as URL param so /create can pre-fill
-    navigate(`/create?prompt=${encodeURIComponent(prompt.trim())}`);
-  }, [prompt, navigate]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleCreate();
-  };
-
-  const isLg = size === "lg";
-
-  return (
-    <div className={`flex w-full max-w-2xl mx-auto ${isLg ? "gap-3" : "gap-2"}`}>
-      <div className="flex-1 relative group">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="A cyberpunk detective who solves crimes using dreams..."
-          className={`w-full bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:border-[#E94560]/50 focus:ring-1 focus:ring-[#E94560]/30 transition-all ${
-            isLg ? "px-5 py-4 text-base" : "px-4 py-3 text-sm"
-          }`}
-        />
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#E94560]/5 to-[#00D4FF]/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
-      </div>
-      <motion.button
-        onClick={handleCreate}
-        whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(233,69,96,0.4)" }}
-        whileTap={{ scale: 0.97 }}
-        className={`flex-shrink-0 bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold rounded-xl shadow-lg shadow-[#E94560]/25 flex items-center gap-2 ${
-          isLg ? "px-8 py-4 text-base" : "px-6 py-3 text-sm"
-        }`}
-      >
-        <Wand2 className={isLg ? "w-5 h-5" : "w-4 h-4"} />
-        Create
-      </motion.button>
-    </div>
-  );
-}
-
-// ─── 1. Hero Section ──────────────────────────────────────────────────────
-function HeroSection() {
-  const [bgIndex, setBgIndex] = useState(0);
-
   useEffect(() => {
-    const timer = setInterval(() => setBgIndex((p) => (p + 1) % HERO_IMAGES.length), 7000);
+    const timer = setInterval(() => setBgIndex((p) => (p + 1) % HERO_IMAGES.length), 8000);
     return () => clearInterval(timer);
   }, []);
 
+  const handleCTA = () => {
+    if (isAuthenticated) {
+      navigate("/create");
+    } else {
+      window.location.href = getLoginUrl("/create");
+    }
+  };
+
   return (
     <section className="relative w-full min-h-[100vh] flex items-center overflow-hidden">
-      {/* Ken Burns background */}
+      {/* Ken Burns background with character art */}
       <AnimatePresence mode="sync">
         <motion.div
           key={bgIndex}
-          initial={{ opacity: 0, scale: 1.15 }}
+          initial={{ opacity: 0, scale: 1.12 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ opacity: { duration: 1.5 }, scale: { duration: 12, ease: "linear" } }}
+          transition={{ opacity: { duration: 1.8 }, scale: { duration: 14, ease: "linear" } }}
           className="absolute inset-0"
         >
           <img
             src={HERO_IMAGES[bgIndex]}
             alt=""
             className="w-full h-full object-cover"
+            loading="eager"
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* Heavy overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#08080F]/80 via-[#08080F]/70 to-[#08080F]/95" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#08080F]/60 to-transparent" />
+      {/* Cinematic overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#05050C]/85 via-[#05050C]/60 to-[#05050C]/95" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#05050C]/70 to-transparent" />
+      {/* Radial accent glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#E94560]/8 rounded-full blur-[150px]" />
 
       {/* Content */}
       <div className="container relative z-10 py-32 md:py-0">
-        <div className="max-w-3xl mx-auto text-center">
-          {/* Beta badge */}
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-sm font-medium mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
             Now in Public Beta
           </motion.div>
 
-          {/* Headline with cycling word */}
+          {/* Headline — §10 */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="font-display font-bold text-white leading-[1.1] mb-6"
-            style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}
+            transition={{ delay: 0.5, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="text-display text-white mb-6"
           >
-            Turn Your <CyclingWord />
+            Tonight, your idea
             <br />
-            Into Anime.
+            becomes{" "}
+            <span className="text-gradient-opening">anime.</span>
           </motion.h1>
 
-          {/* Subheadline */}
+          {/* Subheadline — §10 */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.7 }}
-            className="text-gray-400 text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
+            transition={{ delay: 0.8, duration: 0.7 }}
+            className="text-[#9494B8] text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
           >
-            Write a story. AI creates the manga. The community votes on what becomes anime. No artistic skill needed.
+            Type a sentence. We will animate it. Before you go to bed.
           </motion.p>
 
-          {/* Inline prompt input */}
+          {/* Single CTA — §10 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.7 }}
+            transition={{ delay: 1.1, duration: 0.7 }}
           >
-            <InlinePromptInput size="lg" />
+            <motion.button
+              onClick={handleCTA}
+              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(233,69,96,0.4)" }}
+              whileTap={{ scale: 0.96 }}
+              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 flex items-center gap-3 mx-auto"
+            >
+              <PenTool className="w-5 h-5" />
+              Write the first scene
+            </motion.button>
           </motion.div>
 
-          {/* Daily Prompt card */}
+          {/* Daily prompt */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 0.8 }}
+            transition={{ delay: 1.6, duration: 0.8 }}
             className="mt-10 flex items-center justify-center"
           >
-            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/8 bg-white/3">
-              <Sparkles className="w-4 h-4 text-[#FFB800]" />
-              <span className="text-sm text-gray-400">
-                <span className="text-white font-medium">Daily Prompt:</span>{" "}
-                "A time-traveling samurai discovers modern Tokyo"
+            <Link href="/create?prompt=A+time-traveling+samurai+discovers+modern+Tokyo">
+              <span className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/8 bg-white/3 cursor-pointer hover:bg-white/5 transition-colors">
+                <Sparkles className="w-4 h-4 text-[#FFB800]" />
+                <span className="text-sm text-[#9494B8]">
+                  <span className="text-white font-medium">Daily Prompt:</span>{" "}
+                  &ldquo;A time-traveling samurai discovers modern Tokyo&rdquo;
+                </span>
+                <ArrowRight className="w-4 h-4 text-[#5C5C7A]" />
               </span>
-              <ArrowRight className="w-4 h-4 text-gray-500" />
-            </div>
+            </Link>
           </motion.div>
         </div>
       </div>
@@ -224,7 +194,7 @@ function HeroSection() {
         transition={{ delay: 2 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
-        <span className="text-xs text-gray-500 uppercase tracking-widest">Scroll</span>
+        <span className="text-xs text-[#5C5C7A] uppercase tracking-widest font-mono">Scroll</span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
@@ -237,506 +207,314 @@ function HeroSection() {
   );
 }
 
-// ─── 2. Showcase Gallery ──────────────────────────────────────────────────
-function ShowcaseGallery() {
-  const showcase = trpc.discover.featured.useQuery();
-  const items = showcase.data ?? [];
+/* ═══════════════════════════════════════════════════════════════════════
+   ACT TWO — PROOF (Five Scroll Sections)
+   ═══════════════════════════════════════════════════════════════════════ */
 
-  // Create a masonry-like grid with placeholder items
-  const galleryItems = items.slice(0, 8);
-
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#08080F] via-[#0D0D1A] to-[#08080F]" />
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              Created by People Like You
-            </h2>
-            <p className="text-gray-400 text-lg max-w-lg mx-auto">
-              Real manga and anime made by creators on Awakli. No artistic skill required.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        {/* Masonry grid */}
-        {galleryItems.length === 0 && (
-          <div className="text-center py-16">
-            <Sparkles className="w-10 h-10 text-[#E94560]/40 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-2">The gallery is waiting for its first stories.</p>
-            <Link href="/create">
-              <span className="text-[#E94560] hover:text-[#FF6B81] transition-colors cursor-pointer font-medium text-sm">
-                Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
-              </span>
-            </Link>
-          </div>
-        )}
-        <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-          {galleryItems.map((item: any, i: number) => (
-            <ScrollReveal key={item.id ?? i} delay={i * 0.08}>
-              <div className="break-inside-avoid group relative rounded-xl overflow-hidden border border-white/5 cursor-pointer">
-                <img
-                  src={item.coverImageUrl || item.img || HERO_IMAGES[i % 3]}
-                  alt={item.title}
-                  className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-                    item.tall || i % 3 === 0 ? "h-[320px] md:h-[400px]" : "h-[200px] md:h-[280px]"
-                  }`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-white font-semibold text-sm truncate">{item.title}</h3>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-gray-400 text-xs">by {item.userName || item.creator || "Creator"}</span>
-                      <span className="flex items-center gap-1 text-[#E94560] text-xs font-medium">
-                        <Heart className="w-3 h-3 fill-current" />
-                        {(item.voteScore || item.votes || 0).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 3. How It Works (4 Steps) ────────────────────────────────────────────
-const STEPS = [
+const PROOF_SECTIONS = [
   {
-    num: "01",
-    title: "Write",
-    desc: "Describe your story in plain text. A sentence is enough to get started.",
+    label: "01",
+    heading: "From a sentence.",
+    description: "Describe your story in plain text. A single sentence is enough. AI writes the screenplay, designs the world, and draws every panel.",
     icon: PenTool,
     color: "#E94560",
-    visual: "prompt",
+    visual: "typewriter",
   },
   {
-    num: "02",
-    title: "Generate",
-    desc: "AI writes the script, designs characters, and draws every panel automatically.",
-    icon: Wand2,
-    color: "#9B59B6",
-    visual: "panels",
+    label: "02",
+    heading: "To a character.",
+    description: "AI extracts your characters from the script, generates consistent designs, and builds a visual identity that persists across every panel and episode.",
+    icon: Users,
+    color: "#7C3AED",
+    visual: "character",
   },
   {
-    num: "03",
-    title: "Share & Vote",
-    desc: "Publish your manga. The community reads, votes, and decides what deserves anime.",
-    icon: Heart,
+    label: "03",
+    heading: "To a world.",
+    description: "Six world-setting tiles materialize: cyberpunk alleys, enchanted forests, space stations. Your story gets a universe that feels lived-in.",
+    icon: Globe,
     color: "#00D4FF",
+    visual: "world",
+  },
+  {
+    label: "04",
+    heading: "To a story voted on by thousands.",
+    description: "Publish your manga. The community reads, votes, and decides which stories deserve to become anime. Your vote is a casting decision.",
+    icon: Heart,
+    color: "#FF5A7A",
     visual: "votes",
   },
   {
-    num: "04",
-    title: "Animate",
-    desc: "Top-voted manga become anime. Voice acting, music, animation \u2014 all AI-powered.",
+    label: "05",
+    heading: "To anime.",
+    description: "Top-voted manga enter the animation pipeline. Voice acting, music, motion \u2014 all AI-powered. From still panels to streaming episodes.",
     icon: Film,
-    color: "#FFB800",
+    color: "#00FFB2",
     visual: "anime",
   },
 ];
 
-function HowItWorks() {
+function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], [60, -60]);
+
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#08080F]" />
+    <ChromaticReveal>
+      <div
+        ref={ref}
+        className="relative py-24 md:py-32 overflow-hidden"
+      >
+        {/* Background accent glow */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full blur-[120px] opacity-20"
+          style={{ backgroundColor: section.color }}
+        />
 
-      {/* Subtle radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#E94560]/5 rounded-full blur-[150px]" />
-
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              From Idea to Anime in Four Steps
-            </h2>
-            <p className="text-gray-400 text-lg max-w-lg mx-auto">
-              The simplest path from your imagination to a published anime series.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        {/* Steps grid */}
-        <div className="grid md:grid-cols-4 gap-6 md:gap-4 relative">
-          {/* Connecting line (desktop only) */}
-          <div className="hidden md:block absolute top-[60px] left-[12.5%] right-[12.5%] h-px">
-            <div className="w-full h-full border-t-2 border-dashed border-white/10" />
-            <motion.div
-              initial={{ width: "0%" }}
-              whileInView={{ width: "100%" }}
-              viewport={{ once: true }}
-              transition={{ duration: 2, delay: 0.5, ease: "easeOut" }}
-              className="absolute top-0 left-0 h-full border-t-2 border-dashed border-[#E94560]/40"
-            />
-          </div>
-
-          {STEPS.map((step, i) => (
-            <ScrollReveal key={step.num} delay={i * 0.15}>
-              <div className="relative group">
-                {/* Step number circle */}
-                <div className="flex justify-center mb-6">
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center relative z-10"
-                    style={{ backgroundColor: `${step.color}15`, border: `1px solid ${step.color}30` }}
-                  >
-                    <step.icon className="w-7 h-7" style={{ color: step.color }} />
-                  </motion.div>
+        <div className="container relative z-10">
+          <div className={`flex flex-col ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-12 md:gap-20`}>
+            {/* Text side */}
+            <div className="flex-1 max-w-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: `${section.color}15`, border: `1px solid ${section.color}30` }}
+                >
+                  <section.icon className="w-5 h-5" style={{ color: section.color }} />
                 </div>
+                <span className="text-xs font-mono tracking-widest" style={{ color: section.color }}>
+                  STEP {section.label}
+                </span>
+              </div>
+              <h2 className="text-h1 text-white mb-4">{section.heading}</h2>
+              <p className="text-[#9494B8] text-lg leading-relaxed">{section.description}</p>
+            </div>
 
-                {/* Content */}
-                <div className="text-center">
-                  <div className="text-xs font-mono tracking-widest mb-2" style={{ color: step.color }}>
-                    STEP {step.num}
-                  </div>
-                  <h3 className="text-xl font-heading font-bold text-white mb-3">{step.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed max-w-[240px] mx-auto">{step.desc}</p>
+            {/* Visual side — parallax */}
+            <motion.div className="flex-1 max-w-lg" style={{ y }}>
+              <div
+                className="aspect-[4/3] rounded-2xl overflow-hidden border border-white/5"
+                style={{ background: `linear-gradient(135deg, ${section.color}10, ${section.color}05)` }}
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  <section.icon className="w-20 h-20 opacity-20" style={{ color: section.color }} />
                 </div>
               </div>
-            </ScrollReveal>
-          ))}
+            </motion.div>
+          </div>
         </div>
+      </div>
+    </ChromaticReveal>
+  );
+}
+
+function ActTwoProof() {
+  return (
+    <section className="relative">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#05050C] via-[#0D0D1A] to-[#05050C]" />
+      <div className="relative z-10">
+        {PROOF_SECTIONS.map((section, i) => (
+          <ProofSection key={section.label} section={section} index={i} />
+        ))}
       </div>
     </section>
   );
 }
 
-// ─── 4. Live Creation Demo ────────────────────────────────────────────────
-function CreationDemo() {
-  const [phase, setPhase] = useState<"idle" | "prompt" | "script" | "panels" | "done">("idle");
-  const [scriptLines, setScriptLines] = useState<string[]>([]);
-  const [panelCount, setPanelCount] = useState(0);
+/* ═══════════════════════════════════════════════════════════════════════
+   ACT THREE — THE INVITATION
+   Creator cards + prompt box + marquee
+   ═══════════════════════════════════════════════════════════════════════ */
 
-  const DEMO_PROMPT = "A cyberpunk detective who solves crimes by entering people's dreams...";
-  const DEMO_SCRIPT = [
-    "SCENE 1 - EXT. NEO-TOKYO SKYLINE - NIGHT",
-    "Rain cascades down neon-lit towers. A lone figure stands on a rooftop.",
-    "",
-    "DETECTIVE YUKI (V.O.)",
-    "\"In this city, everyone has secrets. Mine is that I can see them.\"",
-    "",
-    "SCENE 2 - INT. DREAM CLINIC - NIGHT",
-    "Yuki connects neural cables to a sleeping suspect.",
-    "",
-    "YUKI: \"Show me what you're hiding.\"",
-  ];
+function ActThreeInvitation() {
+  const [prompt, setPrompt] = useState("");
+  const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  const startDemo = useCallback(() => {
-    setPhase("prompt");
-    setScriptLines([]);
-    setPanelCount(0);
+  const handleCreate = useCallback(() => {
+    if (!prompt.trim()) {
+      navigate("/create");
+      return;
+    }
+    navigate(`/create?prompt=${encodeURIComponent(prompt.trim())}`);
+  }, [prompt, navigate]);
 
-    // Phase 1: prompt appears (1s)
-    setTimeout(() => {
-      setPhase("script");
-      // Phase 2: script streams in
-      DEMO_SCRIPT.forEach((line, i) => {
-        setTimeout(() => {
-          setScriptLines((prev) => [...prev, line]);
-        }, i * 400);
-      });
-
-      // Phase 3: panels generate
-      setTimeout(() => {
-        setPhase("panels");
-        [1, 2, 3, 4].forEach((n, i) => {
-          setTimeout(() => setPanelCount(n), i * 800);
-        });
-
-        // Phase 4: done
-        setTimeout(() => setPhase("done"), 4000);
-      }, DEMO_SCRIPT.length * 400 + 500);
-    }, 1500);
-  }, []);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleCreate();
+  };
 
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D1A] to-[#08080F]" />
+    <section className="py-24 md:py-32 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[#05050C]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#E94560]/6 blur-[150px]" />
+
+      <div className="container relative z-10">
+        {/* Heading */}
+        <ScrollReveal>
+          <div className="text-center mb-16">
+            <h2 className="text-h1 text-white mb-4">
+              This could be you{" "}
+              <span className="text-gradient-opening">next Friday.</span>
+            </h2>
+            <p className="text-[#9494B8] text-lg max-w-lg mx-auto">
+              Real creators. Real characters. Real anime. All made on Awakli.
+            </p>
+          </div>
+        </ScrollReveal>
+
+        {/* Creator showcase cards */}
+        <ScrollReveal delay={0.2}>
+          <CreatorShowcase />
+        </ScrollReveal>
+
+        {/* Inline prompt box */}
+        <ScrollReveal delay={0.4}>
+          <div className="max-w-3xl mx-auto mt-20">
+            <div className="relative rounded-2xl overflow-hidden border border-white/5">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#E94560]/8 via-[#7C3AED]/6 to-[#00D4FF]/8" />
+              <div className="relative p-8 md:p-12 text-center">
+                <h3 className="text-h2 text-white mb-2">
+                  Every great anime starts with an{" "}
+                  <span className="text-gradient-opening">idea</span>
+                </h3>
+                <p className="text-[#5C5C7A] text-sm mb-8">Yours could be next.</p>
+
+                <div className="flex w-full max-w-2xl mx-auto gap-3">
+                  <div className="flex-1 relative group">
+                    <input
+                      type="text"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="A cyberpunk detective who solves crimes using dreams..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#E94560]/50 focus:ring-1 focus:ring-[#E94560]/30 transition-all px-5 py-4 text-base"
+                    />
+                  </div>
+                  <motion.button
+                    onClick={handleCreate}
+                    whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(233,69,96,0.4)" }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex-shrink-0 bg-opening-sequence text-white font-semibold rounded-xl shadow-lg shadow-[#E94560]/25 flex items-center gap-2 px-8 py-4 text-base"
+                  >
+                    <Wand2 className="w-5 h-5" />
+                    Create
+                  </motion.button>
+                </div>
+
+                <p className="text-[#5C5C7A] text-xs mt-6">
+                  Free to start. No credit card required. No artistic skill needed.
+                </p>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Creator Showcase Grid ───────────────────────────────────────────── */
+function CreatorShowcase() {
+  const featured = trpc.discover.featured.useQuery();
+  const items = featured.data ?? [];
+  const displayItems = items.slice(0, 6);
+
+  if (displayItems.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Sparkles className="w-10 h-10 text-[#E94560]/40 mx-auto mb-4" />
+        <p className="text-[#9494B8] text-lg mb-2">The gallery is waiting for its first stories.</p>
+        <Link href="/create">
+          <span className="text-[#E94560] hover:text-[#FF5A7A] transition-colors cursor-pointer font-medium text-sm">
+            Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+      {displayItems.map((item: any, i: number) => (
+        <motion.div
+          key={item.id ?? i}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: i * 0.08 }}
+          className="group relative rounded-xl overflow-hidden border border-white/5 cursor-pointer"
+        >
+          <Link href={`/watch/${item.slug || `project-${item.id}`}`}>
+            <div className="relative aspect-[3/4]">
+              <img
+                src={item.coverImageUrl || HERO_IMAGES[i % 3]}
+                alt={item.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+              />
+              {/* Foil shimmer overlay on hover */}
+              <div className="absolute inset-0 foil-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              {/* Info overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <h3 className="text-white font-semibold text-sm truncate">{item.title}</h3>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[#9494B8] text-xs">by {item.userName || "Creator"}</span>
+                    <span className="flex items-center gap-1 text-[#E94560] text-xs font-medium">
+                      <Heart className="w-3 h-3 fill-current" />
+                      {(item.voteScore || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── AI-Powered Feature Strip ────────────────────────────────────────── */
+const AI_FEATURES = [
+  { name: "AI Screenwriting", icon: Brain, color: "#7C3AED" },
+  { name: "Panel Generation", icon: ImageIcon, color: "#E94560" },
+  { name: "Video Animation", icon: Film, color: "#00D4FF" },
+  { name: "Voice Acting", icon: Mic, color: "#FFB800" },
+  { name: "Community Voting", icon: Heart, color: "#FF5A7A" },
+  { name: "Full Pipeline", icon: Zap, color: "#00FFB2" },
+];
+
+function FeatureStrip() {
+  return (
+    <section className="py-20 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D1A] to-[#05050C]" />
       <div className="container relative z-10">
         <ScrollReveal>
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              See It In Action
-            </h2>
-            <p className="text-gray-400 text-lg max-w-lg mx-auto">
-              Watch how a simple idea becomes a full manga in seconds.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal delay={0.2}>
-          <div className="max-w-4xl mx-auto">
-            {/* Demo window */}
-            <div className="rounded-2xl border border-white/10 bg-[#0D0D1A] overflow-hidden shadow-2xl">
-              {/* Window chrome */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-[#151528]">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#E94560]/60" />
-                  <div className="w-3 h-3 rounded-full bg-[#FFB800]/60" />
-                  <div className="w-3 h-3 rounded-full bg-[#2ECC71]/60" />
-                </div>
-                <span className="text-xs text-gray-500 font-mono ml-2">awakli.com/create</span>
-              </div>
-
-              <div className="p-6 md:p-8 min-h-[400px]">
-                {phase === "idle" && (
-                  <div className="flex flex-col items-center justify-center h-[360px] text-center">
-                    <motion.div
-                      animate={{ scale: [1, 1.05, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="w-20 h-20 rounded-2xl bg-[#E94560]/10 border border-[#E94560]/20 flex items-center justify-center mb-6"
-                    >
-                      <Play className="w-8 h-8 text-[#E94560] ml-1" />
-                    </motion.div>
-                    <h3 className="text-xl font-heading font-bold text-white mb-2">Click to watch the magic</h3>
-                    <p className="text-gray-500 text-sm mb-6">See how AI turns a prompt into a full manga</p>
-                    <motion.button
-                      onClick={startDemo}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold shadow-lg shadow-[#E94560]/25"
-                    >
-                      Generate Demo
-                    </motion.button>
-                  </div>
-                )}
-
-                {phase !== "idle" && (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Left: prompt + script */}
-                    <div>
-                      {/* Prompt */}
-                      <div className="mb-4">
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Prompt</div>
-                        <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-white">
-                          {phase === "prompt" ? (
-                            <motion.span
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="text-[#E94560]"
-                            >
-                              {DEMO_PROMPT}
-                            </motion.span>
-                          ) : (
-                            <span className="text-gray-400">{DEMO_PROMPT}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Script */}
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                          Script
-                          {(phase === "script" || phase === "panels") && (
-                            <span className="inline-block w-2 h-2 rounded-full bg-[#2ECC71] animate-pulse" />
-                          )}
-                        </div>
-                        <div className="p-3 rounded-lg bg-black/30 border border-white/5 font-mono text-xs text-gray-400 h-[200px] overflow-y-auto">
-                          {scriptLines.map((line, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className={line.startsWith("SCENE") ? "text-[#00D4FF] font-bold mt-2" : line.startsWith("\"") || line.includes("\"") ? "text-[#FFB800] italic" : ""}
-                            >
-                              {line || "\u00A0"}
-                            </motion.div>
-                          ))}
-                          {(phase === "script" || phase === "panels") && scriptLines.length < DEMO_SCRIPT.length && (
-                            <span className="inline-block w-2 h-4 bg-[#E94560] animate-pulse" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: panels */}
-                    <div>
-                      <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                        Manga Panels
-                        {phase === "panels" && (
-                          <span className="text-[#E94560]">Generating...</span>
-                        )}
-                        {phase === "done" && (
-                          <span className="text-[#2ECC71]">Complete!</span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[0, 1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="aspect-[3/4] rounded-lg overflow-hidden border border-white/5"
-                          >
-                            {i < panelCount ? (
-                              <motion.img
-                                initial={{ opacity: 0, scale: 1.1 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.5 }}
-                                src={HERO_IMAGES[i % 3]}
-                                alt={`Panel ${i + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                                {(phase === "panels" || phase === "script") && i === panelCount ? (
-                                  <div className="w-6 h-6 border-2 border-[#E94560] border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <ImageIcon className="w-6 h-6 text-white/10" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {phase === "done" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 text-center"
-                  >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2ECC71]/10 border border-[#2ECC71]/20 text-[#2ECC71] text-sm font-medium mb-4">
-                      <Check className="w-4 h-4" />
-                      Manga generated successfully!
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-
-            {/* CTA below demo */}
-            <div className="text-center mt-8">
-              <Link href="/create">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold shadow-lg shadow-[#E94560]/25"
-                >
-                  Try It Yourself — Free <ArrowRight className="inline-block ml-2 w-4 h-4" />
-                </motion.button>
-              </Link>
-            </div>
-          </div>
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
-// ─── 5. Two Audiences ─────────────────────────────────────────────────────
-function TwoAudiences() {
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#08080F]" />
-      <div className="container relative z-10">
-        <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-          {/* Readers & Fans */}
-          <ScrollReveal delay={0}>
-            <div className="relative group rounded-2xl border border-white/5 bg-gradient-to-br from-[#0D0D1A] to-[#151528] p-8 md:p-10 h-full overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#00D4FF]/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-              <div className="relative z-10">
-                <div className="w-14 h-14 rounded-xl bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center mb-6">
-                  <Eye className="w-7 h-7 text-[#00D4FF]" />
-                </div>
-                <div className="text-xs font-mono tracking-widest text-[#00D4FF] mb-3 uppercase">For Readers & Fans</div>
-                <h3 className="text-2xl font-heading font-bold text-white mb-4">Discover & Vote</h3>
-                <p className="text-gray-400 leading-relaxed mb-8">
-                  Discover AI-generated manga from creators worldwide. Vote for the stories you want to see become anime. Your votes directly decide what gets animated.
-                </p>
-                <Link href="/discover">
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="px-6 py-3 rounded-xl border border-[#00D4FF]/30 text-[#00D4FF] font-semibold hover:bg-[#00D4FF]/5 transition-colors"
-                  >
-                    Explore Manga <ArrowRight className="inline-block ml-2 w-4 h-4" />
-                  </motion.button>
-                </Link>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* Creators */}
-          <ScrollReveal delay={0.15}>
-            <div className="relative group rounded-2xl border border-[#E94560]/10 bg-gradient-to-br from-[#0D0D1A] to-[#1A0A2E]/50 p-8 md:p-10 h-full overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#E94560]/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-              <div className="relative z-10">
-                <div className="w-14 h-14 rounded-xl bg-[#E94560]/10 border border-[#E94560]/20 flex items-center justify-center mb-6">
-                  <Wand2 className="w-7 h-7 text-[#E94560]" />
-                </div>
-                <div className="text-xs font-mono tracking-widest text-[#E94560] mb-3 uppercase">For Creators</div>
-                <h3 className="text-2xl font-heading font-bold text-white mb-4">Create & Animate</h3>
-                <p className="text-gray-400 leading-relaxed mb-8">
-                  Generate unlimited manga from your ideas. Build an audience. Earn anime conversions through votes. Or go Pro for direct anime pipeline access.
-                </p>
-                <Link href="/create">
-                  <motion.button
-                    whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(233,69,96,0.3)" }}
-                    whileTap={{ scale: 0.97 }}
-                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold shadow-lg shadow-[#E94560]/25"
-                  >
-                    Start Creating <ArrowRight className="inline-block ml-2 w-4 h-4" />
-                  </motion.button>
-                </Link>
-              </div>
-            </div>
-          </ScrollReveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 6. Feature Grid (AI-Powered) ─────────────────────────────────────────
-const FEATURES = [
-  { name: "Claude Opus 4", desc: "Writes screenplays and scripts from your ideas", icon: Brain, color: "#9B59B6" },
-  { name: "FLUX 1.1 Pro", desc: "Generates stunning manga panels in any style", icon: ImageIcon, color: "#E94560" },
-  { name: "Kling V3", desc: "Transforms still panels into animated video", icon: Film, color: "#00D4FF" },
-  { name: "ElevenLabs", desc: "Gives your characters unique voices", icon: Mic, color: "#FFB800" },
-  { name: "Community", desc: "Votes decide which stories deserve anime", icon: Users, color: "#2ECC71" },
-  { name: "Awakli Pipeline", desc: "Orchestrates everything into polished anime episodes", icon: Layers, color: "#E94560" },
-];
-
-function FeatureGrid() {
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#08080F] to-[#0D0D1A]" />
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              Powered by the Best AI
-            </h2>
-            <p className="text-gray-400 text-lg max-w-lg mx-auto">
+            <h2 className="text-h2 text-white mb-3">Powered by the best AI</h2>
+            <p className="text-[#9494B8] max-w-md mx-auto">
               State-of-the-art models working together to bring your stories to life.
             </p>
           </div>
         </ScrollReveal>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
-          {FEATURES.map((feat, i) => (
-            <ScrollReveal key={feat.name} delay={i * 0.08}>
-              <div className="group p-6 rounded-xl border border-white/5 bg-[#0D0D1A] hover:border-white/10 transition-all relative overflow-hidden">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 max-w-5xl mx-auto">
+          {AI_FEATURES.map((feat, i) => (
+            <ScrollReveal key={feat.name} delay={i * 0.06}>
+              <div className="group p-4 rounded-xl border border-white/5 bg-[#0D0D1A] hover:border-white/10 transition-all text-center">
                 <div
-                  className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ backgroundColor: `${feat.color}10` }}
-                />
-                <div className="relative z-10">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                    style={{ backgroundColor: `${feat.color}15`, border: `1px solid ${feat.color}25` }}
-                  >
-                    <feat.icon className="w-6 h-6" style={{ color: feat.color }} />
-                  </div>
-                  <h3 className="font-heading font-bold text-white mb-1">{feat.name}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
+                  className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
+                  style={{ backgroundColor: `${feat.color}15`, border: `1px solid ${feat.color}25` }}
+                >
+                  <feat.icon className="w-5 h-5" style={{ color: feat.color }} />
                 </div>
+                <span className="text-xs font-medium text-[#9494B8] group-hover:text-white transition-colors">
+                  {feat.name}
+                </span>
               </div>
             </ScrollReveal>
           ))}
@@ -746,140 +524,7 @@ function FeatureGrid() {
   );
 }
 
-// ─── 7. Pricing Preview ───────────────────────────────────────────────────
-const TIERS = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    desc: "Create manga from your ideas. Publish and earn votes.",
-    features: ["100 credits/month", "AI script generation", "Manga panel creation", "Publish to community", "Earn votes for anime"],
-    cta: "Start Free",
-    href: "/create",
-    highlighted: false,
-  },
-  {
-    name: "Creator",
-    price: "$19",
-    period: "/month",
-    desc: "For serious storytellers who want anime.",
-    features: ["10 manga projects", "5 anime episodes/month", "2 voice clones", "Export manga (PDF, PNG)", "80% revenue share", "Creator analytics"],
-    cta: "Go Creator",
-    href: "/pricing",
-    highlighted: true,
-  },
-  {
-    name: "Studio",
-    price: "$49",
-    period: "/month",
-    desc: "Full pipeline control. Upload your own manga.",
-    features: ["Unlimited projects", "20 anime episodes/month", "Unlimited voice clones", "Upload your own manga", "Export all formats (4K, ProRes)", "Priority support"],
-    cta: "Get Studio",
-    href: "/pricing",
-    highlighted: false,
-  },
-];
-
-function PricingPreview() {
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#08080F]" />
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              Start Free. Create Unlimited.
-            </h2>
-            <p className="text-gray-400 text-lg max-w-lg mx-auto">
-              Every creator starts free. Upgrade when you need more power.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {TIERS.map((tier, i) => (
-            <ScrollReveal key={tier.name} delay={i * 0.1}>
-              <div className={`relative rounded-2xl p-6 md:p-8 h-full flex flex-col ${
-                tier.highlighted
-                  ? "border-2 border-[#E94560]/40 bg-gradient-to-b from-[#E94560]/5 to-[#0D0D1A]"
-                  : "border border-white/5 bg-[#0D0D1A]"
-              }`}>
-                {tier.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white text-xs font-semibold">
-                    Most Popular
-                  </div>
-                )}
-                <div className="mb-6">
-                  <h3 className="text-lg font-heading font-bold text-white mb-1">{tier.name}</h3>
-                  <p className="text-gray-500 text-sm mb-4">{tier.desc}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-display font-bold text-white">{tier.price}</span>
-                    <span className="text-gray-500 text-sm">{tier.period}</span>
-                  </div>
-                </div>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-400">
-                      <Check className="w-4 h-4 text-[#2ECC71] flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href={tier.href}>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className={`w-full py-3 rounded-xl font-semibold text-sm ${
-                      tier.highlighted
-                        ? "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white shadow-lg shadow-[#E94560]/25"
-                        : "border border-white/10 text-white hover:bg-white/5"
-                    }`}
-                  >
-                    {tier.cta}
-                  </motion.button>
-                </Link>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 8. Final CTA ─────────────────────────────────────────────────────────
-function FinalCTA() {
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#08080F]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#E94560]/8 blur-[120px]" />
-
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="relative rounded-3xl overflow-hidden border border-white/5">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#E94560]/10 via-[#9B59B6]/8 to-[#00D4FF]/10" />
-            <div className="relative p-10 md:p-20 text-center">
-              <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-4">
-                Every Great Anime Starts
-                <br />
-                With an <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E94560] to-[#FF6B81]">Idea</span>
-              </h2>
-              <p className="text-gray-400 text-xl mb-10">Yours could be next.</p>
-
-              <InlinePromptInput size="md" />
-
-              <p className="text-gray-600 text-xs mt-6">
-                Free to start. No credit card required. No artistic skill needed.
-              </p>
-            </div>
-          </div>
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
-// ─── Content Row (preserved from original) ────────────────────────────────
+/* ─── Content Row (horizontal scroll) ─────────────────────────────────── */
 function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
   title: string; icon: React.ReactNode; projects: any[]; isLoading?: boolean; seeAllLink?: string;
 }) {
@@ -899,7 +544,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
           <h2 className="text-xl md:text-2xl font-heading font-bold text-white">{title}</h2>
         </div>
         {seeAllLink && (
-          <Link href={seeAllLink} className="text-sm text-gray-400 hover:text-[#E94560] transition-colors flex items-center gap-1">
+          <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#E94560] transition-colors flex items-center gap-1">
             See all <ChevronRight className="w-4 h-4" />
           </Link>
         )}
@@ -908,13 +553,13 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
       <div className="relative group">
         <button
           onClick={() => scroll("left")}
-          className="absolute left-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-r from-[#08080F]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute left-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-r from-[#05050C]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
         <button
           onClick={() => scroll("right")}
-          className="absolute right-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-l from-[#08080F]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-l from-[#05050C]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <ChevronRight className="w-6 h-6 text-white" />
         </button>
@@ -927,9 +572,9 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-[200px] md:w-[220px] snap-start">
-                  <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
-                  <div className="mt-3 h-4 bg-white/5 animate-pulse rounded w-3/4" />
-                  <div className="mt-2 h-3 bg-white/5 animate-pulse rounded w-1/2" />
+                  <div className="aspect-[3/4] rounded-xl skeleton-shimmer" />
+                  <div className="mt-3 h-4 skeleton-shimmer rounded w-3/4" />
+                  <div className="mt-2 h-3 skeleton-shimmer rounded w-1/2" />
                 </div>
               ))
             : projects.map((project, i) => (
@@ -943,7 +588,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                   <Link href={`/watch/${project.slug || `project-${project.id}`}`}>
                     <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/5 bg-[#0D0D1A] cursor-pointer">
                       {project.coverImageUrl ? (
-                        <img src={project.coverImageUrl} alt={project.title} className="w-full h-full object-cover" />
+                        <img src={project.coverImageUrl} alt={project.title} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${
                           ["from-[#E94560]/30 to-purple-500/20", "from-[#00D4FF]/30 to-blue-500/20", "from-purple-500/30 to-[#E94560]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
@@ -971,7 +616,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       <h3 className="text-sm font-semibold text-white truncate group-hover/card:text-[#E94560] transition-colors">
                         {project.title}
                       </h3>
-                      <p className="text-xs text-gray-500 mt-1 truncate">
+                      <p className="text-xs text-[#5C5C7A] mt-1 truncate">
                         {project.animeStyle || "Anime"} {project.episodeCount ? `\u00B7 ${project.episodeCount} eps` : ""}
                       </p>
                     </div>
@@ -979,9 +624,9 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                 </motion.div>
               ))}
           {!isLoading && projects.length === 0 && (
-            <div className="flex-shrink-0 w-full py-12 text-center text-gray-500">
+            <div className="flex-shrink-0 w-full py-12 text-center text-[#5C5C7A]">
               <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>No projects yet. Be the first to create one!</p>
+              <p>The director is scouting locations...</p>
             </div>
           )}
         </div>
@@ -990,126 +635,27 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
   );
 }
 
-// ─── BYO Manga Upload Section ─────────────────────────────────────────────
-function BYOUploadSection() {
-  return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#08080F] via-[#0D0D1A] to-[#08080F]" />
-      {/* Accent glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#00D4FF]/5 rounded-full blur-[120px]" />
-
-      <div className="container relative z-10">
-        <ScrollReveal>
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-sm font-medium mb-6">
-              <Upload className="w-4 h-4" />
-              New Feature
-            </div>
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4">
-              Bring Your Own Manga
-            </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Already have manga pages? Upload them and let AI transform your art into anime-ready assets with panel segmentation, dialogue extraction, and style transfer.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Step 1 */}
-            <ScrollReveal delay={0}>
-              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#00D4FF]/20 transition-all">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4FF]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10">
-                  <div className="w-10 h-10 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center mb-4 text-[#00D4FF] font-bold">1</div>
-                  <h3 className="text-lg font-heading font-bold text-white mb-2">Upload Pages</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Drag and drop your manga pages. AI detects if they're hand-drawn, digital, or AI-generated and applies the right cleanup pipeline.
-                  </p>
-                </div>
-              </div>
-            </ScrollReveal>
-
-            {/* Step 2 */}
-            <ScrollReveal delay={0.1}>
-              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#E94560]/20 transition-all">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#E94560]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10">
-                  <div className="w-10 h-10 rounded-lg bg-[#E94560]/10 border border-[#E94560]/20 flex items-center justify-center mb-4 text-[#E94560] font-bold">2</div>
-                  <h3 className="text-lg font-heading font-bold text-white mb-2">AI Processing</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Panels are segmented, dialogue extracted via OCR, and style transfer applied. Choose from anime, cinematic, or painterly styles.
-                  </p>
-                </div>
-              </div>
-            </ScrollReveal>
-
-            {/* Step 3 */}
-            <ScrollReveal delay={0.2}>
-              <div className="relative group rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 h-full overflow-hidden hover:border-[#FFB800]/20 transition-all">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFB800]/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10">
-                  <div className="w-10 h-10 rounded-lg bg-[#FFB800]/10 border border-[#FFB800]/20 flex items-center justify-center mb-4 text-[#FFB800] font-bold">3</div>
-                  <h3 className="text-lg font-heading font-bold text-white mb-2">Animate</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Processed panels flow into the Awakli pipeline for voice generation, video animation, and final episode assembly.
-                  </p>
-                </div>
-              </div>
-            </ScrollReveal>
-          </div>
-
-          {/* CTA */}
-          <ScrollReveal delay={0.3}>
-            <div className="text-center mt-10">
-              <Link href="/studio/byo-upload">
-                <motion.button
-                  whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,212,255,0.3)" }}
-                  whileTap={{ scale: 0.97 }}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#0099CC] text-white font-semibold shadow-lg shadow-[#00D4FF]/25"
-                >
-                  Upload Your Manga <ArrowRight className="inline-block ml-2 w-4 h-4" />
-                </motion.button>
-              </Link>
-              <p className="text-gray-500 text-sm mt-3">Available on Creator and Studio plans</p>
-            </div>
-          </ScrollReveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Main Home Page ────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MAIN HOME PAGE
+   ═══════════════════════════════════════════════════════════════════════ */
 export default function Home() {
-  const featured = trpc.discover.featured.useQuery();
   const trending = trpc.discover.trending.useQuery();
   const newReleases = trpc.discover.newReleases.useQuery();
 
   return (
     <MarketingLayout>
-      <HeroSection />
+      {/* ACT ONE — The Hook */}
+      <ActOneHero />
 
-      <ShowcaseGallery />
+      {/* ACT TWO — Proof */}
+      <ActTwoProof />
 
-      <HowItWorks />
-
-      <DemoShowcase />
-
-      <TwoAudiences />
-
-      <BYOUploadSection />
+      {/* Feature strip */}
+      <FeatureStrip />
 
       {/* Content rows */}
       <section className="py-8">
         <div className="container">
-          <ContentRow
-            title="Featured"
-            icon={<Star className="w-5 h-5 text-amber-400" />}
-            projects={featured.data ?? []}
-            isLoading={featured.isLoading}
-            seeAllLink="/discover"
-          />
           <ContentRow
             title="Trending Now"
             icon={<TrendingUp className="w-5 h-5 text-[#E94560]" />}
@@ -1127,11 +673,8 @@ export default function Home() {
         </div>
       </section>
 
-      <FeatureGrid />
-
-      <PricingPreview />
-
-      <FinalCTA />
+      {/* ACT THREE — The Invitation */}
+      <ActThreeInvitation />
     </MarketingLayout>
   );
 }

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import React from "react";
-import { TopNav } from "./TopNav";
+import { TopNav, MobileTabBar } from "./TopNav";
 import { StudioSidebar } from "./StudioSidebar";
 import { MarketingFooter } from "./MarketingFooter";
 
@@ -23,12 +23,16 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
 export function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#08080F]">
+    <div className="min-h-screen flex flex-col bg-[#05050C]">
       <TopNav />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <PageTransition>{children}</PageTransition>
       </main>
       <MarketingFooter />
+      {/* Mobile bottom tab bar — §3.3 */}
+      <MobileTabBar />
+      {/* Spacer for bottom tab bar on mobile */}
+      <div className="md:hidden h-14" />
     </div>
   );
 }
@@ -37,11 +41,15 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
 
 export function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#08080F]">
+    <div className="min-h-screen flex flex-col bg-[#05050C]">
       <TopNav />
-      <main className="flex-1 pt-16">
+      <main id="main-content" className="flex-1 pt-16">
         <PageTransition>{children}</PageTransition>
       </main>
+      {/* Mobile bottom tab bar — §3.3 */}
+      <MobileTabBar />
+      {/* Spacer for bottom tab bar on mobile */}
+      <div className="md:hidden h-14" />
     </div>
   );
 }
@@ -50,11 +58,11 @@ export function PlatformLayout({ children }: { children: React.ReactNode }) {
 
 export function StudioLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-screen flex overflow-hidden bg-[#08080F]">
+    <div className="h-screen flex overflow-hidden bg-[#05050C]">
       <StudioSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopNav />
-        <main className="flex-1 overflow-y-auto pt-16">
+        <main id="main-content" className="flex-1 overflow-y-auto pt-16">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

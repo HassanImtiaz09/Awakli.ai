@@ -1,5 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Search, X, LogOut, User, LayoutDashboard, Trophy, PenTool, Plus, Wand2, Upload } from "lucide-react";
+import {
+  Menu, Search, X, LogOut, User, LayoutDashboard, Trophy,
+  PenTool, Wand2, Upload, Compass, BookOpen, Swords, Settings,
+  CreditCard, BarChart3, Crown
+} from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -10,16 +14,124 @@ import { cn } from "@/lib/utils";
 import SearchOverlay from "./SearchOverlay";
 import { NotificationBell } from "./NotificationCenter";
 
-const PUBLIC_NAV_LINKS = [
-  { href: "/discover", label: "Discover" },
-  { href: "/trending", label: "Trending" },
-  { href: "/leaderboard", label: "Leaderboard" },
+/* ─── Primary Navigation — §3.3 Four Tabs ─────────────────────────────── */
+const PRIMARY_NAV = [
+  { href: "/discover", label: "Feed", icon: Compass },
+  { href: "/create", label: "Create", icon: Wand2 },
+  { href: "/characters", label: "Codex", icon: BookOpen },
+  { href: "/leaderboard", label: "Compete", icon: Swords },
 ];
 
-const AUTH_NAV_LINKS = [
-  { href: "/studio", label: "Studio" },
-];
+/* ─── Desktop Top Nav Link ─────────────────────────────────────────────── */
+function NavLink({
+  href,
+  active,
+  icon: Icon,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href}>
+      <motion.span
+        className={cn(
+          "relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all",
+          active
+            ? "text-[#F0F0F5]"
+            : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-white/5"
+        )}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+      >
+        <Icon size={16} className={active ? "text-[#E94560]" : ""} />
+        {children}
+        {/* Active indicator — Opening Sequence gradient sweep */}
+        {active && (
+          <motion.div
+            layoutId="nav-active"
+            className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-[#E94560] to-[#7C3AED]"
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          />
+        )}
+      </motion.span>
+    </Link>
+  );
+}
 
+/* ─── Dropdown Item ────────────────────────────────────────────────────── */
+function DropdownItem({
+  href,
+  icon,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href}>
+      <span className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] transition-colors cursor-pointer">
+        {icon}
+        {children}
+      </span>
+    </Link>
+  );
+}
+
+/* ─── Mobile Bottom Tab Bar ────────────────────────────────────────────── */
+export function MobileTabBar() {
+  const [location] = useLocation();
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0D0D1A]/95 backdrop-blur-xl border-t border-white/5 safe-area-pb">
+      <div className="flex items-center justify-around h-14">
+        {PRIMARY_NAV.map((item) => {
+          const active =
+            item.href === "/discover"
+              ? location === "/discover" || location === "/trending" || location === "/explore"
+              : location.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href}>
+              <motion.span
+                className="flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer relative"
+                whileTap={{ scale: 0.9 }}
+              >
+                <item.icon
+                  size={20}
+                  className={cn(
+                    "transition-colors",
+                    active ? "text-[#E94560]" : "text-[#5C5C7A]"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[10px] font-medium transition-colors",
+                    active ? "text-[#F0F0F5]" : "text-[#5C5C7A]"
+                  )}
+                >
+                  {item.label}
+                </span>
+                {/* Active dot */}
+                {active && (
+                  <motion.div
+                    layoutId="tab-active"
+                    className="absolute -top-0.5 w-5 h-0.5 rounded-full bg-gradient-to-r from-[#E94560] to-[#7C3AED]"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </motion.span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ─── Top Nav ──────────────────────────────────────────────────────────── */
 export function TopNav() {
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -29,7 +141,10 @@ export function TopNav() {
   const { user, isAuthenticated, logout } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => { logout(); window.location.href = "/"; },
+    onSuccess: () => {
+      logout();
+      window.location.href = "/";
+    },
   });
 
   useEffect(() => {
@@ -40,7 +155,10 @@ export function TopNav() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setDropdownOpen(false);
       }
     };
@@ -48,7 +166,9 @@ export function TopNav() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => { setDrawerOpen(false); }, [location]);
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location]);
 
   // Cmd+K / Ctrl+K to open search
   useEffect(() => {
@@ -62,17 +182,19 @@ export function TopNav() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Hide FAB on /create pages
-  const isCreatePage = location.startsWith("/create");
-
   return (
     <>
+      {/* Skip to main — §3.10 Accessibility */}
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
+
       <motion.header
         className={cn(
           "fixed top-0 left-0 right-0 z-50 h-16",
           "transition-all duration-300",
           scrolled
-            ? "bg-[rgba(8,8,15,0.92)] backdrop-blur-xl border-b border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+            ? "bg-[rgba(5,5,12,0.92)] backdrop-blur-xl border-b border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             : "bg-transparent"
         )}
         initial={{ y: -64 }}
@@ -83,7 +205,7 @@ export function TopNav() {
           {/* Logo */}
           <Link href="/">
             <motion.span
-              className="font-display text-xl font-bold text-gradient-pink cursor-pointer select-none shrink-0"
+              className="font-display text-xl font-bold text-gradient-opening cursor-pointer select-none shrink-0"
               whileHover={{ textShadow: "0 0 20px rgba(233,69,96,0.6)" }}
               transition={{ duration: 0.2 }}
             >
@@ -91,35 +213,26 @@ export function TopNav() {
             </motion.span>
           </Link>
 
-          {/* Desktop nav links */}
+          {/* Desktop nav — four primary tabs §3.3 */}
           <nav className="hidden md:flex items-center gap-1">
-            {/* Accent Create pill */}
-            <Link href="/create">
-              <motion.span
-                className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-semibold cursor-pointer flex items-center gap-1.5 transition-all",
-                  location.startsWith("/create")
-                    ? "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white shadow-lg shadow-[#E94560]/25"
-                    : "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white shadow-md shadow-[#E94560]/15 hover:shadow-lg hover:shadow-[#E94560]/25"
-                )}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Wand2 size={14} />
-                Create
-              </motion.span>
-            </Link>
-
-            {PUBLIC_NAV_LINKS.map((link) => (
-              <NavLink key={link.href} href={link.href} active={location.startsWith(link.href)}>
-                {link.label}
-              </NavLink>
-            ))}
-            {isAuthenticated && AUTH_NAV_LINKS.map((link) => (
-              <NavLink key={link.href} href={link.href} active={location.startsWith(link.href)}>
-                {link.label}
-              </NavLink>
-            ))}
+            {PRIMARY_NAV.map((item) => {
+              const active =
+                item.href === "/discover"
+                  ? location === "/discover" ||
+                    location === "/trending" ||
+                    location === "/explore"
+                  : location.startsWith(item.href);
+              return (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  active={active}
+                  icon={item.icon}
+                >
+                  {item.label}
+                </NavLink>
+              );
+            })}
           </nav>
 
           {/* Right controls */}
@@ -132,7 +245,9 @@ export function TopNav() {
             >
               <Search size={14} />
               <span>Search</span>
-              <kbd className="hidden lg:inline-block px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-[#5C5C7A] font-mono">⌘K</kbd>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-[#5C5C7A] font-mono">
+                ⌘K
+              </kbd>
             </motion.button>
 
             {isAuthenticated ? (
@@ -147,7 +262,7 @@ export function TopNav() {
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E94560] to-[#9B59B6] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E94560] to-[#7C3AED] flex items-center justify-center text-xs font-bold text-white shrink-0">
                       {user?.name?.[0]?.toUpperCase() ?? "U"}
                     </div>
                     <span className="hidden lg:block text-sm text-[#F0F0F5] max-w-[100px] truncate">
@@ -158,22 +273,58 @@ export function TopNav() {
                   <AnimatePresence>
                     {dropdownOpen && (
                       <motion.div
-                        className="absolute right-0 top-full mt-2 w-52 bg-[#151528] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                        className="absolute right-0 top-full mt-2 w-56 bg-[#151528] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
                         initial={{ opacity: 0, scale: 0.95, y: -8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -8 }}
                         transition={{ duration: 0.15 }}
                       >
                         <div className="p-3 border-b border-white/5">
-                          <p className="text-sm font-medium text-[#F0F0F5] truncate">{user?.name}</p>
-                          <p className="text-xs text-[#5C5C7A] truncate">{user?.email}</p>
+                          <p className="text-sm font-medium text-[#F0F0F5] truncate">
+                            {user?.name}
+                          </p>
+                          <p className="text-xs text-[#5C5C7A] truncate">
+                            {user?.email}
+                          </p>
                         </div>
                         <div className="p-1.5 space-y-0.5">
-                          <DropdownItem href={`/profile/${user?.id}`} icon={<User size={15} />}>My Profile</DropdownItem>
-                          <DropdownItem href="/studio" icon={<LayoutDashboard size={15} />}>Studio</DropdownItem>
-                          <DropdownItem href="/create" icon={<PenTool size={15} />}>Create Manga</DropdownItem>
-                          <DropdownItem href="/studio/byo-upload" icon={<Upload size={15} />}>Upload Manga</DropdownItem>
-                          <DropdownItem href="/leaderboard" icon={<Trophy size={15} />}>Leaderboard</DropdownItem>
+                          <DropdownItem
+                            href={`/profile/${user?.id}`}
+                            icon={<User size={15} />}
+                          >
+                            My Profile
+                          </DropdownItem>
+                          <DropdownItem
+                            href="/studio"
+                            icon={<LayoutDashboard size={15} />}
+                          >
+                            Studio
+                          </DropdownItem>
+                          <DropdownItem
+                            href="/studio/byo-upload"
+                            icon={<Upload size={15} />}
+                          >
+                            Upload Manga
+                          </DropdownItem>
+                          <div className="border-t border-white/5 my-1" />
+                          <DropdownItem
+                            href="/pricing"
+                            icon={<Crown size={15} />}
+                          >
+                            Upgrade Plan
+                          </DropdownItem>
+                          <DropdownItem
+                            href="/usage"
+                            icon={<BarChart3 size={15} />}
+                          >
+                            Usage & Credits
+                          </DropdownItem>
+                          <DropdownItem
+                            href="/earnings"
+                            icon={<CreditCard size={15} />}
+                          >
+                            Earnings
+                          </DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <button
                             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#E74C3C] hover:bg-[rgba(231,76,60,0.1)] transition-colors"
@@ -191,15 +342,19 @@ export function TopNav() {
             ) : (
               <div className="hidden md:flex items-center gap-2">
                 <a href={getLoginUrl()}>
-                  <AwakliButton variant="ghost" size="sm">Sign in</AwakliButton>
+                  <AwakliButton variant="ghost" size="sm">
+                    Sign in
+                  </AwakliButton>
                 </a>
                 <a href={getLoginUrl()}>
-                  <AwakliButton variant="primary" size="sm">Get Started</AwakliButton>
+                  <AwakliButton variant="primary" size="sm">
+                    Get Started
+                  </AwakliButton>
                 </a>
               </div>
             )}
 
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger — only for secondary menu, primary nav is bottom bar */}
             <motion.button
               className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] transition-colors"
               onClick={() => setDrawerOpen(true)}
@@ -214,7 +369,7 @@ export function TopNav() {
       {/* Search overlay */}
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — secondary navigation */}
       <AnimatePresence>
         {drawerOpen && (
           <>
@@ -233,7 +388,9 @@ export function TopNav() {
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
             >
               <div className="flex items-center justify-between p-4 border-b border-white/5">
-                <span className="font-display text-lg font-bold text-gradient-pink">AWAKLI</span>
+                <span className="font-display text-lg font-bold text-gradient-opening">
+                  AWAKLI
+                </span>
                 <button
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]"
                   onClick={() => setDrawerOpen(false)}
@@ -241,130 +398,127 @@ export function TopNav() {
                   <X size={18} />
                 </button>
               </div>
-              <nav className="flex-1 p-4 space-y-1">
-                {/* Create link in drawer */}
-                <Link href="/create">
-                  <span className={cn(
-                    "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors font-semibold",
-                    location.startsWith("/create")
-                      ? "bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white"
-                      : "text-[#E94560] hover:bg-[#E94560]/10"
-                  )}>
-                    <Wand2 size={16} />
-                    Create Manga
+              <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                {/* Studio link */}
+                <Link href="/studio">
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      location.startsWith("/studio")
+                        ? "bg-[#1C1C35] text-[#F0F0F5] font-semibold"
+                        : "text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5]"
+                    )}
+                  >
+                    <LayoutDashboard size={16} />
+                    Studio
                   </span>
                 </Link>
                 <Link href="/studio/byo-upload">
-                  <span className={cn(
-                    "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors",
-                    location.startsWith("/studio/byo-upload")
-                      ? "bg-[#1C1C35] text-[#00D4FF] font-medium"
-                      : "text-[#9494B8] hover:bg-[#1C1C35] hover:text-[#F0F0F5]"
-                  )}>
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      location === "/studio/byo-upload"
+                        ? "bg-[#1C1C35] text-[#F0F0F5] font-semibold"
+                        : "text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5]"
+                    )}
+                  >
                     <Upload size={16} />
                     Upload Manga
                   </span>
                 </Link>
-                {PUBLIC_NAV_LINKS.map((link) => (
-                  <Link key={link.href} href={link.href}>
-                    <span className={cn(
-                      "flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors",
-                      location.startsWith(link.href)
-                        ? "bg-[#1C1C35] text-[#F0F0F5] font-medium"
-                        : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]"
-                    )}>
-                      {link.label}
-                    </span>
-                  </Link>
-                ))}
-                {isAuthenticated && AUTH_NAV_LINKS.map((link) => (
-                  <Link key={link.href} href={link.href}>
-                    <span className={cn(
-                      "flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors",
-                      location.startsWith(link.href)
-                        ? "bg-[#1C1C35] text-[#F0F0F5] font-medium"
-                        : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]"
-                    )}>
-                      {link.label}
-                    </span>
-                  </Link>
-                ))}
-              </nav>
-              <div className="p-4 border-t border-white/5 space-y-2">
-                {isAuthenticated ? (
-                  <button
-                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#E74C3C] hover:bg-[rgba(231,76,60,0.1)]"
-                    onClick={() => logoutMutation.mutate()}
+                <Link href="/trending">
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      location === "/trending"
+                        ? "bg-[#1C1C35] text-[#F0F0F5] font-semibold"
+                        : "text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5]"
+                    )}
                   >
-                    <LogOut size={15} />
-                    Sign out
-                  </button>
+                    <Trophy size={16} />
+                    Trending
+                  </span>
+                </Link>
+
+                <div className="border-t border-white/5 my-3" />
+
+                <Link href="/pricing">
+                  <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5] transition-colors">
+                    <Crown size={16} />
+                    Upgrade Plan
+                  </span>
+                </Link>
+                <Link href="/usage">
+                  <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5] transition-colors">
+                    <BarChart3 size={16} />
+                    Usage & Credits
+                  </span>
+                </Link>
+                <Link href="/earnings">
+                  <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#9494B8] hover:bg-[#1C1C35]/50 hover:text-[#F0F0F5] transition-colors">
+                    <CreditCard size={16} />
+                    Earnings
+                  </span>
+                </Link>
+
+                <div className="border-t border-white/5 my-3" />
+
+                <Link href="/terms">
+                  <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#5C5C7A] hover:text-[#9494B8] transition-colors">
+                    Terms
+                  </span>
+                </Link>
+                <Link href="/privacy">
+                  <span className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[#5C5C7A] hover:text-[#9494B8] transition-colors">
+                    Privacy
+                  </span>
+                </Link>
+              </nav>
+
+              {/* Auth section at bottom of drawer */}
+              <div className="p-4 border-t border-white/5">
+                {isAuthenticated ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 px-2 py-1">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E94560] to-[#7C3AED] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                        {user?.name?.[0]?.toUpperCase() ?? "U"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#F0F0F5] truncate">
+                          {user?.name}
+                        </p>
+                        <p className="text-xs text-[#5C5C7A] truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-[#E74C3C] hover:bg-[rgba(231,76,60,0.1)] transition-colors"
+                      onClick={() => logoutMutation.mutate()}
+                    >
+                      <LogOut size={15} />
+                      Sign out
+                    </button>
+                  </div>
                 ) : (
-                  <>
+                  <div className="space-y-2">
                     <a href={getLoginUrl()} className="block">
-                      <AwakliButton variant="secondary" size="md" className="w-full">Sign in</AwakliButton>
+                      <AwakliButton variant="primary" size="sm" className="w-full">
+                        Get Started
+                      </AwakliButton>
                     </a>
                     <a href={getLoginUrl()} className="block">
-                      <AwakliButton variant="primary" size="md" className="w-full">Get Started</AwakliButton>
+                      <AwakliButton variant="ghost" size="sm" className="w-full">
+                        Sign in
+                      </AwakliButton>
                     </a>
-                  </>
+                  </div>
                 )}
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
-      {/* Mobile floating Create button (FAB) */}
-      {!isCreatePage && (
-        <Link href="/create">
-          <motion.div
-            className="md:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#E94560] to-[#FF6B81] shadow-xl shadow-[#E94560]/30 flex items-center justify-center cursor-pointer"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", delay: 0.5 }}
-          >
-            <Plus size={24} className="text-white" />
-          </motion.div>
-        </Link>
-      )}
     </>
-  );
-}
-
-function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link href={href}>
-      <motion.span
-        className={cn(
-          "relative px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
-          active ? "text-[#F0F0F5]" : "text-[#9494B8] hover:text-[#F0F0F5]"
-        )}
-        whileHover={{ backgroundColor: "rgba(28,28,53,0.6)" }}
-        transition={{ duration: 0.15 }}
-      >
-        {children}
-        {active && (
-          <motion.div
-            className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-to-r from-[#E94560] to-[#FF6B81] rounded-full"
-            layoutId="nav-underline"
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          />
-        )}
-      </motion.span>
-    </Link>
-  );
-}
-
-function DropdownItem({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <Link href={href}>
-      <span className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] transition-colors cursor-pointer">
-        {icon}
-        {children}
-      </span>
-    </Link>
   );
 }

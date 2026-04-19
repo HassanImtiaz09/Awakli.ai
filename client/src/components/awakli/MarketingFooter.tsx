@@ -3,73 +3,76 @@ import { Twitter, MessageCircle, Youtube } from "lucide-react";
 import React from "react";
 import { Link } from "wouter";
 
-const FOOTER_LINKS = {
-  Product: [
-    { label: "Create Manga", href: "/create" },
-    { label: "Discover", href: "/discover" },
-    { label: "Trending", href: "/trending" },
-    { label: "Leaderboard", href: "/leaderboard" },
-    { label: "Pricing", href: "/pricing" },
-  ],
-  Creators: [
-    { label: "Creator Studio", href: "/studio" },
-    { label: "Start Writing", href: "/create" },
-    { label: "Upload Your Manga", href: "/studio/byo-upload" },
-    { label: "Earnings", href: "/earnings" },
-  ],
-  Legal: [
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Refund Policy", href: "/refund" },
-  ],
-};
+const MARQUEE_TEXT = "AWAKLI \u00B7 WHERE IDEAS BECOME ANIME \u00B7 CREATE \u00B7 VOTE \u00B7 ANIMATE \u00B7 ";
 
-// Social links — update these URLs once official accounts are created
+const FOOTER_LINKS = [
+  { label: "Create", href: "/create" },
+  { label: "Feed", href: "/discover" },
+  { label: "Codex", href: "/characters" },
+  { label: "Compete", href: "/leaderboard" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Studio", href: "/studio" },
+];
+
+const LEGAL_LINKS = [
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Refund", href: "/refund" },
+];
+
 const SOCIAL_LINKS = [
-  { icon: <Twitter size={18} />, href: "https://x.com/awakli_ai", label: "X (Twitter)" },
-  { icon: <MessageCircle size={18} />, href: "https://discord.gg/awakli", label: "Discord" },
-  { icon: <Youtube size={18} />, href: "https://youtube.com/@awakli", label: "YouTube" },
+  { icon: <Twitter size={16} />, href: "https://x.com/awakli_ai", label: "X (Twitter)" },
+  { icon: <MessageCircle size={16} />, href: "https://discord.gg/awakli", label: "Discord" },
+  { icon: <Youtube size={16} />, href: "https://youtube.com/@awakli", label: "YouTube" },
 ];
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-[#0D0D1A] border-t border-white/5 mt-auto">
-      <div className="container py-16">
-        {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
-          {Object.entries(FOOTER_LINKS).map(([category, links]) => (
-            <div key={category}>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-[#5C5C7A] mb-4">
-                {category}
-              </h4>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href}>
-                      <span className="text-sm text-[#9494B8] hover:text-[#F0F0F5] transition-colors cursor-pointer">
-                        {link.label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <footer className="bg-[#05050C] border-t border-white/5 mt-auto overflow-hidden">
+      {/* Marquee band */}
+      <div className="relative py-4 overflow-hidden border-b border-white/5">
+        <div className="flex whitespace-nowrap animate-[marquee_20s_linear_infinite]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className="font-display text-2xl md:text-4xl font-bold text-white/[0.04] tracking-widest mx-4 select-none"
+            >
+              {MARQUEE_TEXT}
+            </span>
           ))}
         </div>
+        <style>{`
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+        `}</style>
+      </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-            <span className="font-display text-lg font-bold text-gradient-pink">AWAKLI</span>
-            <span className="text-[#5C5C7A] text-sm hidden sm:inline">·</span>
-            <span className="text-[#9494B8] text-sm italic">Where stories become manga, and manga becomes anime.</span>
-            <span className="text-[#5C5C7A] text-sm hidden sm:inline">·</span>
-            <span className="text-[#5C5C7A] text-sm">
-              © {new Date().getFullYear()} Awakli
+      <div className="container py-10">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+          {/* Left: logo + tagline */}
+          <div className="space-y-3">
+            <span className="font-display text-2xl font-bold text-gradient-opening">
+              AWAKLI
             </span>
+            <p className="text-sm text-[#5C5C7A] max-w-xs leading-relaxed">
+              Where stories become manga, and manga becomes anime.
+            </p>
           </div>
 
-          {/* Social icons */}
+          {/* Center: nav links */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {FOOTER_LINKS.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <span className="text-sm text-[#9494B8] hover:text-[#F0F0F5] transition-colors cursor-pointer">
+                  {link.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Right: social */}
           <div className="flex items-center gap-2">
             {SOCIAL_LINKS.map((social) => (
               <motion.a
@@ -84,6 +87,22 @@ export function MarketingFooter() {
               >
                 {social.icon}
               </motion.a>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <span className="text-xs text-[#5C5C7A]">
+            &copy; {new Date().getFullYear()} Awakli. All rights reserved.
+          </span>
+          <div className="flex items-center gap-4">
+            {LEGAL_LINKS.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <span className="text-xs text-[#5C5C7A] hover:text-[#9494B8] transition-colors cursor-pointer">
+                  {link.label}
+                </span>
+              </Link>
             ))}
           </div>
         </div>

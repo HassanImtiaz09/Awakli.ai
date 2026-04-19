@@ -3686,3 +3686,56 @@
 - [x] Migrate server/image-router/canary-probes.ts console.* to routerLog (10 sites)
 - [x] Migrate server/routers-create.ts console.* to pipelineLog (8 sites)
 - [x] Add 57 vitest tests for delta-audit v1.3 (CRIT-1 round-trip, P2 tiers, LOW-1 migration verification)
+
+## Vision & Transformation v1.0 — Q1 Foundation
+
+### §3.1 Design System Rewrite
+- [x] Update palette: Void #05050C, Ink #0D0D1A, Twilight #151528, Sakura #FF5A7A, Neon Cyan #00D4FF, Dragon Jade #00FFB2, Royal Violet #7C3AED, Ember #FF8A3D, Bone #F0F0F5, Smoke #9494B8
+- [x] Add named gradients: Opening Sequence, Night Market, Moonrise, Sakuga Glow
+- [x] Typography: swap display font to Zen Kaku Gothic New, keep Inter for UI, JetBrains Mono for accent
+- [x] Add motion variants: entry (fade+y+scale 400ms), hover (scale+brightness 120ms), beat (chromatic aberration 200ms), exit (slide-out 200ms)
+- [x] Add focus ring: 2px Cyan outline + 8px Cyan glow (replace OS default)
+
+### §3.2 Landing Page Three-Act Sequence
+- [x] Act One: full-viewport hero with anime character art, headline "Tonight, your idea becomes anime.", subhead, single CTA "Write the first scene", scroll indicator
+- [x] Act Two: five proof sections — "From a sentence", "To a character", "To a world", "To a story voted on by thousands", "To anime" — with parallax and scroll-triggered chromatic aberration
+- [x] Act Three: creator cards grid, "This could be you next Friday", inline prompt box, marquee footer
+
+### §3.3 Navigation Collapse
+- [x] Collapse nav to four primary tabs: Feed, Create, Codex, Compete
+- [x] Desktop: left-rail vertical nav or top nav with four tabs
+- [x] Mobile: bottom tab bar with four icons
+- [x] Move Pricing behind account menu / contextual upgrade prompts
+- [x] Active state: Opening Sequence gradient sweep
+
+### §3.4 Create Flow Enhancement
+- [x] Full-viewport dark canvas with character silhouette background
+- [x] Rotating placeholder prompts with typewriter effect (8 prompts, 4s cycle)
+- [x] Updated copy: "Write the first scene" CTA
+
+### §3.7 Pricing Page Transformation
+- [x] Three narrative scenes (Free/Creator/Studio) at 70vh each with character progression
+- [x] Updated copy per §10: "Start telling stories...", "Become the animator...", "Run the studio..."
+- [x] Comparison table + FAQ below scenes
+- [x] Refund policy card under each tier
+
+### §3.8 Micro-interactions
+- [x] Character card hover: foil shimmer + 4° parallax tilt
+- [x] Button hover: sakura-petal trail (2-3 petals, 200ms)
+- [x] Vote click: heart pulse + chromatic aberration flash + spring-bounce counter
+- [x] Panel generated: camera-shutter flash 80ms + scale from 0.94
+- [x] Error states: 6px horizontal shake 200ms, border flash Ember
+- [x] Empty states: animated character silhouette with in-character copy
+
+### §3.10 Accessibility
+- [x] WCAG AA contrast ratios verified on all text/background pairs
+- [x] prefers-reduced-motion: fade-only fallbacks for all motion
+- [x] Keyboard focus: 2px Cyan outline + 8px Cyan glow everywhere
+- [x] Skip-to-main link at top of page
+
+### §10 Copy Rewrites
+- [x] Hero: "Tonight, your idea becomes anime." / "Type a sentence. We will animate it. Before you go to bed."
+- [x] CTA: "Write the first scene"
+- [x] Tier taglines updated per vision doc
+- [x] Empty states: "The director is scouting locations..."
+- [x] HTML title and meta tags updated
