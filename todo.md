@@ -3665,11 +3665,11 @@
 - [x] Call from server/_core/index.ts alongside startCanaryScheduler()
 
 ### LOW-1: Structured logger migration incomplete (378 console.* calls remain)
-- [ ] Migrate pipelineOrchestrator.ts console.* calls to pipelineLog (74 sites)
-- [ ] Migrate video-assembly.ts console.* calls to pipelineLog (22 sites)
-- [ ] Migrate lipSyncNode.ts console.* calls to pipelineLog (20 sites)
-- [ ] Migrate routers.ts console.* calls to routerLog (16 sites)
-- [ ] Migrate hitl/orchestrator-bridge.ts console.* calls to pipelineLog (16 sites)
+- [x] Migrate pipelineOrchestrator.ts console.* calls to pipelineLog (74 sites)
+- [x] Migrate video-assembly.ts console.* calls to pipelineLog (22 sites)
+- [x] Migrate lipSyncNode.ts console.* calls to pipelineLog (20 sites)
+- [x] Migrate routers.ts console.* calls to routerLog (16 sites)
+- [x] Migrate hitl/orchestrator-bridge.ts console.* calls to pipelineLog (16 sites)
 
 ### LOW-2: delta-audit.test.ts uses hardcoded absolute paths
 - [x] Replace /home/ubuntu/awakli/... with path.resolve(__dirname, ...) in delta-audit.test.ts

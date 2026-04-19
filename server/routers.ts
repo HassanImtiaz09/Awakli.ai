@@ -85,6 +85,7 @@ import {
   gateConfigRouter, qualityAnalyticsRouter, cascadeRewindRouter,
 } from "./routers-hitl";
 import { authorizeAndHold, commitTicket, releaseTicket, canAfford, canAffordBatch, getCreditCost, getAllCreditCosts, type GenerationAction } from "./credit-gateway";
+import { routerLog } from "./observability/logger";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ async function generatePanelsForEpisode(
           reviewStatus: "pending",
         });
       } catch (error) {
-        console.error(`[PanelGen] Panel ${panel.id} failed:`, error);
+        routerLog.error(`[PanelGen] Panel ${panel.id} failed:`, { error: String(error) });
         // Retry up to 3 times with backoff
         let retrySuccess = false;
         for (let attempt = 1; attempt <= 2; attempt++) {
@@ -208,7 +209,7 @@ async function generatePanelsForEpisode(
             retrySuccess = true;
             break;
           } catch {
-            console.error(`[PanelGen] Panel ${panel.id} retry ${attempt} failed`);
+            routerLog.error(`[PanelGen] Panel ${panel.id} retry ${attempt} failed`);
           }
         }
         if (!retrySuccess) {
@@ -267,7 +268,7 @@ async function generateOverlayForPanel(panelId: number) {
     await updatePanel(panelId, { compositeImageUrl: url });
     return url;
   } catch (error) {
-    console.error(`[Overlay] Failed for panel ${panelId}:`, error);
+    routerLog.error(`[Overlay] Failed for panel ${panelId}:`, { error: String(error) });
     // Fallback: use raw image as composite
     await updatePanel(panelId, { compositeImageUrl: panel.imageUrl });
     return panel.imageUrl;
@@ -334,7 +335,7 @@ async function trainLoraForCharacter(characterId: number) {
     }).catch(() => {});
 
   } catch (error) {
-    console.error(`[LoRA] Training failed for character ${characterId}:`, error);
+    routerLog.error(`[LoRA] Training failed for character ${characterId}:`, { error: String(error) });
     await updateCharacter(characterId, { loraStatus: "failed", loraTrainingProgress: 0 });
   }
 }
@@ -512,7 +513,7 @@ const jobsRouter = router({
       });
 
       runMangaToAnimeJob(jobId, ctx.user.id).catch((err) => {
-        console.error(`[Pipeline] Background job ${jobId} failed:`, err);
+        routerLog.error(`[Pipeline] Background job ${jobId} failed:`, { error: String(err) });
       });
 
       return { jobId };
@@ -612,7 +613,7 @@ const episodesRouter = router({
         results.push({ episodeId, episodeNumber: epNum });
 
         generateScriptForEpisode(episodeId, project, epNum, input.styleNotes).catch((err) => {
-          console.error(`[Script] Episode ${episodeId} generation failed:`, err);
+          routerLog.error(`[Script] Episode ${episodeId} generation failed:`, { error: String(err) });
           updateEpisode(episodeId, { status: "draft" }).catch(() => {});
         });
       }
@@ -642,7 +643,7 @@ const episodesRouter = router({
 
       // Fire-and-forget panel generation
       generatePanelsForEpisode(input.id, episode.projectId, ctx.user.id).catch((err) => {
-        console.error(`[PanelGen] Episode ${input.id} panel generation failed:`, err);
+        routerLog.error(`[PanelGen] Episode ${input.id} panel generation failed:`, { error: String(err) });
       });
 
       return { panelCount: draftPanels.length, message: "Panel generation started" };
@@ -902,7 +903,7 @@ Generate 3-5 scenes with 2-4 panels each. Make visual descriptions detailed enou
     }).catch(() => {});
 
   } catch (error) {
-    console.error(`[Script] Failed to generate script for episode ${episodeId}:`, error);
+    routerLog.error(`[Script] Failed to generate script for episode ${episodeId}:`, { error: String(error) });
     await updateEpisode(episodeId, { status: "draft" }).catch(() => {});
     throw error;
   }
@@ -1007,7 +1008,7 @@ const panelsRouter = router({
           const { url } = await generateImage({ prompt: promptToUse });
           await updatePanel(input.id, { imageUrl: url, status: "generated", reviewStatus: "pending" });
         } catch (error) {
-          console.error(`[PanelRegen] Panel ${input.id} failed:`, error);
+          routerLog.error(`[PanelRegen] Panel ${input.id} failed:`, { error: String(error) });
           await updatePanel(input.id, { status: "draft" });
         }
       })();
@@ -1034,7 +1035,7 @@ const panelsRouter = router({
       await batchUpdatePanelStatus(failedPanels.map(p => p.id), "generating", "pending");
 
       // Fire-and-forget regeneration
-      generatePanelsForEpisode(input.episodeId, episode.projectId, ctx.user.id).catch(console.error);
+      generatePanelsForEpisode(input.episodeId, episode.projectId, ctx.user.id).catch((err) => routerLog.error("Panel regeneration failed", { error: String(err) }));
 
       return { count: failedPanels.length, message: "Regeneration started" };
     }),
@@ -1206,7 +1207,7 @@ const charactersRouter = router({
 
         return { url, images: updatedImages };
       } catch (error) {
-        console.error("[Characters] Reference sheet generation failed:", error);
+        routerLog.error("[Characters] Reference sheet generation failed:", { error: String(error) });
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to generate reference sheet. Please try again.",
@@ -1232,7 +1233,7 @@ const charactersRouter = router({
       }
 
       // Fire-and-forget training
-      trainLoraForCharacter(input.characterId).catch(console.error);
+      trainLoraForCharacter(input.characterId).catch((err) => routerLog.error("LoRA training failed", { error: String(err) }));
 
       return { message: "LoRA training started" };
     }),
@@ -1641,7 +1642,7 @@ const pipelineRouter = router({
 
       // Start pipeline in background
       runPipeline(runId).catch(err => {
-        console.error(`[Pipeline] Run ${runId} failed:`, err);
+        routerLog.error(`[Pipeline] Run ${runId} failed:`, { error: String(err) });
       });
 
       return { runId };
@@ -1698,7 +1699,7 @@ const pipelineRouter = router({
       });
 
       runPipeline(newRunId).catch(err => {
-        console.error(`[Pipeline] Retry run ${newRunId} failed:`, err);
+        routerLog.error(`[Pipeline] Retry run ${newRunId} failed:`, { error: String(err) });
       });
 
       return { runId: newRunId };
@@ -1815,7 +1816,7 @@ const voiceRouter = router({
         });
         voiceId = result.voice_id;
       } catch (err: any) {
-        console.error("[Voice] ElevenLabs clone failed:", err.message);
+        routerLog.error("[Voice] ElevenLabs clone failed:", { error: String(err.message) });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice cloning failed: " + err.message });
       }
 
@@ -1887,7 +1888,7 @@ const voiceRouter = router({
         const { url } = await storagePut(audioKey, audioBuffer, "audio/mpeg");
         return { audioUrl: url };
       } catch (err: any) {
-        console.error("[Voice] TTS failed:", err.message);
+        routerLog.error("[Voice] TTS failed:", { error: String(err.message) });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Voice generation failed: " + err.message });
       }
     }),

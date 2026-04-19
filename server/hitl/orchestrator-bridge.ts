@@ -118,7 +118,7 @@ export async function initializeHitlForRun(
   userId: number,
   tierName: string = "free_trial"
 ): Promise<void> {
-  console.log(`[HITL Bridge] Initializing 12 HITL stages for run ${pipelineRunId}`);
+  pipelineLog.info(`[HITL Bridge] Initializing 12 HITL stages for run ${pipelineRunId}`);
 
   await initializePipelineStages({
     pipelineRunId,
@@ -138,7 +138,7 @@ export async function initializeHitlForRun(
     `);
   }
 
-  console.log(`[HITL Bridge] 12 stages initialized for run ${pipelineRunId}`);
+  pipelineLog.info(`[HITL Bridge] 12 stages initialized for run ${pipelineRunId}`);
 }
 
 // ─── Pre-flight Stage Processing ────────────────────────────────────────
@@ -153,7 +153,7 @@ export async function processPreFlightStages(
   userId: number,
   tierName: string = "free_trial"
 ): Promise<{ blocked: boolean; blockingGateId?: number; blockingStage?: number }> {
-  console.log(`[HITL Bridge] Processing pre-flight stages for run ${pipelineRunId}`);
+  pipelineLog.info(`[HITL Bridge] Processing pre-flight stages for run ${pipelineRunId}`);
 
   for (const stageNum of PRE_FLIGHT_STAGES) {
     const gateConfig = await resolveGateConfig(stageNum, tierName, userId);
@@ -183,7 +183,7 @@ export async function processPreFlightStages(
 
     // If a pre-flight gate blocks (unusual but possible for safety flags)
     if (result.nextAction === "wait_for_creator") {
-      console.log(`[HITL Bridge] Pre-flight stage ${stageNum} blocked! Gate ${result.gateId}`);
+      pipelineLog.info(`[HITL Bridge] Pre-flight stage ${stageNum} blocked! Gate ${result.gateId}`);
       const gate = await getGateById(result.gateId);
       if (gate) await notifyGateReady(gate);
       return { blocked: true, blockingGateId: result.gateId, blockingStage: stageNum };
@@ -195,7 +195,7 @@ export async function processPreFlightStages(
       if (gate) await notifyAutoAdvanced(gate);
     }
 
-    console.log(`[HITL Bridge] Pre-flight stage ${stageNum} completed: ${result.behavior} (score: ${result.confidenceScore})`);
+    pipelineLog.info(`[HITL Bridge] Pre-flight stage ${stageNum} completed: ${result.behavior} (score: ${result.confidenceScore})`);
   }
 
   return { blocked: false };
@@ -251,7 +251,7 @@ export async function completeNodeWithGate(
   const secondaryStages = SECONDARY_STAGES[primaryStage] || [];
   const secondaryStagesAdvanced: number[] = [];
 
-  console.log(`[HITL Bridge] Processing node '${node}' completion → primary stage ${primaryStage}`);
+  pipelineLog.info(`[HITL Bridge] Processing node '${node}' completion → primary stage ${primaryStage}`);
 
   // 1. Auto-advance secondary pre-stages (e.g., stages 3-4 before stage 5)
   for (const secStage of secondaryStages.filter(s => s < primaryStage)) {
@@ -274,7 +274,7 @@ export async function completeNodeWithGate(
         if (gate) await notifyAutoAdvanced(gate);
       }
     } catch (err) {
-      console.warn(`[HITL Bridge] Secondary stage ${secStage} auto-advance failed:`, err);
+      pipelineLog.warn(`[HITL Bridge] Secondary stage ${secStage} auto-advance failed:`, { detail: String(err) });
       // Non-critical: secondary stage failure doesn't block the primary
     }
   }
@@ -305,10 +305,10 @@ export async function completeNodeWithGate(
   if (gate) {
     if (gateResult.nextAction === "wait_for_creator") {
       await notifyGateReady(gate);
-      console.log(`[HITL Bridge] Gate BLOCKED at stage ${primaryStage} (score: ${gateResult.confidenceScore})`);
+      pipelineLog.info(`[HITL Bridge] Gate BLOCKED at stage ${primaryStage} (score: ${gateResult.confidenceScore})`);
     } else {
       await notifyAutoAdvanced(gate);
-      console.log(`[HITL Bridge] Gate auto-advanced at stage ${primaryStage} (score: ${gateResult.confidenceScore})`);
+      pipelineLog.info(`[HITL Bridge] Gate auto-advanced at stage ${primaryStage} (score: ${gateResult.confidenceScore})`);
     }
   }
 
@@ -334,7 +334,7 @@ export async function completeNodeWithGate(
           if (secGate) await notifyAutoAdvanced(secGate);
         }
       } catch (err) {
-        console.warn(`[HITL Bridge] Secondary stage ${secStage} auto-advance failed:`, err);
+        pipelineLog.warn(`[HITL Bridge] Secondary stage ${secStage} auto-advance failed:`, { detail: String(err) });
       }
     }
   }
@@ -411,7 +411,7 @@ export async function resumePipelineAfterApproval(
     currentNode: nextNode,
   } as any);
 
-  console.log(`[HITL Bridge] Pipeline ${pipelineRunId} resuming at node '${nextNode}' (stage ${currentStageNumber})`);
+  pipelineLog.info(`[HITL Bridge] Pipeline ${pipelineRunId} resuming at node '${nextNode}' (stage ${currentStageNumber})`);
 
   return { resumed: true, nextNode };
 }
@@ -435,7 +435,7 @@ export async function resumePipelineAfterRegeneration(
     currentNode: node,
   } as any);
 
-  console.log(`[HITL Bridge] Pipeline ${pipelineRunId} regenerating at node '${node}' (stage ${stageNumber})`);
+  pipelineLog.info(`[HITL Bridge] Pipeline ${pipelineRunId} regenerating at node '${node}' (stage ${stageNumber})`);
 
   return { resumed: true, nextNode: node };
 }
@@ -461,12 +461,13 @@ export async function pausePipelineForGate(
     WHERE id = ${pipelineRunId}
   `);
 
-  console.log(`[HITL Bridge] Pipeline ${pipelineRunId} paused at stage ${stageNumber} (gate ${gateId})`);
+  pipelineLog.info(`[HITL Bridge] Pipeline ${pipelineRunId} paused at stage ${stageNumber} (gate ${gateId})`);
 }
 
 // ─── Timeout Cron Integration ───────────────────────────────────────────
 
 import { checkTimeoutWarnings, processTimedOutGates } from "./timeout-handler";
+import { pipelineLog } from "../observability/logger";
 
 /**
  * Process all timeout-related actions. Should be called on a cron schedule
@@ -481,7 +482,7 @@ export async function processTimeouts(): Promise<{
   gatesProcessed: number;
   pipelinesResumed: number;
 }> {
-  console.log("[HITL Bridge] Processing timeouts...");
+  pipelineLog.info("[HITL Bridge] Processing timeouts...");
 
   // 1. Send warnings
   const warningsResult = await checkTimeoutWarnings();
@@ -512,12 +513,12 @@ export async function processTimeouts(): Promise<{
         const result = await resumePipelineAfterApproval(run.id);
         if (result.resumed) pipelinesResumed++;
       } catch (err) {
-        console.error(`[HITL Bridge] Failed to resume pipeline ${run.id} after timeout:`, err);
+        pipelineLog.error(`[HITL Bridge] Failed to resume pipeline ${run.id} after timeout:`, { error: String(err) });
       }
     }
   }
 
-  console.log(`[HITL Bridge] Timeouts processed: ${warningsSent} warnings, ${gatesProcessed} gates, ${pipelinesResumed} pipelines resumed`);
+  pipelineLog.info(`[HITL Bridge] Timeouts processed: ${warningsSent} warnings, ${gatesProcessed} gates, ${pipelinesResumed} pipelines resumed`);
 
   return { warningsSent, gatesProcessed, pipelinesResumed };
 }

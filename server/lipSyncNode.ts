@@ -31,6 +31,7 @@ import { nanoid } from "nanoid";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";
+import { pipelineLog } from "./observability/logger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ export async function retryFailedLipSync(
   } = options;
 
   const startTime = Date.now();
-  console.log(`[LipSync Retry] Retrying ${panelIds.length} panels for run ${runId}`);
+  pipelineLog.info(`[LipSync Retry] Retrying ${panelIds.length} panels for run ${runId}`);
 
   // Step 1: Get all dialogue panels for this run
   const allDialoguePanels = await identifyDialoguePanels(runId, episodeId);
@@ -262,7 +263,7 @@ export async function retryFailedLipSync(
     const currentCount = retryCountByPanel.get(panel.panelId) || 0;
     if (currentCount >= MAX_RETRY_ATTEMPTS) {
       blockedPanels.push(panel.panelId);
-      console.warn(
+      pipelineLog.warn(
         `[LipSync Retry] Panel ${panel.panelId} blocked — already retried ${currentCount} times (max: ${MAX_RETRY_ATTEMPTS}). Needs manual review.`
       );
       onProgress?.(panel.panelId, "failed", `Exceeded max retries (${MAX_RETRY_ATTEMPTS}). Needs manual review.`);
@@ -295,7 +296,7 @@ export async function retryFailedLipSync(
   const { deletePipelineAssetsByPanelAndType } = await import("./db");
   for (const panel of allowedPanels) {
     await deletePipelineAssetsByPanelAndType(runId, panel.panelId, "synced_clip");
-    console.log(`[LipSync Retry] Deleted old synced_clip for panel ${panel.panelId}`);
+    pipelineLog.info(`[LipSync Retry] Deleted old synced_clip for panel ${panel.panelId}`);
   }
 
   // Step 4: Create working directory
@@ -314,7 +315,7 @@ export async function retryFailedLipSync(
       const panelWorkDir = path.join(workDir, `panel-${panel.panelId}`);
       await fs.mkdir(panelWorkDir, { recursive: true });
 
-      console.log(
+      pipelineLog.info(
         `[LipSync Retry] Processing ${i + 1}/${allowedPanels.length}: ` +
         `${panelLabel} — "${panel.dialogueText.slice(0, 50)}..."`
       );
@@ -355,9 +356,9 @@ export async function retryFailedLipSync(
             try {
               storedUrl = await uploadToS3(result.outputPath, s3Key, "video/mp4");
             } catch (uploadErr) {
-              console.warn(
-                `[LipSync Retry] S3 upload failed for ${panelLabel}, using Kling CDN URL:`,
-                uploadErr
+              pipelineLog.warn(
+                `[LipSync Retry] S3 upload failed for ${panelLabel}, using Kling CDN URL`,
+                { error: String(uploadErr) }
               );
             }
           }
@@ -387,14 +388,14 @@ export async function retryFailedLipSync(
           });
 
           totalCostCents += COST_PER_PANEL_CENTS;
-          console.log(`[LipSync Retry] ${panelLabel}: Success (${result.processingTimeMs}ms)`);
+          pipelineLog.info(`[LipSync Retry] ${panelLabel}: Success (${result.processingTimeMs}ms)`);
           onProgress?.(panel.panelId, "success", `Lip-synced in ${result.processingTimeMs}ms`);
         } else {
-          console.warn(`[LipSync Retry] ${panelLabel}: Skipped — ${result.skipReason}`);
+          pipelineLog.warn(`[LipSync Retry] ${panelLabel}: Skipped — ${result.skipReason}`);
           onProgress?.(panel.panelId, "failed", result.skipReason || "Unknown error");
         }
       } catch (panelErr: any) {
-        console.error(`[LipSync Retry] ${panelLabel}: Error — ${panelErr.message}`);
+        pipelineLog.error(`[LipSync Retry] ${panelLabel}: Error — ${panelErr.message}`);
         results.push({
           panelId: panel.panelId,
           success: false,
@@ -433,7 +434,7 @@ export async function retryFailedLipSync(
         (blockedPanels.length > 0 ? `, ${blockedPanels.length} need manual review` : "") +
         ` (${(totalProcessingTimeMs / 1000).toFixed(1)}s)`;
 
-  console.log(`[LipSync Retry] ${summary}`);
+  pipelineLog.info(`[LipSync Retry] ${summary}`);
 
   return {
     dialoguePanelsFound: allDialoguePanels.length,
@@ -462,11 +463,11 @@ export async function lipSyncNode(
     skipNativeLipSync = true,
   } = options;
 
-  console.log(`[LipSync Node] Starting automated lip sync for run ${runId}, episode ${episodeId}`);
+  pipelineLog.info(`[LipSync Node] Starting automated lip sync for run ${runId}, episode ${episodeId}`);
 
   // Step 1: Identify dialogue panels
   const dialoguePanels = await identifyDialoguePanels(runId, episodeId);
-  console.log(`[LipSync Node] Found ${dialoguePanels.length} dialogue panels with video + voice assets`);
+  pipelineLog.info(`[LipSync Node] Found ${dialoguePanels.length} dialogue panels with video + voice assets`);
 
   const nodeStartTime = Date.now();
 
@@ -492,7 +493,7 @@ export async function lipSyncNode(
   for (const panel of dialoguePanels) {
     if (skipNativeLipSync && panel.hasNativeLipSync) {
       nativeLipSyncSkipped++;
-      console.log(
+      pipelineLog.info(
         `[LipSync Node] Skipping P${panel.sceneNumber}.${panel.panelNumber} ` +
         `(${panel.character}) — already has native lip sync from V3 Omni`
       );
@@ -500,7 +501,7 @@ export async function lipSyncNode(
     }
 
     if (panel.voiceDuration < MIN_VOICE_DURATION_SECONDS) {
-      console.log(
+      pipelineLog.info(
         `[LipSync Node] Skipping P${panel.sceneNumber}.${panel.panelNumber} ` +
         `— voice clip too short (${panel.voiceDuration}s < ${MIN_VOICE_DURATION_SECONDS}s)`
       );
@@ -510,7 +511,7 @@ export async function lipSyncNode(
     panelsToProcess.push(panel);
   }
 
-  console.log(
+  pipelineLog.info(
     `[LipSync Node] Processing ${panelsToProcess.length} panels ` +
     `(${nativeLipSyncSkipped} skipped with native lip sync)`
   );
@@ -545,7 +546,7 @@ export async function lipSyncNode(
       const panelWorkDir = path.join(workDir, `panel-${panel.panelId}`);
       await fs.mkdir(panelWorkDir, { recursive: true });
 
-      console.log(
+      pipelineLog.info(
         `[LipSync Node] Processing ${i + 1}/${panelsToProcess.length}: ` +
         `${panelLabel} — "${panel.dialogueText.slice(0, 50)}..."`
       );
@@ -585,9 +586,9 @@ export async function lipSyncNode(
             try {
               storedUrl = await uploadToS3(result.outputPath, s3Key, "video/mp4");
             } catch (uploadErr) {
-              console.warn(
-                `[LipSync Node] S3 upload failed for ${panelLabel}, using Kling CDN URL:`,
-                uploadErr
+              pipelineLog.warn(
+                `[LipSync Node] S3 upload failed for ${panelLabel}, using Kling CDN URL`,
+                { error: String(uploadErr) }
               );
             }
           }
@@ -615,16 +616,16 @@ export async function lipSyncNode(
           });
 
           totalCostCents += COST_PER_PANEL_CENTS;
-          console.log(
+          pipelineLog.info(
             `[LipSync Node] ${panelLabel}: Lip-synced clip stored (${result.processingTimeMs}ms)`
           );
         } else {
-          console.warn(
+          pipelineLog.warn(
             `[LipSync Node] ${panelLabel}: Skipped — ${result.skipReason}`
           );
         }
       } catch (panelErr: any) {
-        console.error(
+        pipelineLog.error(
           `[LipSync Node] ${panelLabel}: Error — ${panelErr.message}`
         );
         results.push({
@@ -660,7 +661,7 @@ export async function lipSyncNode(
         (nativeLipSyncSkipped > 0 ? `, ${nativeLipSyncSkipped} already had native lip sync` : "") +
         (skippedDetails ? ` (${skippedDetails.slice(0, 300)})` : "");
 
-  console.log(`[LipSync Node] ${summary}`);
+  pipelineLog.info(`[LipSync Node] ${summary}`);
 
   return {
     dialoguePanelsFound: dialoguePanels.length,

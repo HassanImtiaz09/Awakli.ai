@@ -51,6 +51,7 @@ import {
   type NodeCompletionParams,
 } from "./hitl";
 import type { GenerateResult, ScoreContext } from "./hitl";
+import { pipelineLog } from "./observability/logger";
 
 type NodeName = "video_gen" | "voice_gen" | "lip_sync" | "music_gen" | "foley_gen" | "ambient_gen" | "assembly";
 type NodeStatus = "pending" | "running" | "complete" | "failed" | "skipped";
@@ -130,12 +131,12 @@ async function runHarnessGate(
   bible: ProductionBibleData,
   runId: number,
 ): Promise<HarnessRunSummary> {
-  console.log(`[Harness] Running ${layerName} gate (${checks.length} checks)...`);
+  pipelineLog.info(`[Harness] Running ${layerName} gate (${checks.length} checks)...`);
   const summary = await runHarnessLayer(checks, context, bible);
-  console.log(`[Harness] ${layerName}: ${summary.passed}/${summary.totalChecks} passed, score=${summary.overallScore}, cost=$${summary.totalCost}`);
+  pipelineLog.info(`[Harness] ${layerName}: ${summary.passed}/${summary.totalChecks} passed, score=${summary.overallScore}, cost=$${summary.totalCost}`);
 
   if (summary.shouldBlock) {
-    console.warn(`[Harness] ${layerName}: BLOCKED — pipeline will halt`);
+    pipelineLog.warn(`[Harness] ${layerName}: BLOCKED — pipeline will halt`);
     await notifyOwner({
       title: `Pipeline Blocked: ${layerName}`,
       content: `Pipeline run #${runId} blocked by ${layerName} harness. ${summary.blocked} check(s) returned BLOCK. Flagged items: ${summary.flaggedItems.map(f => f.checkName).join(", ")}`,
@@ -143,7 +144,7 @@ async function runHarnessGate(
   }
 
   if (summary.flaggedItems.length > 0) {
-    console.log(`[Harness] ${layerName}: ${summary.flaggedItems.length} flagged item(s): ${summary.flaggedItems.map(f => `${f.checkName}(${f.score})`).join(", ")}`);
+    pipelineLog.info(`[Harness] ${layerName}: ${summary.flaggedItems.length} flagged item(s): ${summary.flaggedItems.map(f => `${f.checkName}(${f.score})`).join(", ")}`);
   }
 
   return summary;
@@ -191,13 +192,13 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       elementList.push({ element_id: elementId });
       elementOrder.push(charName);
     }
-    console.log(`[Pipeline] Subject Library active: ${elementList.length} character elements loaded (${elementOrder.join(", ")})`);
+    pipelineLog.info(`[Pipeline] Subject Library active: ${elementList.length} character elements loaded (${elementOrder.join(", ")})`);
   } else {
-    console.log(`[Pipeline] No Subject Library elements found — using fallback Omni mode`);
+    pipelineLog.info(`[Pipeline] No Subject Library elements found — using fallback Omni mode`);
   }
 
   // ─── Step 1: Classify all panels via Smart Model Router ───────────────
-  console.log(`[Pipeline] Smart Model Router: classifying ${panelsToProcess.length} panels...`);
+  pipelineLog.info(`[Pipeline] Smart Model Router: classifying ${panelsToProcess.length} panels...`);
 
   // Get the production bible's animation style for Sakuga override
   let projectAnimationStyle = "default";
@@ -254,12 +255,12 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       }
     }
     if (motionLoraAvailable) {
-      console.log(`[Pipeline] Motion LoRA available: ${motionLoraPath}`);
+      pipelineLog.info(`[Pipeline] Motion LoRA available: ${motionLoraPath}`);
     } else {
-      console.log(`[Pipeline] No motion LoRA found for project ${projectId}`);
+      pipelineLog.info(`[Pipeline] No motion LoRA found for project ${projectId}`);
     }
   } catch (err) {
-    console.warn(`[Pipeline] Motion LoRA lookup failed:`, err);
+    pipelineLog.warn(`[Pipeline] Motion LoRA lookup failed:`, { detail: String(err) });
   }
 
   for (const panel of panelsToProcess) {
@@ -306,10 +307,10 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
     const motionLabel = motionDecision.fallback === "applied"
       ? `motion-LoRA@${motionDecision.motionLoraWeight}`
       : `motion-LoRA:${motionDecision.fallback}`;
-    console.log(`[Router] Panel ${panel.id}: Tier ${classification.tier} → ${classification.model} (${classification.deterministic ? "deterministic" : "LLM"}) [${motionLabel}] — ${classification.reasoning}`);
+    pipelineLog.info(`[Router] Panel ${panel.id}: Tier ${classification.tier} → ${classification.model} (${classification.deterministic ? "deterministic" : "LLM"}) [${motionLabel}] — ${classification.reasoning}`);
   }
 
-  console.log(`[Router] Classification complete: T1=${tierCounts[1]} T2=${tierCounts[2]} T3=${tierCounts[3]} T4=${tierCounts[4]}, cost=$${classificationCost.toFixed(3)}`);
+  pipelineLog.info(`[Router] Classification complete: T1=${tierCounts[1]} T2=${tierCounts[2]} T3=${tierCounts[3]} T4=${tierCounts[4]}, cost=$${classificationCost.toFixed(3)}`);
 
   // ─── Step 2: Submit video generation tasks in batches (Kling limit: 5 parallel) ────
   interface TaskInfo {
@@ -332,7 +333,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
 
   for (let batchIdx = 0; batchIdx < allPanelBatches.length; batchIdx++) {
     const batch = allPanelBatches[batchIdx];
-    console.log(`[Pipeline] Submitting batch ${batchIdx + 1}/${allPanelBatches.length} (${batch.length} panels)...`);
+    pipelineLog.info(`[Pipeline] Submitting batch ${batchIdx + 1}/${allPanelBatches.length} (${batch.length} panels)...`);
     const batchTaskIds: TaskInfo[] = [];
 
   for (const panel of batch) {
@@ -372,7 +373,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             elementOrder
           );
           omniElementList = elementList;
-          console.log(`[Pipeline] Panel ${panel.id}: Tier 1 + Subject Library lip sync (${panelCharNames.filter(n => elementMap.has(n)).join(", ")})`);
+          pipelineLog.info(`[Pipeline] Panel ${panel.id}: Tier 1 + Subject Library lip sync (${panelCharNames.filter(n => elementMap.has(n)).join(", ")})`);
         } else {
           omniPrompt = `Cinematic anime scene, ${String(panel.visualDescription || "dramatic scene")}. The character says: "${dialogueText.slice(0, 500)}". Anime style, high quality animation, fluid movement, expressive character performance.`;
           omniElementList = undefined;
@@ -399,9 +400,9 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             hasNativeLipSync: !!hasMatchingElements,
             classification,
           });
-          console.log(`[Pipeline] Tier 1 V3 Omni task: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
+          pipelineLog.info(`[Pipeline] Tier 1 V3 Omni task: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
         } else {
-          console.warn(`[Pipeline] Omni task returned non-zero code for panel ${panel.id}:`, result);
+          pipelineLog.warn(`[Pipeline] Omni task returned non-zero code for panel ${panel.id}:`, { detail: String(result) });
         }
       } else {
         // ─── TIER 2/3/4: Use appropriate model via image2video ───
@@ -427,13 +428,13 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
             hasNativeLipSync: false,
             classification,
           });
-          console.log(`[Pipeline] Tier ${classification.tier} ${classification.model} task: panel ${panel.id}: ${result.data.task_id}`);
+          pipelineLog.info(`[Pipeline] Tier ${classification.tier} ${classification.model} task: panel ${panel.id}: ${result.data.task_id}`);
         } else {
-          console.warn(`[Pipeline] Image2Video task returned non-zero code for panel ${panel.id}:`, result);
+          pipelineLog.warn(`[Pipeline] Image2Video task returned non-zero code for panel ${panel.id}:`, { detail: String(result) });
         }
       }
     } catch (err) {
-      console.error(`[Pipeline] Kling submission failed for panel ${panel.id}:`, err);
+      pipelineLog.error(`[Pipeline] Kling submission failed for panel ${panel.id}:`, { error: String(err) });
     }
   } // end panel loop within batch
 
@@ -508,14 +509,14 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
               });
 
               const lipSyncLabel = task.hasNativeLipSync ? "Native lip-synced" : task.classification.tier === 1 ? "Omni audio" : `Tier ${task.classification.tier}`;
-              console.log(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl.slice(0, 60)}... ($${actualCost.toFixed(3)})`);
+              pipelineLog.info(`[Pipeline] ${lipSyncLabel} video stored for panel ${task.panelId}: ${storedUrl.slice(0, 60)}... ($${actualCost.toFixed(3)})`);
             }
           } else if (status.data?.task_status === "failed") {
             batchCompletedTasks.add(task.taskId);
-            console.error(`[Pipeline] Kling task failed for panel ${task.panelId}: ${status.data.task_status_msg}`);
+            pipelineLog.error(`[Pipeline] Kling task failed for panel ${task.panelId}: ${status.data.task_status_msg}`);
           }
         } catch (err) {
-          console.error(`[Pipeline] Poll error for task ${task.taskId}:`, err);
+          pipelineLog.error(`[Pipeline] Poll error for task ${task.taskId}:`, { error: String(err) });
         }
       }
 
@@ -530,7 +531,7 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       }
     }
 
-    console.log(`[Pipeline] Batch ${batchIdx + 1} complete: ${batchCompletedTasks.size}/${batchTaskIds.length} tasks`);
+    pipelineLog.info(`[Pipeline] Batch ${batchIdx + 1} complete: ${batchCompletedTasks.size}/${batchTaskIds.length} tasks`);
     // Small delay between batches to avoid rate limits
     if (batchIdx < allPanelBatches.length - 1) {
       await sleep(3000);
@@ -555,9 +556,9 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
       savings,
       savingsPercent,
     });
-    console.log(`[Router] Stats saved: actual=$${totalActualCostUsd.toFixed(2)}, v3=$${totalV3OmniCostUsd.toFixed(2)}, saved=$${savings.toFixed(2)} (${savingsPercent.toFixed(0)}%)`);
+    pipelineLog.info(`[Router] Stats saved: actual=$${totalActualCostUsd.toFixed(2)}, v3=$${totalV3OmniCostUsd.toFixed(2)}, saved=$${savings.toFixed(2)} (${savingsPercent.toFixed(0)}%)`);
   } catch (err) {
-    console.error(`[Router] Failed to save routing stats:`, err);
+    pipelineLog.error(`[Router] Failed to save routing stats:`, { error: String(err) });
   }
 
   return totalCost;
@@ -614,9 +615,9 @@ async function voiceGenAgent(runId: number, episodeId: number, projectId: number
         metadata: { duration: durationEstimate, characterId: null, text: dialogueText.slice(0, 200) } as any,
         nodeSource: "voice_gen",
       });
-      console.log(`[Pipeline] Voice generated for panel ${panel.id}: ${durationEstimate}s`);
+      pipelineLog.info(`[Pipeline] Voice generated for panel ${panel.id}: ${durationEstimate}s`);
     } catch (err) {
-      console.error(`[Pipeline] Voice gen failed for panel ${panel.id}:`, err);
+      pipelineLog.error(`[Pipeline] Voice gen failed for panel ${panel.id}:`, { error: String(err) });
     }
 
     totalCost += Math.round(NODE_COSTS.voice_gen / panelsWithDialogue.length);
@@ -645,7 +646,7 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[Pipeline] Music gen attempt ${attempt}/${MAX_RETRIES}`);
+      pipelineLog.info(`[Pipeline] Music gen attempt ${attempt}/${MAX_RETRIES}`);
       const result = await generateSceneBGM({
         sceneDescription: `anime episode background score for "${title}", orchestral, cinematic`,
         mood,
@@ -670,15 +671,15 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
         } as any,
         nodeSource: "music_gen",
       });
-      console.log(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
+      pipelineLog.info(`[Pipeline] Music generated: ${Math.round(result.durationMs / 1000)}s, ${result.sizeBytes} bytes`);
       lastError = null;
       break; // Success — exit retry loop
     } catch (err: any) {
       lastError = err;
-      console.error(`[Pipeline] Music gen attempt ${attempt} failed:`, err.message || err);
+      pipelineLog.error(`[Pipeline] Music gen attempt ${attempt} failed:`, { error: String(err.message || err) });
       if (attempt < MAX_RETRIES) {
         const backoff = attempt * 3000; // 3s, 6s
-        console.log(`[Pipeline] Retrying music gen in ${backoff / 1000}s...`);
+        pipelineLog.info(`[Pipeline] Retrying music gen in ${backoff / 1000}s...`);
         await sleep(backoff);
       }
     }
@@ -686,7 +687,7 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
 
   // If all retries failed, use silent fallback
   if (lastError) {
-    console.error("[Pipeline] Music gen failed after all retries, using silent fallback");
+    pipelineLog.error("[Pipeline] Music gen failed after all retries, using silent fallback");
     const silentBuffer = Buffer.alloc(1024, 0);
     try {
       const { url } = await storagePut(musicKey, silentBuffer, "audio/mpeg");
@@ -699,7 +700,7 @@ async function musicGenAgent(runId: number, episodeId: number, nodeStatuses: Nod
         nodeSource: "music_gen",
       });
     } catch (fallbackErr) {
-      console.error("[Pipeline] Music fallback also failed:", fallbackErr);
+      pipelineLog.error("[Pipeline] Music fallback also failed:", { error: String(fallbackErr) });
     }
   }
 
@@ -743,7 +744,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
       } else if (clip.assetType === "synced_clip" && existing.assetType === "video_clip") {
         // Lip-synced version takes priority
         panelClipMap.set(clip.panelId, clip);
-        console.log(`[Assembly] Panel ${clip.panelNumber}: using lip-synced clip over original`);
+        pipelineLog.info(`[Assembly] Panel ${clip.panelNumber}: using lip-synced clip over original`);
       }
     }
     const videoClips = Array.from(panelClipMap.values());
@@ -770,7 +771,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
     } : null;
 
     if (videoClips.length === 0) {
-      console.error("[Pipeline] No video clips found for assembly");
+      pipelineLog.error("[Pipeline] No video clips found for assembly");
       throw new Error("No video clips available for assembly");
     }
 
@@ -791,7 +792,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
     });
 
     const nonCutCount = transitions.filter(t => t.type !== "cut").length;
-    console.log(`[Pipeline] Assembly: ${videoClips.length} video clips, ${voiceClips.length} voice clips, music: ${musicTrack ? (musicTrack.isFallback ? 'fallback' : 'yes') : 'none'}, transitions: ${nonCutCount} non-cut`);
+    pipelineLog.info(`[Pipeline] Assembly: ${videoClips.length} video clips, ${voiceClips.length} voice clips, music: ${musicTrack ? (musicTrack.isFallback ? 'fallback' : 'yes') : 'none'}, transitions: ${nonCutCount} non-cut`);
 
     await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 82, totalCost, nodeCosts);
 
@@ -801,7 +802,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
     // Read per-episode assembly settings (lip sync, foley, ambient, loudness)
     const { mergeAssemblySettings } = await import("@shared/assemblySettings");
     const assemblySettings = mergeAssemblySettings(episode?.assemblySettings as any);
-    console.log(`[Pipeline] Assembly settings: lipSync=${assemblySettings.enableLipSync}, foley=${assemblySettings.enableFoley}, ambient=${assemblySettings.enableAmbient}`);
+    pipelineLog.info(`[Pipeline] Assembly settings: lipSync=${assemblySettings.enableLipSync}, foley=${assemblySettings.enableFoley}, ambient=${assemblySettings.enableAmbient}`);
 
     // Collect foley assets from pipeline run (if foley is enabled)
     let foleyClips: any[] = [];
@@ -816,7 +817,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
           category: (a.metadata as any)?.category || "sfx",
           targetLufs: assemblySettings.foleyLufs,
         }));
-      console.log(`[Pipeline] Found ${foleyClips.length} foley clips for assembly`);
+      pipelineLog.info(`[Pipeline] Found ${foleyClips.length} foley clips for assembly`);
     }
 
     // Collect ambient assets from pipeline run (if ambient is enabled)
@@ -835,7 +836,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
           targetLufs: assemblySettings.ambientLufs,
           label: (a.metadata as any)?.label || "ambient",
         }));
-      console.log(`[Pipeline] Found ${ambientClips.length} ambient clips for assembly`);
+      pipelineLog.info(`[Pipeline] Found ${ambientClips.length} ambient clips for assembly`);
     }
 
     const result = await assembleVideo({
@@ -875,12 +876,12 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
     });
 
     await updateEpisode(episodeId, { videoUrl: url } as any);
-    console.log(`[Pipeline] Final video assembled: ${result.totalDuration.toFixed(1)}s, ${(result.videoBuffer.length / 1024 / 1024).toFixed(1)}MB`);
+    pipelineLog.info(`[Pipeline] Final video assembled: ${result.totalDuration.toFixed(1)}s, ${(result.videoBuffer.length / 1024 / 1024).toFixed(1)}MB`);
 
     // Upload to Cloudflare Stream for CDN delivery (non-blocking)
     try {
       const streamResult = await cfUploadFromUrl(url, { name: `episode-${episodeId}-final` });
-      console.log(`[Pipeline] Video uploaded to Cloudflare Stream: uid=${streamResult.uid}`);
+      pipelineLog.info(`[Pipeline] Video uploaded to Cloudflare Stream: uid=${streamResult.uid}`);
       await createPipelineAsset({
         pipelineRunId: runId,
         episodeId,
@@ -890,10 +891,10 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
         nodeSource: "assembly",
       });
     } catch (streamErr) {
-      console.warn("[Pipeline] Cloudflare Stream upload failed (non-critical):", streamErr);
+      pipelineLog.warn("[Pipeline] Cloudflare Stream upload failed (non-critical):", { detail: String(streamErr) });
     }
   } catch (err) {
-    console.error("[Pipeline] Assembly failed:", err);
+    pipelineLog.error("[Pipeline] Assembly failed:", { error: String(err) });
   }
 
   // Create thumbnail
@@ -913,7 +914,7 @@ async function assemblyAgent(runId: number, episodeId: number, nodeStatuses: Nod
       await updateEpisode(episodeId, { thumbnailUrl: thumbResult.url } as any);
     }
   } catch (err) {
-    console.error("[Pipeline] Thumbnail gen failed:", err);
+    pipelineLog.error("[Pipeline] Thumbnail gen failed:", { error: String(err) });
   }
 
   await updateNodeProgress(runId, "assembly", "running", nodeStatuses, 95, totalCost, nodeCosts);
@@ -953,9 +954,9 @@ export async function runPipeline(runId: number) {
   let bible: ProductionBibleData;
   try {
     bible = await getOrCompileProductionBible(run.projectId);
-    console.log(`[Pipeline] Production Bible compiled for project ${run.projectId}`);
+    pipelineLog.info(`[Pipeline] Production Bible compiled for project ${run.projectId}`);
   } catch (err) {
-    console.warn(`[Pipeline] Production Bible compilation failed, using defaults:`, err);
+    pipelineLog.warn(`[Pipeline] Production Bible compilation failed, using defaults:`, { detail: String(err) });
     bible = {
       version: 1,
       projectId: run.projectId,
@@ -1002,14 +1003,14 @@ export async function runPipeline(runId: number) {
     await initializeHitlForRun(runId, run.userId, userTier);
     const preFlightResult = await processPreFlightStages(runId, run.userId, userTier);
     if (preFlightResult.blocked) {
-      console.log(`[Pipeline] HITL pre-flight blocked at stage ${preFlightResult.blockingStage}`);
+      pipelineLog.info(`[Pipeline] HITL pre-flight blocked at stage ${preFlightResult.blockingStage}`);
       await pausePipelineForGate(runId, preFlightResult.blockingGateId!, preFlightResult.blockingStage!);
       return; // Pipeline paused — will resume via submitDecision
     }
     hitlEnabled = true;
-    console.log(`[Pipeline] HITL initialized: 12 stages, tier=${userTier}, pre-flight passed`);
+    pipelineLog.info(`[Pipeline] HITL initialized: 12 stages, tier=${userTier}, pre-flight passed`);
   } catch (hitlErr) {
-    console.warn(`[Pipeline] HITL initialization failed, running without gates:`, hitlErr);
+    pipelineLog.warn(`[Pipeline] HITL initialization failed, running without gates:`, { detail: String(hitlErr) });
     hitlEnabled = false;
   }
 
@@ -1030,7 +1031,7 @@ export async function runPipeline(runId: number) {
         imageUrl: p.imageUrl,
       })),
     };
-    console.log(`[Pipeline] Running Layer 1: Script Validation (${scriptData.panels.length} panels)...`);
+    pipelineLog.info(`[Pipeline] Running Layer 1: Script Validation (${scriptData.panels.length} panels)...`);
     const scriptSummary = await runHarnessGate(
       "Layer 1: Script Validation",
       scriptChecks,
@@ -1062,14 +1063,14 @@ export async function runPipeline(runId: number) {
         creditsActual: NODE_COSTS.video_gen,
       });
       if (videoGateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after video_gen (stage ${videoGateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after video_gen (stage ${videoGateResult.primaryStage})`);
         await pausePipelineForGate(runId, videoGateResult.gateResult.gateId, videoGateResult.primaryStage);
         return; // Pipeline paused — will resume via submitDecision
       }
     }
 
     // ── Layer 2+3: Visual + Video Quality (after video_gen) ──
-    console.log(`[Pipeline] Running Layer 2: Visual Consistency + Layer 3: Video Quality...`);
+    pipelineLog.info(`[Pipeline] Running Layer 2: Visual Consistency + Layer 3: Video Quality...`);
     const visualSummary = await runHarnessGate(
       "Layer 2: Visual Consistency",
       visualChecks,
@@ -1114,14 +1115,14 @@ export async function runPipeline(runId: number) {
         creditsActual: NODE_COSTS.voice_gen,
       });
       if (voiceGateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after voice_gen (stage ${voiceGateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after voice_gen (stage ${voiceGateResult.primaryStage})`);
         await pausePipelineForGate(runId, voiceGateResult.gateResult.gateId, voiceGateResult.primaryStage);
         return; // Pipeline paused
       }
     }
 
     // ── Layer 4: Audio Quality (after voice_gen) ──
-    console.log(`[Pipeline] Running Layer 4: Audio Quality...`);
+    pipelineLog.info(`[Pipeline] Running Layer 4: Audio Quality...`);
     const audioSummary = await runHarnessGate(
       "Layer 4: Audio Quality",
       audioChecks,
@@ -1154,17 +1155,17 @@ export async function runPipeline(runId: number) {
           nodeStatuses.lip_sync = "complete";
           nodeCosts.lip_sync = lipSyncResult.totalCostCents;
           totalCost += lipSyncResult.totalCostCents;
-          console.log(`[Pipeline] Lip sync: ${lipSyncResult.summary}`);
+          pipelineLog.info(`[Pipeline] Lip sync: ${lipSyncResult.summary}`);
           await updateNodeProgress(runId, "lip_sync", "complete", nodeStatuses, 52, totalCost, nodeCosts);
         } catch (lipSyncErr: any) {
-          console.error(`[Pipeline] Lip sync node failed (non-blocking):`, lipSyncErr.message);
+          pipelineLog.error(`[Pipeline] Lip sync node failed (non-blocking):`, { error: String(lipSyncErr.message) });
           nodeStatuses.lip_sync = "failed";
           await updateNodeProgress(runId, "lip_sync", "failed", nodeStatuses, 52, totalCost, nodeCosts);
           // Non-blocking: assembly will use original video clips without lip sync
         }
       } else {
         nodeStatuses.lip_sync = "skipped";
-        console.log(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
+        pipelineLog.info(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
         await updateNodeProgress(runId, "lip_sync", "skipped", nodeStatuses, 52, totalCost, nodeCosts);
       }
     }
@@ -1188,7 +1189,7 @@ export async function runPipeline(runId: number) {
         creditsActual: NODE_COSTS.music_gen,
       });
       if (musicGateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after music_gen (stage ${musicGateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after music_gen (stage ${musicGateResult.primaryStage})`);
         await pausePipelineForGate(runId, musicGateResult.gateResult.gateId, musicGateResult.primaryStage);
         return; // Pipeline paused
       }
@@ -1210,15 +1211,15 @@ export async function runPipeline(runId: number) {
         totalCost += foleyResult.totalCostCents;
         nodeStatuses.foley_gen = "complete";
         nodeCosts.foley_gen = foleyResult.totalCostCents;
-        console.log(`[Pipeline] Foley generation complete: ${foleyResult.clipsGenerated} clips, ${foleyResult.clipsFailed} failed, cost $${(foleyResult.totalCostCents / 100).toFixed(2)}`);
+        pipelineLog.info(`[Pipeline] Foley generation complete: ${foleyResult.clipsGenerated} clips, ${foleyResult.clipsFailed} failed, cost $${(foleyResult.totalCostCents / 100).toFixed(2)}`);
       } catch (foleyErr: any) {
-        console.error(`[Pipeline] Foley generation failed (non-blocking):`, foleyErr.message);
+        pipelineLog.error(`[Pipeline] Foley generation failed (non-blocking):`, { error: String(foleyErr.message) });
         nodeStatuses.foley_gen = "failed";
       }
       await updateNodeProgress(runId, "foley_gen", nodeStatuses.foley_gen, nodeStatuses, 79, totalCost, nodeCosts);
     } else {
       nodeStatuses.foley_gen = "skipped";
-      console.log(`[Pipeline] Foley generation skipped (disabled in assembly settings)`);
+      pipelineLog.info(`[Pipeline] Foley generation skipped (disabled in assembly settings)`);
     }
 
     // Node 5: Ambient Detection & Generation (scene-matched ambient loops)
@@ -1233,15 +1234,15 @@ export async function runPipeline(runId: number) {
         totalCost += ambientResult.totalCostCents;
         nodeStatuses.ambient_gen = "complete";
         nodeCosts.ambient_gen = ambientResult.totalCostCents;
-        console.log(`[Pipeline] Ambient generation complete: ${ambientResult.clipsGenerated} clips for ${ambientResult.scenesDetected} scenes, cost $${(ambientResult.totalCostCents / 100).toFixed(2)}`);
+        pipelineLog.info(`[Pipeline] Ambient generation complete: ${ambientResult.clipsGenerated} clips for ${ambientResult.scenesDetected} scenes, cost $${(ambientResult.totalCostCents / 100).toFixed(2)}`);
       } catch (ambientErr: any) {
-        console.error(`[Pipeline] Ambient generation failed (non-blocking):`, ambientErr.message);
+        pipelineLog.error(`[Pipeline] Ambient generation failed (non-blocking):`, { error: String(ambientErr.message) });
         nodeStatuses.ambient_gen = "failed";
       }
       await updateNodeProgress(runId, "ambient_gen", nodeStatuses.ambient_gen, nodeStatuses, 80, totalCost, nodeCosts);
     } else {
       nodeStatuses.ambient_gen = "skipped";
-      console.log(`[Pipeline] Ambient generation skipped (disabled in assembly settings)`);
+      pipelineLog.info(`[Pipeline] Ambient generation skipped (disabled in assembly settings)`);
     }
 
     // ── HITL Gate: Foley + Ambient (stage 8) ──
@@ -1256,7 +1257,7 @@ export async function runPipeline(runId: number) {
         creditsActual: (nodeCosts.foley_gen || 0) + (nodeCosts.ambient_gen || 0),
       });
       if (sfxGateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after foley/ambient_gen (stage ${sfxGateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after foley/ambient_gen (stage ${sfxGateResult.primaryStage})`);
         await pausePipelineForGate(runId, sfxGateResult.gateResult.gateId, sfxGateResult.primaryStage);
         return; // Pipeline paused
       }
@@ -1281,14 +1282,14 @@ export async function runPipeline(runId: number) {
         creditsActual: NODE_COSTS.assembly,
       });
       if (assemblyGateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after assembly (stage ${assemblyGateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after assembly (stage ${assemblyGateResult.primaryStage})`);
         await pausePipelineForGate(runId, assemblyGateResult.gateResult.gateId, assemblyGateResult.primaryStage);
         return; // Pipeline paused — final review before publish
       }
     }
 
     // ── Layer 5: Integration Validation (after assembly) ──
-    console.log(`[Pipeline] Running Layer 5: Integration Validation...`);
+    pipelineLog.info(`[Pipeline] Running Layer 5: Integration Validation...`);
     const integrationSummary = await runHarnessGate(
       "Layer 5: Integration Validation",
       integrationChecks,
@@ -1300,7 +1301,7 @@ export async function runPipeline(runId: number) {
     // Layer 5 blocks don't stop the pipeline (video is already assembled)
     // but they flag the episode for human review
     if (integrationSummary.shouldBlock) {
-      console.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
+      pipelineLog.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
     }
 
     // Compute overall harness score across all layers
@@ -1310,7 +1311,7 @@ export async function runPipeline(runId: number) {
     const totalPassed = allSummaries.reduce((sum, s) => sum + s.passed, 0);
     const totalChecks = allSummaries.reduce((sum, s) => sum + s.totalChecks, 0);
 
-    console.log(`[Pipeline] Harness complete: ${totalPassed}/${totalChecks} passed, score=${overallHarnessScore.toFixed(1)}, cost=$${harnessCost.toFixed(3)}, flagged=${totalFlagged}`);
+    pipelineLog.info(`[Pipeline] Harness complete: ${totalPassed}/${totalChecks} passed, score=${overallHarnessScore.toFixed(1)}, cost=$${harnessCost.toFixed(3)}, flagged=${totalFlagged}`);
 
     await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 100, totalCost, nodeCosts);
 
@@ -1441,7 +1442,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
   const fromIndex = NODE_ORDER.indexOf(fromNode);
   const startIndex = action === "regenerate" ? fromIndex : fromIndex + 1;
 
-  console.log(`[Pipeline] Resuming run #${runId} from ${action === "regenerate" ? fromNode + " (regen)" : NODE_ORDER[startIndex] || "completion"}, tier=${userTier}`);
+  pipelineLog.info(`[Pipeline] Resuming run #${runId} from ${action === "regenerate" ? fromNode + " (regen)" : NODE_ORDER[startIndex] || "completion"}, tier=${userTier}`);
 
   try {
     for (let i = startIndex; i < NODE_ORDER.length; i++) {
@@ -1469,10 +1470,10 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
               skipNativeLipSync: true,
             });
             totalCost += lsResult.totalCostCents;
-            console.log(`[Pipeline] Lip sync: ${lsResult.summary}`);
+            pipelineLog.info(`[Pipeline] Lip sync: ${lsResult.summary}`);
           } else {
             nodeStatuses.lip_sync = "skipped";
-            console.log(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
+            pipelineLog.info(`[Pipeline] Lip sync skipped (disabled in assembly settings)`);
           }
           break;
         }
@@ -1520,7 +1521,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
       });
 
       if (gateResult.blocked) {
-        console.log(`[Pipeline] HITL gate blocked after ${node} (stage ${gateResult.primaryStage})`);
+        pipelineLog.info(`[Pipeline] HITL gate blocked after ${node} (stage ${gateResult.primaryStage})`);
         await pausePipelineForGate(runId, gateResult.gateResult.gateId, gateResult.primaryStage);
         return; // Pipeline paused again — will resume via next submitDecision
       }
@@ -1530,7 +1531,7 @@ export async function resumePipeline(runId: number, fromNode: NodeName, action: 
     const integrationSummary = await runHarnessGate("Layer 5: Integration Validation", integrationChecks, { ...baseContext, targetType: "episode" }, bible, runId);
     harnessCost += integrationSummary.totalCost;
     if (integrationSummary.shouldBlock) {
-      console.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
+      pipelineLog.warn(`[Pipeline] Layer 5 BLOCK — episode flagged for human review`);
     }
 
     await updateNodeProgress(runId, "assembly", "complete", nodeStatuses, 100, totalCost, nodeCosts);

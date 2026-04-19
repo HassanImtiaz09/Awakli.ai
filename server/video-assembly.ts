@@ -53,6 +53,7 @@ import {
   assertVoicePresence,
   type DialogueTimecode,
 } from "./pipeline/voiceValidator";
+import { pipelineLog } from "./observability/logger";
 import {
   processLipSyncBatch,
   type LipSyncPanelInput,
@@ -511,7 +512,7 @@ async function overlayVoiceClips_UNSAFE(
   voiceClips: { path: string; startTime: number; duration: number }[],
   outputPath: string,
 ): Promise<void> {
-  console.warn(
+  pipelineLog.warn(
     "[Assembly] WARNING: overlayVoiceClips_UNSAFE called — this uses bare amix " +
     "which divides amplitude by N inputs. Use overlayVoiceClipsSafe instead."
   );
@@ -585,7 +586,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
   await fs.mkdir(tmpDir, { recursive: true });
 
   try {
-    console.log(
+    pipelineLog.info(
       `[Assembly] Starting in ${tmpDir} with ${input.videoClips.length} clips, ` +
       `${input.voiceClips.length} voice clips, transitions: ${input.transitions ? "yes" : "all-cut"}`
     );
@@ -619,7 +620,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
     for (let i = 0; i < sortedClips.length; i++) {
       const clip = sortedClips[i];
       const clipPath = path.join(tmpDir, `clip-${i}.mp4`);
-      console.log(`[Assembly] Downloading clip ${i + 1}/${sortedClips.length}: panel ${clip.panelId}`);
+      pipelineLog.info(`[Assembly] Downloading clip ${i + 1}/${sortedClips.length}: panel ${clip.panelId}`);
       await downloadFile(clip.url, clipPath);
       downloadedClips.push(clipPath);
     }
@@ -629,7 +630,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
     const actualDurations: number[] = [];
     for (let i = 0; i < downloadedClips.length; i++) {
       const normPath = path.join(tmpDir, `norm-${i}.mp4`);
-      console.log(`[Assembly] Normalizing clip ${i + 1}/${downloadedClips.length}`);
+      pipelineLog.info(`[Assembly] Normalizing clip ${i + 1}/${downloadedClips.length}`);
       await normalizeClip(downloadedClips[i], normPath);
       normalizedClips.push(normPath);
       const dur = await getMediaDuration(normPath);
@@ -647,10 +648,10 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
     if (normalizedClips.length === 1) {
       // Single clip — just copy
       await fs.copyFile(normalizedClips[0], concatPath);
-      console.log("[Assembly] Single clip — no transitions needed");
+      pipelineLog.info("[Assembly] Single clip — no transitions needed");
     } else if (!hasRealTransitions) {
       // All cuts — use fast concat demuxer
-      console.log(`[Assembly] All cuts — using fast concat for ${normalizedClips.length} clips`);
+      pipelineLog.info(`[Assembly] All cuts — using fast concat for ${normalizedClips.length} clips`);
       await concatenateClips(normalizedClips, concatPath);
     } else {
       // Build xfade filter graph
@@ -673,7 +674,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         .filter(t => t.type !== "cut")
         .map(t => `${t.type}(${t.duration.toFixed(1)}s)`)
         .join(", ");
-      console.log(
+      pipelineLog.info(
         `[Assembly] Building xfade graph: ${normalizedClips.length} clips, ` +
         `transitions: ${transitionSummary || "none"}`
       );
@@ -686,7 +687,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
     const lipSyncedClipPaths = new Map<number, string>(); // panelId → lip-synced clip path
 
     if (input.enableLipSync && input.voiceClips.length > 0 && input.uploadFn) {
-      console.log(`[Assembly] Running lip sync for ${input.voiceClips.length} dialogue panels`);
+      pipelineLog.info(`[Assembly] Running lip sync for ${input.voiceClips.length} dialogue panels`);
 
       const lipSyncWorkDir = path.join(tmpDir, "lipsync");
       const lipSyncInputs: LipSyncPanelInput[] = [];
@@ -728,14 +729,14 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
               normalizedClips[clipIdx] = reNormPath;
               actualDurations[clipIdx] = await getMediaDuration(reNormPath);
               lipSyncedClipPaths.set(panel.panelId as number, reNormPath);
-              console.log(`[Assembly] Replaced clip ${clipIdx} with lip-synced version for panel ${panel.panelId}`);
+              pipelineLog.info(`[Assembly] Replaced clip ${clipIdx} with lip-synced version for panel ${panel.panelId}`);
             }
           }
         }
 
         // If lip sync replaced clips, re-concatenate
         if (lipSyncedClipPaths.size > 0) {
-          console.log(`[Assembly] Re-concatenating with ${lipSyncedClipPaths.size} lip-synced clips`);
+          pipelineLog.info(`[Assembly] Re-concatenating with ${lipSyncedClipPaths.size} lip-synced clips`);
           if (normalizedClips.length === 1) {
             await fs.copyFile(normalizedClips[0], concatPath);
           } else if (!hasRealTransitions) {
@@ -777,7 +778,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       for (let i = 0; i < input.voiceClips.length; i++) {
         const vc = input.voiceClips[i];
         const voicePath = path.join(tmpDir, `voice-${i}.mp3`);
-        console.log(`[Assembly] Downloading voice clip ${i + 1}/${input.voiceClips.length}: panel ${vc.panelId}`);
+        pipelineLog.info(`[Assembly] Downloading voice clip ${i + 1}/${input.voiceClips.length}: panel ${vc.panelId}`);
         await downloadFile(vc.url, voicePath);
 
         const startTime = panelStartMap[vc.panelId] ?? 0;
@@ -791,7 +792,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         });
       }
 
-      console.log(`[Assembly] Building voice track (${voicePlacements.length} clips, safe sequential overlay)`);
+      pipelineLog.info(`[Assembly] Building voice track (${voicePlacements.length} clips, safe sequential overlay)`);
       voiceTrackPath = await buildVoiceTrack(
         voicePlacements,
         videoDuration,
@@ -809,7 +810,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
           measureDurationSeconds: Math.max(vp.durationSeconds, 2.0),
         }));
 
-        console.log(`[Assembly] Running voice validation gate (threshold: ${threshold} LUFS)`);
+        pipelineLog.info(`[Assembly] Running voice validation gate (threshold: ${threshold} LUFS)`);
         const validation = await validateVoicePresence(voiceTrackPath, dialogueTimecodes, threshold);
 
         voiceValidationResult = {
@@ -821,10 +822,10 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         };
 
         if (!validation.allPassed) {
-          console.error(`[Assembly] VOICE VALIDATION FAILED: ${validation.summary}`);
+          pipelineLog.error(`[Assembly] VOICE VALIDATION FAILED: ${validation.summary}`);
           await assertVoicePresence(voiceTrackPath, dialogueTimecodes, threshold);
         } else {
-          console.log(`[Assembly] Voice validation PASSED: ${validation.summary}`);
+          pipelineLog.info(`[Assembly] Voice validation PASSED: ${validation.summary}`);
         }
       }
     }
@@ -834,7 +835,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
 
     if (input.musicTrack && !input.musicTrack.isFallback && input.musicTrack.duration > 0) {
       const musicPath = path.join(tmpDir, "bgm.mp3");
-      console.log("[Assembly] Downloading background music");
+      pipelineLog.info("[Assembly] Downloading background music");
       await downloadFile(input.musicTrack.url, musicPath);
 
       // Build music track using safe sequential overlay
@@ -859,7 +860,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       for (let i = 0; i < input.foleyClips.length; i++) {
         const fc = input.foleyClips[i];
         const foleyPath = path.join(tmpDir, `foley-${i}.mp3`);
-        console.log(`[Assembly] Downloading foley clip ${i + 1}/${input.foleyClips.length}: ${fc.category} @ panel ${fc.panelId}`);
+        pipelineLog.info(`[Assembly] Downloading foley clip ${i + 1}/${input.foleyClips.length}: ${fc.category} @ panel ${fc.panelId}`);
         await downloadFile(fc.url, foleyPath);
 
         const startTime = panelStartMap[fc.panelId] ?? 0;
@@ -875,7 +876,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         });
       }
 
-      console.log(`[Assembly] Building foley track (${foleyPlacements.length} clips at -28 LUFS)`);
+      pipelineLog.info(`[Assembly] Building foley track (${foleyPlacements.length} clips at -28 LUFS)`);
       foleyTrackPath = await buildFoleyTrack(
         foleyPlacements,
         videoDuration,
@@ -892,7 +893,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       for (let i = 0; i < input.ambientClips.length; i++) {
         const ac = input.ambientClips[i];
         const ambientPath = path.join(tmpDir, `ambient-${i}.mp3`);
-        console.log(`[Assembly] Downloading ambient clip ${i + 1}/${input.ambientClips.length}: ${ac.label || "ambient"}`);
+        pipelineLog.info(`[Assembly] Downloading ambient clip ${i + 1}/${input.ambientClips.length}: ${ac.label || "ambient"}`);
         await downloadFile(ac.url, ambientPath);
 
         ambientPlacements.push({
@@ -907,7 +908,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
         });
       }
 
-      console.log(`[Assembly] Building ambient track (${ambientPlacements.length} layers at -32 LUFS)`);
+      pipelineLog.info(`[Assembly] Building ambient track (${ambientPlacements.length} layers at -32 LUFS)`);
       ambientTrackPath = await buildAmbientTrack(
         ambientPlacements,
         videoDuration,
@@ -935,7 +936,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
       const mixedAudioPath = path.join(audioWorkDir, "mixed_master.wav");
 
       const busCount = 2 + (foleyTrackPath ? 1 : 0) + (ambientTrackPath ? 1 : 0);
-      console.log(`[Assembly] Mixing ${busCount}-bus audio master (voice + music${foleyTrackPath ? " + foley" : ""}${ambientTrackPath ? " + ambient" : ""})`);
+      pipelineLog.info(`[Assembly] Mixing ${busCount}-bus audio master (voice + music${foleyTrackPath ? " + foley" : ""}${ambientTrackPath ? " + ambient" : ""})`);
 
       await mixAllAudioBuses(
         effectiveVoice,
@@ -956,7 +957,7 @@ export async function assembleVideo(input: AssemblyInput): Promise<AssemblyResul
     const finalBuffer = await fs.readFile(currentPath);
     const totalDuration = await getMediaDuration(currentPath);
 
-    console.log(`[Assembly] Complete: ${finalBuffer.length} bytes, ${totalDuration.toFixed(1)}s`);
+    pipelineLog.info(`[Assembly] Complete: ${finalBuffer.length} bytes, ${totalDuration.toFixed(1)}s`);
 
     return {
       videoBuffer: finalBuffer,
