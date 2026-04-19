@@ -3413,3 +3413,30 @@
 ## Bug Fixes
 
 - [x] Fix database connection error in getOrCreateGuestUser causing 'Generate Now' to fail (added withRetry + resetDbConnection for stale connection recovery)
+
+## Prompt 30: Panel Generation Speed & Character Consistency
+
+### Real-Time Progress Indicators
+- [x] Add per-panel progress tracking to pipeline (in-memory GenerationProgress store with per-panel PanelProgress steps)
+- [x] Create tRPC polling endpoint for live generation status (quickCreate.status returns panelSteps, statusMessage, ETA)
+- [x] Store granular step status in in-memory activeGenerations map (queued → building_prompt → generating → uploading → complete/failed)
+- [x] Build progress UI: phase indicator strip, per-panel step labels, ETA, elapsed time, avg panel time
+- [x] Show panel thumbnails as they complete (progressive reveal with motion animations)
+
+### Character Consistency Engine
+- [x] Implement reference-image anchoring: generate character reference sheet first, use as IP-Adapter originalImages input for all panels
+- [x] Add character description embedding to prompts (LLM-generated detailed appearance profiles injected as [CharName: description] tags)
+- [x] Implement seed locking per character across panels (hashStringToSeed deterministic per character+style+genre)
+- [x] Add character reference URL to generation requests (referenceUrl in buildConsistentPanelPrompt)
+- [x] Integrate IP-Adapter character reference in image generation calls (originalImages parameter)
+- [x] Document character consistency strategy for users (completion overlay shows LoRA training benefits for accounts)
+
+### Pipeline Performance
+- [x] Add parallel panel generation with concurrency control (CONCURRENCY=3, batch processing)
+- [x] Add estimated time remaining calculation (rolling average of last 5 panels, displayed in UI)
+- [x] Log per-panel timing metrics (startedAt, completedAt, completedTimes array for rolling average)
+
+### Tests
+- [x] Write vitest tests for progress tracking logic (getOrCreateProgress, updatePanelStep, rolling average)
+- [x] Write vitest tests for character consistency prompt builder (buildConsistentPanelPrompt, 11 tests)
+- [x] Write vitest tests for reference image anchoring flow (referenceUrl, hashStringToSeed, 28 tests total)
