@@ -28,6 +28,34 @@ export async function getDb() {
   return _db;
 }
 
+/** Reset the cached DB connection so the next getDb() creates a fresh one */
+export function resetDbConnection() {
+  _db = null;
+}
+
+/** Retry a DB operation once after resetting the connection on failure */
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error: any) {
+    const msg = error?.message ?? "";
+    // If it looks like a connection/query error, reset and retry once
+    if (
+      msg.includes("Failed query") ||
+      msg.includes("ECONNRESET") ||
+      msg.includes("PROTOCOL_CONNECTION_LOST") ||
+      msg.includes("ETIMEDOUT") ||
+      msg.includes("Connection lost") ||
+      msg.includes("Cannot enqueue")
+    ) {
+      console.warn("[Database] Connection error detected, retrying with fresh connection...");
+      resetDbConnection();
+      return await operation();
+    }
+    throw error;
+  }
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -72,23 +100,25 @@ export async function getUserByOpenId(openId: string) {
 const GUEST_OPEN_ID = "__guest__";
 
 export async function getOrCreateGuestUser(): Promise<number> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
 
-  const existing = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
-  if (existing.length > 0) return existing[0].id;
+    const existing = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
+    if (existing.length > 0) return existing[0].id;
 
-  await db.insert(users).values({
-    openId: GUEST_OPEN_ID,
-    name: "Guest",
-    email: null,
-    loginMethod: "guest",
-    role: "user",
-    lastSignedIn: new Date(),
+    await db.insert(users).values({
+      openId: GUEST_OPEN_ID,
+      name: "Guest",
+      email: null,
+      loginMethod: "guest",
+      role: "user",
+      lastSignedIn: new Date(),
+    });
+
+    const created = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
+    return created[0].id;
   });
-
-  const created = await db.select({ id: users.id }).from(users).where(eq(users.openId, GUEST_OPEN_ID)).limit(1);
-  return created[0].id;
 }
 
 // ─── Projects ─────────────────────────────────────────────────────────────

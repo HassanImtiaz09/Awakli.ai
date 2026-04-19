@@ -3368,15 +3368,15 @@
 ## Prompt 29: Provider A/B Testing & Async Webhook Generation
 
 ### A/B Testing Engine
-- [ ] Create A/B experiment config type (experimentId, name, providers[], trafficSplit%, workloadTypes[], status)
-- [ ] Implement traffic splitter that routes jobs to control vs variant providers based on split percentage
-- [ ] Implement result collector that aggregates quality/cost/latency metrics per experiment arm
-- [ ] Add statistical significance calculator (chi-squared or z-test for conversion, t-test for latency/cost)
+- [x] Create A/B experiment config type (ABExperiment, ABExperimentResult, ArmStats, ExperimentComparison in ab-testing.ts)
+- [x] Implement traffic splitter (assignArm, matchesExperiment, routeWithExperiment in ab-testing.ts)
+- [x] Implement result collector (computeArmStats with success rate, latency percentiles, cost aggregation)
+- [x] Add statistical significance calculator (proportionZTest for success rate, welchTTest for latency/cost)
 
 ### A/B Testing Database
-- [ ] Create ab_experiments table (id, name, controlProvider, variantProvider, trafficSplit, workloadTypes, status, startedAt, endedAt)
-- [ ] Create ab_experiment_results table (id, experimentId, providerId, jobId, latencyMs, costUsd, qualityScore, workloadType)
-- [ ] Run migrations for new tables
+- [x] Create ab_experiments table (id, name, controlProvider, variantProvider, trafficSplit, workloadTypes, status, startedAt, endedAt)
+- [x] Create ab_experiment_results table (id, experimentId, arm, providerId, jobId, latencyMs, costUsd, qualityScore, workloadType)
+- [x] Run migrations for new tables (ab_experiments, ab_experiment_results, batch_jobs, batch_job_items)
 
 ### A/B Testing tRPC Procedures
 - [x] Wire abTest.create procedure (create new experiment)
@@ -3409,3 +3409,7 @@
 - [x] Write vitest tests for webhook signature verification (verifyWebhookSignature, signWebhookPayload)
 - [x] Write vitest tests for batch job schema and webhook handler exports
 - [x] Write vitest tests for tRPC procedure registration (51 tests, all passing)
+
+## Bug Fixes
+
+- [x] Fix database connection error in getOrCreateGuestUser causing 'Generate Now' to fail (added withRetry + resetDbConnection for stale connection recovery)
