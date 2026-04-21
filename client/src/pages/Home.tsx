@@ -312,7 +312,7 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
               alt=""
               aria-hidden
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-              style={{ opacity: 0.12, filter: "blur(1px) saturate(0.7)" }}
+              style={{ opacity: 0.20, filter: "blur(1px) saturate(0.7)" }}
               loading="lazy"
             />
             {/* Dark vignette over background */}

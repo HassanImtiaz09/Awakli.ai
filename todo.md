@@ -3827,3 +3827,6 @@
 - [x] Generate faded anime background artwork for Step 04 tile (gold, community voting theme)
 - [x] Generate faded anime background artwork for Step 05 tile (magenta, anime production theme)
 - [x] Integrate background images into proof section cards with faded overlay
+
+## Proof Tile Background Refinement
+- [x] Increase proof tile background image opacity from 12% to 20%
