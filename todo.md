@@ -3801,3 +3801,6 @@
 - [x] Extract TiltCard to shared component (client/src/components/awakli/TiltCard.tsx)
 - [x] Apply TiltCard to Discover page project cards
 - [x] Apply TiltCard to Trending page project cards
+
+## TiltCard on AwakliCard
+- [x] Integrate TiltCard parallax into AwakliCard component for site-wide consistency

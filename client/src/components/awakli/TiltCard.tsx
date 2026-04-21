@@ -51,13 +51,13 @@ export function TiltCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={handleMouseLeave}
-      className={`group ${asLink ? "" : "cursor-default"} ${className}`}
+      className={`group ${asLink ? "" : "cursor-default"} ${className || "p-5 rounded-[14px] border border-white/8 bg-[#0D0D1A] hover:border-white/15 transition-all text-center"}`}
       style={{
         transform: `perspective(600px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(${hovering ? -3 : 0}px)`,
         transition: hovering ? "transform 0.1s ease-out, box-shadow 0.2s ease-out" : "transform 0.4s ease-out, box-shadow 0.3s ease-out",
         boxShadow: hovering
-          ? `0 14px 32px -8px ${color}35, 0 4px 8px rgba(0,0,0,0.3)`
-          : "0 2px 8px rgba(0,0,0,0.2)",
+          ? `inset 0 1px 0 rgba(255,255,255,0.08), 0 14px 32px -8px ${color}40, 0 4px 8px rgba(0,0,0,0.3)`
+          : "inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)",
       }}
     >
       {children}
