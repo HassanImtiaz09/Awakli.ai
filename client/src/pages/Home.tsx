@@ -565,14 +565,19 @@ function FeatureStrip() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 max-w-5xl mx-auto">
           {AI_FEATURES.map((feat, i) => (
             <ScrollReveal key={feat.name} delay={i * 0.06}>
-              <div className="group p-4 rounded-xl border border-white/5 bg-[#0D0D1A] hover:border-white/10 transition-all text-center">
+              <div className="group p-5 rounded-2xl border border-white/8 bg-[#0D0D1A] hover:border-white/15 hover:-translate-y-0.5 transition-all text-center"
+                   style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)" }}>
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
-                  style={{ backgroundColor: `${feat.color}15`, border: `1px solid ${feat.color}25` }}
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                  style={{
+                    backgroundColor: `${feat.color}18`,
+                    border: `1px solid ${feat.color}40`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 20px -6px ${feat.color}55`,
+                  }}
                 >
-                  <feat.icon className="w-5 h-5" style={{ color: feat.color }} />
+                  <feat.icon className="w-6 h-6" style={{ color: feat.color }} strokeWidth={1.75} />
                 </div>
-                <span className="text-xs font-medium text-[#9494B8] group-hover:text-white transition-colors">
+                <span className="text-xs font-semibold text-[#B8B8CC] group-hover:text-white transition-colors tracking-wide">
                   {feat.name}
                 </span>
               </div>
