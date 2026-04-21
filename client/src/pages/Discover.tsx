@@ -10,6 +10,7 @@ import { VoteProgressBar } from "@/components/awakli/VoteProgressBar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SignUpBanner, FloatingSignUpPrompt } from "@/components/awakli/SignUpPrompt";
 import { cn } from "@/lib/utils";
+import { TiltCard } from "@/components/awakli/TiltCard";
 
 const GENRES = [
   { value: "", label: "All Genres" },
@@ -440,11 +441,7 @@ function BrowseAllSection() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {items.map((item: any) => (
               <Link key={item.id} href={`/watch/${item.slug}`}>
-                <motion.div
-                  className="group cursor-pointer"
-                  whileHover={{ y: -4 }}
-                  transition={{ duration: 0.2 }}
-                >
+                <TiltCard color="#6B5BFF" className="cursor-pointer" asLink>
                   <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#6B5BFF]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#6B5BFF]/10">
                     {item.coverImageUrl ? (
                       <img
@@ -489,7 +486,7 @@ function BrowseAllSection() {
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </TiltCard>
               </Link>
             ))}
           </div>

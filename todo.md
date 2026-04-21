@@ -3796,3 +3796,8 @@
 - [x] Sweep Leaderboard.tsx for #E94560/#FF6B81 and replace with new palette
 - [x] Sweep all other components for #E94560/#FF6B81 and replace with new palette (477 + 21 = 498 replacements across 45 files)
 - [x] Add hover parallax tilt to AI feature chips with mouse-tracking --tilt-x/--tilt-y CSS custom properties
+
+## TiltCard Parallax on Discover & Trending
+- [x] Extract TiltCard to shared component (client/src/components/awakli/TiltCard.tsx)
+- [x] Apply TiltCard to Discover page project cards
+- [x] Apply TiltCard to Trending page project cards

@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { TopNav } from "@/components/awakli/TopNav";
 import { cn } from "@/lib/utils";
+import { TiltCard } from "@/components/awakli/TiltCard";
 
 const TABS = [
   { id: "trending", label: "Trending", icon: Flame },
@@ -111,13 +112,7 @@ export default function Trending() {
 function ContentCard({ item, rank }: { item: any; rank?: number }) {
   return (
     <Link href={`/watch/${item.slug}`}>
-      <motion.div
-        className="group cursor-pointer"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -4 }}
-        transition={{ duration: 0.3 }}
-      >
+      <TiltCard color="#6B5BFF" className="cursor-pointer" asLink>
         <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#6B5BFF]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#6B5BFF]/10">
           {item.coverImageUrl ? (
             <img
@@ -180,7 +175,7 @@ function ContentCard({ item, rank }: { item: any; rank?: number }) {
             )}
           </div>
         </div>
-      </motion.div>
+      </TiltCard>
     </Link>
   );
 }
