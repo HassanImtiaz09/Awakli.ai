@@ -3862,31 +3862,31 @@
 ### Feed (Discover) Page
 - [x] Add scroll-reactive anime background to Discover page
 - [x] Add hero section with anime artwork and atmospheric effects
-- [ ] Apply TiltCard effects to project cards (already using TiltCard)
+- [x] Apply TiltCard effects to project cards (already using TiltCard + AwakliCard with glow)
 - [x] Add ScrollReveal animations to content sections
 
 ### Create Page
 - [x] Add anime-themed background artwork for creation hub
 - [x] Add atmospheric depth with scroll backgrounds
-- [ ] Apply glow effects and TiltCard to project cards (wizard flow, not card-based)
+- [x] Apply glow effects and TiltCard to project cards (wizard flow uses motion + glow effects)
 - [x] Enhance the creation wizard visual experience
 
 ### Codex (CharacterLibrary) Page
 - [x] Add anime-themed background for character library
-- [ ] Apply TiltCard and glow effects to character cards
+- [x] Apply TiltCard and glow effects to character cards (enhanced hover glow + scale)
 - [x] Add atmospheric scroll backgrounds
-- [ ] Enhance character card hover effects
+- [x] Enhance character card hover effects (cyan/violet glow shadow on hover)
 
 ### Compete (Leaderboard) Page
 - [x] Add anime-themed background for leaderboard
 - [x] Apply atmospheric effects and scroll backgrounds
-- [ ] Enhance leaderboard cards with glow and TiltCard effects
+- [x] Enhance leaderboard cards with glow and TiltCard effects (already uses TiltCard extensively)
 - [x] Add visual depth to ranking sections
 
 ### Pricing Page
 - [x] Add anime-themed background to pricing page
 - [x] Apply atmospheric scroll backgrounds
-- [ ] Enhance pricing cards with glow effects
+- [x] Enhance pricing cards with glow effects (motion.section with accent color glow on hover)
 
 ### Trending Page
 - [x] Add anime-themed background to trending page

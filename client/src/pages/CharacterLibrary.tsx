@@ -61,7 +61,7 @@ function CharacterLibraryCard({
     <motion.div
       className="relative aspect-[3/4] rounded-xl border border-white/10 overflow-hidden group cursor-pointer"
       style={{ background: "var(--gradient-card)" }}
-      whileHover={{ y: -4, boxShadow: "0 8px 32px rgba(0,212,255,0.12)" }}
+      whileHover={{ y: -6, scale: 1.02, boxShadow: "0 8px 36px rgba(0,240,255,0.2), 0 0 60px rgba(107,91,255,0.1)" }}
       onClick={onOpen}
       layout
     >

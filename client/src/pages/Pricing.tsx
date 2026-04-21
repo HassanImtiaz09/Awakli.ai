@@ -213,11 +213,12 @@ function TierScene({
 
   return (
     <ScrollReveal delay={index * 0.1}>
-      <section
-        className="relative min-h-[70vh] flex items-center overflow-hidden rounded-3xl border border-white/5 mb-8"
+      <motion.section
+        className="relative min-h-[70vh] flex items-center overflow-hidden rounded-3xl border border-white/5 mb-8 transition-all"
         style={{
           background: `linear-gradient(135deg, ${tier.gradientFrom}08, ${tier.gradientTo}04, #0D0D1A)`,
         }}
+        whileHover={{ borderColor: `${tier.accentColor}30`, boxShadow: `0 0 60px ${tier.accentColor}15, 0 8px 32px ${tier.accentColor}10` }}
       >
         {/* Accent glow */}
         <div
@@ -341,7 +342,7 @@ function TierScene({
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
     </ScrollReveal>
   );
 }
