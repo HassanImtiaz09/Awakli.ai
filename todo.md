@@ -3937,3 +3937,18 @@
 - [x] Wire panel generation UI in /create/panels with episode tabs, generate/approve/reject/regenerate
 - [x] Display generated panels with image grid, progress bar, stats bar, zoom modal, polling
 - [x] Save generated panel images to S3 and store URLs in database (backend already handles this)
+
+## F3: Project Persistence Model
+- [x] Add Checkpoint table to schema (projectId, stageFrom, stageTo, inputs, outputs, creditsSpent, timestamp)
+- [x] Add project state field (draft, published-manga, published-anime, archived) to projects table
+- [x] Add currentStage field (wizardStage) to projects table
+- [x] Add activeProjectLimit per tier (free_trial: 3, creator: 10, creator_pro: 25, studio: 100, enterprise: unlimited)
+- [x] Run DB migration for schema changes (0038_project_persistence.sql)
+- [x] Create project service with advanceStage logic (tier + credit validation)
+- [x] Create checkpoint service to write checkpoint rows on stage transitions
+- [x] Add tRPC project.advanceStage procedure with credit/tier gating
+- [x] Add tRPC project.checkpoints query for checkpoint history
+- [x] Return structured error payloads: insufficient_credits, tier_locked, validation_failed
+- [x] Exact error strings: "You need X more credits to continue. Top up or upgrade to Mangaka."
+- [x] Exact error strings: "Studio Pro unlocks voice cloning. Upgrade to proceed."
+- [x] Write vitest tests for advanceStage and checkpoint procedures (28 tests passing)

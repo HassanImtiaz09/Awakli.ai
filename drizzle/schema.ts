@@ -69,11 +69,13 @@ export const projects = mysqlTable("projects", {
   publishedAt: timestamp("publishedAt"),
   sourceType: mysqlEnum("source_type", ["text_prompt", "upload_ai", "upload_digital", "upload_hand_drawn"]).default("text_prompt"),
   uploadMetadata: json("upload_metadata"),
+  // F3: Project Persistence - wizard stage tracking
+  wizardStage: int("wizardStage").default(0).notNull(),  // 0-6 maps to input/setup/script/panels/anime-gate/video/publish
+  projectState: mysqlEnum("projectState", ["draft", "published_manga", "published_anime", "archived"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
-export type Project = typeof projects.$inferSelect;
+export type Project = typeof projects.$inferSelect;;
 export type InsertProject = typeof projects.$inferInsert;
 
 // ─── Content Views (anonymous + authenticated) ──────────────────────────────
@@ -1946,3 +1948,20 @@ export const sceneProviderPins = mysqlTable("scene_provider_pins", {
 });
 export type SceneProviderPin = typeof sceneProviderPins.$inferSelect;
 export type InsertSceneProviderPin = typeof sceneProviderPins.$inferInsert;
+
+// ─── Project Checkpoints (F3: Project Persistence) ─────────────────────────
+// Records every stage transition with inputs, outputs, credits spent, and timestamp.
+export const projectCheckpoints = mysqlTable("project_checkpoints", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stageFrom: int("stageFrom").notNull(),  // 0-6
+  stageTo: int("stageTo").notNull(),      // 0-6
+  inputs: json("inputs"),                 // Snapshot of what was provided at this stage
+  outputs: json("outputs"),               // Snapshot of what was produced at this stage
+  creditsSpent: int("creditsSpent").default(0),
+  metadata: json("metadata"),             // Additional context (tier, validation results, etc.)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
+export type InsertProjectCheckpoint = typeof projectCheckpoints.$inferInsert;

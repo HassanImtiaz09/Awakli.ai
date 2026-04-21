@@ -404,6 +404,51 @@ const projectsRouter = router({
       await deleteProject(input.id, ctx.user.id);
       return { success: true };
     }),
+
+  // F3: List user's own projects with wizard state
+  listMine: protectedProcedure.query(async ({ ctx }) => {
+    const userProjects = await getProjectsByUserId(ctx.user.id);
+    return userProjects.map((p: any) => ({
+      ...p,
+      wizardStage: p.wizardStage ?? 0,
+      projectState: p.projectState ?? "draft",
+    }));
+  }),
+
+  // F3: Advance project to the next wizard stage
+  advanceStage: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      inputs: z.record(z.string(), z.unknown()).optional(),
+      outputs: z.record(z.string(), z.unknown()).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { advanceStage: doAdvance } = await import("./projectService");
+      return doAdvance(input.id, ctx.user.id, input.inputs, input.outputs);
+    }),
+
+  // F3: Get checkpoint history for a project
+  checkpoints: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const { getCheckpointHistory } = await import("./projectService");
+      return getCheckpointHistory(input.id, ctx.user.id);
+    }),
+
+  // F3: Get user's credit balance
+  creditBalance: protectedProcedure.query(async ({ ctx }) => {
+    const { getUserCreditBalance } = await import("./projectService");
+    return { balance: await getUserCreditBalance(ctx.user.id) };
+  }),
+
+  // F3: Archive a project (soft-delete)
+  archive: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const { archiveProject } = await import("./projectService");
+      await archiveProject(input.id, ctx.user.id);
+      return { success: true };
+    }),
 });
 
 // ─── Uploads Router ───────────────────────────────────────────────────────
