@@ -3744,3 +3744,9 @@
 - [x] Add tRPC public procedure to query platform stats (total projects, total panels, active creators)
 - [x] Wire Create page stats section to live backend data with loading skeleton
 - [x] Write vitest test for the stats procedure
+
+## Change 1: Kill Pink Gradient Site-Wide
+- [x] Replace .bg-opening-sequence gradient stops from pink→violet to cyan→indigo→lavender
+- [x] Replace .text-gradient-opening gradient stops to match
+- [x] Add .bg-shonen-heat and .text-gradient-heat secondary gradient utilities
+- [x] Replace all #E94560 references in Home.tsx with new palette colors

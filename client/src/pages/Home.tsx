@@ -110,7 +110,7 @@ function ActOneHero() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#05050C]/85 via-[#05050C]/60 to-[#05050C]/95" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#05050C]/70 to-transparent" />
       {/* Radial accent glow */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#E94560]/8 rounded-full blur-[150px]" />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6B5BFF]/12 rounded-full blur-[150px]" />
 
       {/* Content */}
       <div className="container relative z-10 py-32 md:py-0">
@@ -157,9 +157,9 @@ function ActOneHero() {
           >
             <motion.button
               onClick={handleCTA}
-              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(233,69,96,0.4)" }}
+              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(107,91,255,0.45)" }}
               whileTap={{ scale: 0.96 }}
-              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 flex items-center gap-3 mx-auto"
+              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/35 flex items-center gap-3 mx-auto"
             >
               <PenTool className="w-5 h-5" />
               Write the first scene
@@ -217,7 +217,7 @@ const PROOF_SECTIONS = [
     heading: "From a sentence.",
     description: "Describe your story in plain text. A single sentence is enough. AI writes the screenplay, designs the world, and draws every panel.",
     icon: PenTool,
-    color: "#E94560",
+    color: "#00F0FF",
     visual: "typewriter",
   },
   {
@@ -225,7 +225,7 @@ const PROOF_SECTIONS = [
     heading: "To a character.",
     description: "AI extracts your characters from the script, generates consistent designs, and builds a visual identity that persists across every panel and episode.",
     icon: Users,
-    color: "#7C3AED",
+    color: "#6B5BFF",
     visual: "character",
   },
   {
@@ -233,7 +233,7 @@ const PROOF_SECTIONS = [
     heading: "To a world.",
     description: "Six world-setting tiles materialize: cyberpunk alleys, enchanted forests, space stations. Your story gets a universe that feels lived-in.",
     icon: Globe,
-    color: "#00D4FF",
+    color: "#B388FF",
     visual: "world",
   },
   {
@@ -241,7 +241,7 @@ const PROOF_SECTIONS = [
     heading: "To a story voted on by thousands.",
     description: "Publish your manga. The community reads, votes, and decides which stories deserve to become anime. Your vote is a casting decision.",
     icon: Heart,
-    color: "#FF5A7A",
+    color: "#FFD60A",
     visual: "votes",
   },
   {
@@ -249,7 +249,7 @@ const PROOF_SECTIONS = [
     heading: "To anime.",
     description: "Top-voted manga enter the animation pipeline. Voice acting, music, motion \u2014 all AI-powered. From still panels to streaming episodes.",
     icon: Film,
-    color: "#00FFB2",
+    color: "#FF2D7A",
     visual: "anime",
   },
 ];
@@ -349,7 +349,7 @@ function ActThreeInvitation() {
   return (
     <section className="py-24 md:py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-[#05050C]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#E94560]/6 blur-[150px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#6B5BFF]/10 blur-[150px]" />
 
       <div className="container relative z-10">
         {/* Heading */}
@@ -374,7 +374,7 @@ function ActThreeInvitation() {
         <ScrollReveal delay={0.4}>
           <div className="max-w-3xl mx-auto mt-20">
             <div className="relative rounded-2xl overflow-hidden border border-white/5">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#E94560]/8 via-[#7C3AED]/6 to-[#00D4FF]/8" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/10 via-[#6B5BFF]/8 to-[#FF2D7A]/10" />
               <div className="relative p-8 md:p-12 text-center">
                 <h3 className="text-h2 text-white mb-2">
                   Every great anime starts with an{" "}
@@ -390,14 +390,14 @@ function ActThreeInvitation() {
                       onChange={(e) => setPrompt(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="A cyberpunk detective who solves crimes using dreams..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#E94560]/50 focus:ring-1 focus:ring-[#E94560]/30 transition-all px-5 py-4 text-base"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#00F0FF]/60 focus:ring-2 focus:ring-[#00F0FF]/35 transition-all px-5 py-4 text-base"
                     />
                   </div>
                   <motion.button
                     onClick={handleCreate}
-                    whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(233,69,96,0.4)" }}
+                    whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,240,255,0.45)" }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex-shrink-0 bg-opening-sequence text-white font-semibold rounded-xl shadow-lg shadow-[#E94560]/25 flex items-center gap-2 px-8 py-4 text-base"
+                    className="flex-shrink-0 bg-opening-sequence text-white font-semibold rounded-xl shadow-lg shadow-[#6B5BFF]/35 flex items-center gap-2 px-8 py-4 text-base"
                   >
                     <Wand2 className="w-5 h-5" />
                     Create
@@ -425,10 +425,10 @@ function CreatorShowcase() {
   if (displayItems.length === 0) {
     return (
       <div className="text-center py-16">
-        <Sparkles className="w-10 h-10 text-[#E94560]/40 mx-auto mb-4" />
+        <Sparkles className="w-10 h-10 text-[#6B5BFF]/60 mx-auto mb-4" />
         <p className="text-[#9494B8] text-lg mb-2">The gallery is waiting for its first stories.</p>
         <Link href="/create">
-          <span className="text-[#E94560] hover:text-[#FF5A7A] transition-colors cursor-pointer font-medium text-sm">
+          <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium text-sm">
             Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
           </span>
         </Link>
@@ -463,7 +463,7 @@ function CreatorShowcase() {
                   <h3 className="text-white font-semibold text-sm truncate">{item.title}</h3>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[#9494B8] text-xs">by {item.userName || "Creator"}</span>
-                    <span className="flex items-center gap-1 text-[#E94560] text-xs font-medium">
+                    <span className="flex items-center gap-1 text-[#FF2D7A] text-xs font-medium">
                       <Heart className="w-3 h-3 fill-current" />
                       {(item.voteScore || 0).toLocaleString()}
                     </span>
@@ -480,12 +480,12 @@ function CreatorShowcase() {
 
 /* ─── AI-Powered Feature Strip ────────────────────────────────────────── */
 const AI_FEATURES = [
-  { name: "AI Screenwriting", icon: Brain, color: "#7C3AED" },
-  { name: "Panel Generation", icon: ImageIcon, color: "#E94560" },
-  { name: "Video Animation", icon: Film, color: "#00D4FF" },
-  { name: "Voice Acting", icon: Mic, color: "#FFB800" },
-  { name: "Community Voting", icon: Heart, color: "#FF5A7A" },
-  { name: "Full Pipeline", icon: Zap, color: "#00FFB2" },
+  { name: "AI Screenwriting", icon: Brain, color: "#6B5BFF" },
+  { name: "Panel Generation", icon: ImageIcon, color: "#00F0FF" },
+  { name: "Video Animation", icon: Film, color: "#B388FF" },
+  { name: "Voice Acting", icon: Mic, color: "#FFD60A" },
+  { name: "Community Voting", icon: Heart, color: "#FF2D7A" },
+  { name: "Full Pipeline", icon: Zap, color: "#00E5A0" },
 ];
 
 function FeatureStrip() {
@@ -544,7 +544,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
           <h2 className="text-xl md:text-2xl font-heading font-bold text-white">{title}</h2>
         </div>
         {seeAllLink && (
-          <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#E94560] transition-colors flex items-center gap-1">
+          <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#00F0FF] transition-colors flex items-center gap-1">
             See all <ChevronRight className="w-4 h-4" />
           </Link>
         )}
@@ -591,7 +591,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                         <img src={project.coverImageUrl} alt={project.title} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${
-                          ["from-[#E94560]/30 to-purple-500/20", "from-[#00D4FF]/30 to-blue-500/20", "from-purple-500/30 to-[#E94560]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
+                          ["from-[#6B5BFF]/30 to-[#B388FF]/20", "from-[#00F0FF]/30 to-blue-500/20", "from-[#B388FF]/30 to-[#6B5BFF]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
                         }`}>
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Film className="w-12 h-12 text-white/20" />
@@ -600,7 +600,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-[#E94560]/90 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-[#6B5BFF]/90 flex items-center justify-center">
                             <Play className="w-5 h-5 text-white fill-white ml-0.5" />
                           </div>
                           <span className="text-sm text-white font-medium">Watch Now</span>
@@ -613,7 +613,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       )}
                     </div>
                     <div className="mt-3 px-1">
-                      <h3 className="text-sm font-semibold text-white truncate group-hover/card:text-[#E94560] transition-colors">
+                      <h3 className="text-sm font-semibold text-white truncate group-hover/card:text-[#00F0FF] transition-colors">
                         {project.title}
                       </h3>
                       <p className="text-xs text-[#5C5C7A] mt-1 truncate">
@@ -658,7 +658,7 @@ export default function Home() {
         <div className="container">
           <ContentRow
             title="Trending Now"
-            icon={<TrendingUp className="w-5 h-5 text-[#E94560]" />}
+            icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" />}
             projects={trending.data ?? []}
             isLoading={trending.isLoading}
             seeAllLink="/discover"

@@ -115,8 +115,9 @@
   --status-info:    #00D4FF;
 
   /* Named Gradients §3.1 */
-  --gradient-opening:   linear-gradient(45deg, #E94560, #7C3AED);
-  --gradient-night:     linear-gradient(135deg, #00D4FF, #E94560);
+  --gradient-opening:   linear-gradient(135deg, #00F0FF 0%, #6B5BFF 55%, #B388FF 100%);
+  --gradient-night:     linear-gradient(135deg, #00D4FF, #6B5BFF);
+  --gradient-heat:      linear-gradient(135deg, #FFD60A 0%, #FF8A00 50%, #FF2D7A 100%);
   --gradient-moonrise:  linear-gradient(180deg, #05050C, #151528);
   --gradient-sakuga:    linear-gradient(90deg, #00FFB2, #00D4FF);
   --gradient-hero:      linear-gradient(135deg, #05050C 0%, #1A0A2E 50%, #0D1A2E 100%);
@@ -287,6 +288,13 @@ body {
 .bg-night-market     { background: var(--gradient-night); }
 .bg-moonrise         { background: var(--gradient-moonrise); }
 .bg-sakuga-glow      { background: var(--gradient-sakuga); }
+.bg-shonen-heat      { background: var(--gradient-heat); }
+.text-gradient-heat {
+  background: linear-gradient(135deg, #FFD60A 0%, #FF2D7A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* ============================================================
    Chromatic Aberration Beat §3.1 Motion
