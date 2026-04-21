@@ -3776,3 +3776,6 @@
 
 ## Change 9: Body Text Contrast & Hierarchy
 - [x] Upgrade hero subhead, proof body, invitation subhead, feature strip subhead from #9494B8 to #B8B8CC
+
+## Change 10: Badge Micro-Detail
+- [x] Upgrade beta badge to text-[11px] uppercase tracking-[0.16em] broadcast-chyron style

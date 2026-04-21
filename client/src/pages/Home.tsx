@@ -120,7 +120,7 @@ function ActOneHero() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-sm font-medium mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-[11px] font-semibold uppercase tracking-[0.16em] mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
             Now in Public Beta
