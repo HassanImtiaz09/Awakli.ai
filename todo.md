@@ -3770,3 +3770,6 @@
 
 ## Change 7: AI Feature Chip Upgrade
 - [x] Replace AI feature chips with 48x48 icon, rounded-2xl card, inset highlight, colored drop shadow, hover lift
+
+## Change 8: Icon Hygiene Pass
+- [x] Standardize strokeWidth across all Lucide icons in Home.tsx (1.5 at ≤20px, 2 above)

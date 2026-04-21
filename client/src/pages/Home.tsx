@@ -162,7 +162,7 @@ function ActOneHero() {
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 34px -10px rgba(0,240,255,0.5), 0 4px 10px rgba(0,0,0,0.4)",
               }}
             >
-              <PenTool className="w-5 h-5" />
+              <PenTool className="w-5 h-5" strokeWidth={1.75} />
               Write the first scene
             </motion.button>
           </motion.div>
@@ -176,12 +176,12 @@ function ActOneHero() {
           >
             <Link href="/create?prompt=A+time-traveling+samurai+discovers+modern+Tokyo">
               <span className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/8 bg-white/3 cursor-pointer hover:bg-white/5 transition-colors">
-                <Sparkles className="w-4 h-4 text-[#FFB800]" />
+                <Sparkles className="w-4 h-4 text-[#FFB800]" strokeWidth={1.5} />
                 <span className="text-sm text-[#9494B8]">
                   <span className="text-white font-medium">Daily Prompt:</span>{" "}
                   &ldquo;A time-traveling samurai discovers modern Tokyo&rdquo;
                 </span>
-                <ArrowRight className="w-4 h-4 text-[#5C5C7A]" />
+                <ArrowRight className="w-4 h-4 text-[#5C5C7A]" strokeWidth={1.5} />
               </span>
             </Link>
           </motion.div>
@@ -659,7 +659,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                           ["from-[#6B5BFF]/30 to-[#B388FF]/20", "from-[#00F0FF]/30 to-blue-500/20", "from-[#B388FF]/30 to-[#6B5BFF]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
                         }`}>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <Film className="w-12 h-12 text-white/20" />
+                            <Film className="w-12 h-12 text-white/20" strokeWidth={1.5} />
                           </div>
                         </div>
                       )}
