@@ -3763,3 +3763,7 @@
 ## Change 5: Final CTA Button Parity
 - [x] Upgrade Act Three "Create" button to "Summon" with font-bold, text-lg, 3D inset/outset shadow stack
 - [x] Add 3D inset highlight shadow to hero CTA button
+
+## Change 6: Nav Polish
+- [x] Add frosted glass backdrop (blur 18px, saturate 140%, rgba(5,5,12,0.72), border-bottom)
+- [x] Upgrade AWAKLI wordmark to font-black uppercase text-[18px] tracking-[0.08em] with text-gradient-opening

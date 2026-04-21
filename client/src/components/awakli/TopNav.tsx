@@ -46,13 +46,13 @@ function NavLink({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
       >
-        <Icon size={16} className={active ? "text-[#E94560]" : ""} />
+                <Icon size={16} className={active ? "text-[#00F0FF]" : ""} />
         {children}
         {/* Active indicator — Opening Sequence gradient sweep */}
         {active && (
           <motion.div
             layoutId="nav-active"
-            className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-[#E94560] to-[#7C3AED]"
+            className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-opening-sequence"
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           />
         )}
@@ -103,7 +103,7 @@ export function MobileTabBar() {
                   size={20}
                   className={cn(
                     "transition-colors",
-                    active ? "text-[#E94560]" : "text-[#5C5C7A]"
+                    active ? "text-[#00F0FF]" : "text-[#5C5C7A]"
                   )}
                 />
                 <span
@@ -118,7 +118,7 @@ export function MobileTabBar() {
                 {active && (
                   <motion.div
                     layoutId="tab-active"
-                    className="absolute -top-0.5 w-5 h-0.5 rounded-full bg-gradient-to-r from-[#E94560] to-[#7C3AED]"
+                    className="absolute -top-0.5 w-5 h-0.5 rounded-full bg-opening-sequence"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -190,13 +190,15 @@ export function TopNav() {
       </a>
 
       <motion.header
-        className={cn(
-          "fixed top-0 left-0 right-0 z-50 h-16",
-          "transition-all duration-300",
-          scrolled
-            ? "bg-[rgba(5,5,12,0.92)] backdrop-blur-xl border-b border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-            : "bg-transparent"
-        )}
+        className="fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300 border-b border-white/[0.06]"
+        style={{
+          backdropFilter: "blur(18px) saturate(140%)",
+          WebkitBackdropFilter: "blur(18px) saturate(140%)",
+          background: scrolled
+            ? "rgba(5, 5, 12, 0.85)"
+            : "rgba(5, 5, 12, 0.72)",
+          boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.4)" : "none",
+        }}
         initial={{ y: -64 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
@@ -205,8 +207,8 @@ export function TopNav() {
           {/* Logo */}
           <Link href="/">
             <motion.span
-              className="font-display text-xl font-bold text-gradient-opening cursor-pointer select-none shrink-0"
-              whileHover={{ textShadow: "0 0 20px rgba(233,69,96,0.6)" }}
+              className="font-display text-[18px] font-black uppercase tracking-[0.08em] text-gradient-opening cursor-pointer select-none shrink-0"
+              whileHover={{ textShadow: "0 0 20px rgba(0,240,255,0.5)" }}
               transition={{ duration: 0.2 }}
             >
               AWAKLI
@@ -258,11 +260,11 @@ export function TopNav() {
                 {/* Avatar dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <motion.button
-                    className="flex items-center gap-2 rounded-full border border-white/10 hover:border-[#E94560]/40 transition-colors p-0.5 pr-3"
+                    className="flex items-center gap-2 rounded-full border border-white/10 hover:border-[#00F0FF]/40 transition-colors p-0.5 pr-3"
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E94560] to-[#7C3AED] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-opening-sequence flex items-center justify-center text-xs font-bold text-white shrink-0">
                       {user?.name?.[0]?.toUpperCase() ?? "U"}
                     </div>
                     <span className="hidden lg:block text-sm text-[#F0F0F5] max-w-[100px] truncate">
@@ -480,7 +482,7 @@ export function TopNav() {
                 {isAuthenticated ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 px-2 py-1">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E94560] to-[#7C3AED] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-opening-sequence flex items-center justify-center text-xs font-bold text-white shrink-0">
                         {user?.name?.[0]?.toUpperCase() ?? "U"}
                       </div>
                       <div className="min-w-0">
