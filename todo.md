@@ -3895,3 +3895,11 @@
 ### Explore Page
 - [x] Add anime-themed background to explore page
 - [x] Apply atmospheric effects and enhanced card styling
+
+## Design Token System
+- [x] Create client/src/styles/tokens.ts with typed TS object (colors, radii, typeScale, elevations)
+- [x] Extend Tailwind config with token-based colors, borderRadius, fontSize, boxShadow
+- [x] Register CSS custom properties in index.css for framer-motion animation targeting
+- [x] Support Default (light surface), Inverse (dark cinema), and Focus ring (conic gradient) variants
+- [x] Create /debug/tokens route with full palette swatch grid
+- [x] Verify no TS errors, Tailwind build passes, token classes resolve correctly

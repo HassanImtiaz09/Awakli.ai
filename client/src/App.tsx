@@ -53,6 +53,7 @@ import CharacterDetail from "./pages/CharacterDetail";
 import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
+import DebugTokens from "./pages/DebugTokens";
 import TierSampler from "./pages/TierSampler";
 import CostDashboard from "./pages/CostDashboard";
 import Terms from "./pages/Terms";
@@ -233,6 +234,9 @@ function Router() {
         <Route path="/studio/:projectId/pre-production" component={PreProduction} />
         <Route path="/studio/:projectId/music" component={MusicStudio} />
         <Route path="/studio/:projectId/vocal-recording" component={VocalRecordingStudio} />
+
+        {/* Debug */}
+        <Route path="/debug/tokens" component={DebugTokens} />
 
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
