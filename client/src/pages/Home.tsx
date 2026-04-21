@@ -382,14 +382,39 @@ function ActThreeInvitation() {
 
                 <div className="flex w-full max-w-2xl mx-auto gap-3">
                   <div className="flex-1 relative group">
-                    <input
-                      type="text"
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="A cyberpunk detective who solves crimes using dreams..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#00F0FF]/60 focus:ring-2 focus:ring-[#00F0FF]/35 transition-all px-5 py-4 text-base"
+                    {/* Animated conic border */}
+                    <div
+                      className="absolute -inset-[2px] rounded-xl opacity-90 group-focus-within:opacity-100 transition-opacity"
+                      style={{
+                        background: "conic-gradient(from 0deg, #00F0FF, #6B5BFF, #FFD60A, #FF2D7A, #00F0FF)",
+                        animation: "spin 8s linear infinite",
+                        filter: "blur(0.5px)",
+                      }}
                     />
+                    {/* Inner input surface */}
+                    <div className="relative rounded-xl bg-[#0A0A14]">
+                      <input
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="A cyberpunk detective who solves crimes using dreams..."
+                        className="w-full bg-transparent rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none transition-all px-5 py-4 text-base relative z-10"
+                      />
+                      {/* Corner sigils */}
+                      <svg className="absolute top-1 left-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                        <path d="M1 5 V1 H5" />
+                      </svg>
+                      <svg className="absolute top-1 right-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                        <path d="M7 1 H11 V5" />
+                      </svg>
+                      <svg className="absolute bottom-1 left-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                        <path d="M1 7 V11 H5" />
+                      </svg>
+                      <svg className="absolute bottom-1 right-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                        <path d="M7 11 H11 V7" />
+                      </svg>
+                    </div>
                   </div>
                   <motion.button
                     onClick={handleCreate}

@@ -3753,3 +3753,6 @@
 
 ## Change 2: Upgrade Hero Headline
 - [x] Replace hero h1 with ANIME all-caps gradient + neon drop-shadow + tracking-tighter
+
+## Change 3: Magical Frame for Prompt Input
+- [x] Replace plain input wrapper with conic-gradient animated border and corner sigils
