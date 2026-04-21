@@ -3779,3 +3779,12 @@
 
 ## Change 10: Badge Micro-Detail
 - [x] Upgrade beta badge to text-[11px] uppercase tracking-[0.16em] broadcast-chyron style
+
+## UI Improvements Batch (Changes 11.1–11.7)
+- [x] 11.1: Find and replace rogue pink "Get Started" button (E94560/FF6B81 gradient → bg-opening-sequence)
+- [x] 11.2: Fix AWAKLI wordmark in MarketingLayout (font-black text-[18px] uppercase tracking-[0.08em] text-gradient-opening) — already applied in Change 6
+- [x] 11.3: Icon size ladder cleanup — w-11→w-12, w-3 Heart→w-4; remaining w-3 sigils, w-8, w-10, w-12 are decorative containers (not Lucide icons)
+- [x] 11.4: Stroke-weight refinement — 9 more icons fixed: w-4/w-5 → 1.5, w-6 → 1.75, w-8/w-10 → 2; all Lucide icons now have explicit strokeWidth
+- [x] 11.5: AI chip radius — change rounded-2xl to rounded-[14px] for game UI feel
+- [x] 11.6: Corner sigils — cycle colors (tl cyan, tr indigo, br magenta, bl gold)
+- [x] 11.7: ANIME accent — add second concentric bloom text-shadow: 0 0 60px rgba(0,240,255,0.3)

@@ -17,11 +17,11 @@ interface AwakliButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
 
 const variantStyles: Record<Variant, string> = {
   primary: [
-    "bg-gradient-to-r from-[#E94560] to-[#FF6B81]",
+    "bg-opening-sequence",
     "text-white font-semibold",
     "border border-transparent",
-    "shadow-[0_0_0_0_rgba(233,69,96,0)]",
-    "hover:shadow-[0_0_20px_rgba(233,69,96,0.5),0_0_40px_rgba(233,69,96,0.2)]",
+    "shadow-[0_0_0_0_rgba(0,240,255,0)]",
+    "hover:shadow-[0_0_20px_rgba(0,240,255,0.4),0_0_40px_rgba(107,91,255,0.25)]",
     "hover:brightness-110",
     "active:scale-[0.98]",
   ].join(" "),

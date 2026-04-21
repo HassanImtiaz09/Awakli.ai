@@ -134,7 +134,7 @@ function ActOneHero() {
             className="text-display text-white mb-6 tracking-tighter"
           >
             <span className="block">Tonight, your idea</span>
-            <span className="block">becomes <span className="text-gradient-opening drop-shadow-[0_0_40px_rgba(107,91,255,0.35)]">ANIME</span>.</span>
+            <span className="block">becomes <span className="text-gradient-opening drop-shadow-[0_0_40px_rgba(107,91,255,0.35)]" style={{ textShadow: "0 0 60px rgba(0,240,255,0.3)" }}>ANIME</span>.</span>
           </motion.h1>
 
           {/* Subheadline — §10 */}
@@ -303,7 +303,7 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
             <div className="flex-1 max-w-lg relative z-10">
               <div className="flex items-center gap-3 mb-5">
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{
                     backgroundColor: `${section.color}1A`,
                     border: `1px solid ${section.color}40`,
@@ -439,13 +439,13 @@ function ActThreeInvitation() {
                       <svg className="absolute top-1 left-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M1 5 V1 H5" />
                       </svg>
-                      <svg className="absolute top-1 right-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg className="absolute top-1 right-1 w-3 h-3 text-[#6B5BFF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M7 1 H11 V5" />
                       </svg>
-                      <svg className="absolute bottom-1 left-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg className="absolute bottom-1 left-1 w-3 h-3 text-[#FFD60A] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M1 7 V11 H5" />
                       </svg>
-                      <svg className="absolute bottom-1 right-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg className="absolute bottom-1 right-1 w-3 h-3 text-[#FF2D7A] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M7 11 H11 V7" />
                       </svg>
                     </div>
@@ -485,11 +485,11 @@ function CreatorShowcase() {
   if (displayItems.length === 0) {
     return (
       <div className="text-center py-16">
-        <Sparkles className="w-10 h-10 text-[#6B5BFF]/60 mx-auto mb-4" />
+        <Sparkles className="w-10 h-10 text-[#6B5BFF]/60 mx-auto mb-4" strokeWidth={2} />
         <p className="text-[#B8B8CC] text-lg mb-2">The gallery is waiting for its first stories.</p>
         <Link href="/create">
           <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium text-sm">
-            Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
+            Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" strokeWidth={1.5} />
           </span>
         </Link>
       </div>
@@ -524,7 +524,7 @@ function CreatorShowcase() {
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[#9494B8] text-xs">by {item.userName || "Creator"}</span>
                     <span className="flex items-center gap-1 text-[#FF2D7A] text-xs font-medium">
-                      <Heart className="w-3 h-3 fill-current" />
+                      <Heart className="w-4 h-4 fill-current" />
                       {(item.voteScore || 0).toLocaleString()}
                     </span>
                   </div>
@@ -565,10 +565,10 @@ function FeatureStrip() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 max-w-5xl mx-auto">
           {AI_FEATURES.map((feat, i) => (
             <ScrollReveal key={feat.name} delay={i * 0.06}>
-              <div className="group p-5 rounded-2xl border border-white/8 bg-[#0D0D1A] hover:border-white/15 hover:-translate-y-0.5 transition-all text-center"
+              <div className="group p-5 rounded-[14px] border border-white/8 bg-[#0D0D1A] hover:border-white/15 hover:-translate-y-0.5 transition-all text-center"
                    style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)" }}>
                 <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                  className="w-12 h-12 rounded-[14px] flex items-center justify-center mx-auto mb-3"
                   style={{
                     backgroundColor: `${feat.color}18`,
                     border: `1px solid ${feat.color}40`,
@@ -610,7 +610,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
         </div>
         {seeAllLink && (
           <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#00F0FF] transition-colors flex items-center gap-1">
-            See all <ChevronRight className="w-4 h-4" />
+            See all <ChevronRight className="w-4 h-4" strokeWidth={1.5} />
           </Link>
         )}
       </div>
@@ -620,13 +620,13 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
           onClick={() => scroll("left")}
           className="absolute left-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-r from-[#05050C]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <ChevronLeft className="w-6 h-6 text-white" />
+          <ChevronLeft className="w-6 h-6 text-white" strokeWidth={1.75} />
         </button>
         <button
           onClick={() => scroll("right")}
           className="absolute right-0 top-0 bottom-0 z-10 w-12 bg-gradient-to-l from-[#05050C]/90 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <ChevronRight className="w-6 h-6 text-white" />
+          <ChevronRight className="w-6 h-6 text-white" strokeWidth={1.75} />
         </button>
 
         <div
@@ -666,7 +666,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end p-4">
                         <div className="flex items-center gap-2">
                           <div className="w-10 h-10 rounded-full bg-[#6B5BFF]/90 flex items-center justify-center">
-                            <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+                            <Play className="w-5 h-5 text-white fill-white ml-0.5" strokeWidth={1.5} />
                           </div>
                           <span className="text-sm text-white font-medium">Watch Now</span>
                         </div>
@@ -690,7 +690,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
               ))}
           {!isLoading && projects.length === 0 && (
             <div className="flex-shrink-0 w-full py-12 text-center text-[#5C5C7A]">
-              <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" strokeWidth={2} />
               <p>The director is scouting locations...</p>
             </div>
           )}
@@ -723,14 +723,14 @@ export default function Home() {
         <div className="container">
           <ContentRow
             title="Trending Now"
-            icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" />}
+            icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
             projects={trending.data ?? []}
             isLoading={trending.isLoading}
             seeAllLink="/discover"
           />
           <ContentRow
             title="New Releases"
-            icon={<Clock className="w-5 h-5 text-[#00D4FF]" />}
+            icon={<Clock className="w-5 h-5 text-[#00D4FF]" strokeWidth={1.5} />}
             projects={newReleases.data ?? []}
             isLoading={newReleases.isLoading}
             seeAllLink="/discover"
