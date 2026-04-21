@@ -54,6 +54,13 @@ import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import DebugTokens from "./pages/DebugTokens";
+import WizardInput from "./pages/create/input";
+import WizardSetup from "./pages/create/setup";
+import WizardScript from "./pages/create/script";
+import WizardPanels from "./pages/create/panels";
+import WizardAnimeGate from "./pages/create/anime-gate";
+import WizardVideo from "./pages/create/video";
+import WizardPublish from "./pages/create/publish";
 import TierSampler from "./pages/TierSampler";
 import CostDashboard from "./pages/CostDashboard";
 import Terms from "./pages/Terms";
@@ -87,7 +94,16 @@ function Router() {
         <Route path="/trending" component={Trending} />
         <Route path="/onboarding" component={Onboarding} />
 
-        {/* Public creation flow */}
+        {/* Creation wizard (7-stage pipeline) */}
+        <Route path="/create/input" component={WizardInput} />
+        <Route path="/create/setup" component={WizardSetup} />
+        <Route path="/create/script" component={WizardScript} />
+        <Route path="/create/panels" component={WizardPanels} />
+        <Route path="/create/anime-gate" component={WizardAnimeGate} />
+        <Route path="/create/video" component={WizardVideo} />
+        <Route path="/create/publish" component={WizardPublish} />
+
+        {/* Public creation flow (legacy quick-create) */}
         <Route path="/create" component={Create} />
         <Route path="/create/:projectId" component={CreateGenerate} />
         <Route path="/create/:projectId/read" component={CreateReader} />

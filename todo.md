@@ -3903,3 +3903,21 @@
 - [x] Support Default (light surface), Inverse (dark cinema), and Focus ring (conic gradient) variants
 - [x] Create /debug/tokens route with full palette swatch grid
 - [x] Verify no TS errors, Tailwind build passes, token classes resolve correctly
+
+## F2: Creation Wizard Route Structure & Shared Layout
+- [x] Create CreateWizardLayout with 3-column grid (88px rail, 1fr canvas, 320px credit meter)
+- [x] Create StageRail component with 7 nodes (current/locked/complete states, cyan/violet glow)
+- [x] Create TopStatusBar with editable project title, autosave indicator, help button
+- [x] Create stage page: /create/input (Stage 0 — story input)
+- [x] Create stage page: /create/setup (Stage 1 — project setup)
+- [x] Create stage page: /create/script (Stage 2 — script editor)
+- [x] Create stage page: /create/panels (Stage 3 — panel generation)
+- [x] Create stage page: /create/anime-gate (Stage 4 — anime quality gate)
+- [x] Create stage page: /create/video (Stage 5 — video assembly)
+- [x] Create stage page: /create/publish (Stage 6 — publish)
+- [x] Register all 7 wizard routes in App.tsx with CreateWizardLayout wrapper
+- [x] Implement autosave (8s interval) with tRPC project.update and status indicator
+- [x] Implement stage gating (forward navigation blocked until previous stage complete)
+- [x] Mobile responsive: rail collapses to horizontal strip, credit meter to bottom sheet
+- [x] Hard refresh restores project from URL param ?projectId=...
+- [x] Exact copy strings: breadcrumb, save indicators, stage rail tooltip
