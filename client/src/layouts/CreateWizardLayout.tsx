@@ -318,12 +318,28 @@ function TopStatusBar({
 }
 
 /* ─── Credit Meter (right sidebar) ───────────────────────────────────── */
+// Per-stage credit costs (mirrors server STAGE_CREDIT_COSTS)
+const STAGE_COSTS: { label: string; cost: number }[] = [
+  { label: "Input → Setup", cost: 0 },
+  { label: "Setup → Script", cost: 0 },
+  { label: "Script → Panels", cost: 2 },
+  { label: "Panels → Gate", cost: 5 },
+  { label: "Gate → Video", cost: 0 },
+  { label: "Video → Publish", cost: 10 },
+];
+
 function CreditMeter() {
   const { user } = useAuth();
-  // Placeholder credit data — will be wired to real credit gateway later
-  const credits = 1000;
-  const used = 120;
-  const pct = Math.round((used / credits) * 100);
+  const { data: creditData, isLoading } = trpc.projects.creditBalance.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30_000, // refresh every 30s
+  });
+
+  const balance = creditData?.balance ?? 0;
+  // Estimate total monthly grant from balance context (free_trial = 15)
+  const monthlyGrant = 15;
+  const used = Math.max(0, monthlyGrant - balance);
+  const pct = monthlyGrant > 0 ? Math.round((used / monthlyGrant) * 100) : 0;
 
   return (
     <div className="hidden lg:flex flex-col gap-6 p-6 border-l border-white/5 bg-white/[0.02] backdrop-blur-sm">
@@ -332,37 +348,76 @@ function CreditMeter() {
         <span className="text-xs font-semibold uppercase tracking-wider text-white/60">Credits</span>
       </div>
 
-      {/* Bar */}
-      <div className="space-y-2">
-        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-token-cyan to-token-violet"
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+      {/* Balance display */}
+      {isLoading ? (
+        <div className="space-y-2">
+          <div className="h-8 w-20 bg-white/5 rounded animate-pulse" />
+          <div className="h-2 bg-white/5 rounded-full animate-pulse" />
         </div>
-        <div className="flex justify-between text-xs text-white/40">
-          <span>{used} used</span>
-          <span>{credits - used} remaining</span>
-        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-1">
+            <motion.span
+              key={balance}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl font-bold text-white/90 tabular-nums"
+            >
+              {balance}
+            </motion.span>
+            <span className="text-xs text-white/30">remaining</span>
+          </div>
+
+          {/* Bar */}
+          <div className="space-y-2">
+            <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+              <motion.div
+                className={`h-full rounded-full ${
+                  balance <= 3
+                    ? "bg-gradient-to-r from-red-500 to-red-400"
+                    : "bg-gradient-to-r from-token-cyan to-token-violet"
+                }`}
+                initial={{ width: 0 }}
+                animate={{ width: `${100 - pct}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-white/40">
+              <span>{used} used</span>
+              <span>{balance} left</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Per-stage cost estimates */}
+      <div className="space-y-2.5 mt-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Stage Costs</span>
+        {STAGE_COSTS.map((s, i) => (
+          <div key={i} className="flex items-center justify-between text-xs">
+            <span className="text-white/40">{s.label}</span>
+            <span className={`font-medium ${
+              s.cost === 0
+                ? "text-token-mint/60"
+                : s.cost > balance
+                ? "text-red-400/80"
+                : "text-white/60"
+            }`}>
+              {s.cost === 0 ? "Free" : `${s.cost} cr`}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* Quick stats */}
-      <div className="space-y-3 mt-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-white/40">Script gen</span>
-          <span className="text-white/60">~5 credits</span>
+      {/* Low balance warning */}
+      {!isLoading && balance <= 3 && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+          <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-red-300/70 leading-relaxed">
+            Low credits. Upgrade your plan to continue creating.
+          </p>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-white/40">Panel gen</span>
-          <span className="text-white/60">~2 credits/panel</span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-white/40">Video render</span>
-          <span className="text-white/60">~20 credits/min</span>
-        </div>
-      </div>
+      )}
 
       {/* Upgrade CTA */}
       <Link
@@ -379,8 +434,13 @@ function CreditMeter() {
 /* ─── Mobile Credit Bottom Sheet ─────────────────────────────────────── */
 function MobileCreditSheet() {
   const [open, setOpen] = useState(false);
-  const credits = 1000;
-  const used = 120;
+  const { user } = useAuth();
+  const { data: creditData } = trpc.projects.creditBalance.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30_000,
+  });
+
+  const balance = creditData?.balance ?? 0;
 
   return (
     <div className="lg:hidden">
@@ -389,7 +449,7 @@ function MobileCreditSheet() {
         className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-black/80 border border-white/10 backdrop-blur-sm shadow-lg"
       >
         <CreditCard className="w-4 h-4 text-token-gold" />
-        <span className="text-xs font-medium text-white/70">{credits - used} credits</span>
+        <span className="text-xs font-medium text-white/70">{balance} credits</span>
         <ChevronDown className={`w-3 h-3 text-white/40 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
@@ -403,20 +463,28 @@ function MobileCreditSheet() {
             className="fixed bottom-0 left-0 right-0 z-30 p-6 rounded-t-3xl bg-[#0D0D1A] border-t border-white/10 backdrop-blur-xl"
           >
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
-            <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="w-4 h-4 text-token-gold" />
-              <span className="text-sm font-semibold text-white/80">Credit Balance</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-token-gold" />
+                <span className="text-sm font-semibold text-white/80">Credit Balance</span>
+              </div>
+              <span className="text-lg font-bold text-white/90 tabular-nums">{balance}</span>
             </div>
-            <div className="h-2 rounded-full bg-white/5 overflow-hidden mb-2">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-token-cyan to-token-violet"
-                style={{ width: `${Math.round((used / credits) * 100)}%` }}
-              />
+
+            {/* Per-stage costs */}
+            <div className="space-y-2 mb-4">
+              {STAGE_COSTS.map((s, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <span className="text-white/40">{s.label}</span>
+                  <span className={`font-medium ${
+                    s.cost === 0 ? "text-token-mint/60" : s.cost > balance ? "text-red-400/80" : "text-white/60"
+                  }`}>
+                    {s.cost === 0 ? "Free" : `${s.cost} cr`}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between text-xs text-white/40 mb-4">
-              <span>{used} used</span>
-              <span>{credits - used} remaining</span>
-            </div>
+
             <Link
               href="/pricing"
               className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-token-violet/20 to-token-cyan/20 border border-token-violet/20 text-sm text-white/70"

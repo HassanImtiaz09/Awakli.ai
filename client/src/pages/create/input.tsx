@@ -5,6 +5,7 @@ import { Sparkles, ArrowRight, Loader2, Pen } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout, { STAGES } from "@/layouts/CreateWizardLayout";
+import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 
 const GENRES = [
   "Action", "Romance", "Sci-Fi", "Fantasy", "Horror",
@@ -28,6 +29,7 @@ export default function WizardInput() {
   const [title, setTitle] = useState("Untitled Project");
 
   const createMut = trpc.projects.create.useMutation();
+  const { advance, advancing } = useAdvanceStage(String(projectId || ""), 0);
 
   // Load existing project if projectId is set
   const { data: project } = trpc.projects.get.useQuery(
@@ -76,10 +78,11 @@ export default function WizardInput() {
 
   const canProceed = prompt.trim().length > 10 && genre;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!canProceed || !projectId) return;
-    // Analytics: wizard_stage_exit
-    navigate(`/create/setup?projectId=${projectId}`);
+    await advance({
+      inputs: { prompt, genre, title },
+    });
   };
 
   if (creating) {
@@ -162,18 +165,27 @@ export default function WizardInput() {
         {/* Next button */}
         <div className="flex justify-end pt-4">
           <motion.button
-            whileHover={{ scale: canProceed ? 1.02 : 1 }}
-            whileTap={{ scale: canProceed ? 0.98 : 1 }}
+            whileHover={{ scale: canProceed && !advancing ? 1.02 : 1 }}
+            whileTap={{ scale: canProceed && !advancing ? 0.98 : 1 }}
             onClick={handleNext}
-            disabled={!canProceed}
+            disabled={!canProceed || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              canProceed
+              canProceed && !advancing
                 ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >
-            Continue to Setup
-            <ArrowRight className="w-4 h-4" />
+            {advancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Advancing...
+              </>
+            ) : (
+              <>
+                Continue to Setup
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </motion.button>
         </div>
       </div>

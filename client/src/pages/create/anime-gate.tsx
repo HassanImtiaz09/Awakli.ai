@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Shield, ArrowRight, ArrowLeft, Users, ThumbsUp, ThumbsDown, Clock, TrendingUp } from "lucide-react";
+import { Shield, ArrowRight, ArrowLeft, Users, ThumbsUp, ThumbsDown, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 
 export default function WizardAnimeGate() {
   const [, navigate] = useLocation();
@@ -13,6 +14,7 @@ export default function WizardAnimeGate() {
   const numId = parseInt(projectId, 10);
 
   const { data: project } = trpc.projects.get.useQuery({ id: numId }, { enabled: !isNaN(numId) });
+  const { advance, advancing } = useAdvanceStage(projectId, 4);
 
   const completedStages = useMemo(() => {
     const s = new Set<number>();
@@ -28,6 +30,11 @@ export default function WizardAnimeGate() {
   const threshold = 100;
   const progress = Math.min((votes.up / threshold) * 100, 100);
   const gateOpen = votes.up >= threshold;
+
+  const handleNext = async () => {
+    if (!gateOpen) return;
+    await advance();
+  };
 
   return (
     <CreateWizardLayout
@@ -127,18 +134,32 @@ export default function WizardAnimeGate() {
             Back
           </button>
           <motion.button
-            whileHover={{ scale: gateOpen ? 1.02 : 1 }}
-            whileTap={{ scale: gateOpen ? 0.98 : 1 }}
-            onClick={() => gateOpen && navigate(`/create/video?projectId=${projectId}`)}
-            disabled={!gateOpen}
+            whileHover={{ scale: gateOpen && !advancing ? 1.02 : 1 }}
+            whileTap={{ scale: gateOpen && !advancing ? 0.98 : 1 }}
+            onClick={handleNext}
+            disabled={!gateOpen || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              gateOpen
+              gateOpen && !advancing
                 ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >
-            {gateOpen ? "Continue to Video" : "Waiting for Votes"}
-            <ArrowRight className="w-4 h-4" />
+            {advancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Advancing...
+              </>
+            ) : gateOpen ? (
+              <>
+                Continue to Video
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                Waiting for Votes
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </motion.button>
         </div>
       </div>

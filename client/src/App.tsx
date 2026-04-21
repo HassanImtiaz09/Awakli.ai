@@ -38,6 +38,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProviderAdmin from "./pages/ProviderAdmin";
 import Onboarding from "./pages/Onboarding";
 import Create from "./pages/Create";
+import CreateDashboard from "./pages/CreateDashboard";
 import PreProduction from "./pages/PreProduction";
 import MusicStudio from "./pages/MusicStudio";
 import VocalRecordingStudio from "./pages/VocalRecordingStudio";
@@ -103,8 +104,8 @@ function Router() {
         <Route path="/create/video" component={WizardVideo} />
         <Route path="/create/publish" component={WizardPublish} />
 
-        {/* Public creation flow (legacy quick-create) */}
-        <Route path="/create" component={Create} />
+        {/* Project dashboard (list user's projects) */}
+        <Route path="/create" component={CreateDashboard} />
         <Route path="/create/:projectId" component={CreateGenerate} />
         <Route path="/create/:projectId/read" component={CreateReader} />
         <Route path="/create/:projectId/character-bible" component={CharacterBible} />

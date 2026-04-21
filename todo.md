@@ -3952,3 +3952,22 @@
 - [x] Exact error strings: "You need X more credits to continue. Top up or upgrade to Mangaka."
 - [x] Exact error strings: "Studio Pro unlocks voice cloning. Upgrade to proceed."
 - [x] Write vitest tests for advanceStage and checkpoint procedures (28 tests passing)
+
+## Wire advanceStage into Wizard UI
+- [x] Connect Continue buttons in all 7 stage pages to trpc.projects.advanceStage
+- [x] Handle advanceStage error responses (insufficient_credits, tier_locked, validation_failed) with toast notifications
+- [x] Show loading state on Continue button during advanceStage call
+- [x] Navigate to next stage only on successful advanceStage response
+
+## Project Dashboard at /create
+- [x] Build project dashboard page listing user's draft/in-progress projects
+- [x] Use trpc.projects.listMine to fetch projects with wizard state
+- [x] Show stage progress indicator per project card (7-stage progress bar)
+- [x] Add "New Project" button and "Resume" action on existing projects
+- [x] Register /create route to show dashboard (not wizard) when no projectId
+
+## Credit Meter Sidebar
+- [x] Populate credit meter with real data from trpc.projects.creditBalance
+- [x] Show current credit balance with animated counter
+- [x] Display per-stage cost estimates for upcoming stages
+- [x] Show credits spent so far on current project from checkpoint history

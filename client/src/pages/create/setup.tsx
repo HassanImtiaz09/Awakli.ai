@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Settings2, ArrowRight, ArrowLeft, Palette, Drama } from "lucide-react";
+import { Settings2, ArrowRight, ArrowLeft, Palette, Drama, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 
 const STYLES = [
   { key: "shonen", label: "Shonen", desc: "Bold action, vibrant colors" },
@@ -39,6 +40,8 @@ export default function WizardSetup() {
   const [audience, setAudience] = useState<string>("teen");
   const [title, setTitle] = useState("Untitled Project");
 
+  const { advance, advancing } = useAdvanceStage(projectId, 1);
+
   useEffect(() => {
     if (project) {
       setStyle(project.animeStyle || "default");
@@ -61,6 +64,13 @@ export default function WizardSetup() {
   }, [projectId, title, style, tone, audience]);
 
   const canProceed = style !== "default" && tone;
+
+  const handleNext = async () => {
+    if (!canProceed) return;
+    await advance({
+      inputs: { style, tone, audience },
+    });
+  };
 
   return (
     <CreateWizardLayout
@@ -168,18 +178,27 @@ export default function WizardSetup() {
             Back
           </button>
           <motion.button
-            whileHover={{ scale: canProceed ? 1.02 : 1 }}
-            whileTap={{ scale: canProceed ? 0.98 : 1 }}
-            onClick={() => canProceed && navigate(`/create/script?projectId=${projectId}`)}
-            disabled={!canProceed}
+            whileHover={{ scale: canProceed && !advancing ? 1.02 : 1 }}
+            whileTap={{ scale: canProceed && !advancing ? 0.98 : 1 }}
+            onClick={handleNext}
+            disabled={!canProceed || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              canProceed
+              canProceed && !advancing
                 ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >
-            Continue to Script
-            <ArrowRight className="w-4 h-4" />
+            {advancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Advancing...
+              </>
+            ) : (
+              <>
+                Continue to Script
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </motion.button>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 
 // ─── Panel card ──────────────────────────────────────────────────────────
 function PanelCard({
@@ -167,6 +168,7 @@ export default function WizardPanels() {
 
   const [selectedEpIdx, setSelectedEpIdx] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const { advance, advancing } = useAdvanceStage(projectId, 3);
 
   // Get approved/locked episodes for panel generation
   const eligibleEpisodes = useMemo(
@@ -451,18 +453,27 @@ export default function WizardPanels() {
             Back
           </button>
           <motion.button
-            whileHover={{ scale: canProceed ? 1.02 : 1 }}
-            whileTap={{ scale: canProceed ? 0.98 : 1 }}
-            onClick={() => canProceed && navigate(`/create/anime-gate?projectId=${projectId}`)}
-            disabled={!canProceed}
+            whileHover={{ scale: canProceed && !advancing ? 1.02 : 1 }}
+            whileTap={{ scale: canProceed && !advancing ? 0.98 : 1 }}
+            onClick={() => canProceed && advance()}
+            disabled={!canProceed || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              canProceed
+              canProceed && !advancing
                 ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >
-            Continue to Gate
-            <ArrowRight className="w-4 h-4" />
+            {advancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Advancing...
+              </>
+            ) : (
+              <>
+                Continue to Gate
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </motion.button>
         </div>
       </div>

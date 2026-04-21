@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Film, ArrowRight, ArrowLeft, Play, Pause, Volume2, Loader2, Settings } from "lucide-react";
+import { Film, ArrowRight, ArrowLeft, Play, Volume2, Loader2, Settings } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 
 export default function WizardVideo() {
   const [, navigate] = useLocation();
@@ -13,6 +14,7 @@ export default function WizardVideo() {
   const numId = parseInt(projectId, 10);
 
   const { data: project } = trpc.projects.get.useQuery({ id: numId }, { enabled: !isNaN(numId) });
+  const { advance, advancing } = useAdvanceStage(projectId, 5);
 
   const completedStages = useMemo(() => {
     const s = new Set<number>();
@@ -23,6 +25,10 @@ export default function WizardVideo() {
   }, [project]);
 
   const [rendering, setRendering] = useState(false);
+
+  const handleNext = async () => {
+    await advance();
+  };
 
   return (
     <CreateWizardLayout
@@ -108,13 +114,27 @@ export default function WizardVideo() {
             Back
           </button>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate(`/create/publish?projectId=${projectId}`)}
-            className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-gradient-to-r from-token-violet to-token-cyan text-white font-semibold text-sm shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
+            whileHover={{ scale: !advancing ? 1.02 : 1 }}
+            whileTap={{ scale: !advancing ? 0.98 : 1 }}
+            onClick={handleNext}
+            disabled={advancing}
+            className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
+              !advancing
+                ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
+                : "bg-white/5 text-white/20 cursor-not-allowed"
+            }`}
           >
-            Continue to Publish
-            <ArrowRight className="w-4 h-4" />
+            {advancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Advancing...
+              </>
+            ) : (
+              <>
+                Continue to Publish
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </motion.button>
         </div>
       </div>
