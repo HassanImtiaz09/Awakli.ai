@@ -131,12 +131,10 @@ function ActOneHero() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="text-display text-white mb-6"
+            className="text-display text-white mb-6 tracking-tighter"
           >
-            Tonight, your idea
-            <br />
-            becomes{" "}
-            <span className="text-gradient-opening">anime.</span>
+            <span className="block">Tonight, your idea</span>
+            <span className="block">becomes <span className="text-gradient-opening drop-shadow-[0_0_40px_rgba(107,91,255,0.35)]">ANIME</span>.</span>
           </motion.h1>
 
           {/* Subheadline — §10 */}

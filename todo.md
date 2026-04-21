@@ -3750,3 +3750,6 @@
 - [x] Replace .text-gradient-opening gradient stops to match
 - [x] Add .bg-shonen-heat and .text-gradient-heat secondary gradient utilities
 - [x] Replace all #E94560 references in Home.tsx with new palette colors
+
+## Change 2: Upgrade Hero Headline
+- [x] Replace hero h1 with ANIME all-caps gradient + neon drop-shadow + tracking-tighter
