@@ -3842,3 +3842,7 @@
 
 ## AI Feature Chip Hover Animation
 - [x] Add subtle glow pulse animation to feature chips on hover
+
+## CTA Tile Background Replacement
+- [x] Generate anime-themed creation background artwork for "Every great anime starts with an idea" CTA tile
+- [x] Replace rotating bar background with anime artwork (more prominent opacity than proof step tiles)

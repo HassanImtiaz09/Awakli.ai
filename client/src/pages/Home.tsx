@@ -462,9 +462,23 @@ function ActThreeInvitation() {
         {/* Inline prompt box */}
         <ScrollReveal delay={0.4}>
           <div className="max-w-3xl mx-auto mt-20">
-            <div className="relative rounded-2xl overflow-hidden border border-white/5">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/10 via-[#6B5BFF]/8 to-[#FF2D7A]/10" />
-              <div className="relative p-8 md:p-12 text-center">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10">
+              {/* Anime creation background artwork */}
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/cta-creation-bg-hwwkeC3eP8rTc9neY3jnhC.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ opacity: 0.35, filter: "blur(1px) saturate(1.2)" }}
+                loading="lazy"
+              />
+              {/* Dark vignette overlay for text readability */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "radial-gradient(ellipse at center, rgba(5,5,12,0.3) 0%, rgba(5,5,12,0.75) 100%)",
+                }}
+              />
+              <div className="relative p-8 md:p-12 text-center z-10">
                 <h3 className="text-h2 text-white mb-2">
                   Every great anime starts with an{" "}
                   <span className="text-gradient-opening">idea</span>
