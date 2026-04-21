@@ -155,9 +155,12 @@ function ActOneHero() {
           >
             <motion.button
               onClick={handleCTA}
-              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(107,91,255,0.45)" }}
+              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
               whileTap={{ scale: 0.96 }}
-              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/35 flex items-center gap-3 mx-auto"
+              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg flex items-center gap-3 mx-auto"
+              style={{
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 34px -10px rgba(0,240,255,0.5), 0 4px 10px rgba(0,0,0,0.4)",
+              }}
             >
               <PenTool className="w-5 h-5" />
               Write the first scene
@@ -449,12 +452,15 @@ function ActThreeInvitation() {
                   </div>
                   <motion.button
                     onClick={handleCreate}
-                    whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,240,255,0.45)" }}
+                    whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex-shrink-0 bg-opening-sequence text-white font-semibold rounded-xl shadow-lg shadow-[#6B5BFF]/35 flex items-center gap-2 px-8 py-4 text-base"
+                    className="flex-shrink-0 bg-opening-sequence text-white font-bold rounded-xl flex items-center gap-2 px-10 py-4 text-lg tracking-wide"
+                    style={{
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 12px 30px -8px rgba(0,240,255,0.45), 0 4px 8px rgba(0,0,0,0.4)",
+                    }}
                   >
-                    <Wand2 className="w-5 h-5" />
-                    Create
+                    <Wand2 className="w-5 h-5" strokeWidth={2.2} />
+                    Summon
                   </motion.button>
                 </div>
 

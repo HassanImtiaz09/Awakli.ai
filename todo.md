@@ -3759,3 +3759,7 @@
 
 ## Change 4: PROOF Sections as Proper Cards
 - [x] Replace ProofSection with bordered card chrome, floating ghost numeral, left accent rule, enhanced icon chip, upgraded typography
+
+## Change 5: Final CTA Button Parity
+- [x] Upgrade Act Three "Create" button to "Summon" with font-bold, text-lg, 3D inset/outset shadow stack
+- [x] Add 3D inset highlight shadow to hero CTA button
