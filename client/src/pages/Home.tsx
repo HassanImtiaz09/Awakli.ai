@@ -159,13 +159,22 @@ function ActOneHero() {
               onClick={handleCTA}
               whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
               whileTap={{ scale: 0.96 }}
-              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg flex items-center gap-3 mx-auto"
+              className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg flex items-center gap-3 mx-auto relative overflow-hidden"
               style={{
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 34px -10px rgba(0,240,255,0.5), 0 4px 10px rgba(0,0,0,0.4)",
               }}
             >
-              <PenTool className="w-5 h-5" strokeWidth={1.75} />
-              Write the first scene
+              {/* Shimmer sweep */}
+              <span
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.18) 55%, transparent 65%)",
+                  backgroundSize: "250% 100%",
+                  animation: "shimmer-sweep 3s ease-in-out infinite",
+                }}
+              />
+              <PenTool className="w-5 h-5 relative z-10" strokeWidth={1.75} />
+              <span className="relative z-10">Write the first scene</span>
             </motion.button>
           </motion.div>
 

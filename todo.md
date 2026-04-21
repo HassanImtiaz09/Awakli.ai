@@ -3808,3 +3808,6 @@
 ## Leaderboard TiltCard + Summon CTA Animation
 - [x] Apply TiltCard parallax to Leaderboard page cards
 - [x] Add subtle hover shimmer animation to the Summon CTA button
+
+## Hero CTA Shimmer
+- [x] Apply shimmer-sweep animation to the hero "Write the first scene" CTA button
