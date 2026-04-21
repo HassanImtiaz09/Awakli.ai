@@ -3849,3 +3849,8 @@
 
 ## CTA Input Rotating Border Removal
 - [x] Remove rotating conic-gradient border animation from input field in CTA tile
+
+## Homepage Scrolling Background Images
+- [x] Generate 7 anime background images with cohesive progression for homepage scroll
+- [x] Implement scroll-based background crossfade transition system
+- [x] Integrate backgrounds into Home.tsx covering full page scroll depth

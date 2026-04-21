@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import { TiltCard } from "@/components/awakli/TiltCard";
+import ScrollBackground from "@/components/awakli/ScrollBackground";
 
 /* ─── CDN Assets ──────────────────────────────────────────────────────── */
 const HERO_IMAGES = [
@@ -403,7 +404,7 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
 function ActTwoProof() {
   return (
     <section className="relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#05050C] via-[#0D0D1A] to-[#05050C]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#05050C]/60 via-[#0D0D1A]/40 to-[#05050C]/60" />
       <div className="relative z-10">
         {PROOF_SECTIONS.map((section, i) => (
           <ProofSection key={section.label} section={section} index={i} />
@@ -437,7 +438,7 @@ function ActThreeInvitation() {
 
   return (
     <section className="py-24 md:py-32 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#05050C]" />
+      <div className="absolute inset-0 bg-[#05050C]/50" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#6B5BFF]/10 blur-[150px]" />
 
       <div className="container relative z-10">
@@ -629,7 +630,7 @@ const AI_FEATURES = [
 function FeatureStrip() {
   return (
     <section className="py-20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D1A] to-[#05050C]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0D0D1A]/50 to-[#05050C]/50" />
       <div className="container relative z-10">
         <ScrollReveal>
           <div className="text-center mb-12">
@@ -800,6 +801,9 @@ export default function Home() {
 
   return (
     <MarketingLayout>
+      {/* Scroll-reactive anime backgrounds */}
+      <ScrollBackground />
+
       {/* ACT ONE — The Hook */}
       <ActOneHero />
 
