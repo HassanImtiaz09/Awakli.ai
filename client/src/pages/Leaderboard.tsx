@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { Trophy, TrendingUp, Eye, ThumbsUp, Film, Crown, Flame, Sparkles, ArrowUp, CheckCircle2 } from "lucide-react";
 import { VoteProgressBar } from "@/components/awakli/VoteProgressBar";
+import { TiltCard } from "@/components/awakli/TiltCard";
 
 type TabKey = "rising" | "promoted" | "completed";
 
@@ -135,7 +136,7 @@ function RisingTopCard({ item, rank, threshold }: { item: any; rank: number; thr
       transition={{ delay: rank * 0.1 }}
     >
       <Link href={item.slug ? `/watch/${item.slug}` : "#"}>
-        <div className={`relative rounded-2xl border ${MEDAL_BORDER[rank]} bg-surface-1/50 p-6 hover:bg-surface-1/70 transition-all cursor-pointer shadow-lg ${rank === 0 ? "md:-mt-4 md:pb-8" : ""}`}>
+        <TiltCard color={rank === 0 ? "#FBBF24" : rank === 1 ? "#9CA3AF" : "#D97706"} className={`relative rounded-2xl border ${MEDAL_BORDER[rank]} bg-surface-1/50 p-6 hover:bg-surface-1/70 transition-all cursor-pointer shadow-lg ${rank === 0 ? "md:-mt-4 md:pb-8" : ""}`} asLink>
           <div className={`absolute -top-3 -right-3 w-10 h-10 rounded-full bg-gradient-to-br ${MEDAL_COLORS[rank]} flex items-center justify-center shadow-lg`}>
             <span className="text-sm font-bold text-white">#{item.rank}</span>
           </div>
@@ -162,7 +163,7 @@ function RisingTopCard({ item, rank, threshold }: { item: any; rank: number; thr
             </span>
             <span>{(threshold - (item.totalVotes ?? 0)).toLocaleString()} to go</span>
           </div>
-        </div>
+        </TiltCard>
       </Link>
     </motion.div>
   );
@@ -175,7 +176,7 @@ function RisingRow({ item, threshold }: { item: any; threshold: number }) {
   return (
     <motion.div ref={ref} initial={{ opacity: 0, x: -20 }} animate={isInView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.3 }}>
       <Link href={item.slug ? `/watch/${item.slug}` : "#"}>
-        <div className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-surface-1/30 hover:bg-surface-1/50 hover:border-orange-400/20 transition-all cursor-pointer">
+        <TiltCard color="#FB923C" className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-surface-1/30 hover:bg-surface-1/50 hover:border-orange-400/20 transition-all cursor-pointer" maxTilt={2} asLink>
           <span className="w-10 text-center text-lg font-display font-bold text-gray-500">#{item.rank}</span>
 
           <div className="w-12 h-16 rounded-lg overflow-hidden bg-surface-2 flex-shrink-0">
@@ -207,7 +208,7 @@ function RisingRow({ item, threshold }: { item: any; threshold: number }) {
           <div className="flex items-center gap-1 text-sm text-orange-400">
             <ArrowUp className="w-4 h-4" /> {(item.totalVotes ?? 0).toLocaleString()}
           </div>
-        </div>
+        </TiltCard>
       </Link>
     </motion.div>
   );
@@ -237,7 +238,7 @@ function PromotedRow({ item, rank }: { item: any; rank: number }) {
   return (
     <motion.div ref={ref} initial={{ opacity: 0, x: -20 }} animate={isInView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.3, delay: rank * 0.03 }}>
       <Link href={item.slug ? `/watch/${item.slug}` : "#"}>
-        <div className="flex items-center gap-4 p-4 rounded-xl border border-amber-400/10 bg-amber-500/5 hover:bg-amber-500/10 transition-all cursor-pointer">
+        <TiltCard color="#FBBF24" className="flex items-center gap-4 p-4 rounded-xl border border-amber-400/10 bg-amber-500/5 hover:bg-amber-500/10 transition-all cursor-pointer" maxTilt={2} asLink>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center flex-shrink-0">
             <Trophy className="w-5 h-5 text-white" />
           </div>
@@ -275,7 +276,7 @@ function PromotedRow({ item, rank }: { item: any; rank: number }) {
               Promoted {new Date(item.animePromotedAt).toLocaleDateString()}
             </span>
           )}
-        </div>
+        </TiltCard>
       </Link>
     </motion.div>
   );
@@ -306,7 +307,7 @@ function CompletedCard({ item, index }: { item: any; index: number }) {
       transition={{ delay: index * 0.08 }}
     >
       <Link href={item.slug ? `/watch/${item.slug}` : "#"}>
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 overflow-hidden hover:bg-cyan-500/10 transition-all cursor-pointer group">
+        <TiltCard color="#22D3EE" className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 overflow-hidden hover:bg-cyan-500/10 transition-all cursor-pointer group" asLink>
           <div className="aspect-video relative overflow-hidden">
             {item.coverImageUrl ? (
               <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -332,7 +333,7 @@ function CompletedCard({ item, index }: { item: any; index: number }) {
               )}
             </div>
           </div>
-        </div>
+        </TiltCard>
       </Link>
     </motion.div>
   );

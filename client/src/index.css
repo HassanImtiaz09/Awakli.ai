@@ -342,6 +342,12 @@ body {
   animation: shimmer 1.8s infinite linear;
 }
 
+@keyframes shimmer-sweep {
+  0%   { background-position: 250% 0; }
+  40%  { background-position: -50% 0; }
+  100% { background-position: -50% 0; }
+}
+
 /* ============================================================
    Foil Shimmer (Character Cards §3.6)
    ============================================================ */

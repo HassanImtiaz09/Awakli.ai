@@ -456,13 +456,22 @@ function ActThreeInvitation() {
                     onClick={handleCreate}
                     whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex-shrink-0 bg-opening-sequence text-white font-bold rounded-xl flex items-center gap-2 px-10 py-4 text-lg tracking-wide"
+                    className="flex-shrink-0 bg-opening-sequence text-white font-bold rounded-xl flex items-center gap-2 px-10 py-4 text-lg tracking-wide relative overflow-hidden group/summon"
                     style={{
                       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 12px 30px -8px rgba(0,240,255,0.45), 0 4px 8px rgba(0,0,0,0.4)",
                     }}
                   >
-                    <Wand2 className="w-5 h-5" strokeWidth={2.2} />
-                    Summon
+                    {/* Shimmer sweep */}
+                    <span
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.18) 55%, transparent 65%)",
+                        backgroundSize: "250% 100%",
+                        animation: "shimmer-sweep 3s ease-in-out infinite",
+                      }}
+                    />
+                    <Wand2 className="w-5 h-5 relative z-10" strokeWidth={2.2} />
+                    <span className="relative z-10">Summon</span>
                   </motion.button>
                 </div>
 
