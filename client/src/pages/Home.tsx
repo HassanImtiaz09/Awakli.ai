@@ -262,43 +262,74 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
 
   return (
     <ChromaticReveal>
-      <div
-        ref={ref}
-        className="relative py-24 md:py-32 overflow-hidden"
-      >
-        {/* Background accent glow */}
+      <div ref={ref} className="relative py-16 md:py-24 overflow-hidden">
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full blur-[120px] opacity-20"
           style={{ backgroundColor: section.color }}
         />
-
         <div className="container relative z-10">
-          <div className={`flex flex-col ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-12 md:gap-20`}>
+          <div
+            className={`relative flex flex-col ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-10 md:gap-16 rounded-[28px] p-8 md:p-12 overflow-hidden`}
+            style={{
+              background: "linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 30px 60px -30px rgba(0,0,0,0.7)",
+            }}
+          >
+            {/* Floating ghost numeral */}
+            <span
+              className="pointer-events-none absolute -top-4 right-6 md:right-10 font-black leading-none select-none"
+              style={{
+                fontSize: "180px",
+                letterSpacing: "-0.08em",
+                background: `linear-gradient(135deg, ${section.color} 0%, ${section.color}33 100%)`,
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                opacity: 0.14,
+              }}
+            >
+              {section.label}
+            </span>
+            {/* Left accent rule */}
+            <span
+              className="absolute left-0 top-8 bottom-8 w-[3px] rounded-full"
+              style={{ background: `linear-gradient(180deg, ${section.color} 0%, transparent 100%)` }}
+            />
             {/* Text side */}
-            <div className="flex-1 max-w-lg">
-              <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 max-w-lg relative z-10">
+              <div className="flex items-center gap-3 mb-5">
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${section.color}15`, border: `1px solid ${section.color}30` }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{
+                    backgroundColor: `${section.color}1A`,
+                    border: `1px solid ${section.color}40`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -6px ${section.color}55`,
+                  }}
                 >
-                  <section.icon className="w-5 h-5" style={{ color: section.color }} />
+                  <section.icon className="w-5 h-5" style={{ color: section.color }} strokeWidth={2} />
                 </div>
-                <span className="text-xs font-mono tracking-widest" style={{ color: section.color }}>
+                <span
+                  className="text-[11px] font-mono font-semibold tabular-nums uppercase"
+                  style={{ color: section.color, letterSpacing: "0.22em" }}
+                >
                   STEP {section.label}
                 </span>
               </div>
-              <h2 className="text-h1 text-white mb-4">{section.heading}</h2>
-              <p className="text-[#9494B8] text-lg leading-relaxed">{section.description}</p>
+              <h2 className="text-h1 text-white mb-4 tracking-tight">{section.heading}</h2>
+              <p className="text-[#B8B8CC] text-lg leading-relaxed">{section.description}</p>
             </div>
-
-            {/* Visual side — parallax */}
-            <motion.div className="flex-1 max-w-lg" style={{ y }}>
+            {/* Visual side */}
+            <motion.div className="flex-1 max-w-lg relative z-10" style={{ y }}>
               <div
-                className="aspect-[4/3] rounded-2xl overflow-hidden border border-white/5"
-                style={{ background: `linear-gradient(135deg, ${section.color}10, ${section.color}05)` }}
+                className="aspect-[4/3] rounded-2xl overflow-hidden border border-white/10"
+                style={{
+                  background: `linear-gradient(135deg, ${section.color}20, ${section.color}05)`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 60px -20px ${section.color}40`,
+                }}
               >
                 <div className="w-full h-full flex items-center justify-center">
-                  <section.icon className="w-20 h-20 opacity-20" style={{ color: section.color }} />
+                  <section.icon className="w-24 h-24 opacity-25" style={{ color: section.color }} strokeWidth={1.5} />
                 </div>
               </div>
             </motion.div>

@@ -3756,3 +3756,6 @@
 
 ## Change 3: Magical Frame for Prompt Input
 - [x] Replace plain input wrapper with conic-gradient animated border and corner sigils
+
+## Change 4: PROOF Sections as Proper Cards
+- [x] Replace ProofSection with bordered card chrome, floating ghost numeral, left accent rule, enhanced icon chip, upgraded typography
