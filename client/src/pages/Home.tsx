@@ -633,7 +633,7 @@ function FeatureStrip() {
             <ScrollReveal key={feat.name} delay={i * 0.06}>
               <TiltCard color={feat.color}>
                 <div
-                  className="w-12 h-12 rounded-[14px] flex items-center justify-center mx-auto mb-3"
+                  className="w-12 h-12 rounded-[14px] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:scale-110"
                   style={{
                     backgroundColor: `${feat.color}18`,
                     border: `1px solid ${feat.color}40`,
@@ -643,10 +643,19 @@ function FeatureStrip() {
                   <img
                     src={feat.chipImg}
                     alt={feat.name}
-                    className="w-8 h-8 object-contain"
+                    className="w-8 h-8 object-contain transition-all duration-300 group-hover:drop-shadow-[0_0_8px_var(--glow)] group-hover:brightness-125"
+                    style={{ "--glow": `${feat.color}AA` } as React.CSSProperties}
                     loading="lazy"
                   />
                 </div>
+                {/* Glow pulse ring on hover */}
+                <div
+                  className="absolute inset-0 rounded-[14px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{
+                    boxShadow: `0 0 20px 4px ${feat.color}30, inset 0 0 20px 2px ${feat.color}15`,
+                    animation: "glowPulse 2s ease-in-out infinite",
+                  }}
+                />
                 <span className="text-xs font-semibold text-[#B8B8CC] group-hover:text-white transition-colors tracking-wide">
                   {feat.name}
                 </span>

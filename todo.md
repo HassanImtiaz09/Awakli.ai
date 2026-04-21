@@ -3839,3 +3839,6 @@
 - [x] Generate custom artwork for "Community Voting" chip (Heart icon, magenta #FF2D7A)
 - [x] Generate custom artwork for "Full Pipeline" chip (Zap icon, green #00E5A0)
 - [x] Integrate all chip artwork into Home.tsx replacing Lucide icons
+
+## AI Feature Chip Hover Animation
+- [x] Add subtle glow pulse animation to feature chips on hover
