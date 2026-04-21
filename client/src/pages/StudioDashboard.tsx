@@ -45,7 +45,7 @@ export default function StudioDashboard() {
     return (
       <StudioLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-          <Sparkles size={48} className="text-[#E94560] mb-4" />
+          <Sparkles size={48} className="text-[#00F0FF] mb-4" />
           <h2 className="text-h2 text-[#F0F0F5] mb-2">Sign in to access Studio</h2>
           <p className="text-[#9494B8] mb-6">Create manga from your stories and bring them to life.</p>
           <a href={getLoginUrl()}>
@@ -86,10 +86,10 @@ export default function StudioDashboard() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0 }}
-              className="group p-5 rounded-xl border border-[#E94560]/20 bg-gradient-to-br from-[#E94560]/5 to-transparent hover:border-[#E94560]/40 hover:bg-[#E94560]/10 transition-all cursor-pointer"
+              className="group p-5 rounded-xl border border-[#6B5BFF]/20 bg-gradient-to-br from-[#6B5BFF]/5 to-transparent hover:border-[#6B5BFF]/40 hover:bg-[#6B5BFF]/10 transition-all cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#E94560]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Wand2 size={24} className="text-[#E94560]" />
+              <div className="w-12 h-12 rounded-xl bg-[#6B5BFF]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Wand2 size={24} className="text-[#00F0FF]" />
               </div>
               <h3 className="font-semibold text-[#F0F0F5] mb-1">Quick Create</h3>
               <p className="text-xs text-[#9494B8] leading-relaxed">Describe your story and AI generates a full manga instantly. Best for new ideas.</p>
@@ -141,7 +141,7 @@ export default function StudioDashboard() {
               className="bg-[#0D0D1A] border border-white/5 rounded-xl p-4"
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-                stat.color === "pink" ? "bg-[rgba(233,69,96,0.15)] text-[#E94560]"
+                stat.color === "pink" ? "bg-[rgba(107,91,255,0.15)] text-[#00F0FF]"
                 : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00D4FF]"
                 : stat.color === "success" ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]"
                 : "bg-[rgba(255,184,0,0.15)] text-[#FFB800]"
@@ -218,14 +218,14 @@ export default function StudioDashboard() {
                   <Link href={`/studio/project/${project.id}`}>
                     <AwakliCard variant="default" glow="pink" className="p-5 cursor-pointer group">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#E94560] to-[#9B59B6] flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#6B5BFF] to-[#B388FF] flex items-center justify-center text-white font-bold text-sm">
                           {project.title[0].toUpperCase()}
                         </div>
                         <AwakliiBadge variant={project.status === "active" ? "success" : project.status === "archived" ? "default" : "warning"}>
                           {project.status}
                         </AwakliiBadge>
                       </div>
-                      <h3 className="font-semibold text-[#F0F0F5] mb-1 group-hover:text-[#E94560] transition-colors truncate">
+                      <h3 className="font-semibold text-[#F0F0F5] mb-1 group-hover:text-[#00F0FF] transition-colors truncate">
                         {project.title}
                       </h3>
                       {project.description && (

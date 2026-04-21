@@ -60,7 +60,7 @@ function ProgressRing({ percent, size = 80, stroke = 6 }: { percent: number; siz
       <defs>
         <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="var(--accent-cyan)" />
-          <stop offset="100%" stopColor="var(--accent-pink)" />
+          <stop offset="100%" stopColor="var(--accent-cyan)" />
         </linearGradient>
       </defs>
     </svg>
@@ -229,7 +229,7 @@ export default function BatchTraining() {
         <div className="text-center space-y-4">
           <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="font-heading text-xl">Sign in to access batch training</h2>
-          <Button asChild className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0">
+          <Button asChild className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0">
             <a href={getLoginUrl("/batch-training")}>Sign In</a>
           </Button>
         </div>
@@ -369,7 +369,7 @@ export default function BatchTraining() {
                             ) : (
                               <div
                                 className="w-full h-full flex items-center justify-center text-sm font-heading font-bold"
-                                style={{ background: "linear-gradient(135deg, var(--accent-pink), var(--accent-cyan))" }}
+                                style={{ background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan))" }}
                               >
                                 {char.name.charAt(0)}
                               </div>
@@ -449,7 +449,7 @@ export default function BatchTraining() {
                 <Button
                   size="lg"
                   disabled={selectedCharacters.length === 0 || batchTrainMutation.isPending}
-                  className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
                   onClick={() => batchTrainMutation.mutate({
                     characterIds: selectedCharacters,
                     gpuType,

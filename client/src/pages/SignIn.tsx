@@ -11,7 +11,7 @@ export default function SignIn() {
       {/* Animated background */}
       <StarField count={120} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(233,69,96,0.08) 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(107,91,255,0.08) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
         style={{ background: "radial-gradient(ellipse at 70% 80%, rgba(0,212,255,0.05) 0%, transparent 50%)" }} />
 
@@ -55,7 +55,7 @@ export default function SignIn() {
           <p className="text-center text-sm text-[#9494B8] mt-6">
             Don't have an account?{" "}
             <Link href="/signup">
-              <span className="text-[#E94560] hover:text-[#FF5A7A] transition-colors cursor-pointer font-medium">
+              <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
                 Sign up free
               </span>
             </Link>

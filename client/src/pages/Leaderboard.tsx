@@ -34,7 +34,7 @@ export default function Leaderboard() {
       <section className="relative py-16 md:py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-accent-pink/5 via-transparent to-transparent" />
         <div className="absolute inset-0 opacity-20"
-          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(233,69,96,0.15) 0%, transparent 60%)" }} />
+          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(107,91,255,0.15) 0%, transparent 60%)" }} />
         <div className="container relative text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-sm mb-4">

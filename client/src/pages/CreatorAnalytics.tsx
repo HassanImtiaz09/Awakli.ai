@@ -29,7 +29,7 @@ export default function CreatorAnalytics() {
 
   const stats = [
     { label: "Total Views", value: overview?.totalViews ?? 0, icon: Eye, color: "#3498DB" },
-    { label: "Total Votes", value: overview?.totalVotes ?? 0, icon: Heart, color: "#E94560" },
+    { label: "Total Votes", value: overview?.totalVotes ?? 0, icon: Heart, color: "#6B5BFF" },
     { label: "Published", value: overview?.publishedProjects ?? 0, icon: TrendingUp, color: "#2ECC71" },
     { label: "Total Projects", value: overview?.totalProjects ?? 0, icon: BookOpen, color: "#9B59B6" },
   ];
@@ -96,7 +96,7 @@ export default function CreatorAnalytics() {
               <BookOpen size={32} className="mx-auto text-[#5C5C7A] mb-3" />
               <p className="text-[#9494B8] text-sm">No content yet. Create your first project!</p>
               <Link href="/create">
-                <span className="inline-block mt-3 text-sm text-[#E94560] hover:underline cursor-pointer">
+                <span className="inline-block mt-3 text-sm text-[#00F0FF] hover:underline cursor-pointer">
                   Start creating →
                 </span>
               </Link>

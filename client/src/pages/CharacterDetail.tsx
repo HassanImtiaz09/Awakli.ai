@@ -505,7 +505,7 @@ function TrainLoraModal({
                   setStep("config");
                 }}
                 disabled={!extraction || extractionLoading}
-                className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+                className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
               >
                 <CheckCircle2 className="w-4 h-4 mr-1" />
                 Approve & Continue
@@ -526,7 +526,7 @@ function TrainLoraModal({
                   trainingSteps,
                 })}
                 disabled={trainMutation.isPending}
-                className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+                className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
               >
                 {trainMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Zap className="w-4 h-4 mr-1" />}
                 Start Training
@@ -800,7 +800,7 @@ export default function CharacterDetail() {
         <div className="text-center space-y-4">
           <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="font-heading text-xl">Sign in to view this character</h2>
-          <Button asChild className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0">
+          <Button asChild className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0">
             <a href={getLoginUrl(`/characters/${characterId}`)}>Sign In</a>
           </Button>
         </div>
@@ -859,7 +859,7 @@ export default function CharacterDetail() {
                   <div className="text-center">
                     <div
                       className="w-20 h-20 rounded-full mx-auto flex items-center justify-center text-3xl font-heading font-bold"
-                      style={{ background: "linear-gradient(135deg, var(--accent-pink), var(--accent-cyan))" }}
+                      style={{ background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan))" }}
                     >
                       {character.name.charAt(0).toUpperCase()}
                     </div>
@@ -942,7 +942,7 @@ export default function CharacterDetail() {
                     {(character.loraStatus === "untrained" || character.loraStatus === "needs_retraining" || character.loraStatus === "failed") && (
                       <Button
                         size="sm"
-                        className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+                        className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
                         onClick={() => setShowTrainModal(true)}
                       >
                         <Zap className="w-4 h-4 mr-1" /> Train LoRA
@@ -1080,7 +1080,7 @@ export default function CharacterDetail() {
                 </p>
                 <Button
                   onClick={() => setShowTrainModal(true)}
-                  className="bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)] text-white border-0"
+                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
                   disabled={!character.referenceSheetUrl}
                 >
                   <Zap className="w-4 h-4 mr-2" /> Train LoRA
@@ -1162,7 +1162,7 @@ export default function CharacterDetail() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-white/10 bg-gradient-to-r from-cyan/10 to-[var(--accent-pink)]/10 hover:from-cyan/20 hover:to-[var(--accent-pink)]/20"
+                      className="border-white/10 bg-gradient-to-r from-cyan/10 to-[var(--accent-cyan)]/10 hover:from-cyan/20 hover:to-[var(--accent-cyan)]/20"
                       onClick={() => setShowCompareModal(true)}
                     >
                       <Scale className="w-3.5 h-3.5 mr-1.5" /> A/B Compare Versions

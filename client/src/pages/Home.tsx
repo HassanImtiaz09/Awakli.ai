@@ -36,6 +36,47 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
   );
 }
 
+/* ─── Tilt Card — mouse-tracking parallax for AI feature chips ────── */
+function TiltCard({ children, color }: { children: React.ReactNode; color: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [hovering, setHovering] = useState(false);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    // Map 0..1 to -4..4 degrees
+    setTilt({ x: (y - 0.5) * -8, y: (x - 0.5) * 8 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTilt({ x: 0, y: 0 });
+    setHovering(false);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={handleMouseLeave}
+      className="group p-5 rounded-[14px] border border-white/8 bg-[#0D0D1A] hover:border-white/15 transition-all text-center cursor-default"
+      style={{
+        transform: `perspective(600px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(${hovering ? -2 : 0}px)`,
+        transition: hovering ? "transform 0.1s ease-out" : "transform 0.4s ease-out",
+        boxShadow: hovering
+          ? `inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 28px -8px ${color}40`
+          : "inset 0 1px 0 rgba(255,255,255,0.05)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* ─── Chromatic Reveal — triggers beat animation on viewport entry ──── */
 function ChromaticReveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -565,8 +606,7 @@ function FeatureStrip() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 max-w-5xl mx-auto">
           {AI_FEATURES.map((feat, i) => (
             <ScrollReveal key={feat.name} delay={i * 0.06}>
-              <div className="group p-5 rounded-[14px] border border-white/8 bg-[#0D0D1A] hover:border-white/15 hover:-translate-y-0.5 transition-all text-center"
-                   style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)" }}>
+              <TiltCard color={feat.color}>
                 <div
                   className="w-12 h-12 rounded-[14px] flex items-center justify-center mx-auto mb-3"
                   style={{
@@ -580,7 +620,7 @@ function FeatureStrip() {
                 <span className="text-xs font-semibold text-[#B8B8CC] group-hover:text-white transition-colors tracking-wide">
                   {feat.name}
                 </span>
-              </div>
+              </TiltCard>
             </ScrollReveal>
           ))}
         </div>

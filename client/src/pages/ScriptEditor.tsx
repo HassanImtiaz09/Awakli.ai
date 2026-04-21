@@ -125,7 +125,7 @@ function EpisodeListPanel({
             className={cn(
               "w-full text-left p-3 rounded-lg border transition-all",
               activeEpisodeId === ep.id
-                ? "bg-[var(--bg-elevated)] border-l-2 border-l-[var(--accent-pink)] border-t-white/5 border-r-white/5 border-b-white/5"
+                ? "bg-[var(--bg-elevated)] border-l-2 border-l-[var(--accent-cyan)] border-t-white/5 border-r-white/5 border-b-white/5"
                 : "bg-transparent border-white/5 hover:bg-[var(--bg-elevated)]/50"
             )}
             whileHover={{ x: 2 }}
@@ -154,7 +154,7 @@ function EpisodeListPanel({
           disabled={generating || generateMutation.isPending}
           className={cn(
             "w-full p-3 rounded-lg border-2 border-dashed border-white/10 text-sm font-medium",
-            "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-pink)]/30",
+            "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-cyan)]/30",
             "flex items-center justify-center gap-2 transition-all",
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
@@ -239,7 +239,7 @@ function PanelCard({ panel, onRewrite }: { panel: ScriptPanel; onRewrite: (field
                   onMouseEnter={() => setHoveredField(`dialogue-${i}`)}
                   onMouseLeave={() => setHoveredField(null)}
                 >
-                  <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--accent-pink)]/15 text-[var(--accent-pink)]">
+                  <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]">
                     {d.character}
                   </span>
                   <span className="text-xs text-[var(--text-primary)] flex-1">"{d.text}"</span>
@@ -358,8 +358,8 @@ export default function ScriptEditor() {
   const timeBadgeColors: Record<string, string> = {
     day: "bg-[var(--accent-gold)]/15 text-[var(--accent-gold)]",
     night: "bg-[#6C5CE7]/15 text-[#6C5CE7]",
-    dawn: "bg-[#FF6B81]/15 text-[#FF6B81]",
-    dusk: "bg-[#E94560]/15 text-[#E94560]",
+    dawn: "bg-[#B388FF]/15 text-[#B388FF]",
+    dusk: "bg-[#6B5BFF]/15 text-[#00F0FF]",
   };
 
   return (
@@ -383,7 +383,7 @@ export default function ScriptEditor() {
           </div>
         ) : episodeLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 size={32} className="animate-spin text-[var(--accent-pink)]" />
+            <Loader2 size={32} className="animate-spin text-[var(--accent-cyan)]" />
           </div>
         ) : episode?.status === "generating" ? (
           <div className="flex-1 flex items-center justify-center">
@@ -402,7 +402,7 @@ export default function ScriptEditor() {
               <p className="text-sm text-[var(--text-muted)]">AI is crafting your episode. This may take a moment.</p>
               <div className="w-48 mx-auto h-1 rounded-full bg-[var(--bg-overlay)] overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-[var(--accent-pink)] to-[var(--accent-cyan)]"
+                  className="h-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)]"
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                   style={{ width: "50%" }}
@@ -505,7 +505,7 @@ export default function ScriptEditor() {
                 {episode?.status !== "locked" && (
                   <motion.button
                     onClick={() => setShowApproveModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-pink)] text-white hover:bg-[var(--accent-pink-hover)] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)] transition-colors"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -535,7 +535,7 @@ export default function ScriptEditor() {
             <Button
               onClick={handleApprove}
               disabled={approveMutation.isPending}
-              className="bg-[var(--accent-pink)] text-white hover:bg-[var(--accent-pink-hover)]"
+              className="bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)]"
             >
               {approveMutation.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : <Lock size={14} className="mr-2" />}
               Approve & Lock

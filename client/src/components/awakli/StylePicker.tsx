@@ -52,7 +52,7 @@ export default function StylePicker({ value, onChange, gender, onGenderChange }:
               onClick={() => onChange(styleKey)}
               className={`relative group rounded-xl overflow-hidden border-2 transition-all ${
                 isSelected
-                  ? "border-[#E94560] shadow-lg shadow-[#E94560]/20 scale-[1.02]"
+                  ? "border-[#6B5BFF] shadow-lg shadow-[#6B5BFF]/20 scale-[1.02]"
                   : "border-white/10 hover:border-white/25 hover:scale-[1.01]"
               }`}
             >
@@ -72,7 +72,7 @@ export default function StylePicker({ value, onChange, gender, onGenderChange }:
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#E94560] flex items-center justify-center shadow-lg"
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#6B5BFF] flex items-center justify-center shadow-lg"
                   >
                     <Check className="w-4 h-4 text-white" />
                   </motion.div>

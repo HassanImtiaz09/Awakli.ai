@@ -47,8 +47,8 @@ const TIERS = [
     annualMonthlyPrice: 15,
     narrative: "Become the animator you were always going to be.",
     icon: Zap,
-    accentColor: "#E94560",
-    gradientFrom: "#E94560",
+    accentColor: "#6B5BFF",
+    gradientFrom: "#6B5BFF",
     gradientTo: "#7C3AED",
     popular: true,
     ctaText: "Upgrade to Creator",
@@ -230,7 +230,7 @@ function TierScene({
             <div className="flex-1 max-w-lg">
               {/* Badge */}
               {tier.popular && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E94560]/10 border border-[#E94560]/30 text-[#E94560] text-xs font-semibold mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#6B5BFF]/10 border border-[#6B5BFF]/30 text-[#00F0FF] text-xs font-semibold mb-4">
                   <Star className="w-3 h-3 fill-current" />
                   Most Popular
                 </div>
@@ -388,7 +388,7 @@ export default function Pricing() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-16"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E94560]/30 bg-[#E94560]/5 text-[#E94560] text-xs font-semibold mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#6B5BFF]/30 bg-[#6B5BFF]/5 text-[#00F0FF] text-xs font-semibold mb-6">
               <Sparkles className="w-3.5 h-3.5" />
               Choose your story
             </div>
@@ -491,7 +491,7 @@ export default function Pricing() {
                 {COMPARISON_SECTIONS.map((section) => (
                   <div key={section.title}>
                     <div className="px-4 py-3 bg-[#0A0A18] border-b border-white/5">
-                      <span className="text-xs font-bold text-[#E94560] uppercase tracking-wider">
+                      <span className="text-xs font-bold text-[#00F0FF] uppercase tracking-wider">
                         {section.title}
                       </span>
                     </div>
@@ -594,9 +594,9 @@ export default function Pricing() {
               </p>
               <Link href="/create">
                 <motion.span
-                  whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(233,69,96,0.4)" }}
+                  whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(107,91,255,0.4)" }}
                   whileTap={{ scale: 0.97 }}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-opening-sequence text-white font-semibold shadow-lg shadow-[#E94560]/25 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-opening-sequence text-white font-semibold shadow-lg shadow-[#6B5BFF]/25 cursor-pointer"
                 >
                   <Wand2 className="w-5 h-5" />
                   Start Creating Free

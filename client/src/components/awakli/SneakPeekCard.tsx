@@ -74,7 +74,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl bg-gradient-to-br from-[#6C63FF]/10 to-[#E94560]/10 border border-[#6C63FF]/20 p-5 ${variant === "reader" ? "mx-4 my-4" : ""}`}
+        className={`rounded-xl bg-gradient-to-br from-[#6C63FF]/10 to-[#6B5BFF]/10 border border-[#6C63FF]/20 p-5 ${variant === "reader" ? "mx-4 my-4" : ""}`}
       >
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#6C63FF]/20 flex items-center justify-center shrink-0">
@@ -88,7 +88,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-[#6C63FF] to-[#E94560] text-white text-sm font-medium hover:shadow-lg hover:shadow-[#6C63FF]/25 transition-all disabled:opacity-50"
+              className="mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-[#6C63FF] to-[#6B5BFF] text-white text-sm font-medium hover:shadow-lg hover:shadow-[#6C63FF]/25 transition-all disabled:opacity-50"
             >
               {isGenerating ? (
                 <span className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
         </div>
         <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#6C63FF] to-[#E94560]"
+            className="h-full bg-gradient-to-r from-[#6C63FF] to-[#6B5BFF]"
             initial={{ width: "0%" }}
             animate={{ width: "80%" }}
             transition={{ duration: 30, ease: "linear" }}
@@ -177,7 +177,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
 
           {/* Badge */}
           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/10">
-            <Sparkles className="w-3 h-3 text-[#E94560]" />
+            <Sparkles className="w-3 h-3 text-[#00F0FF]" />
             <span className="text-white text-xs font-medium">Sneak Peek</span>
           </div>
 
@@ -205,7 +205,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
           </div>
           <button
             onClick={() => navigate("/pricing")}
-            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white text-xs font-medium hover:shadow-lg hover:shadow-[#E94560]/20 transition-all"
+            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white text-xs font-medium hover:shadow-lg hover:shadow-[#6B5BFF]/20 transition-all"
           >
             <Crown className="w-3 h-3 inline mr-1" />
             Full Anime
@@ -237,8 +237,8 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E94560]/20 to-[#6C63FF]/20 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-[#E94560]" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6B5BFF]/20 to-[#6C63FF]/20 flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-[#00F0FF]" />
               </div>
 
               <h2 className="text-2xl font-bold text-white mb-2">Liked the preview?</h2>
@@ -249,7 +249,7 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
               <div className="space-y-3">
                 <button
                   onClick={() => { setShowPostPlay(false); navigate("/pricing"); }}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold shadow-lg shadow-[#E94560]/25 hover:shadow-[#E94560]/40 transition-all"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold shadow-lg shadow-[#6B5BFF]/25 hover:shadow-[#6B5BFF]/40 transition-all"
                 >
                   <Crown className="inline w-5 h-5 mr-2" />
                   Upgrade Now
@@ -274,8 +274,8 @@ export default function SneakPeekCard({ projectId, projectTitle, coverUrl, varia
                     <li>No voice acting</li>
                   </ul>
                 </div>
-                <div className="p-3 rounded-lg bg-[#E94560]/5 border border-[#E94560]/20">
-                  <p className="text-[#E94560] text-xs font-medium uppercase">Full Anime</p>
+                <div className="p-3 rounded-lg bg-[#6B5BFF]/5 border border-[#6B5BFF]/20">
+                  <p className="text-[#00F0FF] text-xs font-medium uppercase">Full Anime</p>
                   <ul className="mt-2 space-y-1 text-white/60 text-xs">
                     <li>Full episodes</li>
                     <li>Up to 4K</li>

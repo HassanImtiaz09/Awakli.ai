@@ -66,7 +66,7 @@ export default function Explore() {
               onClick={() => setSelectedGenre(genre)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedGenre === genre
-                  ? "bg-accent-pink text-white shadow-lg shadow-accent-pink/20"
+                  ? "bg-accent-pink text-white shadow-lg shadow-[#6B5BFF]/20"
                   : "bg-surface-1/50 border border-white/5 text-gray-400 hover:text-white hover:bg-surface-1/80"
               }`}
             >

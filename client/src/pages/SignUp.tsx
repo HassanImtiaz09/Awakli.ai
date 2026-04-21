@@ -18,7 +18,7 @@ export default function SignUp() {
       <div className="absolute inset-0"
         style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(0,212,255,0.07) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 80% 70%, rgba(233,69,96,0.06) 0%, transparent 50%)" }} />
+        style={{ background: "radial-gradient(ellipse at 80% 70%, rgba(107,91,255,0.06) 0%, transparent 50%)" }} />
 
       <motion.div
         className="relative z-10 w-full max-w-md mx-4"
@@ -36,7 +36,7 @@ export default function SignUp() {
           <div className="space-y-3 mb-6">
             {BENEFITS.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-sm text-[#9494B8]">
-                <Icon size={16} className="text-[#E94560] shrink-0" />
+                <Icon size={16} className="text-[#00F0FF] shrink-0" />
                 <span>{text}</span>
               </div>
             ))}
@@ -67,7 +67,7 @@ export default function SignUp() {
           <p className="text-center text-sm text-[#9494B8]">
             Already have an account?{" "}
             <Link href="/signin">
-              <span className="text-[#E94560] hover:text-[#FF5A7A] transition-colors cursor-pointer font-medium">
+              <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
                 Sign in
               </span>
             </Link>

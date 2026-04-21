@@ -89,7 +89,7 @@ function GateCard({ gate }: { gate: any }) {
       <motion.div
         className={`group flex items-center gap-4 p-3.5 rounded-lg cursor-pointer transition-all ${
           isUrgent
-            ? "bg-[#E94560]/10 border border-[#E94560]/30 hover:border-[#E94560]/50"
+            ? "bg-[#6B5BFF]/10 border border-[#6B5BFF]/30 hover:border-[#6B5BFF]/50"
             : "bg-[#0D0D1A]/80 border border-white/5 hover:border-white/15 hover:bg-[#151528]"
         }`}
         initial={{ opacity: 0, x: -8 }}
@@ -100,7 +100,7 @@ function GateCard({ gate }: { gate: any }) {
         {/* Stage indicator */}
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 font-mono text-sm font-bold ${
           gate.gateType === "blocking"
-            ? "bg-[#E94560]/15 text-[#E94560]"
+            ? "bg-[#6B5BFF]/15 text-[#00F0FF]"
             : gate.gateType === "advisory"
             ? "bg-[#F39C12]/15 text-[#F39C12]"
             : "bg-[#00D4FF]/15 text-[#00D4FF]"
@@ -121,7 +121,7 @@ function GateCard({ gate }: { gate: any }) {
             {gate.confidenceScore !== null && (
               <>
                 <span className="text-white/10">|</span>
-                <span className={gate.confidenceScore < 0.5 ? "text-[#E94560]" : gate.confidenceScore < 0.75 ? "text-[#F39C12]" : "text-[#2ECC71]"}>
+                <span className={gate.confidenceScore < 0.5 ? "text-[#00F0FF]" : gate.confidenceScore < 0.75 ? "text-[#F39C12]" : "text-[#2ECC71]"}>
                   {Math.round(gate.confidenceScore * 100)}% confidence
                 </span>
               </>
@@ -132,7 +132,7 @@ function GateCard({ gate }: { gate: any }) {
         {/* Timeout countdown */}
         {countdown && (
           <div className={`flex items-center gap-1 text-xs font-mono shrink-0 ${
-            isUrgent ? "text-[#E94560]" : "text-[#9494B8]"
+            isUrgent ? "text-[#00F0FF]" : "text-[#9494B8]"
           }`}>
             <Clock size={12} />
             {countdown}
@@ -173,19 +173,19 @@ export function PendingGatesBanner() {
         onClick={() => setExpanded(!expanded)}
         className={`w-full flex items-center gap-3 p-4 rounded-t-xl transition-colors ${
           hasBlocking
-            ? "bg-gradient-to-r from-[#E94560]/15 to-[#E94560]/5 border border-[#E94560]/25 border-b-0"
+            ? "bg-gradient-to-r from-[#6B5BFF]/15 to-[#6B5BFF]/5 border border-[#6B5BFF]/25 border-b-0"
             : "bg-gradient-to-r from-[#F39C12]/10 to-[#F39C12]/5 border border-[#F39C12]/20 border-b-0"
         } ${!expanded ? "rounded-b-xl border-b" : ""}`}
       >
         {/* Pulsing dot */}
         <div className="relative shrink-0">
-          <div className={`w-3 h-3 rounded-full ${hasBlocking ? "bg-[#E94560]" : "bg-[#F39C12]"}`} />
-          <div className={`absolute inset-0 w-3 h-3 rounded-full animate-ping ${hasBlocking ? "bg-[#E94560]" : "bg-[#F39C12]"} opacity-50`} />
+          <div className={`w-3 h-3 rounded-full ${hasBlocking ? "bg-[#6B5BFF]" : "bg-[#F39C12]"}`} />
+          <div className={`absolute inset-0 w-3 h-3 rounded-full animate-ping ${hasBlocking ? "bg-[#6B5BFF]" : "bg-[#F39C12]"} opacity-50`} />
         </div>
 
         {/* Title */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <AlertTriangle size={16} className={hasBlocking ? "text-[#E94560]" : "text-[#F39C12]"} />
+          <AlertTriangle size={16} className={hasBlocking ? "text-[#00F0FF]" : "text-[#F39C12]"} />
           <span className="text-sm font-semibold text-[#F0F0F5]">
             {data.totalCount} Gate{data.totalCount !== 1 ? "s" : ""} Awaiting Review
           </span>
@@ -216,7 +216,7 @@ export function PendingGatesBanner() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className={`overflow-hidden rounded-b-xl border border-t-0 ${
-              hasBlocking ? "border-[#E94560]/25" : "border-[#F39C12]/20"
+              hasBlocking ? "border-[#6B5BFF]/25" : "border-[#F39C12]/20"
             }`}
           >
             <div className="p-3 space-y-2 bg-[#0A0A18]/60">
@@ -251,7 +251,7 @@ export function PendingGateCount() {
   return (
     <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
       hasBlocking
-        ? "bg-[#E94560] text-white"
+        ? "bg-[#6B5BFF] text-white"
         : "bg-[#F39C12] text-white"
     }`}>
       {data.totalCount}

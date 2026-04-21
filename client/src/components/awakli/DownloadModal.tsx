@@ -120,7 +120,7 @@ export default function DownloadModal({ isOpen, onClose, projectId, projectTitle
                 <span className="text-white/40 text-xs">Your tier:</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                   formats.userTier === "studio" ? "bg-[#6C63FF]/20 text-[#6C63FF]" :
-                  formats.userTier === "creator" ? "bg-[#E94560]/20 text-[#E94560]" :
+                  formats.userTier === "creator" ? "bg-[#6B5BFF]/20 text-[#00F0FF]" :
                   "bg-white/10 text-white/60"
                 }`}>
                   {formats.userTier.charAt(0).toUpperCase() + formats.userTier.slice(1)}
@@ -139,7 +139,7 @@ export default function DownloadModal({ isOpen, onClose, projectId, projectTitle
                 onClick={() => setActiveTab("manga")}
                 className={`flex-1 py-3 text-sm font-medium transition-all ${
                   activeTab === "manga"
-                    ? "text-white border-b-2 border-[#E94560]"
+                    ? "text-white border-b-2 border-[#6B5BFF]"
                     : "text-white/40 hover:text-white/60"
                 }`}
               >
@@ -273,7 +273,7 @@ export default function DownloadModal({ isOpen, onClose, projectId, projectTitle
             {formats && formats.userTier === "free_trial" && (
               <button
                 onClick={() => navigate("/pricing")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white text-xs font-medium hover:shadow-lg hover:shadow-[#E94560]/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white text-xs font-medium hover:shadow-lg hover:shadow-[#6B5BFF]/20 transition-all"
               >
                 <Crown className="w-3.5 h-3.5" />
                 Unlock All Formats

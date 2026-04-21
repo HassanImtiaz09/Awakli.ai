@@ -3788,3 +3788,11 @@
 - [x] 11.5: AI chip radius — change rounded-2xl to rounded-[14px] for game UI feel
 - [x] 11.6: Corner sigils — cycle colors (tl cyan, tr indigo, br magenta, bl gold)
 - [x] 11.7: ANIME accent — add second concentric bloom text-shadow: 0 0 60px rgba(0,240,255,0.3)
+
+## Pink-to-Cyan Migration Sweep + Parallax Tilt
+- [x] Sweep Pricing.tsx for #E94560/#FF6B81 and replace with new palette
+- [x] Sweep Create.tsx for #E94560/#FF6B81 and replace with new palette
+- [x] Sweep Discover.tsx for #E94560/#FF6B81 and replace with new palette
+- [x] Sweep Leaderboard.tsx for #E94560/#FF6B81 and replace with new palette
+- [x] Sweep all other components for #E94560/#FF6B81 and replace with new palette (477 + 21 = 498 replacements across 45 files)
+- [x] Add hover parallax tilt to AI feature chips with mouse-tracking --tilt-x/--tilt-y CSS custom properties

@@ -63,13 +63,13 @@ export default function Trending() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
                   activeTab === tab.id
-                    ? "bg-gradient-to-r from-[#E94560]/20 to-[#9B59B6]/20 text-[#F0F0F5] border border-[#E94560]/30 shadow-lg shadow-[#E94560]/10"
+                    ? "bg-gradient-to-r from-[#6B5BFF]/20 to-[#B388FF]/20 text-[#F0F0F5] border border-[#6B5BFF]/30 shadow-lg shadow-[#6B5BFF]/10"
                     : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35] border border-transparent"
                 )}
                 onClick={() => setActiveTab(tab.id)}
                 whileTap={{ scale: 0.97 }}
               >
-                <Icon size={16} className={activeTab === tab.id ? "text-[#E94560]" : ""} />
+                <Icon size={16} className={activeTab === tab.id ? "text-[#00F0FF]" : ""} />
                 {tab.label}
               </motion.button>
             );
@@ -118,7 +118,7 @@ function ContentCard({ item, rank }: { item: any; rank?: number }) {
         whileHover={{ y: -4 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#E94560]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#E94560]/10">
+        <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#6B5BFF]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#6B5BFF]/10">
           {item.coverImageUrl ? (
             <img
               src={item.coverImageUrl}
@@ -139,7 +139,7 @@ function ContentCard({ item, rank }: { item: any; rank?: number }) {
             <div className={cn(
               "absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold",
               rank <= 3
-                ? "bg-gradient-to-br from-[#E94560] to-[#FF6B81] text-white shadow-lg shadow-[#E94560]/30"
+                ? "bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] text-white shadow-lg shadow-[#6B5BFF]/30"
                 : "bg-[#1C1C35]/90 text-[#9494B8] border border-white/10"
             )}>
               {rank}
@@ -160,14 +160,14 @@ function ContentCard({ item, rank }: { item: any; rank?: number }) {
 
           {/* Anime badge */}
           {item.animeStatus === "completed" && (
-            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#E94560]/90 text-[10px] font-bold text-white uppercase tracking-wide">
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#6B5BFF]/90 text-[10px] font-bold text-white uppercase tracking-wide">
               Anime
             </div>
           )}
         </div>
 
         <div className="mt-2 px-0.5">
-          <h3 className="text-sm font-medium text-[#F0F0F5] line-clamp-1 group-hover:text-[#E94560] transition-colors">
+          <h3 className="text-sm font-medium text-[#F0F0F5] line-clamp-1 group-hover:text-[#00F0FF] transition-colors">
             {item.title}
           </h3>
           <div className="flex items-center gap-2 mt-0.5">

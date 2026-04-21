@@ -240,14 +240,14 @@ export default function Create() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#05050C] via-[#0D0D1A] to-[#05050C]" />
 
         {/* Soft character silhouette glow — centre */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[#E94560]/[0.04] blur-[180px]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[#6B5BFF]/[0.04] blur-[180px]" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[600px] rounded-full bg-[#7C3AED]/[0.03] blur-[160px]" />
 
         {/* Subtle floating particles */}
-        <div className="absolute top-20 left-[15%] w-1 h-1 rounded-full bg-[#E94560]/30 animate-float" />
+        <div className="absolute top-20 left-[15%] w-1 h-1 rounded-full bg-[#6B5BFF]/30 animate-float" />
         <div className="absolute top-40 right-[20%] w-1.5 h-1.5 rounded-full bg-[#00D4FF]/20 animate-float" style={{ animationDelay: "2s" }} />
         <div className="absolute bottom-32 left-[30%] w-1 h-1 rounded-full bg-[#7C3AED]/25 animate-float" style={{ animationDelay: "4s" }} />
-        <div className="absolute top-[60%] right-[10%] w-0.5 h-0.5 rounded-full bg-[#FF5A7A]/30 animate-float" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-[60%] right-[10%] w-0.5 h-0.5 rounded-full bg-[#B388FF]/30 animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
       {/* Subtle grid pattern */}
@@ -300,7 +300,7 @@ export default function Create() {
                   transition={{ delay: 0.2 }}
                   className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#9494B8] text-sm mb-6"
                 >
-                  <Clapperboard className="w-4 h-4 text-[#E94560]" />
+                  <Clapperboard className="w-4 h-4 text-[#00F0FF]" />
                   No artistic skill needed
                 </motion.div>
                 <h1 className="text-display text-[#F0F0F5] leading-tight">
@@ -319,9 +319,9 @@ export default function Create() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 px-4 py-3 rounded-xl bg-[#E94560]/10 border border-[#E94560]/20 text-center"
+                  className="mb-4 px-4 py-3 rounded-xl bg-[#6B5BFF]/10 border border-[#6B5BFF]/20 text-center"
                 >
-                  <span className="flex items-center justify-center gap-2 text-[#E94560] font-mono text-sm">
+                  <span className="flex items-center justify-center gap-2 text-[#00F0FF] font-mono text-sm">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Frame 01 is inking. Frame 02 is loading voice. Hold.
                   </span>
@@ -335,7 +335,7 @@ export default function Create() {
                 transition={{ delay: 0.4 }}
                 className="relative"
               >
-                <div className="relative rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm overflow-hidden focus-within:border-[#E94560]/40 focus-within:ring-1 focus-within:ring-[#E94560]/20 transition-all">
+                <div className="relative rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm overflow-hidden focus-within:border-[#6B5BFF]/40 focus-within:ring-1 focus-within:ring-[#6B5BFF]/20 transition-all">
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
@@ -369,7 +369,7 @@ export default function Create() {
                     onClick={() => setGenre(g)}
                     className={`px-3 py-1 rounded-full text-sm transition-all ${
                       genre === g
-                        ? "bg-opening-sequence text-white shadow-lg shadow-[#E94560]/25"
+                        ? "bg-opening-sequence text-white shadow-lg shadow-[#6B5BFF]/25"
                         : "bg-white/5 text-[#9494B8]/60 hover:bg-white/10 hover:text-[#F0F0F5]/70"
                     }`}
                   >
@@ -386,11 +386,11 @@ export default function Create() {
                 className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
                 <motion.button
-                  whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(233,69,96,0.3)" }}
+                  whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(107,91,255,0.3)" }}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleQuickGenerate}
                   disabled={!canProceed || isSubmitting}
-                  className="py-4 px-6 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
+                  className="py-4 px-6 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none relative overflow-hidden group"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -432,7 +432,7 @@ export default function Create() {
               )}
 
               {prompt.trim().length > 0 && prompt.trim().length < 10 && (
-                <p className="text-[#E94560]/60 text-sm mt-3 text-center">
+                <p className="text-[#00F0FF]/60 text-sm mt-3 text-center">
                   Please write at least 10 characters to describe your story
                 </p>
               )}
@@ -481,7 +481,7 @@ export default function Create() {
               </div>
 
               <div className="mb-6 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-3">
-                <BookOpen className="w-4 h-4 text-[#E94560] mt-0.5 shrink-0" />
+                <BookOpen className="w-4 h-4 text-[#00F0FF] mt-0.5 shrink-0" />
                 <p className="text-[#9494B8]/60 text-sm line-clamp-2">{prompt}</p>
               </div>
 
@@ -547,11 +547,11 @@ export default function Create() {
                   </motion.button>
                 ) : (
                   <motion.button
-                    whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(233,69,96,0.3)" }}
+                    whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(107,91,255,0.3)" }}
                     whileTap={{ scale: 0.97 }}
                     onClick={handleCustomGenerate}
                     disabled={isSubmitting}
-                    className="flex-1 py-3 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#E94560]/25 transition-all disabled:opacity-40 relative overflow-hidden group"
+                    className="flex-1 py-3 rounded-xl bg-opening-sequence text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/25 transition-all disabled:opacity-40 relative overflow-hidden group"
                   >
                     {isSubmitting ? (
                       <span className="flex items-center justify-center gap-2 font-mono text-sm">

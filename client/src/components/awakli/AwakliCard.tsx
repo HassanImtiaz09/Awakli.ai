@@ -14,7 +14,7 @@ interface AwakliCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const AwakliCard = React.forwardRef<HTMLDivElement, AwakliCardProps>(
   ({ variant = "default", glow = "none", hoverable = true, aspectRatio, imageUrl, imageAlt, className, children, ...props }, ref) => {
     const glowStyles = {
-      pink: "hover:border-[rgba(233,69,96,0.3)] hover:shadow-[0_8px_32px_rgba(233,69,96,0.2)]",
+      pink: "hover:border-[rgba(107,91,255,0.3)] hover:shadow-[0_8px_32px_rgba(107,91,255,0.2)]",
       cyan: "hover:border-[rgba(0,212,255,0.3)] hover:shadow-[0_8px_32px_rgba(0,212,255,0.15)]",
       none: "hover:border-white/10 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
     };

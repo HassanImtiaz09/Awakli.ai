@@ -12,7 +12,7 @@ import { PlatformLayout } from "@/components/awakli/Layouts";
 import { toast } from "sonner";
 
 // ─── Metric Card ───────────────────────────────────────────────────────────
-function MetricCard({ icon: Icon, label, value, change, color = "#E94560" }: {
+function MetricCard({ icon: Icon, label, value, change, color = "#6B5BFF" }: {
   icon: any; label: string; value: string | number; change?: string; color?: string;
 }) {
   return (
@@ -233,7 +233,7 @@ function SubscriptionOverview() {
           const pct = (count / total) * 100;
           const colors: Record<string, { bar: string; label: string }> = {
             free_trial: { bar: "#6B7280", label: "text-gray-400" },
-            creator: { bar: "#E94560", label: "text-accent-pink" },
+            creator: { bar: "#6B5BFF", label: "text-accent-pink" },
             creator_pro: { bar: "#F59E0B", label: "text-amber-400" },
             studio: { bar: "#00D4FF", label: "text-accent-cyan" },
           };
@@ -547,7 +547,7 @@ export default function AdminDashboard() {
           {/* Metric Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard icon={Users} label="Total Users" value={m?.totalUsers ?? 0} change="+12%" color="#00D4FF" />
-            <MetricCard icon={Film} label="Total Projects" value={m?.totalProjects ?? 0} change="+8%" color="#E94560" />
+            <MetricCard icon={Film} label="Total Projects" value={m?.totalProjects ?? 0} change="+8%" color="#6B5BFF" />
             <MetricCard icon={Zap} label="Total Creators" value={m?.totalCreators ?? 0} color="#FFB800" />
             <MetricCard icon={DollarSign} label="Revenue" value={`$${((m?.totalRevenue ?? 0) / 100).toFixed(0)}`} change="+15%" color="#2ECC71" />
           </div>

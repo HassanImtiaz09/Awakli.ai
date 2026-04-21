@@ -126,7 +126,7 @@ export default function ProjectDetail() {
           ].map((stat) => (
             <div key={stat.label} className="bg-[#0D0D1A] border border-white/5 rounded-xl p-4">
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${
-                stat.color === "pink" ? "bg-[rgba(233,69,96,0.15)] text-[#E94560]"
+                stat.color === "pink" ? "bg-[rgba(107,91,255,0.15)] text-[#00F0FF]"
                 : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00D4FF]"
                 : "bg-[rgba(255,184,0,0.15)] text-[#FFB800]"
               }`}>
@@ -182,7 +182,7 @@ export default function ProjectDetail() {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-white bg-[rgba(233,69,96,0.8)] px-2 py-1 rounded"
+                        className="text-xs text-white bg-[rgba(107,91,255,0.8)] px-2 py-1 rounded"
                       >
                         View Full
                       </a>

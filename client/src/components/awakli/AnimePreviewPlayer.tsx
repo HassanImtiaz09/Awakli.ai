@@ -163,7 +163,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               </p>
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-sm shadow-lg shadow-accent-pink/20 hover:shadow-accent-pink/40 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-sm shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/40 transition-all"
               >
                 Upgrade to Creator
                 <ArrowRight className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md p-8 rounded-2xl border border-accent-pink/20 bg-[#0D0D1A] text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E94560] to-[#FF6B81] flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] flex items-center justify-center mx-auto mb-6">
                 <Film className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-heading font-bold text-white mb-2">
@@ -203,7 +203,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               <div className="space-y-3">
                 <Link
                   href="/pricing"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E94560] to-[#FF6B81] text-white font-semibold text-sm shadow-lg shadow-accent-pink/20 hover:shadow-accent-pink/40 transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-sm shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/40 transition-all"
                 >
                   View Plans
                   <ArrowRight className="w-4 h-4" />

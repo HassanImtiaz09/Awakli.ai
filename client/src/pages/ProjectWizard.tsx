@@ -22,7 +22,7 @@ const GENRES = [
   { id: "comedy",   label: "Comedy",   icon: Laugh,  color: "#F39C12" },
   { id: "fantasy",  label: "Fantasy",  icon: Wand2,  color: "#9B59B6" },
   { id: "drama",    label: "Drama",    icon: Crown,  color: "#FFB800" },
-  { id: "thriller", label: "Thriller", icon: Skull,  color: "#E94560" },
+  { id: "thriller", label: "Thriller", icon: Skull,  color: "#6B5BFF" },
   { id: "slice-of-life", label: "Slice of Life", icon: Palette, color: "#2ECC71" },
 ] as const;
 
@@ -59,13 +59,13 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
             className={cn(
               "w-3 h-3 rounded-full relative z-10 transition-all duration-500",
               i < current ? "bg-[var(--accent-cyan)]" :
-              i === current ? "bg-[var(--accent-pink)]" :
+              i === current ? "bg-[var(--accent-cyan)]" :
               "bg-[var(--text-muted)]"
             )}
             animate={{
               scale: i === current ? 1.4 : 1,
               boxShadow: i === current
-                ? "0 0 16px rgba(233,69,96,0.6)"
+                ? "0 0 16px rgba(107,91,255,0.6)"
                 : i < current
                   ? "0 0 8px rgba(0,212,255,0.4)"
                   : "none",
@@ -118,7 +118,7 @@ function StepName({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter your story title..."
-          className="w-full bg-transparent text-h2 text-center text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 border-b-2 border-[var(--text-muted)] focus:border-[var(--accent-pink)] outline-none pb-3 transition-colors"
+          className="w-full bg-transparent text-h2 text-center text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 border-b-2 border-[var(--text-muted)] focus:border-[var(--accent-cyan)] outline-none pb-3 transition-colors"
           maxLength={255}
         />
       </div>
@@ -169,7 +169,7 @@ function StepName({
               className={cn(
                 "px-3 py-2 rounded-lg text-sm font-medium border transition-all",
                 tone === t
-                  ? "bg-[var(--accent-pink)]/15 border-[var(--accent-pink)]/40 text-[var(--accent-pink)]"
+                  ? "bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/40 text-[var(--accent-cyan)]"
                   : "bg-[var(--bg-elevated)] border-white/10 text-[var(--text-secondary)] hover:border-white/20"
               )}
               whileHover={{ scale: 1.03 }}
@@ -195,14 +195,14 @@ function StepName({
                 className={cn(
                   "flex flex-col items-center gap-2 p-5 rounded-xl border transition-all",
                   selected
-                    ? "bg-[var(--accent-pink)]/10 border-[var(--accent-pink)]/40"
+                    ? "bg-[var(--accent-cyan)]/10 border-[var(--accent-cyan)]/40"
                     : "bg-[var(--bg-elevated)] border-white/10 hover:border-white/20"
                 )}
                 style={{ boxShadow: selected ? "var(--shadow-glow-pink)" : "none" }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Icon size={24} className={selected ? "text-[var(--accent-pink)]" : "text-[var(--text-muted)]"} />
+                <Icon size={24} className={selected ? "text-[var(--accent-cyan)]" : "text-[var(--text-muted)]"} />
                 <span className={cn("font-medium", selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
                   {a.label}
                 </span>
@@ -269,7 +269,7 @@ function StepDescribe({
         <h1 className="text-display text-[var(--text-primary)]">
           {headingText}
           <motion.span
-            className="inline-block w-0.5 h-[0.8em] bg-[var(--accent-pink)] ml-1 align-middle"
+            className="inline-block w-0.5 h-[0.8em] bg-[var(--accent-cyan)] ml-1 align-middle"
             animate={{ opacity: [1, 0] }}
             transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
           />
@@ -293,7 +293,7 @@ function StepDescribe({
             "bg-[var(--bg-elevated)] focus:outline-none",
             showEnhanced
               ? "border-[var(--accent-cyan)]/40"
-              : "border-white/10 focus:border-[var(--accent-pink)]/40"
+              : "border-white/10 focus:border-[var(--accent-cyan)]/40"
           )}
           maxLength={5000}
         />
@@ -372,7 +372,7 @@ function StepStyle({
                 "relative overflow-hidden rounded-xl border transition-all",
                 "aspect-[3/4] flex flex-col justify-end p-4",
                 selected
-                  ? "border-[var(--accent-pink)] ring-2 ring-[var(--accent-pink)]/30"
+                  ? "border-[var(--accent-cyan)] ring-2 ring-[var(--accent-cyan)]/30"
                   : "border-white/10 hover:border-white/20"
               )}
               style={{
@@ -399,7 +399,7 @@ function StepStyle({
 
               {selected && (
                 <motion.div
-                  className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[var(--accent-pink)] flex items-center justify-center"
+                  className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[var(--accent-cyan)] flex items-center justify-center"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -494,7 +494,7 @@ function StepReview({
         disabled={isCreating || !title.trim()}
         className={cn(
           "w-full py-4 rounded-xl text-lg font-heading font-semibold transition-all",
-          "bg-gradient-to-r from-[var(--accent-pink)] to-[#FF6B81] text-white",
+          "bg-gradient-to-r from-[var(--accent-cyan)] to-[#6B5BFF] text-white",
           "hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
         )}
         whileHover={{ scale: 1.01 }}
@@ -559,7 +559,7 @@ export default function ProjectWizard() {
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ["#E94560", "#FF6B81", "#00D4FF", "#FFB800", "#9B59B6"],
+        colors: ["#6B5BFF", "#B388FF", "#00D4FF", "#FFB800", "#9B59B6"],
       });
 
       toast.success("Project created! Redirecting to studio...");
@@ -677,7 +677,7 @@ export default function ProjectWizard() {
             disabled={!canNext()}
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all",
-              "bg-[var(--accent-pink)] text-white hover:bg-[var(--accent-pink-hover)]",
+              "bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)]",
               "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
             whileHover={{ scale: canNext() ? 1.02 : 1 }}

@@ -49,7 +49,7 @@
   --color-text-primary:  var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted:    var(--text-muted);
-  --color-pink:          var(--accent-pink);
+  --color-pink:          var(--accent-cyan);
   --color-pink-hover:    var(--accent-sakura);
   --color-cyan:          var(--accent-cyan);
   --color-cyan-hover:    var(--accent-cyan-hover);
@@ -94,9 +94,9 @@
   --text-muted:     #5C5C7A;
 
   /* Accents — Anime Palette */
-  --accent-pink:       #E94560;
-  --accent-sakura:     #FF5A7A;
-  --accent-pink-glow:  rgba(233, 69, 96, 0.3);
+  --accent-pink:       #6B5BFF;
+  --accent-sakura:     #00F0FF;
+  --accent-pink-glow:  rgba(107,91,255, 0.3);
   --accent-cyan:       #00D4FF;
   --accent-cyan-hover: #33DFFF;
   --accent-cyan-glow:  rgba(0, 212, 255, 0.2);
@@ -122,13 +122,13 @@
   --gradient-sakuga:    linear-gradient(90deg, #00FFB2, #00D4FF);
   --gradient-hero:      linear-gradient(135deg, #05050C 0%, #1A0A2E 50%, #0D1A2E 100%);
   --gradient-card:      linear-gradient(180deg, rgba(21,21,40,0.8) 0%, rgba(13,13,26,0.9) 100%);
-  --gradient-accent:    linear-gradient(135deg, #E94560, #7C3AED);
+  --gradient-accent:    linear-gradient(135deg, #00F0FF, #6B5BFF);
   --gradient-cyan:      linear-gradient(135deg, #00D4FF, #0099CC);
-  --gradient-radial-pink: radial-gradient(ellipse at center, rgba(233,69,96,0.15) 0%, transparent 70%);
+  --gradient-radial-pink: radial-gradient(ellipse at center, rgba(107,91,255,0.15) 0%, transparent 70%);
   --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(0,212,255,0.1) 0%, transparent 70%);
 
   /* Shadows */
-  --shadow-glow-pink:   0 0 20px rgba(233,69,96,0.3), 0 0 40px rgba(233,69,96,0.1);
+  --shadow-glow-pink:   0 0 20px rgba(107,91,255,0.3), 0 0 40px rgba(107,91,255,0.1);
   --shadow-glow-cyan:   0 0 20px rgba(0,212,255,0.2), 0 0 40px rgba(0,212,255,0.08);
   --shadow-glow-violet: 0 0 20px rgba(124,58,237,0.2), 0 0 40px rgba(124,58,237,0.08);
   --shadow-glow-jade:   0 0 20px rgba(0,255,178,0.2), 0 0 40px rgba(0,255,178,0.08);
@@ -141,7 +141,7 @@
   --card-foreground: #F0F0F5;
   --popover:       #151528;
   --popover-foreground: #F0F0F5;
-  --primary:       #E94560;
+  --primary:       #6B5BFF;
   --primary-foreground: #F0F0F5;
   --secondary:     #1C1C35;
   --secondary-foreground: #9494B8;
@@ -156,7 +156,7 @@
   --ring:          #00D4FF;
   --sidebar:       #0D0D1A;
   --sidebar-foreground: #9494B8;
-  --sidebar-primary: #E94560;
+  --sidebar-primary: #6B5BFF;
   --sidebar-primary-foreground: #F0F0F5;
   --sidebar-accent: #1C1C35;
   --sidebar-accent-foreground: #F0F0F5;
@@ -276,7 +276,7 @@ body {
 .glow-cyan   { box-shadow: var(--shadow-glow-cyan); }
 .glow-violet { box-shadow: var(--shadow-glow-violet); }
 .glow-jade   { box-shadow: var(--shadow-glow-jade); }
-.text-glow-pink   { text-shadow: 0 0 20px rgba(233,69,96,0.6); }
+.text-glow-pink   { text-shadow: 0 0 20px rgba(107,91,255,0.6); }
 .text-glow-cyan   { text-shadow: 0 0 20px rgba(0,212,255,0.5); }
 .text-glow-violet { text-shadow: 0 0 20px rgba(124,58,237,0.5); }
 .text-glow-jade   { text-shadow: 0 0 20px rgba(0,255,178,0.5); }
@@ -301,9 +301,9 @@ body {
    ============================================================ */
 @keyframes chromatic-beat {
   0%   { filter: none; transform: translateX(0); }
-  20%  { filter: drop-shadow(-3px 0 0 rgba(0,212,255,0.6)) drop-shadow(3px 0 0 rgba(233,69,96,0.6)); transform: translateX(-2px); }
-  40%  { filter: drop-shadow(2px 0 0 rgba(0,212,255,0.4)) drop-shadow(-2px 0 0 rgba(233,69,96,0.4)); transform: translateX(2px); }
-  60%  { filter: drop-shadow(-1px 0 0 rgba(0,212,255,0.2)) drop-shadow(1px 0 0 rgba(233,69,96,0.2)); transform: translateX(-1px); }
+  20%  { filter: drop-shadow(-3px 0 0 rgba(0,212,255,0.6)) drop-shadow(3px 0 0 rgba(107,91,255,0.6)); transform: translateX(-2px); }
+  40%  { filter: drop-shadow(2px 0 0 rgba(0,212,255,0.4)) drop-shadow(-2px 0 0 rgba(107,91,255,0.4)); transform: translateX(2px); }
+  60%  { filter: drop-shadow(-1px 0 0 rgba(0,212,255,0.2)) drop-shadow(1px 0 0 rgba(107,91,255,0.2)); transform: translateX(-1px); }
   100% { filter: none; transform: translateX(0); }
 }
 .animate-beat {
@@ -353,11 +353,11 @@ body {
 .foil-overlay {
   background: conic-gradient(
     from 0deg,
-    rgba(233,69,96,0.15),
+    rgba(107,91,255,0.15),
     rgba(124,58,237,0.15),
     rgba(0,212,255,0.15),
     rgba(0,255,178,0.15),
-    rgba(233,69,96,0.15)
+    rgba(107,91,255,0.15)
   );
   background-size: 200% 200%;
   animation: foil-shimmer 4s ease-in-out infinite;
@@ -383,7 +383,7 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0D0D1A; }
 ::-webkit-scrollbar-thumb { background: #252545; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #E94560; }
+::-webkit-scrollbar-thumb:hover { background: #6B5BFF; }
 
 /* ============================================================
    Focus Ring §3.10 — Cyan glow, never OS default
@@ -499,11 +499,11 @@ body {
   inset: 0;
   background: conic-gradient(
     from var(--foil-angle, 0deg) at var(--foil-x, 50%) var(--foil-y, 50%),
-    rgba(233,69,96,0.12),
+    rgba(107,91,255,0.12),
     rgba(124,58,237,0.12),
     rgba(0,212,255,0.12),
     rgba(0,255,178,0.12),
-    rgba(233,69,96,0.12)
+    rgba(107,91,255,0.12)
   );
   opacity: 0;
   transition: opacity 200ms ease-out;
@@ -515,7 +515,7 @@ body {
 }
 .card-foil-hover:hover {
   transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
-  box-shadow: 0 8px 32px rgba(233,69,96,0.15);
+  box-shadow: 0 8px 32px rgba(107,91,255,0.15);
 }
 
 /* ============================================================

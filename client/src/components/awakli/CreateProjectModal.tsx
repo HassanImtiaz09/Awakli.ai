@@ -111,7 +111,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
                         onClick={() => setAnimeStyle(style.value)}
                         className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                           animeStyle === style.value
-                            ? "bg-[rgba(233,69,96,0.15)] border-[rgba(233,69,96,0.4)] text-[#E94560]"
+                            ? "bg-[rgba(107,91,255,0.15)] border-[rgba(107,91,255,0.4)] text-[#00F0FF]"
                             : "bg-[#1C1C35] border-white/10 text-[#9494B8] hover:border-white/20"
                         }`}
                       >

@@ -19,7 +19,7 @@ const LENGTH_OPTIONS = [
 ];
 
 const PACING_OPTIONS = [
-  { key: "action_heavy" as const, label: "Action-Heavy", desc: "Fast cuts, dynamic panels", icon: Swords, color: "#E94560" },
+  { key: "action_heavy" as const, label: "Action-Heavy", desc: "Fast cuts, dynamic panels", icon: Swords, color: "#6B5BFF" },
   { key: "balanced" as const, label: "Balanced", desc: "Mix of action & dialogue", icon: Scale, color: "#6C63FF" },
   { key: "dialogue_heavy" as const, label: "Dialogue-Heavy", desc: "Character-driven scenes", icon: MessageSquare, color: "#00D4AA" },
 ];
@@ -53,7 +53,7 @@ export default function ChapterPrefs({
             max={12}
             value={chapters}
             onChange={(e) => onChaptersChange(parseInt(e.target.value))}
-            className="flex-1 h-2 rounded-full appearance-none bg-white/10 accent-[#E94560] cursor-pointer"
+            className="flex-1 h-2 rounded-full appearance-none bg-white/10 accent-[#6B5BFF] cursor-pointer"
           />
           <div className="w-12 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
             {chapters}
@@ -81,7 +81,7 @@ export default function ChapterPrefs({
               onClick={() => onChapterLengthChange(opt.key)}
               className={`flex-1 p-3 rounded-lg border text-left transition-all ${
                 chapterLength === opt.key
-                  ? "bg-[#E94560]/10 border-[#E94560]/40 text-white"
+                  ? "bg-[#6B5BFF]/10 border-[#6B5BFF]/40 text-white"
                   : "bg-white/[0.02] border-white/10 text-white/50 hover:bg-white/[0.05]"
               }`}
             >

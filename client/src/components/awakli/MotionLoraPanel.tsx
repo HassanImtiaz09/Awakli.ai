@@ -80,7 +80,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   identity: "text-purple-400",
   motion: "text-cyan",
   efficiency: "text-[var(--accent-gold)]",
-  regression: "text-[var(--accent-pink)]",
+  regression: "text-[var(--accent-cyan)]",
 };
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
               <Link href="/pricing">
                 <Button
                   size="sm"
-                  className="mt-3 bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-pink)] text-white border-0"
+                  className="mt-3 bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-cyan)] text-white border-0"
                 >
                   <Zap className="w-3.5 h-3.5 mr-1" /> Upgrade to Unlock
                 </Button>
@@ -272,7 +272,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
               </div>
               <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-cyan to-[var(--accent-pink)] rounded-full"
+                  className="h-full bg-gradient-to-r from-cyan to-[var(--accent-cyan)] rounded-full"
                   initial={{ width: "0%" }}
                   animate={{ width: `${s.trainingProgress ?? 0}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
@@ -329,7 +329,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
           {!s.hasMotionLora && !s.trainingStatus && (
             <div className="mt-4 pt-4 border-t border-white/5">
               <Button
-                className="bg-gradient-to-r from-cyan to-[var(--accent-pink)] text-white border-0"
+                className="bg-gradient-to-r from-cyan to-[var(--accent-cyan)] text-white border-0"
                 disabled={s.trainingsUsedThisMonth >= s.maxTrainingsPerMonth || submitTraining.isPending}
                 onClick={() => {
                   toast.info("Motion LoRA training requires at least 40 video clips. Upload clips in the Assets tab first.");
@@ -392,7 +392,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-cyan to-[var(--accent-pink)] rounded-full"
+                              className="h-full bg-gradient-to-r from-cyan to-[var(--accent-cyan)] rounded-full"
                               style={{ width: `${st.weight * 100}%` }}
                             />
                           </div>
@@ -420,7 +420,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
           <CollapsibleTrigger className="w-full">
             <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/[0.02] transition-colors">
               <div className="flex items-center gap-3">
-                <Shield className="w-4 h-4 text-[var(--accent-pink)]" />
+                <Shield className="w-4 h-4 text-[var(--accent-cyan)]" />
                 <div className="text-left">
                   <h4 className="text-sm font-semibold">Evaluation Gates (M1-M14)</h4>
                   <p className="text-[10px] text-muted-foreground">
@@ -534,7 +534,7 @@ export function MotionLoraPanel({ characterId, characterName }: MotionLoraPanelP
             { layer: "Base Model", desc: "SD/SDXL/Wan 2.6 foundation", color: "bg-white/10", active: true, stackKey: null },
             { layer: "Motion Module", desc: "AnimateDiff / Wan temporal", color: "bg-white/10", active: true, stackKey: null },
             { layer: "Style LoRA", desc: "Art style consistency", color: "bg-purple-500/20", active: true, stackKey: "style" as const },
-            { layer: "Appearance LoRA", desc: "Character visual identity", color: "bg-[var(--accent-pink)]/20", active: true, stackKey: "appearance" as const },
+            { layer: "Appearance LoRA", desc: "Character visual identity", color: "bg-[var(--accent-cyan)]/20", active: true, stackKey: "appearance" as const },
             { layer: "Motion LoRA", desc: "Character animation patterns", color: "bg-cyan/20", active: s.hasMotionLora, stackKey: "motion" as const },
             { layer: "Environment LoRA", desc: "Scene-specific environment", color: "bg-[var(--accent-gold)]/20", active: false, stackKey: "environment" as const },
           ].map((item, i) => (

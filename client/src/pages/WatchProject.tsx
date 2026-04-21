@@ -196,7 +196,7 @@ export default function WatchProject() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white font-semibold shadow-lg shadow-accent-pink/25"
+                      className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white font-semibold shadow-lg shadow-[#6B5BFF]/25"
                     >
                       <Play className="w-5 h-5 fill-white" />
                       Watch Now
