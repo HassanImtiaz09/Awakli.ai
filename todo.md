@@ -3773,3 +3773,6 @@
 
 ## Change 8: Icon Hygiene Pass
 - [x] Standardize strokeWidth across all Lucide icons in Home.tsx (1.5 at ≤20px, 2 above)
+
+## Change 9: Body Text Contrast & Hierarchy
+- [x] Upgrade hero subhead, proof body, invitation subhead, feature strip subhead from #9494B8 to #B8B8CC

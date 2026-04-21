@@ -142,7 +142,7 @@ function ActOneHero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.7 }}
-            className="text-[#9494B8] text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
+            className="text-[#B8B8CC] text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed"
           >
             Type a sentence. We will animate it. Before you go to bed.
           </motion.p>
@@ -391,7 +391,7 @@ function ActThreeInvitation() {
               This could be you{" "}
               <span className="text-gradient-opening">next Friday.</span>
             </h2>
-            <p className="text-[#9494B8] text-lg max-w-lg mx-auto">
+            <p className="text-[#B8B8CC] text-lg max-w-lg mx-auto">
               Real creators. Real characters. Real anime. All made on Awakli.
             </p>
           </div>
@@ -486,7 +486,7 @@ function CreatorShowcase() {
     return (
       <div className="text-center py-16">
         <Sparkles className="w-10 h-10 text-[#6B5BFF]/60 mx-auto mb-4" />
-        <p className="text-[#9494B8] text-lg mb-2">The gallery is waiting for its first stories.</p>
+        <p className="text-[#B8B8CC] text-lg mb-2">The gallery is waiting for its first stories.</p>
         <Link href="/create">
           <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium text-sm">
             Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" />
@@ -556,7 +556,7 @@ function FeatureStrip() {
         <ScrollReveal>
           <div className="text-center mb-12">
             <h2 className="text-h2 text-white mb-3">Powered by the best AI</h2>
-            <p className="text-[#9494B8] max-w-md mx-auto">
+            <p className="text-[#B8B8CC] max-w-md mx-auto">
               State-of-the-art models working together to bring your stories to life.
             </p>
           </div>
