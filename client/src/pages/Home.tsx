@@ -75,7 +75,8 @@ function ActOneHero() {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const timer = setInterval(() => setBgIndex((p) => (p + 1) % HERO_IMAGES.length), 8000);
+    const HERO_ROTATION_MS = 8e3;
+    const timer = setInterval(() => setBgIndex((p) => (p + 1) % HERO_IMAGES.length), HERO_ROTATION_MS);
     return () => clearInterval(timer);
   }, []);
 
@@ -231,6 +232,8 @@ const PROOF_SECTIONS = [
     icon: PenTool,
     color: "#00F0FF",
     visual: "typewriter",
+    iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-icon-ZhgJFNjN2NbN3yYVHa8mGM.webp",
+    panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-panel-6JkYCd3cPfjfaqNUyWmLHw.webp",
   },
   {
     label: "02",
@@ -239,6 +242,8 @@ const PROOF_SECTIONS = [
     icon: Users,
     color: "#6B5BFF",
     visual: "character",
+    iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-icon-SNLB3dDwDNfZzwFHfA2syi.webp",
+    panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-panel-erd4jMX29QPXQ7KRqAisod.webp",
   },
   {
     label: "03",
@@ -247,6 +252,8 @@ const PROOF_SECTIONS = [
     icon: Globe,
     color: "#B388FF",
     visual: "world",
+    iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step03-icon-QaNFups7xAAhTNknJmYoiD.webp",
+    panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step03-panel-6tiPQARMFdJ4i9FXdLbcSr.webp",
   },
   {
     label: "04",
@@ -255,6 +262,8 @@ const PROOF_SECTIONS = [
     icon: Heart,
     color: "#FFD60A",
     visual: "votes",
+    iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step04-icon-PFNjLRprrgeodNodWumDaM.webp",
+    panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step04-panel-AGcYJNK5y5EfmyGqniUyox.webp",
   },
   {
     label: "05",
@@ -263,6 +272,8 @@ const PROOF_SECTIONS = [
     icon: Film,
     color: "#FF2D7A",
     visual: "anime",
+    iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step05-icon-5JxRDWTajURyYiX5FoHoMq.webp",
+    panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step05-panel-E9rvmaGBsgiFvYei34TY3B.webp",
   },
 ];
 
@@ -314,14 +325,19 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
             <div className="flex-1 max-w-lg relative z-10">
               <div className="flex items-center gap-3 mb-5">
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden"
                   style={{
                     backgroundColor: `${section.color}1A`,
                     border: `1px solid ${section.color}40`,
                     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -6px ${section.color}55`,
                   }}
                 >
-                  <section.icon className="w-5 h-5" style={{ color: section.color }} strokeWidth={2} />
+                  <img
+                    src={section.iconImg}
+                    alt={section.heading}
+                    className="w-8 h-8 object-contain"
+                    loading="lazy"
+                  />
                 </div>
                 <span
                   className="text-[11px] font-mono font-semibold tabular-nums uppercase"
@@ -336,15 +352,24 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
             {/* Visual side */}
             <motion.div className="flex-1 max-w-lg relative z-10" style={{ y }}>
               <div
-                className="aspect-[4/3] rounded-2xl overflow-hidden border border-white/10"
+                className="aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 relative group"
                 style={{
-                  background: `linear-gradient(135deg, ${section.color}20, ${section.color}05)`,
                   boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 60px -20px ${section.color}40`,
                 }}
               >
-                <div className="w-full h-full flex items-center justify-center">
-                  <section.icon className="w-24 h-24 opacity-25" style={{ color: section.color }} strokeWidth={1.5} />
-                </div>
+                <img
+                  src={section.panelImg}
+                  alt={section.heading}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
+                />
+                {/* Subtle color overlay for brand consistency */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `linear-gradient(135deg, ${section.color}15, transparent 60%)`,
+                  }}
+                />
               </div>
             </motion.div>
           </div>

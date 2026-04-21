@@ -3811,3 +3811,11 @@
 
 ## Hero CTA Shimmer
 - [x] Apply shimmer-sweep animation to the hero "Write the first scene" CTA button
+
+## Proof Step Custom Artwork
+- [x] Generate HD artwork for Step 01 "From a sentence" (small icon + large visual)
+- [x] Generate HD artwork for Step 02 "To a character" (small icon + large visual)
+- [x] Generate HD artwork for Step 03 "To a world" (small icon + large visual)
+- [x] Generate HD artwork for Step 04 "To a story voted on by thousands" (small icon + large visual)
+- [x] Generate HD artwork for Step 05 "To anime" (small icon + large visual)
+- [x] Integrate all artwork into Home.tsx proof sections replacing Lucide icons
