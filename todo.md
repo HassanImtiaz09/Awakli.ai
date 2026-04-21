@@ -3819,3 +3819,11 @@
 - [x] Generate HD artwork for Step 04 "To a story voted on by thousands" (small icon + large visual)
 - [x] Generate HD artwork for Step 05 "To anime" (small icon + large visual)
 - [x] Integrate all artwork into Home.tsx proof sections replacing Lucide icons
+
+## Proof Tile Background Artwork
+- [x] Generate faded anime background artwork for Step 01 tile (cyan, writing/creation theme)
+- [x] Generate faded anime background artwork for Step 02 tile (indigo, character emergence theme)
+- [x] Generate faded anime background artwork for Step 03 tile (lavender, world-building theme)
+- [x] Generate faded anime background artwork for Step 04 tile (gold, community voting theme)
+- [x] Generate faded anime background artwork for Step 05 tile (magenta, anime production theme)
+- [x] Integrate background images into proof section cards with faded overlay

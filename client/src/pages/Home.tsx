@@ -234,6 +234,7 @@ const PROOF_SECTIONS = [
     visual: "typewriter",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-icon-ZhgJFNjN2NbN3yYVHa8mGM.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-panel-6JkYCd3cPfjfaqNUyWmLHw.webp",
+    bgImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-bg-TGS4eiwe2EZxR5WSTNFos2.webp",
   },
   {
     label: "02",
@@ -244,6 +245,7 @@ const PROOF_SECTIONS = [
     visual: "character",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-icon-SNLB3dDwDNfZzwFHfA2syi.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-panel-erd4jMX29QPXQ7KRqAisod.webp",
+    bgImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-bg-d9FgZGRVZzpiSynZYFm7sk.webp",
   },
   {
     label: "03",
@@ -254,6 +256,7 @@ const PROOF_SECTIONS = [
     visual: "world",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step03-icon-QaNFups7xAAhTNknJmYoiD.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step03-panel-6tiPQARMFdJ4i9FXdLbcSr.webp",
+    bgImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step03-bg-ibDguddXeje5rgxDXKzgCH.webp",
   },
   {
     label: "04",
@@ -264,6 +267,7 @@ const PROOF_SECTIONS = [
     visual: "votes",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step04-icon-PFNjLRprrgeodNodWumDaM.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step04-panel-AGcYJNK5y5EfmyGqniUyox.webp",
+    bgImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step04-bg-fh6D5yWC97hmxePaTGTK2h.webp",
   },
   {
     label: "05",
@@ -274,6 +278,7 @@ const PROOF_SECTIONS = [
     visual: "anime",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step05-icon-5JxRDWTajURyYiX5FoHoMq.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step05-panel-E9rvmaGBsgiFvYei34TY3B.webp",
+    bgImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step05-bg-ENAGtHB7Zas5dsQYrQWQWu.webp",
   },
 ];
 
@@ -301,6 +306,22 @@ function ProofSection({ section, index }: { section: typeof PROOF_SECTIONS[0]; i
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 30px 60px -30px rgba(0,0,0,0.7)",
             }}
           >
+            {/* Faded background artwork */}
+            <img
+              src={section.bgImg}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              style={{ opacity: 0.12, filter: "blur(1px) saturate(0.7)" }}
+              loading="lazy"
+            />
+            {/* Dark vignette over background */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(ellipse at center, transparent 30%, rgba(5,5,12,0.85) 100%), linear-gradient(180deg, rgba(5,5,12,0.6) 0%, transparent 30%, transparent 70%, rgba(5,5,12,0.6) 100%)`,
+              }}
+            />
             {/* Floating ghost numeral */}
             <span
               className="pointer-events-none absolute -top-4 right-6 md:right-10 font-black leading-none select-none"
