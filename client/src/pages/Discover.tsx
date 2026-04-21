@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SignUpBanner, FloatingSignUpPrompt } from "@/components/awakli/SignUpPrompt";
 import { cn } from "@/lib/utils";
 import { TiltCard } from "@/components/awakli/TiltCard";
+import PageBackground from "@/components/awakli/PageBackground";
 
 const GENRES = [
   { value: "", label: "All Genres" },
@@ -515,6 +516,8 @@ export default function Discover() {
 
   return (
     <PlatformLayout>
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-feed-N7Sh6nr9XGtvdGAyNyjEKe.webp" opacity={0.4} />
+      <div className="relative" style={{ zIndex: 1 }}>
       <div className="container py-12 space-y-16">
         {/* Hero banner */}
         <ScrollReveal>
@@ -568,6 +571,7 @@ export default function Discover() {
 
       {/* Floating sign-up prompt for anonymous visitors */}
       {!isAuthenticated && <FloatingSignUpPrompt />}
+      </div>
     </PlatformLayout>
   );
 }

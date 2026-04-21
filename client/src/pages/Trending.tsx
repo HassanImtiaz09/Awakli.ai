@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { TopNav } from "@/components/awakli/TopNav";
 import { cn } from "@/lib/utils";
 import { TiltCard } from "@/components/awakli/TiltCard";
+import PageBackground from "@/components/awakli/PageBackground";
 
 const TABS = [
   { id: "trending", label: "Trending", icon: Flame },
@@ -36,9 +37,10 @@ export default function Trending() {
   const isLoading = activeTab === "trending" ? trendingQuery.isLoading : discoverQuery.isLoading;
 
   return (
-    <div className="min-h-screen bg-[#08080F] text-[#F0F0F5]">
+    <div className="min-h-screen bg-[#08080F] text-[#F0F0F5] relative">
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-trending-3QUFzdQqTZN6CGE2jXahLc.webp" opacity={0.4} />
       <TopNav />
-      <div className="pt-24 pb-16 container max-w-6xl">
+      <div className="pt-24 pb-16 container max-w-6xl relative" style={{ zIndex: 1 }}>
         {/* Header */}
         <motion.div
           className="mb-8"

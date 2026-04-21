@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Trophy, TrendingUp, Eye, ThumbsUp, Film, Crown, Flame, Sparkles, ArrowUp, CheckCircle2 } from "lucide-react";
 import { VoteProgressBar } from "@/components/awakli/VoteProgressBar";
 import { TiltCard } from "@/components/awakli/TiltCard";
+import PageBackground from "@/components/awakli/PageBackground";
 
 type TabKey = "rising" | "promoted" | "completed";
 
@@ -30,12 +31,11 @@ export default function Leaderboard() {
   const [tab, setTab] = useState<TabKey>("rising");
 
   return (
-    <div className="min-h-screen bg-bg-void text-white">
+    <div className="min-h-screen bg-bg-void text-white relative">
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-compete-QTSG48KbgV7GRX4twLnzyE.webp" opacity={0.4} />
       {/* Hero */}
-      <section className="relative py-16 md:py-20 overflow-hidden">
+      <section className="relative py-16 md:py-20 overflow-hidden" style={{ zIndex: 1 }}>
         <div className="absolute inset-0 bg-gradient-to-b from-accent-pink/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 opacity-20"
-          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(107,91,255,0.15) 0%, transparent 60%)" }} />
         <div className="container relative text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-sm mb-4">
@@ -81,7 +81,7 @@ export default function Leaderboard() {
       </section>
 
       {/* Content */}
-      <section className="container pb-20">
+      <section className="container pb-20 relative" style={{ zIndex: 1 }}>
         {tab === "rising" && <RisingTab />}
         {tab === "promoted" && <PromotedTab />}
         {tab === "completed" && <CompletedTab />}

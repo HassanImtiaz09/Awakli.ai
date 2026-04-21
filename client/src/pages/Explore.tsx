@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import {
   Search, Film, ThumbsUp, Eye, Filter, ChevronDown, Sparkles, Grid3X3
 } from "lucide-react";
+import PageBackground from "@/components/awakli/PageBackground";
 
 const GENRES = [
   "All", "Action", "Romance", "Fantasy", "Sci-Fi", "Horror", "Comedy",
@@ -43,9 +44,10 @@ export default function Explore() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-void text-white">
+    <div className="min-h-screen bg-bg-void text-white relative">
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-explore-PGcasWryCa5q8RLdhrz68f.webp" opacity={0.4} />
       {/* Hero */}
-      <section className="relative py-16 overflow-hidden">
+      <section className="relative py-16 overflow-hidden" style={{ zIndex: 1 }}>
         <div className="absolute inset-0 bg-gradient-to-b from-accent-purple/5 via-transparent to-transparent" />
         <div className="container relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
@@ -57,7 +59,7 @@ export default function Explore() {
       </section>
 
       {/* Filters */}
-      <section className="container pb-4">
+      <section className="container pb-4 relative" style={{ zIndex: 1 }}>
         {/* Genre pills */}
         <div className="flex flex-wrap gap-2 mb-6">
           {GENRES.map((genre) => (
@@ -96,7 +98,7 @@ export default function Explore() {
       </section>
 
       {/* Grid */}
-      <section className="container pb-20">
+      <section className="container pb-20 relative" style={{ zIndex: 1 }}>
         {projects.isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {[...Array(15)].map((_, i) => (

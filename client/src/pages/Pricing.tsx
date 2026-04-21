@@ -9,6 +9,7 @@ import {
   PenTool, Upload, Lock, BookOpen, Clapperboard,
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
+import PageBackground from "@/components/awakli/PageBackground";
 import { toast } from "sonner";
 
 type BillingInterval = "monthly" | "annual";
@@ -380,7 +381,8 @@ export default function Pricing() {
 
   return (
     <MarketingLayout>
-      <div className="pt-28 pb-24">
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-pricing-HaVAWWEjDUAQYS42eNKgym.webp" opacity={0.35} />
+      <div className="pt-28 pb-24 relative" style={{ zIndex: 1 }}>
         <div className="container">
           {/* Header */}
           <motion.div

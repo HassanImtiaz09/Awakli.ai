@@ -3857,3 +3857,41 @@
 
 ## Bug: Scroll Background Not Visible
 - [x] Debug and fix scroll background images not showing when user scrolls down homepage
+
+## Visual Design Language - All Pages Enhancement
+### Feed (Discover) Page
+- [x] Add scroll-reactive anime background to Discover page
+- [x] Add hero section with anime artwork and atmospheric effects
+- [ ] Apply TiltCard effects to project cards (already using TiltCard)
+- [x] Add ScrollReveal animations to content sections
+
+### Create Page
+- [x] Add anime-themed background artwork for creation hub
+- [x] Add atmospheric depth with scroll backgrounds
+- [ ] Apply glow effects and TiltCard to project cards (wizard flow, not card-based)
+- [x] Enhance the creation wizard visual experience
+
+### Codex (CharacterLibrary) Page
+- [x] Add anime-themed background for character library
+- [ ] Apply TiltCard and glow effects to character cards
+- [x] Add atmospheric scroll backgrounds
+- [ ] Enhance character card hover effects
+
+### Compete (Leaderboard) Page
+- [x] Add anime-themed background for leaderboard
+- [x] Apply atmospheric effects and scroll backgrounds
+- [ ] Enhance leaderboard cards with glow and TiltCard effects
+- [x] Add visual depth to ranking sections
+
+### Pricing Page
+- [x] Add anime-themed background to pricing page
+- [x] Apply atmospheric scroll backgrounds
+- [ ] Enhance pricing cards with glow effects
+
+### Trending Page
+- [x] Add anime-themed background to trending page
+- [x] Apply atmospheric effects and TiltCard to project cards
+
+### Explore Page
+- [x] Add anime-themed background to explore page
+- [x] Apply atmospheric effects and enhanced card styling

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import PageBackground from "@/components/awakli/PageBackground";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -399,8 +400,9 @@ export default function CharacterLibrary() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-void)]">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[var(--bg-void)] relative">
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-codex-f6RP4wm7yC9E7ZkPqiMNFu.webp" opacity={0.35} />
+      <div className="max-w-7xl mx-auto px-4 py-8 relative" style={{ zIndex: 1 }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>

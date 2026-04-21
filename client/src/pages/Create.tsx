@@ -13,6 +13,7 @@ import TonePicker from "@/components/awakli/TonePicker";
 import ChapterPrefs from "@/components/awakli/ChapterPrefs";
 import CustomizeSummary from "@/components/awakli/CustomizeSummary";
 import type { StyleKey, ToneKey } from "../../../shared/style-images";
+import PageBackground from "@/components/awakli/PageBackground";
 
 const GENRES = [
   "Action", "Romance", "Sci-Fi", "Fantasy", "Horror",
@@ -234,20 +235,17 @@ export default function Create() {
 
   return (
     <div className="min-h-screen bg-[#05050C] relative overflow-hidden">
-      {/* §3.4 — Full-viewport dark canvas with character silhouette */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Moonrise gradient vignette */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#05050C] via-[#0D0D1A] to-[#05050C]" />
+      {/* Anime-themed background artwork */}
+      <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-create-EMgFtGXcLa2KcTiEqkL5uG.webp" opacity={0.45} />
 
-        {/* Soft character silhouette glow — centre */}
+      {/* Soft character silhouette glow — centre */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[#6B5BFF]/[0.04] blur-[180px]" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[600px] rounded-full bg-[#7C3AED]/[0.03] blur-[160px]" />
 
         {/* Subtle floating particles */}
         <div className="absolute top-20 left-[15%] w-1 h-1 rounded-full bg-[#6B5BFF]/30 animate-float" />
         <div className="absolute top-40 right-[20%] w-1.5 h-1.5 rounded-full bg-[#00D4FF]/20 animate-float" style={{ animationDelay: "2s" }} />
         <div className="absolute bottom-32 left-[30%] w-1 h-1 rounded-full bg-[#7C3AED]/25 animate-float" style={{ animationDelay: "4s" }} />
-        <div className="absolute top-[60%] right-[10%] w-0.5 h-0.5 rounded-full bg-[#B388FF]/30 animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
       {/* Subtle grid pattern */}
