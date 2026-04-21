@@ -42,15 +42,11 @@ export default function ScrollBackground() {
   return (
     <div
       className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: -1 }}
+      style={{ zIndex: 0 }}
       aria-hidden="true"
     >
-      {/* Dark base layer */}
-      <div className="absolute inset-0 bg-[#05050C]" />
-
-      {/* Background images — all preloaded, only active pair visible */}
+      {/* Background images — active pair crossfades */}
       {SCROLL_BACKGROUNDS.map((src, i) => {
-        // Determine opacity: current image fades out, next image fades in
         let opacity = 0;
         if (i === currentIndex) {
           opacity = 1 - blendFactor;
@@ -58,7 +54,7 @@ export default function ScrollBackground() {
           opacity = blendFactor;
         }
 
-        // Also keep the last image visible when fully scrolled
+        // Keep the last image visible when fully scrolled
         if (scrollProgress >= 1 && i === SCROLL_BACKGROUNDS.length - 1) {
           opacity = 1;
         }
@@ -70,8 +66,8 @@ export default function ScrollBackground() {
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
             style={{
-              opacity: opacity * 0.25,
-              filter: "blur(2px) saturate(0.8)",
+              opacity: opacity * 0.5,
+              filter: "saturate(0.85)",
               transition: "opacity 0.15s ease-out",
               willChange: opacity > 0 ? "opacity" : "auto",
             }}
@@ -80,12 +76,12 @@ export default function ScrollBackground() {
         );
       })}
 
-      {/* Dark vignette overlay for content readability */}
+      {/* Subtle vignette for edge darkening only */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(5,5,12,0.4) 0%, rgba(5,5,12,0.85) 100%)",
+            "radial-gradient(ellipse at center, transparent 40%, rgba(5,5,12,0.6) 100%)",
         }}
       />
     </div>

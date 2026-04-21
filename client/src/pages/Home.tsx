@@ -804,18 +804,20 @@ export default function Home() {
       {/* Scroll-reactive anime backgrounds */}
       <ScrollBackground />
 
-      {/* ACT ONE — The Hook */}
-      <ActOneHero />
+      {/* All content sits above the scroll background */}
+      <div className="relative" style={{ zIndex: 1 }}>
+        {/* ACT ONE — The Hook */}
+        <ActOneHero />
 
-      {/* ACT TWO — Proof */}
-      <ActTwoProof />
+        {/* ACT TWO — Proof */}
+        <ActTwoProof />
 
-      {/* Feature strip */}
-      <FeatureStrip />
+        {/* Feature strip */}
+        <FeatureStrip />
 
-      {/* Content rows */}
-      <section className="py-8">
-        <div className="container">
+        {/* Content rows */}
+        <section className="py-8">
+          <div className="container">
           <ContentRow
             title="Trending Now"
             icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
@@ -829,12 +831,13 @@ export default function Home() {
             projects={newReleases.data ?? []}
             isLoading={newReleases.isLoading}
             seeAllLink="/discover"
-          />
-        </div>
-      </section>
+            />
+          </div>
+        </section>
 
-      {/* ACT THREE — The Invitation */}
-      <ActThreeInvitation />
+        {/* ACT THREE — The Invitation */}
+        <ActThreeInvitation />
+      </div>
     </MarketingLayout>
   );
 }
