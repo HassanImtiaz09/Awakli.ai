@@ -606,12 +606,12 @@ function CreatorShowcase() {
 
 /* ─── AI-Powered Feature Strip ────────────────────────────────────────── */
 const AI_FEATURES = [
-  { name: "AI Screenwriting", icon: Brain, color: "#6B5BFF" },
-  { name: "Panel Generation", icon: ImageIcon, color: "#00F0FF" },
-  { name: "Video Animation", icon: Film, color: "#B388FF" },
-  { name: "Voice Acting", icon: Mic, color: "#FFD60A" },
-  { name: "Community Voting", icon: Heart, color: "#FF2D7A" },
-  { name: "Full Pipeline", icon: Zap, color: "#00E5A0" },
+  { name: "AI Screenwriting", icon: Brain, color: "#6B5BFF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-screenwriting-HsAEycmYpa3TuhFXcpny9U.webp" },
+  { name: "Panel Generation", icon: ImageIcon, color: "#00F0FF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-panel-gen-2QJtuqX7x7L5NdixecJQAc.webp" },
+  { name: "Video Animation", icon: Film, color: "#B388FF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-video-anim-nh8rKgBmQiLzcwkzDt5sti.webp" },
+  { name: "Voice Acting", icon: Mic, color: "#FFD60A", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-voice-acting-kADJ9u6puCy5tBmEumnhrE.webp" },
+  { name: "Community Voting", icon: Heart, color: "#FF2D7A", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-community-voting-bGSg8MyBdujfSUrdiJF8M6.webp" },
+  { name: "Full Pipeline", icon: Zap, color: "#00E5A0", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-full-pipeline-b7bxNE7zefdjYkLTUtBTYS.webp" },
 ];
 
 function FeatureStrip() {
@@ -640,7 +640,12 @@ function FeatureStrip() {
                     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 20px -6px ${feat.color}55`,
                   }}
                 >
-                  <feat.icon className="w-6 h-6" style={{ color: feat.color }} strokeWidth={1.75} />
+                  <img
+                    src={feat.chipImg}
+                    alt={feat.name}
+                    className="w-8 h-8 object-contain"
+                    loading="lazy"
+                  />
                 </div>
                 <span className="text-xs font-semibold text-[#B8B8CC] group-hover:text-white transition-colors tracking-wide">
                   {feat.name}
