@@ -3921,3 +3921,19 @@
 - [x] Mobile responsive: rail collapses to horizontal strip, credit meter to bottom sheet
 - [x] Hard refresh restores project from URL param ?projectId=...
 - [x] Exact copy strings: breadcrumb, save indicators, stage rail tooltip
+
+## Homepage CTA Wiring
+- [x] Wire "Write the first scene" button on homepage to navigate to /create/input?projectId=new
+- [x] Wire CTA input field on "Every great anime starts with an idea" tile to /create/input with pre-filled prompt
+
+## LLM Script Generation (Script Stage)
+- [x] Create tRPC procedure for AI script generation using invokeLLM (already existed in backend)
+- [x] Wire "Generate Script" button in /create/script to call the procedure with polling + toast
+- [x] Display generated script with expandable episodes, scene/panel breakdown, approve/regenerate
+- [x] Save generated script to episodes table (backend already handles this)
+
+## Panel Generation Pipeline (Panels Stage)
+- [x] Create tRPC procedure for panel image generation using generateImage (already existed)
+- [x] Wire panel generation UI in /create/panels with episode tabs, generate/approve/reject/regenerate
+- [x] Display generated panels with image grid, progress bar, stats bar, zoom modal, polling
+- [x] Save generated panel images to S3 and store URLs in database (backend already handles this)

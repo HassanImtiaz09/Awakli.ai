@@ -83,9 +83,9 @@ function ActOneHero() {
 
   const handleCTA = () => {
     if (isAuthenticated) {
-      navigate("/create");
+      navigate("/create/input?projectId=new");
     } else {
-      window.location.href = getLoginUrl("/create");
+      window.location.href = getLoginUrl("/create/input?projectId=new");
     }
   };
 
@@ -425,12 +425,16 @@ function ActThreeInvitation() {
   const { isAuthenticated } = useAuth();
 
   const handleCreate = useCallback(() => {
-    if (!prompt.trim()) {
-      navigate("/create");
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl("/create/input?projectId=new");
       return;
     }
-    navigate(`/create?prompt=${encodeURIComponent(prompt.trim())}`);
-  }, [prompt, navigate]);
+    if (!prompt.trim()) {
+      navigate("/create/input?projectId=new");
+      return;
+    }
+    navigate(`/create/input?projectId=new&prompt=${encodeURIComponent(prompt.trim())}`);
+  }, [prompt, navigate, isAuthenticated]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleCreate();

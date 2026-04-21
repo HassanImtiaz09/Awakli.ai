@@ -17,8 +17,9 @@ export default function WizardInput() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const projectIdParam = params.get("projectId");
+  const promptParam = params.get("prompt");
 
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(promptParam || "");
   const [genre, setGenre] = useState("");
   const [creating, setCreating] = useState(false);
   const [projectId, setProjectId] = useState<number | null>(
@@ -48,6 +49,7 @@ export default function WizardInput() {
       setCreating(true);
       createMut.mutateAsync({
         title: "Untitled Project",
+        description: promptParam || undefined,
       }).then(({ id }) => {
         setProjectId(id);
         navigate(`/create/input?projectId=${id}`, { replace: true });
