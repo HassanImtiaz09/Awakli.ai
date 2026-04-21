@@ -487,13 +487,11 @@ function ActThreeInvitation() {
 
                 <div className="flex w-full max-w-2xl mx-auto gap-3">
                   <div className="flex-1 relative group">
-                    {/* Animated conic border */}
+                    {/* Static gradient border */}
                     <div
-                      className="absolute -inset-[2px] rounded-xl opacity-90 group-focus-within:opacity-100 transition-opacity"
+                      className="absolute -inset-[1px] rounded-xl opacity-60 group-focus-within:opacity-100 transition-opacity"
                       style={{
-                        background: "conic-gradient(from 0deg, #00F0FF, #6B5BFF, #FFD60A, #FF2D7A, #00F0FF)",
-                        animation: "spin 8s linear infinite",
-                        filter: "blur(0.5px)",
+                        background: "linear-gradient(135deg, #00F0FF40, #6B5BFF40, #FF2D7A40)",
                       }}
                     />
                     {/* Inner input surface */}

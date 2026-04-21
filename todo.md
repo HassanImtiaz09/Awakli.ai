@@ -3846,3 +3846,6 @@
 ## CTA Tile Background Replacement
 - [x] Generate anime-themed creation background artwork for "Every great anime starts with an idea" CTA tile
 - [x] Replace rotating bar background with anime artwork (more prominent opacity than proof step tiles)
+
+## CTA Input Rotating Border Removal
+- [x] Remove rotating conic-gradient border animation from input field in CTA tile
