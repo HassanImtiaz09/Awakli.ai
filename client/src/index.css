@@ -216,12 +216,12 @@
   --gradient-accent:    linear-gradient(135deg, #00F0FF, #6B5BFF);
   --gradient-cyan:      linear-gradient(135deg, #00F0FF, #0099CC);
   --gradient-radial-pink: radial-gradient(ellipse at center, rgba(107,91,255,0.15) 0%, transparent 70%);
-  --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(0,212,255,0.1) 0%, transparent 70%);
+  --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(0,240,255,0.1) 0%, transparent 70%);
 
   /* Shadows */
   --shadow-glow-pink:   0 0 20px rgba(107,91,255,0.3), 0 0 40px rgba(107,91,255,0.1);
-  --shadow-glow-cyan:   0 0 20px rgba(0,212,255,0.2), 0 0 40px rgba(0,212,255,0.08);
-  --shadow-glow-violet: 0 0 20px rgba(124,58,237,0.2), 0 0 40px rgba(124,58,237,0.08);
+  --shadow-glow-cyan:   0 0 20px rgba(0,240,255,0.2), 0 0 40px rgba(0,240,255,0.08);
+  --shadow-glow-violet: 0 0 20px rgba(107,91,255,0.2), 0 0 40px rgba(107,91,255,0.08);
   --shadow-glow-jade:   0 0 20px rgba(0,255,178,0.2), 0 0 40px rgba(0,255,178,0.08);
   --shadow-card:        0 4px 24px rgba(0,0,0,0.5);
 
@@ -368,8 +368,8 @@ body {
 .glow-violet { box-shadow: var(--shadow-glow-violet); }
 .glow-jade   { box-shadow: var(--shadow-glow-jade); }
 .text-glow-pink   { text-shadow: 0 0 20px rgba(107,91,255,0.6); }
-.text-glow-cyan   { text-shadow: 0 0 20px rgba(0,212,255,0.5); }
-.text-glow-violet { text-shadow: 0 0 20px rgba(124,58,237,0.5); }
+.text-glow-cyan   { text-shadow: 0 0 20px rgba(0,240,255,0.5); }
+.text-glow-violet { text-shadow: 0 0 20px rgba(107,91,255,0.5); }
 .text-glow-jade   { text-shadow: 0 0 20px rgba(0,255,178,0.5); }
 
 /* ============================================================
@@ -392,9 +392,9 @@ body {
    ============================================================ */
 @keyframes chromatic-beat {
   0%   { filter: none; transform: translateX(0); }
-  20%  { filter: drop-shadow(-3px 0 0 rgba(0,212,255,0.6)) drop-shadow(3px 0 0 rgba(107,91,255,0.6)); transform: translateX(-2px); }
-  40%  { filter: drop-shadow(2px 0 0 rgba(0,212,255,0.4)) drop-shadow(-2px 0 0 rgba(107,91,255,0.4)); transform: translateX(2px); }
-  60%  { filter: drop-shadow(-1px 0 0 rgba(0,212,255,0.2)) drop-shadow(1px 0 0 rgba(107,91,255,0.2)); transform: translateX(-1px); }
+  20%  { filter: drop-shadow(-3px 0 0 rgba(0,240,255,0.6)) drop-shadow(3px 0 0 rgba(107,91,255,0.6)); transform: translateX(-2px); }
+  40%  { filter: drop-shadow(2px 0 0 rgba(0,240,255,0.4)) drop-shadow(-2px 0 0 rgba(107,91,255,0.4)); transform: translateX(2px); }
+  60%  { filter: drop-shadow(-1px 0 0 rgba(0,240,255,0.2)) drop-shadow(1px 0 0 rgba(107,91,255,0.2)); transform: translateX(-1px); }
   100% { filter: none; transform: translateX(0); }
 }
 .animate-beat {
@@ -451,8 +451,8 @@ body {
   background: conic-gradient(
     from 0deg,
     rgba(107,91,255,0.15),
-    rgba(124,58,237,0.15),
-    rgba(0,212,255,0.15),
+    rgba(107,91,255,0.15),
+    rgba(0,240,255,0.15),
     rgba(0,255,178,0.15),
     rgba(107,91,255,0.15)
   );
@@ -488,7 +488,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--token-cyan);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.15);
+  box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.15);
 }
 
 /* ============================================================
@@ -520,7 +520,7 @@ body {
    ============================================================ */
 .badge-action  { background: rgba(255,68,68,0.15);  color: #FF4444; }
 .badge-romance { background: rgba(255,105,180,0.15); color: #FF69B4; }
-.badge-scifi   { background: rgba(0,212,255,0.15);   color: #00F0FF; }
+.badge-scifi   { background: rgba(0,240,255,0.15);   color: #00F0FF; }
 .badge-fantasy { background: rgba(155,89,182,0.15);  color: #9B59B6; }
 .badge-horror  { background: rgba(231,76,60,0.15);   color: #E74C3C; }
 .badge-comedy  { background: rgba(243,156,18,0.15);  color: #F39C12; }
@@ -605,8 +605,8 @@ body {
   background: conic-gradient(
     from var(--foil-angle, 0deg) at var(--foil-x, 50%) var(--foil-y, 50%),
     rgba(107,91,255,0.12),
-    rgba(124,58,237,0.12),
-    rgba(0,212,255,0.12),
+    rgba(107,91,255,0.12),
+    rgba(0,240,255,0.12),
     rgba(0,255,178,0.12),
     rgba(107,91,255,0.12)
   );

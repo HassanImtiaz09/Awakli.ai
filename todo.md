@@ -4322,3 +4322,8 @@
 ## Last-Mile Brief v1.0 — Wave 3: Panels Stage
 
 - [x] C2-LM: Ship Panels stage components to DOM — PanelGrid with data attributes, PanelTile with regen/select, PanelLightbox with keyboard nav, PanelBatchBar sticky bar, StyleDrift pill, ConsistencyReport drawer
+
+## 100% Brief v1.0 — Final Sign-off
+
+- [x] P3-100: Replace last 5 legacy hex literals (#00d4ff x3, #7c3aed x2) with token refs in compiled CSS; add Tailwind theme tokens; add lint rule to prevent regression
+- [x] Q1-100: Enable QA of Script + Panels rendering via ?qa=script and ?qa=panels dev fixture flags with deterministic data; document in README

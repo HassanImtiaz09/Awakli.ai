@@ -13,7 +13,7 @@ export default function SignIn() {
       <div className="absolute inset-0"
         style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(107,91,255,0.08) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 70% 80%, rgba(0,212,255,0.05) 0%, transparent 50%)" }} />
+        style={{ background: "radial-gradient(ellipse at 70% 80%, rgba(0,240,255,0.05) 0%, transparent 50%)" }} />
 
       {/* Card */}
       <motion.div

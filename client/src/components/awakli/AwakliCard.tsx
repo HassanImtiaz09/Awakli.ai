@@ -17,7 +17,7 @@ interface AwakliCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const GLOW_COLORS: Record<string, string> = {
   pink: "rgba(107,91,255,0.35)",
-  cyan: "rgba(0,212,255,0.35)",
+  cyan: "rgba(0,240,255,0.35)",
   none: "rgba(0,0,0,0.3)",
 };
 
@@ -89,7 +89,7 @@ export const AwakliCard = React.forwardRef<HTMLDivElement, AwakliCardProps>(
 
     const glowStyles = {
       pink: "hover:border-[rgba(107,91,255,0.3)] hover:shadow-[0_8px_32px_rgba(107,91,255,0.2)]",
-      cyan: "hover:border-[rgba(0,212,255,0.3)] hover:shadow-[0_8px_32px_rgba(0,212,255,0.15)]",
+      cyan: "hover:border-token-cyan/30 hover:shadow-[0_8px_32px_rgba(0,240,255,0.15)]",
       none: "hover:border-white/10 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
     };
 

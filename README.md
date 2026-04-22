@@ -93,6 +93,17 @@ pnpm vitest run --reporter=verbose # verbose output
 
 Tests use Vitest with module mocking. See `server/auth.logout.test.ts` for the reference pattern.
 
+### QA Fixture Mode
+
+Append `?qa=script` or `?qa=panels` to the create-flow URLs to render the Script and Panels stages with deterministic fixture data. No tRPC calls are made, no project ID is required, and all components render with realistic demo content.
+
+```
+/create/script?qa=script    → ScriptEditor with 3 scenes, drag-and-drop, RegenPopover, CharacterChip drawer
+/create/panels?qa=panels    → PanelGrid (12 panels), PanelLightbox, PanelBatchBar, StyleDrift, ConsistencyReport
+```
+
+Fixture data lives in `client/src/fixtures/qaFixtures.ts`. The QA branches are guarded by the `isQA` flag and short-circuit before any data fetching, so they are safe to use in production builds.
+
 ## Security Notes
 
 - JWT_SECRET and KEK (derived from JWT_SECRET) are validated at boot — server refuses to start without them

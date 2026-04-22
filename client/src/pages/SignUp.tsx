@@ -16,7 +16,7 @@ export default function SignUp() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#08080F]">
       <StarField count={120} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(0,212,255,0.07) 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(0,240,255,0.07) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
         style={{ background: "radial-gradient(ellipse at 80% 70%, rgba(107,91,255,0.06) 0%, transparent 50%)" }} />
 

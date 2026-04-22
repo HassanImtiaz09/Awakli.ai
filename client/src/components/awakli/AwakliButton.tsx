@@ -29,8 +29,8 @@ const variantStyles: Record<Variant, string> = {
     "bg-transparent",
     "text-[#00F0FF] font-semibold",
     "border border-[#00F0FF]",
-    "hover:bg-[rgba(0,212,255,0.1)]",
-    "hover:shadow-[0_0_16px_rgba(0,212,255,0.3)]",
+    "hover:bg-token-cyan/10",
+    "hover:shadow-[0_0_16px_rgba(0,240,255,0.3)]",
     "active:scale-[0.98]",
   ].join(" "),
   ghost: [

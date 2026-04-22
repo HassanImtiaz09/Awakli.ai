@@ -142,7 +142,7 @@ export default function StudioDashboard() {
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
                 stat.color === "pink" ? "bg-[rgba(107,91,255,0.15)] text-[#00F0FF]"
-                : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00F0FF]"
+                : stat.color === "cyan" ? "bg-token-cyan/15 text-token-cyan"
                 : stat.color === "success" ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]"
                 : "bg-[rgba(255,184,0,0.15)] text-[#FFD60A]"
               }`}>

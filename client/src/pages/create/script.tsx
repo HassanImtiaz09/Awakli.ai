@@ -12,8 +12,9 @@ import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import { ScriptEditor } from "@/components/awakli/ScriptEditor";
 import { StageHeader } from "@/components/awakli/StageHeader";
+import { qaSceneData } from "@/fixtures/qaFixtures";
 
-// ─── Analytics helper ────────────────────────────────────────────────────
+// ─── Analytics helper ──────────────────────────────────────────────────────────────────────
 function trackEvent(name: string, props?: Record<string, unknown>) {
   if (typeof window !== "undefined" && (window as any).__awakli_track) {
     (window as any).__awakli_track(name, props);
@@ -25,6 +26,7 @@ export default function WizardScript() {
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
+  const isQA = params.has("qa") && params.get("qa") === "script";
   const projectId = params.get("projectId") || "";
   const numId = parseInt(projectId, 10);
 
@@ -131,8 +133,43 @@ export default function WizardScript() {
 
   // Determine page state
   const isGeneratingScript = hasGenerating || generating;
-  const hasScript = scenes.length > 0;
+  const hasScript = scenes.length > 0 || isQA;
   const canProceed = allApproved && hasScript;
+
+  // ─── QA fixture mode ─────────────────────────────────────────────────
+  if (isQA) {
+    const fixtureScenes = qaSceneData();
+    return (
+      <CreateWizardLayout
+        stage={1}
+        projectId="qa-fixture"
+        projectTitle="QA Fixture: The Awakening"
+        onTitleChange={() => {}}
+        completedStages={new Set([0])}
+      >
+        <div className="max-w-5xl mx-auto space-y-6" data-qa="script">
+          <div className="space-y-2">
+            <StageHeader stageKey="script" icon={BookOpen} className="text-token-lavender" />
+            <h1 className="text-3xl lg:text-4xl font-bold text-white/90">Your script</h1>
+            <p className="text-token-gold text-xs font-mono">QA FIXTURE MODE — no tRPC calls, deterministic data</p>
+          </div>
+          <ScriptEditor
+            episodeId={9999}
+            scenes={fixtureScenes}
+            locked={false}
+            onScenesChange={() => {}}
+            onAllApproved={() => toast.success("[QA] All scenes approved")}
+          />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-token-gold/5 border border-token-gold/10">
+            <CheckCheck className="w-4 h-4 text-token-gold flex-shrink-0" />
+            <p className="text-token-gold text-xs flex-1">
+              QA mode: Approve scenes, expand/collapse, drag to reorder, click characters, use RegenPopover.
+            </p>
+          </div>
+        </div>
+      </CreateWizardLayout>
+    );
+  }
 
   return (
     <CreateWizardLayout

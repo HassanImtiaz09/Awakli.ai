@@ -97,7 +97,7 @@ export default function Onboarding() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
-                whileHover={{ scale: 1.02, borderColor: "rgba(0,212,255,0.4)" }}
+                whileHover={{ scale: 1.02, borderColor: "rgba(0,240,255,0.4)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setPath("reader")}
                 className="text-left p-8 rounded-2xl border border-[#00F0FF]/15 bg-gradient-to-br from-[#0D0D1A] to-[#0A1A2E]/40 hover:shadow-lg hover:shadow-[#00F0FF]/10 transition-all group"
@@ -251,7 +251,7 @@ export default function Onboarding() {
                 </motion.button>
 
                 <motion.button
-                  whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,212,255,0.3)" }}
+                  whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,240,255,0.3)" }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate("/discover")}
                   className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#0099CC] text-white font-semibold shadow-lg shadow-[#00F0FF]/25"

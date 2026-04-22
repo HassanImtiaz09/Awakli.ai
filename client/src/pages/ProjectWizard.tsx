@@ -67,7 +67,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
               boxShadow: i === current
                 ? "0 0 16px rgba(107,91,255,0.6)"
                 : i < current
-                  ? "0 0 8px rgba(0,212,255,0.4)"
+                  ? "0 0 8px rgba(0,240,255,0.4)"
                   : "none",
             }}
             transition={{ duration: 0.4 }}

@@ -39,6 +39,7 @@ import type { PanelTileData } from "@/components/awakli/PanelTile";
 import { useUpgradeModal } from "@/store/upgradeModal";
 import { useMinTierGate } from "@/hooks/useTierGate";
 import { StageHeader } from "@/components/awakli/StageHeader";
+import { QAPanelsFixture } from "@/components/awakli/QAPanelsFixture";
 
 // ─── Analytics helper ───────────────────────────────────────────────────
 function trackEvent(name: string, data?: Record<string, unknown>) {
@@ -73,6 +74,7 @@ export default function WizardPanels() {
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
+  const isQA = params.has("qa") && params.get("qa") === "panels";
   const projectId = params.get("projectId") || "";
   const numId = parseInt(projectId, 10);
 
@@ -484,7 +486,23 @@ export default function WizardPanels() {
     });
   }, []);
 
-  // ─── Render ───────────────────────────────────────────────────────────
+  // ─── QA fixture mode ─────────────────────────────────────────────────
+  if (isQA) {
+    return (
+      <QAPanelsFixture
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
+        lightboxPanelId={lightboxPanelId}
+        setLightboxPanelId={setLightboxPanelId}
+        styleDriftOpen={styleDriftOpen}
+        setStyleDriftOpen={setStyleDriftOpen}
+        consistencyOpen={consistencyOpen}
+        setConsistencyOpen={setConsistencyOpen}
+      />
+    );
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────────────
   return (
     <CreateWizardLayout
       stage={2}

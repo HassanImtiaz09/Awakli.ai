@@ -72,7 +72,7 @@ export function StarField({ count = 120, className = "" }: StarFieldProps) {
           height: "35%",
           bottom: "15%",
           right: "5%",
-          background: "radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(0,240,255,0.06) 0%, transparent 70%)",
         }}
       />
       <div
