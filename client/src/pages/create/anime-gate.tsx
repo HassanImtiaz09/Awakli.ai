@@ -1,16 +1,19 @@
 /**
- * Stage 4 · Anime Gate — upgrade moment (non-subscribed).
+ * Stage 4 · Anime Gate
  *
- * States:
+ * Two branches:
+ *   A. Non-subscribed (Apprentice / free_trial) → upgrade gate with hero + tier cards
+ *   B. Subscribed (Mangaka+ / creator_pro / studio / enterprise) → pass-through
+ *      "You're in. Let's animate." card, auto-redirect in 1.2s
+ *
+ * States (non-subscribed):
  *   1. idle        — hero animates, particle field, audio toggle
- *   2. tier-hover  — card lifts, video sample begins
- *   3. checkout    — Stripe tab opens; "Waiting for confirmation…"
- *   4. confirmed   — mint checkmark → "Welcome to Mangaka" → /create/setup
+ *   2. checkout    — Stripe tab opens; "Waiting for confirmation…"
+ *   3. confirmed   — mint checkmark → "Welcome to Mangaka" → /create/setup
  *
- * Tier routing:
- *   - Audience (free_trial without publish) → /explore
- *   - Apprentice (creator / free_trial) → gate shown, Mangaka highlighted
- *   - Mangaka+ (creator_pro / studio / enterprise) → auto-redirect to /create/setup
+ * States (subscribed):
+ *   1. acknowledging — 1.2s card with checkmark
+ *   2. redirecting   — navigate to /create/setup
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -26,12 +29,16 @@ import {
   TIER_CARD_COPY,
 } from "@/components/awakli/TierCompareCard";
 
-type PageState = "idle" | "checkout" | "confirmed";
+// ─── Copy strings (exact spec) ─────────────────────────────────────────
+export const PASSTHROUGH_COPY = {
+  title: "You're in. Let's animate.",
+  subhead: "Setting up your studio…",
+};
 
-// Tiers that skip this gate entirely
-const SKIP_TIERS = new Set(["creator_pro", "studio", "enterprise"]);
-// Tiers that should not be here at all (no publish access)
-const REDIRECT_TIERS = new Set<string>(); // free_trial can still arrive via direct URL
+type PageState = "idle" | "checkout" | "confirmed" | "passthrough";
+
+// Tiers that get the pass-through experience
+const SUBSCRIBED_TIERS = new Set(["creator_pro", "studio", "enterprise"]);
 
 export default function WizardAnimeGate() {
   const [, navigate] = useLocation();
@@ -51,24 +58,13 @@ export default function WizardAnimeGate() {
     trpc.billing.getSubscription.useQuery(undefined, { enabled: !!user });
 
   const tier = subscription?.tier ?? "free_trial";
+  const isSubscribed = SUBSCRIBED_TIERS.has(tier);
 
-  // ─── Tier-aware routing ────────────────────────────────────────────
-  const hasRedirected = useRef(false);
-  useEffect(() => {
-    if (hasRedirected.current || !subscription) return;
-
-    if (SKIP_TIERS.has(tier)) {
-      hasRedirected.current = true;
-      navigate(`/create/setup?projectId=${projectId}`, { replace: true });
-      return;
-    }
-
-    if (REDIRECT_TIERS.has(tier)) {
-      hasRedirected.current = true;
-      navigate("/explore", { replace: true });
-      return;
-    }
-  }, [tier, subscription, navigate, projectId]);
+  // ─── Reduced motion preference ────────────────────────────────────
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
   // ─── State ─────────────────────────────────────────────────────────
   const [pageState, setPageState] = useState<PageState>("idle");
@@ -77,6 +73,7 @@ export default function WizardAnimeGate() {
     null
   );
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const passthroughTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Completed stages ──────────────────────────────────────────────
   const completedStages = useMemo(() => {
@@ -85,14 +82,31 @@ export default function WizardAnimeGate() {
     return s;
   }, []);
 
-  // ─── Analytics ─────────────────────────────────────────────────────
+  // ─── Pass-through for subscribed users ─────────────────────────────
+  const hasTriggeredPassthrough = useRef(false);
+  useEffect(() => {
+    if (hasTriggeredPassthrough.current || !subscription) return;
+    if (!isSubscribed) return;
+
+    hasTriggeredPassthrough.current = true;
+    // stage4_passthrough_shown
+    setPageState("passthrough");
+
+    // Auto-redirect after 1.2s (or immediately for reduced motion)
+    const delay = prefersReducedMotion ? 0 : 1200;
+    passthroughTimerRef.current = setTimeout(() => {
+      navigate(`/create/setup?projectId=${projectId}`, { replace: true });
+    }, delay);
+  }, [subscription, isSubscribed, prefersReducedMotion, navigate, projectId]);
+
+  // ─── Analytics (non-subscribed gate) ───────────────────────────────
   const analyticsRef = useRef(false);
   useEffect(() => {
-    if (!analyticsRef.current && subscription && !SKIP_TIERS.has(tier)) {
+    if (!analyticsRef.current && subscription && !isSubscribed) {
       analyticsRef.current = true;
       // stage4_gate_shown
     }
-  }, [subscription, tier]);
+  }, [subscription, isSubscribed]);
 
   // ─── Stripe checkout ──────────────────────────────────────────────
   const createCheckout = trpc.billing.createCheckout.useMutation();
@@ -123,7 +137,10 @@ export default function WizardAnimeGate() {
 
           // Start polling for subscription confirmation
           startPolling(tierKey);
-        } else if ('upgraded' in result && result.upgraded || 'downgraded' in result && result.downgraded) {
+        } else if (
+          ("upgraded" in result && result.upgraded) ||
+          ("downgraded" in result && result.downgraded)
+        ) {
           // Upgrade/downgrade handled inline (existing subscription)
           const tierName = tierKey === "creator_pro" ? "Mangaka" : "Studio";
           toast.success(`Successfully switched to ${tierName}!`);
@@ -151,7 +168,7 @@ export default function WizardAnimeGate() {
       pollingRef.current = setInterval(async () => {
         try {
           const { data: freshSub } = await refetchSub();
-          if (freshSub && SKIP_TIERS.has(freshSub.tier)) {
+          if (freshSub && SUBSCRIBED_TIERS.has(freshSub.tier)) {
             // Subscription confirmed!
             if (pollingRef.current) clearInterval(pollingRef.current);
             pollingRef.current = null;
@@ -180,10 +197,11 @@ export default function WizardAnimeGate() {
     [refetchSub, navigate, projectId]
   );
 
-  // Cleanup polling on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (passthroughTimerRef.current) clearTimeout(passthroughTimerRef.current);
     };
   }, []);
 
@@ -198,11 +216,6 @@ export default function WizardAnimeGate() {
     }
   }, [project?.slug, navigate]);
 
-  // ─── Don't render if tier should skip ──────────────────────────────
-  if (subscription && SKIP_TIERS.has(tier)) {
-    return null;
-  }
-
   return (
     <CreateWizardLayout
       stage={4}
@@ -212,7 +225,69 @@ export default function WizardAnimeGate() {
     >
       <div className="space-y-0">
         <AnimatePresence mode="wait">
-          {/* ─── Confirmed state ──────────────────────────────────── */}
+          {/* ─── Pass-through (subscribed Mangaka+) ────────────────── */}
+          {pageState === "passthrough" && (
+            <motion.div
+              key="passthrough"
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid place-items-center min-h-screen bg-[#0A0A0F] text-white"
+            >
+              <div className="text-center space-y-5">
+                {/* Mint checkmark */}
+                <motion.div
+                  initial={prefersReducedMotion ? false : { scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 260, damping: 20, delay: 0.1 }
+                  }
+                  className="w-16 h-16 rounded-full bg-[#00E5A0]/10 flex items-center justify-center mx-auto"
+                >
+                  <Check className="w-8 h-8 text-[#00E5A0]" />
+                </motion.div>
+
+                <motion.h2
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : { delay: 0.25 }
+                  }
+                  className="text-2xl md:text-3xl font-bold"
+                >
+                  {PASSTHROUGH_COPY.title}
+                </motion.h2>
+
+                <motion.p
+                  initial={prefersReducedMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : { delay: 0.4 }
+                  }
+                  className="text-white/40 text-sm"
+                >
+                  {PASSTHROUGH_COPY.subhead}
+                </motion.p>
+
+                {!prefersReducedMotion && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Loader2 className="w-4 h-4 text-white/20 animate-spin mx-auto" />
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── Confirmed state (post-checkout) ──────────────────── */}
           {pageState === "confirmed" && (
             <motion.div
               key="confirmed"
@@ -282,7 +357,7 @@ export default function WizardAnimeGate() {
             </motion.div>
           )}
 
-          {/* ─── Idle state (default) ─────────────────────────────── */}
+          {/* ─── Idle state (default — non-subscribed) ────────────── */}
           {pageState === "idle" && (
             <motion.div
               key="idle"

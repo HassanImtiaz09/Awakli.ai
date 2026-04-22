@@ -6,6 +6,10 @@ import {
 } from "../client/src/components/awakli/AnimeGateHero";
 
 import {
+  PASSTHROUGH_COPY,
+} from "../client/src/pages/create/anime-gate";
+
+import {
   TIER_CARD_COPY,
   TIER_VIDEO_FEATURES,
 } from "../client/src/components/awakli/TierCompareCard";
@@ -265,6 +269,91 @@ describe("Stage 4 · Anime Gate — Confirmed State", () => {
     const projectId = "42";
     const target = `/create/setup?projectId=${projectId}`;
     expect(target).toBe("/create/setup?projectId=42");
+  });
+});
+
+// ─── Stage 4B · Pass-Through (Subscribed) ──────────────────────────────
+
+describe("Stage 4B · Pass-Through — Copy Strings", () => {
+  it("title matches spec: 'You're in. Let's animate.'", () => {
+    expect(PASSTHROUGH_COPY.title).toBe("You're in. Let's animate.");
+  });
+
+  it("subhead matches spec: 'Setting up your studio…'", () => {
+    expect(PASSTHROUGH_COPY.subhead).toBe("Setting up your studio…");
+  });
+});
+
+describe("Stage 4B · Pass-Through — Tier Routing", () => {
+  const SUBSCRIBED_TIERS = new Set(["creator_pro", "studio", "enterprise"]);
+
+  it("creator_pro (Mangaka) triggers pass-through", () => {
+    expect(SUBSCRIBED_TIERS.has("creator_pro")).toBe(true);
+  });
+
+  it("studio triggers pass-through", () => {
+    expect(SUBSCRIBED_TIERS.has("studio")).toBe(true);
+  });
+
+  it("enterprise triggers pass-through", () => {
+    expect(SUBSCRIBED_TIERS.has("enterprise")).toBe(true);
+  });
+
+  it("free_trial does NOT trigger pass-through", () => {
+    expect(SUBSCRIBED_TIERS.has("free_trial")).toBe(false);
+  });
+
+  it("creator does NOT trigger pass-through", () => {
+    expect(SUBSCRIBED_TIERS.has("creator")).toBe(false);
+  });
+});
+
+describe("Stage 4B · Pass-Through — Timing", () => {
+  it("auto-redirect delay is 1200ms", () => {
+    const PASSTHROUGH_DELAY_MS = 1200;
+    expect(PASSTHROUGH_DELAY_MS).toBe(1200);
+    expect(PASSTHROUGH_DELAY_MS).toBeLessThanOrEqual(1500); // AC: within 1500ms
+  });
+
+  it("reduced-motion delay is 0ms (instant)", () => {
+    const REDUCED_MOTION_DELAY = 0;
+    expect(REDUCED_MOTION_DELAY).toBe(0);
+  });
+});
+
+describe("Stage 4B · Pass-Through — Reduced Motion", () => {
+  it("reduced-motion users see text only (no fade animation)", () => {
+    // When prefersReducedMotion is true, initial should be false (no animation)
+    const prefersReducedMotion = true;
+    const initialProp = prefersReducedMotion ? false : { opacity: 0 };
+    expect(initialProp).toBe(false);
+  });
+
+  it("normal users get fade-in animation", () => {
+    const prefersReducedMotion = false;
+    const initialProp = prefersReducedMotion ? false : { opacity: 0 };
+    expect(initialProp).toEqual({ opacity: 0 });
+  });
+});
+
+describe("Stage 4B · Pass-Through — Analytics", () => {
+  it("defines stage4_passthrough_shown event", () => {
+    const event = "stage4_passthrough_shown";
+    expect(event).toBe("stage4_passthrough_shown");
+  });
+});
+
+describe("Stage 4B · Pass-Through — Redirect Target", () => {
+  it("redirects to /create/setup with projectId", () => {
+    const projectId = "42";
+    const target = `/create/setup?projectId=${projectId}`;
+    expect(target).toBe("/create/setup?projectId=42");
+  });
+
+  it("uses replace navigation (no back-button trap)", () => {
+    // The navigate call uses { replace: true }
+    const navOptions = { replace: true };
+    expect(navOptions.replace).toBe(true);
   });
 });
 

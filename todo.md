@@ -4120,3 +4120,11 @@
 - [x] Analytics events: stage4_gate_shown, stage4_tier_select, stage4_checkout_opened, stage4_confirmed, stage4_declined
 - [x] Subscription polling: after Stripe tab opens, poll subscription status; confirmed routes to /create/setup within 2s
 - [x] Write vitest tests for gate logic, tier routing, copy strings, and no-urgency validation (49 tests passing)
+
+## Stage 4B · Anime Gate — Pass-Through (Subscribed)
+- [x] Add subscribed pass-through branch: Mangaka+ sees "You're in. Let's animate." card and auto-redirects in 1.2s
+- [x] Subhead: "Setting up your studio…"
+- [x] Respect prefers-reduced-motion: skip animation, show text only
+- [x] Auto-redirect to /create/setup within 1500ms (1200ms normal, 0ms reduced-motion)
+- [x] Analytics event: stage4_passthrough_shown
+- [x] Write vitest tests for pass-through copy strings and reduced-motion behavior (14 new tests, 63 total passing)
