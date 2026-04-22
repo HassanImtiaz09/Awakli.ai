@@ -4249,12 +4249,12 @@
 
 ## Fix Brief v1.0 — Wave 1: Strategic (X1-X4)
 - [x] X1: Restore pipeline order: INPUT→SCRIPT→PANELS→PUBLISH→GATE→SETUP→VIDEO
-- [ ] X1: Move style/tone/audience selectors from Setup into Stage 0 Input
+- [x] X1: Move style/tone/audience selectors from Setup into Stage 0 Input
 - [x] X1: Stage headers match rail position (01-07)
-- [ ] X1: After Publish, land on /m/{slug} with 'Make it move →' CTA to /create/anime-gate
+- [x] X1: After Publish, land on /m/{slug} with 'View your manga →' button + 'Make it move →' CTA to /create/anime-gate
 - [x] X2: Unlock /create/publish for all tiers (Apprentice gets watermark ON, non-removable)
 - [x] X2: Move /create/video gating from Studio to Mangaka (60s/1080p)
-- [ ] X2: Studio-only features as inline tier-locked affordances, not full-page deny
+- [x] X2: Studio-only features as inline tier-locked affordances (WithTier mode=soft on LoRA, VoiceClone, video features)
 - [x] X3: Create shared/pricingCatalog.ts — single source of truth for tier names + prices
 - [x] X3: /pricing, anime-gate, UpgradeModal all consume PricingCatalog (zero tier name literals in JSX)
 - [x] X4: Create shared/creditCostTable.ts with unit costs per action

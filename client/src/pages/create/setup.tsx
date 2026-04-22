@@ -28,6 +28,7 @@ import { VoiceCatalog } from "@/components/awakli/VoiceCatalog";
 import { PoseSheet, type CharacterPoses, type PoseAngle, type PoseData } from "@/components/awakli/PoseSheet";
 import { LoRATrainer } from "@/components/awakli/LoRATrainer";
 import { VoiceClone } from "@/components/awakli/VoiceClone";
+import { WithTier } from "@/components/awakli/withTier";
 
 // ─── Tier helpers ───────────────────────────────────────────────────────
 const STUDIO_TIERS = ["studio", "studio_pro"];
@@ -287,8 +288,8 @@ export default function WizardSetup() {
                     currentTier={tier}
                   />
 
-                  {/* Studio: LoRA Trainer */}
-                  {isStudioTier(tier) && (
+                  {/* Studio: LoRA Trainer (inline tier-locked affordance) */}
+                  <WithTier capability="custom_lora_training" mode="soft">
                     <div className="mt-6 pt-6 border-t border-white/[0.06]">
                       <div className="flex items-center gap-2 mb-4">
                         <Sparkles className="w-4 h-4 text-violet-400" />
@@ -310,7 +311,7 @@ export default function WizardSetup() {
                         currentTier={tier}
                       />
                     </div>
-                  )}
+                  </WithTier>
                 </>
               ) : (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
@@ -387,8 +388,8 @@ export default function WizardSetup() {
                     currentTier={tier}
                   />
 
-                  {/* Studio: Voice Clone */}
-                  {isStudioTier(tier) && (
+                  {/* Studio: Voice Clone (inline tier-locked affordance) */}
+                  <WithTier capability="voice_cloning" mode="soft">
                     <div className="mt-6 pt-6 border-t border-white/[0.06]">
                       <div className="flex items-center gap-2 mb-4">
                         <Sparkles className="w-4 h-4 text-violet-400" />
@@ -419,7 +420,7 @@ export default function WizardSetup() {
                         creditBalance={creditBalance}
                       />
                     </div>
-                  )}
+                  </WithTier>
                 </>
               ) : (
                 <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">

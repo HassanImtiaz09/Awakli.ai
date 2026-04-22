@@ -47,6 +47,35 @@ const MAX_CHARS = 2000;
 
 type InputTab = "idea" | "upload" | "characters";
 
+const ANIME_STYLES = [
+  { value: "shonen", label: "Shonen", desc: "Bold, action-packed" },
+  { value: "seinen", label: "Seinen", desc: "Mature, detailed" },
+  { value: "shoujo", label: "Shoujo", desc: "Elegant, emotional" },
+  { value: "cyberpunk", label: "Cyberpunk", desc: "Neon, futuristic" },
+  { value: "watercolor", label: "Watercolor", desc: "Soft, painterly" },
+  { value: "noir", label: "Noir", desc: "Dark, high-contrast" },
+  { value: "chibi", label: "Chibi", desc: "Cute, super-deformed" },
+  { value: "realistic", label: "Realistic", desc: "Photo-real, cinematic" },
+  { value: "mecha", label: "Mecha", desc: "Mechanical, detailed" },
+] as const;
+
+const TONE_OPTIONS = [
+  { value: "epic", label: "Epic" },
+  { value: "dark", label: "Dark" },
+  { value: "lighthearted", label: "Lighthearted" },
+  { value: "romantic", label: "Romantic" },
+  { value: "mysterious", label: "Mysterious" },
+  { value: "comedic", label: "Comedic" },
+  { value: "melancholic", label: "Melancholic" },
+  { value: "intense", label: "Intense" },
+] as const;
+
+const AUDIENCE_OPTIONS = [
+  { value: "kids", label: "Kids", desc: "Ages 6-12" },
+  { value: "teen", label: "Teen", desc: "Ages 13-17" },
+  { value: "adult", label: "Adult", desc: "Ages 18+" },
+] as const;
+
 export default function WizardInput() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -68,6 +97,11 @@ export default function WizardInput() {
   );
   const [title, setTitle] = useState("Untitled Project");
 
+  // Style / Tone / Audience selectors (moved from old Setup page per X1)
+  const [animeStyle, setAnimeStyle] = useState<string>("shonen");
+  const [tone, setTone] = useState<string>("epic");
+  const [targetAudience, setTargetAudience] = useState<string>("teen");
+
   // Upload state
   const [extractedPanels, setExtractedPanels] = useState<Panel[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -85,6 +119,7 @@ export default function WizardInput() {
   const isStudioPlus = ["studio", "enterprise"].includes(userTier);
 
   const createMut = trpc.projects.create.useMutation();
+  const updateMut = trpc.projects.update.useMutation();
   const { advance, advancing } = useAdvanceStage(String(projectId || ""), 0);
 
   // Load existing project if projectId is set
@@ -97,6 +132,9 @@ export default function WizardInput() {
     if (project) {
       setTitle(project.title);
       setPrompt(project.originalPrompt || project.description || "");
+      if (project.animeStyle && project.animeStyle !== "default") setAnimeStyle(project.animeStyle);
+      if ((project as any).tone) setTone((project as any).tone);
+      if ((project as any).targetAudience) setTargetAudience((project as any).targetAudience);
     }
   }, [project]);
 
@@ -162,6 +200,15 @@ export default function WizardInput() {
       characterCount: activeTab === "characters" ? characters.length : 0,
       styleRefCount: activeTab === "characters" ? styleRefs.length : 0,
     });
+    // Save style/tone/audience to the project before advancing
+    if (projectId) {
+      await updateMut.mutateAsync({
+        id: projectId,
+        animeStyle: animeStyle as any,
+        tone,
+        targetAudience: targetAudience as any,
+      });
+    }
     await advance({
       inputs: {
         prompt,
@@ -169,6 +216,9 @@ export default function WizardInput() {
         chapterCount,
         title,
         inputMode: activeTab,
+        animeStyle,
+        tone,
+        targetAudience,
         uploadedPanelCount: activeTab === "upload" ? extractedPanels.length : 0,
         characterCount: activeTab === "characters" ? characters.length : 0,
         styleRefCount: activeTab === "characters" ? styleRefs.length : 0,
@@ -441,6 +491,80 @@ export default function WizardInput() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ─── Style / Tone / Audience Selectors ─────────────────────────── */}
+        <div className="space-y-6 pt-2">
+          {/* Art Style */}
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+              Art Style
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ANIME_STYLES.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setAnimeStyle(s.value)}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                    animeStyle === s.value
+                      ? "bg-token-violet/10 text-token-violet ring-1 ring-token-violet/30"
+                      : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60"
+                  }`}
+                >
+                  <span className="block">{s.label}</span>
+                  <span className="block text-[10px] opacity-60 mt-0.5">{s.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tone + Audience row */}
+          <div className="flex flex-col sm:flex-row gap-6">
+            {/* Tone */}
+            <div className="space-y-3 flex-1">
+              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                Tone
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {TONE_OPTIONS.map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => setTone(t.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      tone === t.value
+                        ? "bg-token-cyan/10 text-token-cyan ring-1 ring-token-cyan/30"
+                        : "bg-white/5 text-white/35 hover:bg-white/10 hover:text-white/55"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Audience */}
+            <div className="space-y-3 sm:w-48">
+              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                Audience
+              </label>
+              <div className="flex gap-1.5">
+                {AUDIENCE_OPTIONS.map((a) => (
+                  <button
+                    key={a.value}
+                    onClick={() => setTargetAudience(a.value)}
+                    className={`flex-1 px-2 py-2 rounded-lg text-xs font-medium transition-all text-center ${
+                      targetAudience === a.value
+                        ? "bg-token-gold/10 text-token-gold ring-1 ring-token-gold/30"
+                        : "bg-white/5 text-white/35 hover:bg-white/10 hover:text-white/55"
+                    }`}
+                  >
+                    <span className="block">{a.label}</span>
+                    <span className="block text-[10px] opacity-50">{a.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* ─── Dynamic Cost Hint ──────────────────────────────────────────── */}
         <CostHint

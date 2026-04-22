@@ -21,6 +21,7 @@ import {
   Share2,
   Play,
   QrCode,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -411,6 +412,30 @@ export default function WizardPublish() {
                     </Button>
                   </div>
                 </div>
+
+                {/* View your manga CTA */}
+                {publicUrl && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                    onClick={() => {
+                      trackEvent("stage3_view_manga", { projectId, slug: publishedSlug });
+                      window.open(publicUrl, "_blank");
+                    }}
+                    className="w-full flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-[#00E5A0]/10 to-[#00E5A0]/5 border border-[#00E5A0]/15 hover:border-[#00E5A0]/30 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#00E5A0]/15 flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-[#00E5A0]" />
+                      </div>
+                      <span className="text-sm font-semibold text-white/80 group-hover:text-white/90 transition-colors">
+                        View your manga &rarr;
+                      </span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-white/30" />
+                  </motion.button>
+                )}
 
                 {/* Anime CTA */}
                 <motion.button
