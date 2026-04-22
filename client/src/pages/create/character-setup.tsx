@@ -1,9 +1,9 @@
 /**
- * Stage 5 · Setup — Character/Voice from Catalog (Mangaka variant)
+ * Stage 5 · Setup — Character/Voice/Pose (Mangaka) + LoRA/Clone/Overlay (Studio)
  *
  * Three substeps:
- *   1. Character look  — pick from 12 pre-baked style presets
- *   2. Voices          — 24 stock voices, filterable, 6s preview
+ *   1. Character look  — presets (Mangaka) + LoRA training (Studio+)
+ *   2. Voices          — stock catalog (Mangaka) + voice cloning (Studio+) + overlay (Studio+)
  *   3. Pose references — AI-generated front/side/back, approve or regen (2c)
  *
  * States:
@@ -37,6 +37,29 @@ import {
   POSE_ANGLES,
   POSE_CREDITS,
 } from "@/components/awakli/PoseSheet";
+import {
+  LoRATrainer,
+  type CharacterLoRA,
+  LORA_CREDITS,
+} from "@/components/awakli/LoRATrainer";
+import {
+  VoiceClone,
+  type CharacterVoiceClone,
+  VOICE_CLONE_COPY,
+  VOICE_CLONE_CREDITS,
+} from "@/components/awakli/VoiceClone";
+import {
+  UserVoiceOverlay,
+  type DialogueLine,
+  type TargetVoice,
+  OVERLAY_CREDITS,
+} from "@/components/awakli/UserVoiceOverlay";
+
+// ─── Tier helpers ───────────────────────────────────────────────────────
+const STUDIO_TIERS = new Set(["studio", "enterprise"]);
+function isStudioTier(tier: string): boolean {
+  return STUDIO_TIERS.has(tier);
+}
 
 // ─── Copy strings (exact spec) ─────────────────────────────────────────
 export const SETUP_COPY = {
@@ -65,6 +88,7 @@ export default function WizardCharacterSetup() {
     { enabled: !!user }
   );
   const tier = subscription?.tier ?? "free_trial";
+  const studioAccess = isStudioTier(tier);
 
   const { data: creditData } = trpc.billing.getBalance.useQuery(undefined, {
     enabled: !!user,
@@ -79,7 +103,7 @@ export default function WizardCharacterSetup() {
   // ─── Completed stages for wizard layout ────────────────────────────
   const completedStages = useMemo(() => {
     const s = new Set<number>();
-    for (let i = 0; i <= 4; i++) s.add(i); // stages 0-4 completed to reach here
+    for (let i = 0; i <= 4; i++) s.add(i);
     return s;
   }, []);
 
@@ -120,6 +144,337 @@ export default function WizardCharacterSetup() {
 
   // Substep 3: Pose data
   const [characterPoses, setCharacterPoses] = useState<CharacterPoses[]>([]);
+
+  // ─── Studio: LoRA state ───────────────────────────────────────────
+  const [loraCharacters, setLoraCharacters] = useState<CharacterLoRA[]>([]);
+
+  useEffect(() => {
+    if (characters.length > 0 && loraCharacters.length === 0 && studioAccess) {
+      setLoraCharacters(
+        characters.map((c) => ({
+          characterId: c.id,
+          characterName: c.name,
+          referenceCount: Math.floor(Math.random() * 20) + 5, // placeholder
+          status: "idle" as const,
+          progress: 0,
+        }))
+      );
+    }
+  }, [characters, studioAccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLoraStart = useCallback((characterId: number) => {
+    // stage5_lora_start
+    if (credits < LORA_CREDITS.perCharacter) {
+      toast.error("Not enough credits for LoRA training.");
+      return;
+    }
+    setLoraCharacters((prev) =>
+      prev.map((c) =>
+        c.characterId === characterId
+          ? { ...c, status: "training" as const, progress: 0 }
+          : c
+      )
+    );
+    // Simulate progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 15) + 5;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        setLoraCharacters((prev) =>
+          prev.map((c) =>
+            c.characterId === characterId
+              ? { ...c, status: "ready" as const, progress: 100 }
+              : c
+          )
+        );
+        // stage5_lora_ready
+      } else {
+        setLoraCharacters((prev) =>
+          prev.map((c) =>
+            c.characterId === characterId ? { ...c, progress } : c
+          )
+        );
+      }
+    }, 2000);
+  }, [credits]);
+
+  const handleLoraBatchTrain = useCallback(
+    (ids: number[]) => {
+      ids.forEach((id) => handleLoraStart(id));
+    },
+    [handleLoraStart]
+  );
+
+  const handleLoraRetry = useCallback(
+    (characterId: number) => {
+      setLoraCharacters((prev) =>
+        prev.map((c) =>
+          c.characterId === characterId
+            ? { ...c, status: "idle" as const, progress: 0, errorMessage: undefined }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  // ─── Studio: Voice Clone state ────────────────────────────────────
+  const [voiceCloneCharacters, setVoiceCloneCharacters] = useState<
+    CharacterVoiceClone[]
+  >([]);
+
+  useEffect(() => {
+    if (
+      characters.length > 0 &&
+      voiceCloneCharacters.length === 0 &&
+      studioAccess
+    ) {
+      setVoiceCloneCharacters(
+        characters.map((c) => ({
+          characterId: c.id,
+          characterName: c.name,
+          status: "idle" as const,
+          progress: 0,
+          sampleDuration: null,
+          sampleUrl: null,
+          consentGiven: false, // NEVER pre-checked
+        }))
+      );
+    }
+  }, [characters, studioAccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleVoiceCloneUpload = useCallback(
+    (characterId: number, file: File) => {
+      // Simulate getting duration from file
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(file);
+      audio.addEventListener("loadedmetadata", () => {
+        const duration = Math.round(audio.duration);
+        setVoiceCloneCharacters((prev) =>
+          prev.map((c) =>
+            c.characterId === characterId
+              ? {
+                  ...c,
+                  sampleDuration: duration,
+                  sampleUrl: audio.src,
+                  status:
+                    duration < VOICE_CLONE_COPY.sampleRange.min
+                      ? ("idle" as const)
+                      : ("idle" as const),
+                }
+              : c
+          )
+        );
+        if (duration < VOICE_CLONE_COPY.sampleRange.min) {
+          toast.error(VOICE_CLONE_COPY.tooShort);
+        }
+      });
+    },
+    []
+  );
+
+  const handleVoiceCloneConsent = useCallback(
+    (characterId: number, consented: boolean) => {
+      // stage5_voiceclone_consent
+      setVoiceCloneCharacters((prev) =>
+        prev.map((c) =>
+          c.characterId === characterId
+            ? { ...c, consentGiven: consented }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const handleVoiceCloneStart = useCallback(
+    (characterId: number) => {
+      const char = voiceCloneCharacters.find(
+        (c) => c.characterId === characterId
+      );
+      if (!char) return;
+      if (!char.consentGiven) {
+        toast.error("You must agree to the consent statement before cloning.");
+        return;
+      }
+      if (
+        char.sampleDuration === null ||
+        char.sampleDuration < VOICE_CLONE_COPY.sampleRange.min
+      ) {
+        toast.error(VOICE_CLONE_COPY.tooShort);
+        return;
+      }
+      if (credits < VOICE_CLONE_CREDITS.perVoice) {
+        toast.error("Not enough credits for voice cloning.");
+        return;
+      }
+
+      setVoiceCloneCharacters((prev) =>
+        prev.map((c) =>
+          c.characterId === characterId
+            ? { ...c, status: "training" as const, progress: 0 }
+            : c
+        )
+      );
+
+      // Simulate progress
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 12) + 3;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          setVoiceCloneCharacters((prev) =>
+            prev.map((c) =>
+              c.characterId === characterId
+                ? { ...c, status: "ready" as const, progress: 100 }
+                : c
+            )
+          );
+          // stage5_voiceclone_ready
+        } else {
+          setVoiceCloneCharacters((prev) =>
+            prev.map((c) =>
+              c.characterId === characterId ? { ...c, progress } : c
+            )
+          );
+        }
+      }, 3000);
+    },
+    [voiceCloneCharacters, credits]
+  );
+
+  const handleVoiceCloneRetry = useCallback((characterId: number) => {
+    setVoiceCloneCharacters((prev) =>
+      prev.map((c) =>
+        c.characterId === characterId
+          ? {
+              ...c,
+              status: "idle" as const,
+              progress: 0,
+              errorMessage: undefined,
+            }
+          : c
+      )
+    );
+  }, []);
+
+  // ─── Studio: User Voice Overlay state ─────────────────────────────
+  const [overlayLines, setOverlayLines] = useState<DialogueLine[]>([]);
+  const [overlayConsent, setOverlayConsent] = useState(false); // NEVER pre-checked
+
+  const targetVoices: TargetVoice[] = useMemo(() => {
+    // Use stock voices as targets
+    return [
+      { id: "tv01", name: "Akira", gender: "male" as const },
+      { id: "tv02", name: "Haruki", gender: "male" as const },
+      { id: "tv03", name: "Sakura", gender: "female" as const },
+      { id: "tv04", name: "Yuki", gender: "female" as const },
+      { id: "tv05", name: "Ren", gender: "neutral" as const },
+    ];
+  }, []);
+
+  // Initialize overlay lines from project scenes (placeholder)
+  useEffect(() => {
+    if (studioAccess && overlayLines.length === 0 && characters.length > 0) {
+      // In production, these come from the script/scenes
+      setOverlayLines(
+        characters.slice(0, 3).map((c, i) => ({
+          id: `line_${i}`,
+          characterId: c.id,
+          characterName: c.name,
+          lineText: `Sample dialogue line for ${c.name}`,
+          status: "idle" as const,
+          userAudioUrl: null,
+          userAudioDuration: null,
+          targetVoiceId: null,
+          previewUrl: null,
+        }))
+      );
+    }
+  }, [studioAccess, characters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOverlayRecordStart = useCallback((lineId: string) => {
+    setOverlayLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId ? { ...l, status: "recording" as const } : l
+      )
+    );
+  }, []);
+
+  const handleOverlayRecordStop = useCallback((lineId: string) => {
+    setOverlayLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId
+          ? {
+              ...l,
+              status: "mapping" as const,
+              userAudioUrl: "recorded://placeholder",
+              userAudioDuration: 5,
+            }
+          : l
+      )
+    );
+  }, []);
+
+  const handleOverlayUpload = useCallback((lineId: string, _file: File) => {
+    setOverlayLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId
+          ? {
+              ...l,
+              status: "mapping" as const,
+              userAudioUrl: "uploaded://placeholder",
+              userAudioDuration: 8,
+            }
+          : l
+      )
+    );
+  }, []);
+
+  const handleOverlaySelectVoice = useCallback(
+    (lineId: string, voiceId: string) => {
+      setOverlayLines((prev) =>
+        prev.map((l) =>
+          l.id === lineId ? { ...l, targetVoiceId: voiceId } : l
+        )
+      );
+    },
+    []
+  );
+
+  const handleOverlayPreview = useCallback((lineId: string) => {
+    // stage5_overlay_preview
+    setOverlayLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId ? { ...l, status: "previewing" as const } : l
+      )
+    );
+    // Simulate preview generation (within 8s per spec)
+    setTimeout(() => {
+      setOverlayLines((prev) =>
+        prev.map((l) =>
+          l.id === lineId
+            ? {
+                ...l,
+                status: "preview_ready" as const,
+                previewUrl: "preview://placeholder",
+              }
+            : l
+        )
+      );
+    }, 4000);
+  }, []);
+
+  const handleOverlayApply = useCallback((lineId: string) => {
+    setOverlayLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId ? { ...l, status: "applied" as const } : l
+      )
+    );
+  }, []);
 
   // Initialize pose data when characters load
   useEffect(() => {
@@ -162,7 +517,11 @@ export default function WizardCharacterSetup() {
       toast.error("Please select a style for every character.");
       return;
     }
-    setCompletedSubsteps((prev) => { const n = new Set(prev); n.add(1); return n; });
+    setCompletedSubsteps((prev) => {
+      const n = new Set(prev);
+      n.add(1);
+      return n;
+    });
     setCurrentStep(2);
     // stage5_substep_enter (voices)
   }, [allCharactersStyled]);
@@ -185,7 +544,11 @@ export default function WizardCharacterSetup() {
       toast.error("Please select a voice for every character.");
       return;
     }
-    setCompletedSubsteps((prev) => { const n = new Set(prev); n.add(2); return n; });
+    setCompletedSubsteps((prev) => {
+      const n = new Set(prev);
+      n.add(2);
+      return n;
+    });
     setCurrentStep(3);
     // stage5_substep_enter (poses)
   }, [allCharactersVoiced]);
@@ -217,7 +580,6 @@ export default function WizardCharacterSetup() {
         toast.error("Not enough credits to regenerate this pose.");
         return;
       }
-
       setCharacterPoses((prev) =>
         prev.map((cp) =>
           cp.characterId === characterId
@@ -235,8 +597,6 @@ export default function WizardCharacterSetup() {
             : cp
         )
       );
-
-      // Simulate generation (in production, calls server)
       setTimeout(() => {
         setCharacterPoses((prev) =>
           prev.map((cp) =>
@@ -276,8 +636,6 @@ export default function WizardCharacterSetup() {
           : cp
       )
     );
-
-    // Simulate staggered generation
     POSE_ANGLES.forEach((angle, idx) => {
       setTimeout(() => {
         setCharacterPoses((prev) =>
@@ -312,7 +670,11 @@ export default function WizardCharacterSetup() {
       toast.error("Please approve all poses for every character.");
       return;
     }
-    setCompletedSubsteps((prev) => { const n = new Set(prev); n.add(3); return n; });
+    setCompletedSubsteps((prev) => {
+      const n = new Set(prev);
+      n.add(3);
+      return n;
+    });
     // stage5_ready
   }, [allPosesApproved]);
 
@@ -326,7 +688,6 @@ export default function WizardCharacterSetup() {
     navigate(`/create/video?projectId=${projectId}`);
   }, [navigate, projectId]);
 
-  // ─── Step click handler ───────────────────────────────────────────
   const handleStepClick = useCallback((step: SetupSubstep) => {
     // stage5_substep_enter
     setCurrentStep(step);
@@ -369,9 +730,7 @@ export default function WizardCharacterSetup() {
               {characters.length === 0 ? (
                 <div className="text-center py-16">
                   <Loader2 className="w-6 h-6 text-white/20 animate-spin mx-auto mb-3" />
-                  <p className="text-sm text-white/30">
-                    Loading characters…
-                  </p>
+                  <p className="text-sm text-white/30">Loading characters…</p>
                 </div>
               ) : (
                 <>
@@ -381,6 +740,33 @@ export default function WizardCharacterSetup() {
                     onSelect={handleStyleSelect}
                     currentTier={tier}
                   />
+
+                  {/* Studio: LoRA Training */}
+                  {studioAccess && loraCharacters.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-violet-400" />
+                        <h3 className="text-sm font-semibold text-white/70">
+                          LoRA Character Consistency
+                        </h3>
+                        <span className="text-[10px] text-white/20 ml-auto">
+                          Studio feature
+                        </span>
+                      </div>
+                      <LoRATrainer
+                        characters={loraCharacters}
+                        onStartTraining={handleLoraStart}
+                        onBatchTrain={
+                          tier === "enterprise"
+                            ? handleLoraBatchTrain
+                            : undefined
+                        }
+                        onRetry={handleLoraRetry}
+                        creditBalance={credits}
+                        currentTier={tier}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex justify-end">
                     <button
@@ -412,6 +798,57 @@ export default function WizardCharacterSetup() {
                 onSelect={handleVoiceSelect}
                 currentTier={tier}
               />
+
+              {/* Studio: Voice Cloning */}
+              {studioAccess && voiceCloneCharacters.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-sm font-semibold text-white/70">
+                      Voice Cloning
+                    </h3>
+                    <span className="text-[10px] text-white/20 ml-auto">
+                      Studio feature
+                    </span>
+                  </div>
+                  <VoiceClone
+                    characters={voiceCloneCharacters}
+                    onUploadSample={handleVoiceCloneUpload}
+                    onConsentChange={handleVoiceCloneConsent}
+                    onStartCloning={handleVoiceCloneStart}
+                    onRetry={handleVoiceCloneRetry}
+                    creditBalance={credits}
+                  />
+                </div>
+              )}
+
+              {/* Studio: User Voice Overlay */}
+              {studioAccess && overlayLines.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-sm font-semibold text-white/70">
+                      Voice Overlay
+                    </h3>
+                    <span className="text-[10px] text-white/20 ml-auto">
+                      Studio feature
+                    </span>
+                  </div>
+                  <UserVoiceOverlay
+                    lines={overlayLines}
+                    targetVoices={targetVoices}
+                    onRecordStart={handleOverlayRecordStart}
+                    onRecordStop={handleOverlayRecordStop}
+                    onUploadAudio={handleOverlayUpload}
+                    onSelectTargetVoice={handleOverlaySelectVoice}
+                    onGeneratePreview={handleOverlayPreview}
+                    onApply={handleOverlayApply}
+                    creditBalance={credits}
+                    consentGiven={overlayConsent}
+                    onConsentChange={setOverlayConsent}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <button

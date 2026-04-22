@@ -4141,3 +4141,16 @@
 - [x] Exact copy strings: page title, subhead, substep labels, voice preview, pose regenerate, ready CTA
 - [x] Analytics events: stage5_substep_enter, stage5_preset_pick, stage5_voice_pick, stage5_pose_regen, stage5_ready
 - [x] Write vitest tests for substep logic, copy strings, credit costs, and tier gating (52 tests passing)
+
+## Stage 5B · Setup — LoRA + Voice Cloning + Overlay (Studio / Studio Pro)
+- [x] Create LoRATrainer component — per-character training using S0-C refs + S2 panels, SSE progress, 4 states (idle/training/ready/error)
+- [x] LoRA cost: 120 credits/character; Studio Pro: batch LoRA across 8 chars + 500c monthly pool
+- [x] Create VoiceClone component — upload 30-120s sample, 10-min training, consent checkbox (never pre-checked)
+- [x] Voice clone cost: 80 credits/voice; reject samples <25s with clear error
+- [x] Create UserVoiceOverlay component — record/upload dialogue (2-min cap), map to AI voice, preview within 8s
+- [x] Overlay cost: 6 credits/line
+- [x] Consent gating: voice clone and overlay require ticked consent box; cannot be pre-checked; validation error without it
+- [x] Integrate all 3 components into character-setup.tsx with Studio/Studio Pro tier gating
+- [x] Exact copy strings: LoRA CTA, LoRA cost, voice clone consent, voice clone cost, overlay cost, overlay hint
+- [x] Analytics events: stage5_lora_start, stage5_lora_ready, stage5_voiceclone_consent, stage5_voiceclone_ready, stage5_overlay_preview
+- [x] Write vitest tests for LoRA training, voice clone consent, overlay credits, copy strings, and tier gating (66 tests passing)
