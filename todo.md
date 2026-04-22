@@ -4014,3 +4014,17 @@
 - [x] Compute per-stage and total project cost based on selected panel count
 - [x] Show balance, stage cost, and forecast dynamically in the input page
 - [x] Update tests for dynamic cost logic (26 tests passing)
+
+## Stage 0 · Input — Manga Upload (Mangaka)
+- [x] Add tab switcher: "Start from an idea" | "Upload manga / webtoon"
+- [x] Create MangaUpload component with drag-drop zone (PDF/CBZ/ZIP/images, 80MB max, 40 files max)
+- [x] MangaUpload states: idle (pulse), dragging (violet dashed), uploading (progress ring), parsed (panel grid), error (retry)
+- [x] Create server-side upload endpoint for manga files with S3 storage
+- [x] Create PanelExtractor preview grid with auto-detected panels and drag-reorder
+- [x] Extended LengthPicker for Mangaka: 60/80/120 panels, 150+ locked (Studio)
+- [x] Multi-chapter picker unlocked for Mangaka (max 3 chapters × 50 panels)
+- [x] Persist panel order to project via trpc.uploads.savePanelOrder
+- [x] Cost: 2 credits per uploaded panel for ingest + OCR
+- [x] Exact copy strings: tab labels, drop zone hint, parsed header, length locked tooltip
+- [x] Analytics events: stage0_upload_start, stage0_upload_complete, stage0_panels_reordered, stage0_upload_failed
+- [x] Write vitest tests for upload validation, panel extraction, and tier gating (30 tests passing)

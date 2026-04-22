@@ -530,6 +530,86 @@ const uploadsRouter = router({
     .query(async ({ ctx, input }) => {
       return getMangaUploadsByProject(input.projectId, ctx.user.id);
     }),
+
+  /**
+   * Extract panels from an uploaded image.
+   * Runs server-side gutter detection and returns extracted panel URLs.
+   * Cost: 2 credits per detected panel.
+   */
+  extractPanels: protectedProcedure
+    .input(z.object({
+      uploadId: z.number(),
+      projectId: z.number(),
+      pageIndex: z.number().default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const upload = await getMangaUploadById(input.uploadId, ctx.user.id);
+      if (!upload) throw new TRPCError({ code: "NOT_FOUND", message: "Upload not found" });
+      if (!upload.fileUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload has no file URL — confirm upload first" });
+
+      // Fetch the uploaded image
+      const response = await fetch(upload.fileUrl);
+      if (!response.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to fetch uploaded file" });
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+
+      // Extract panels
+      const { extractPanelsFromImage } = await import("./panelExtractor");
+      const panels = await extractPanelsFromImage(
+        imageBuffer,
+        ctx.user.id,
+        input.projectId,
+        input.pageIndex
+      );
+
+      // Update upload with panel count
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (db) {
+        const { mangaUploads } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.update(mangaUploads)
+          .set({ pageCount: panels.length, status: "completed" })
+          .where(eq(mangaUploads.id, input.uploadId));
+      }
+
+      return { panels, panelCount: panels.length };
+    }),
+
+  /**
+   * Save the user's custom panel ordering for a project.
+   * Persists to project metadata.
+   */
+  savePanelOrder: protectedProcedure
+    .input(z.object({
+      projectId: z.number(),
+      panelOrder: z.array(z.object({
+        id: z.string(),
+        index: z.number(),
+        url: z.string(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const project = await getProjectById(input.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (db) {
+        const { projects } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const existingMeta = (project as any).uploadMetadata ?? {};
+        await db.update(projects)
+          .set({
+            uploadMetadata: {
+              ...existingMeta,
+              panelOrder: input.panelOrder,
+            },
+          })
+          .where(eq(projects.id, input.projectId));
+      }
+
+      return { saved: true, panelCount: input.panelOrder.length };
+    }),
 });
 
 // ─── Jobs Router ──────────────────────────────────────────────────────────

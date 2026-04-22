@@ -8,12 +8,22 @@ import { Lock } from "lucide-react";
 import { UpgradeModalBus } from "./UpgradeModal";
 
 // ─── Option Definitions ─────────────────────────────────────────────────────
-const LENGTH_OPTIONS = [
+const APPRENTICE_OPTIONS = [
   { value: 20, label: "20 panels", locked: false },
   { value: 30, label: "30 panels", locked: false },
   { value: 40, label: "40 panels", locked: false },
-  { value: 50, label: "50 panels", locked: true, tierLabel: "Mangaka +" },
-  { value: 60, label: "60 panels", locked: true, tierLabel: "Mangaka +" },
+  { value: 50, label: "50 panels", locked: true, tierLabel: "Mangaka +", requiredTier: "creator" as const },
+  { value: 60, label: "60 panels", locked: true, tierLabel: "Mangaka +", requiredTier: "creator" as const },
+];
+
+const MANGAKA_OPTIONS = [
+  { value: 20, label: "20 panels", locked: false },
+  { value: 30, label: "30 panels", locked: false },
+  { value: 40, label: "40 panels", locked: false },
+  { value: 60, label: "60 panels", locked: false },
+  { value: 80, label: "80 panels", locked: false },
+  { value: 120, label: "120 panels", locked: false },
+  { value: 150, label: "150+ panels", locked: true, tierLabel: "Studio", requiredTier: "studio" as const },
 ];
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -22,24 +32,36 @@ interface LengthPickerProps {
   onChange: (value: number) => void;
   /** If true, all options are unlocked (user has Mangaka+ tier) */
   allUnlocked?: boolean;
+  /** Upload mode unlocks higher panel counts */
+  uploadMode?: boolean;
+  /** User's current tier */
+  userTier?: string;
 }
 
 export default function LengthPicker({
   value,
   onChange,
   allUnlocked = false,
+  uploadMode = false,
+  userTier = "free_trial",
 }: LengthPickerProps) {
+  // Choose options based on tier/mode
+  const isMangakaPlus = ["creator", "creator_pro", "studio", "enterprise"].includes(userTier);
+  const LENGTH_OPTIONS = (uploadMode || isMangakaPlus) ? MANGAKA_OPTIONS : APPRENTICE_OPTIONS;
+
   const handleSelect = (option: (typeof LENGTH_OPTIONS)[number]) => {
     if (option.locked && !allUnlocked) {
-      // Emit analytics
+      const requiredTier = (option as any).requiredTier ?? "creator";
+      const isStudioLock = requiredTier === "studio";
       emitAnalytics("stage0_upgrade_prompt", { panels: option.value });
-      // Open UpgradeModal with Mangaka pre-selected
       UpgradeModalBus.open({
-        currentTier: "free_trial",
-        required: "creator",
-        requiredDisplayName: "Mangaka",
-        upgradeSku: "price_mangaka_monthly",
-        ctaText: "Unlock with Mangaka — from $19/mo",
+        currentTier: userTier,
+        required: requiredTier,
+        requiredDisplayName: isStudioLock ? "Studio" : "Mangaka",
+        upgradeSku: isStudioLock ? "price_studio_monthly" : "price_mangaka_monthly",
+        ctaText: isStudioLock
+          ? "150+ panel projects unlock on Studio"
+          : "Unlock with Mangaka — from $19/mo",
         pricingUrl: "/pricing",
       });
       return;

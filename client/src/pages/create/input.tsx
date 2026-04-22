@@ -1,20 +1,33 @@
 /**
- * Stage 0 · Input — Text-only (Apprentice)
+ * Stage 0 · Input — Text + Manga Upload
  *
- * Magical IdeaPrompt textarea with conic-gradient frame,
- * LengthPicker (20/30/40 pills), locked ChapterPicker,
- * and "Summon script →" CTA.
+ * Tab A: "Start from an idea" — IdeaPrompt textarea + LengthPicker + ChapterPicker
+ * Tab B: "Upload manga / webtoon" — MangaUpload + PanelExtractor (Mangaka+ only)
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
-import { motion } from "framer-motion";
-import { ArrowRight, Loader2, Lock, BookOpen } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowRight,
+  Loader2,
+  Lock,
+  BookOpen,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import IdeaPrompt from "@/components/awakli/IdeaPrompt";
 import LengthPicker from "@/components/awakli/LengthPicker";
+import MangaUpload, {
+  type ExtractedPanel,
+} from "@/components/awakli/MangaUpload";
+import PanelExtractor, {
+  type Panel,
+} from "@/components/awakli/PanelExtractor";
+import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +37,8 @@ import {
 const MIN_CHARS = 40;
 const MAX_CHARS = 2000;
 
+type InputTab = "idea" | "upload";
+
 export default function WizardInput() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -32,8 +47,11 @@ export default function WizardInput() {
   const projectIdParam = params.get("projectId");
   const promptParam = params.get("prompt");
 
+  // ─── State ──────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<InputTab>("idea");
   const [prompt, setPrompt] = useState(promptParam || "");
   const [panelCount, setPanelCount] = useState(20);
+  const [chapterCount, setChapterCount] = useState(1);
   const [creating, setCreating] = useState(false);
   const [projectId, setProjectId] = useState<number | null>(
     projectIdParam && projectIdParam !== "new"
@@ -41,6 +59,17 @@ export default function WizardInput() {
       : null
   );
   const [title, setTitle] = useState("Untitled Project");
+
+  // Upload state
+  const [extractedPanels, setExtractedPanels] = useState<Panel[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Tier detection
+  const { data: subData } = trpc.billing.getSubscription.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const userTier = (subData?.tier as string) ?? "free_trial";
+  const isMangakaPlus = ["creator", "creator_pro", "studio", "enterprise"].includes(userTier);
 
   const createMut = trpc.projects.create.useMutation();
   const { advance, advancing } = useAdvanceStage(String(projectId || ""), 0);
@@ -76,14 +105,18 @@ export default function WizardInput() {
     }
   }, [projectIdParam, user]);
 
-  // Emit stage0_open analytics on mount
+  // Emit analytics on mount
   useEffect(() => {
     emitAnalytics("stage0_open");
   }, []);
 
-  const isValid = prompt.trim().length >= MIN_CHARS;
-  const isOverCap = prompt.length > MAX_CHARS;
-  const canProceed = isValid && !isOverCap;
+  // ─── Validation ─────────────────────────────────────────────────────────────
+  const isValid =
+    activeTab === "idea"
+      ? prompt.trim().length >= MIN_CHARS
+      : extractedPanels.length > 0;
+  const isOverCap = activeTab === "idea" && prompt.length > MAX_CHARS;
+  const canProceed = isValid && !isOverCap && !isUploading;
 
   const completedStages = useMemo(() => {
     const s = new Set<number>();
@@ -96,21 +129,60 @@ export default function WizardInput() {
     return {
       title,
       description: prompt,
-      panelCount,
+      panelCount: activeTab === "upload" ? extractedPanels.length : panelCount,
     };
-  }, [projectId, title, prompt, panelCount]);
+  }, [projectId, title, prompt, panelCount, activeTab, extractedPanels.length]);
 
+  // ─── Handlers ───────────────────────────────────────────────────────────────
   const handleSummon = async () => {
     if (!canProceed || !projectId) return;
     emitAnalytics("stage0_idea_submit", {
+      mode: activeTab,
       charCount: prompt.length,
-      panelCount,
+      panelCount: activeTab === "upload" ? extractedPanels.length : panelCount,
     });
     await advance({
-      inputs: { prompt, panelCount, title },
+      inputs: {
+        prompt,
+        panelCount: activeTab === "upload" ? extractedPanels.length : panelCount,
+        chapterCount,
+        title,
+        inputMode: activeTab,
+        uploadedPanelCount: activeTab === "upload" ? extractedPanels.length : 0,
+      },
     });
   };
 
+  const handleTabSwitch = (tab: InputTab) => {
+    if (tab === "upload" && !isMangakaPlus) {
+      emitAnalytics("stage0_upgrade_prompt", { trigger: "upload_tab" });
+      UpgradeModalBus.open({
+        currentTier: userTier,
+        required: "creator",
+        requiredDisplayName: "Mangaka",
+        upgradeSku: "price_mangaka_monthly",
+        ctaText: "Unlock with Mangaka — from $19/mo",
+        pricingUrl: "/pricing",
+      });
+      return;
+    }
+    setActiveTab(tab);
+  };
+
+  const handlePanelsExtracted = useCallback((panels: ExtractedPanel[]) => {
+    const mapped: Panel[] = panels.map((p) => ({
+      ...p,
+      fileKey: p.fileKey,
+    }));
+    setExtractedPanels((prev) => [...prev, ...mapped]);
+    setIsUploading(false);
+  }, []);
+
+  const handlePanelsChange = useCallback((panels: Panel[]) => {
+    setExtractedPanels(panels);
+  }, []);
+
+  // ─── Loading state ──────────────────────────────────────────────────────────
   if (creating) {
     return (
       <CreateWizardLayout stage={0} projectId="new" projectTitle="Creating...">
@@ -143,113 +215,329 @@ export default function WizardInput() {
           </h1>
         </div>
 
-        {/* ─── IdeaPrompt (magical textarea) ────────────────────────── */}
-        <IdeaPrompt
-          value={prompt}
-          onChange={setPrompt}
-          minChars={MIN_CHARS}
-          maxChars={MAX_CHARS}
-          placeholder="A rain-soaked rooftop. Two rivals. One city. Go\u2026"
-        />
-
-        {/* ─── Controls Row ─────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
-          {/* Left: Length + Chapter pickers */}
-          <div className="space-y-5 flex-1">
-            {/* Length Picker */}
-            <LengthPicker
-              value={panelCount}
-              onChange={setPanelCount}
-              allUnlocked={false}
-            />
-
-            {/* Chapter Picker (locked for Apprentice) */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
-                Chapters
-              </label>
-              <div className="flex gap-2">
-                {/* Active chapter */}
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-token-violet/10 text-token-violet text-sm font-medium ring-1 ring-token-violet/30">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Chapter 1
-                </div>
-
-                {/* Locked multi-chapter */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed">
-                      <Lock className="w-3 h-3" />
-                      Multi-chapter
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
-                  >
-                    Multi-chapter stories are part of Mangaka — upgrade to unlock
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Summon button */}
-          <div className="flex-shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <motion.button
-                    whileHover={{
-                      scale: canProceed && !advancing ? 1.02 : 1,
-                    }}
-                    whileTap={{
-                      scale: canProceed && !advancing ? 0.97 : 1,
-                    }}
-                    onClick={handleSummon}
-                    disabled={!canProceed || advancing}
-                    className={`flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all whitespace-nowrap ${
-                      canProceed && !advancing
-                        ? "bg-gradient-to-r from-token-mint to-token-cyan text-[#0B0B18] shadow-[0_4px_24px_rgba(0,229,160,0.25)]"
-                        : "bg-white/5 text-white/20 cursor-not-allowed"
-                    }`}
-                  >
-                    {advancing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Summoning...
-                      </>
-                    ) : (
-                      <>
-                        Summon script
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </motion.button>
-                </div>
-              </TooltipTrigger>
-              {!canProceed && !advancing && (
-                <TooltipContent
-                  side="top"
-                  className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs max-w-[260px]"
-                >
-                  {isOverCap
-                    ? "Your idea is over 2,000 characters — trim it down a bit"
-                    : "Give us a bit more to work with — at least 40 characters"}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </div>
+        {/* ─── Tab Switcher ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-center gap-1 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.06] max-w-md mx-auto">
+          <TabButton
+            active={activeTab === "idea"}
+            onClick={() => handleTabSwitch("idea")}
+            icon={<Sparkles className="w-3.5 h-3.5" />}
+            label="Start from an idea"
+          />
+          <TabButton
+            active={activeTab === "upload"}
+            onClick={() => handleTabSwitch("upload")}
+            icon={<Upload className="w-3.5 h-3.5" />}
+            label="Upload manga / webtoon"
+            locked={!isMangakaPlus}
+          />
         </div>
 
+        {/* ─── Tab Content ──────────────────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          {activeTab === "idea" ? (
+            <motion.div
+              key="idea"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-8"
+            >
+              {/* IdeaPrompt */}
+              <IdeaPrompt
+                value={prompt}
+                onChange={setPrompt}
+                minChars={MIN_CHARS}
+                maxChars={MAX_CHARS}
+                placeholder="A rain-soaked rooftop. Two rivals. One city. Go\u2026"
+              />
+
+              {/* Controls Row */}
+              <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
+                <div className="space-y-5 flex-1">
+                  <LengthPicker
+                    value={panelCount}
+                    onChange={setPanelCount}
+                    allUnlocked={false}
+                    userTier={userTier}
+                  />
+                  <ChapterPicker
+                    value={chapterCount}
+                    onChange={setChapterCount}
+                    isMangakaPlus={isMangakaPlus}
+                    userTier={userTier}
+                  />
+                </div>
+                <SummonButton
+                  canProceed={canProceed}
+                  advancing={advancing}
+                  isOverCap={isOverCap}
+                  onClick={handleSummon}
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="upload"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-8"
+            >
+              {/* Upload Zone */}
+              <MangaUpload
+                projectId={projectId}
+                onPanelsExtracted={handlePanelsExtracted}
+                onUploadStart={() => setIsUploading(true)}
+                onError={() => setIsUploading(false)}
+              />
+
+              {/* Panel Extractor Grid */}
+              {extractedPanels.length > 0 && projectId && (
+                <PanelExtractor
+                  panels={extractedPanels}
+                  projectId={projectId}
+                  onPanelsChange={handlePanelsChange}
+                />
+              )}
+
+              {/* Upload Controls Row */}
+              <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
+                <div className="space-y-5 flex-1">
+                  <LengthPicker
+                    value={extractedPanels.length || panelCount}
+                    onChange={setPanelCount}
+                    allUnlocked={false}
+                    uploadMode
+                    userTier={userTier}
+                  />
+                  <ChapterPicker
+                    value={chapterCount}
+                    onChange={setChapterCount}
+                    isMangakaPlus={isMangakaPlus}
+                    maxChapters={3}
+                    userTier={userTier}
+                  />
+                </div>
+                <SummonButton
+                  canProceed={canProceed}
+                  advancing={advancing}
+                  isOverCap={false}
+                  onClick={handleSummon}
+                  label={extractedPanels.length > 0 ? "Continue with panels" : "Upload first"}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ─── Dynamic Cost Hint ──────────────────────────────────────────── */}
-        <CostHint panelCount={panelCount} />
+        <CostHint
+          panelCount={activeTab === "upload" ? extractedPanels.length || panelCount : panelCount}
+          isUploadMode={activeTab === "upload"}
+        />
       </div>
     </CreateWizardLayout>
   );
 }
+
+// ─── Tab Button ───────────────────────────────────────────────────────────────
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+  locked = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  locked?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex-1 justify-center ${
+        active
+          ? "bg-white/[0.08] text-white/90 shadow-sm"
+          : locked
+          ? "text-white/25 hover:text-white/35"
+          : "text-white/40 hover:text-white/60 hover:bg-white/[0.03]"
+      }`}
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+      <span className="sm:hidden">{locked ? "Upload" : label.split(" ").pop()}</span>
+      {locked && <Lock className="w-3 h-3 text-white/20" />}
+    </button>
+  );
+}
+
+// ─── Chapter Picker ───────────────────────────────────────────────────────────
+
+function ChapterPicker({
+  value,
+  onChange,
+  isMangakaPlus,
+  maxChapters = 1,
+  userTier = "free_trial",
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  isMangakaPlus: boolean;
+  maxChapters?: number;
+  userTier?: string;
+}) {
+  const effectiveMax = isMangakaPlus ? maxChapters : 1;
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+        Chapters
+      </label>
+      <div className="flex gap-2">
+        {/* Chapter pills */}
+        {Array.from({ length: Math.max(effectiveMax, 1) }, (_, i) => i + 1).map(
+          (ch) => (
+            <button
+              key={ch}
+              onClick={() => onChange(ch)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                value === ch
+                  ? "bg-token-violet/10 text-token-violet ring-1 ring-token-violet/30"
+                  : "bg-white/5 text-white/40 hover:bg-white/10"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Chapter {ch}
+            </button>
+          )
+        )}
+
+        {/* Locked multi-chapter (for Apprentice) */}
+        {!isMangakaPlus && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  UpgradeModalBus.open({
+                    currentTier: userTier,
+                    required: "creator",
+                    requiredDisplayName: "Mangaka",
+                    upgradeSku: "price_mangaka_monthly",
+                    ctaText: "Unlock with Mangaka — from $19/mo",
+                    pricingUrl: "/pricing",
+                  });
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed"
+              >
+                <Lock className="w-3 h-3" />
+                Multi-chapter
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
+            >
+              Multi-chapter stories are part of Mangaka — upgrade to unlock
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Locked additional chapters for Mangaka (max 3) */}
+        {isMangakaPlus && effectiveMax < 3 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed">
+                <Lock className="w-3 h-3" />
+                More chapters
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
+            >
+              Up to 3 chapters per project on Mangaka
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Summon Button ────────────────────────────────────────────────────────────
+
+function SummonButton({
+  canProceed,
+  advancing,
+  isOverCap,
+  onClick,
+  label,
+}: {
+  canProceed: boolean;
+  advancing: boolean;
+  isOverCap: boolean;
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <div className="flex-shrink-0">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>
+            <motion.button
+              whileHover={{ scale: canProceed && !advancing ? 1.02 : 1 }}
+              whileTap={{ scale: canProceed && !advancing ? 0.97 : 1 }}
+              onClick={onClick}
+              disabled={!canProceed || advancing}
+              className={`flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all whitespace-nowrap ${
+                canProceed && !advancing
+                  ? "bg-gradient-to-r from-token-mint to-token-cyan text-[#0B0B18] shadow-[0_4px_24px_rgba(0,229,160,0.25)]"
+                  : "bg-white/5 text-white/20 cursor-not-allowed"
+              }`}
+            >
+              {advancing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Summoning...
+                </>
+              ) : (
+                <>
+                  {label || "Summon script"}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </motion.button>
+          </div>
+        </TooltipTrigger>
+        {!canProceed && !advancing && (
+          <TooltipContent
+            side="top"
+            className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs max-w-[260px]"
+          >
+            {isOverCap
+              ? "Your idea is over 2,000 characters — trim it down a bit"
+              : "Give us a bit more to work with — at least 40 characters"}
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </div>
+  );
+}
+
 // ─── Dynamic Cost Hint Component ─────────────────────────────────────────────
-function CostHint({ panelCount }: { panelCount: number }) {
+
+function CostHint({
+  panelCount,
+  isUploadMode = false,
+}: {
+  panelCount: number;
+  isUploadMode?: boolean;
+}) {
   const { user } = useAuth();
   const { data: creditData } = trpc.projects.creditBalance.useQuery(undefined, {
     enabled: !!user,
@@ -258,13 +546,13 @@ function CostHint({ panelCount }: { panelCount: number }) {
   // Scale costs based on panel count (base costs are for 20 panels)
   const scaleFactor = panelCount / 20;
 
-  // Stage 0 cost (input → setup) is always 0 from server
+  // Stage 0 cost (input → setup)
   const stageCost = creditData?.stageCosts?.[0]?.cost ?? 0;
 
-  // Total project forecast: scale panel-dependent stages by panel count
-  // Stages 2 (script→panels) and 3 (panels→gate) scale with panel count
-  // Stages 0,1 (free) and 4 (free gate) don't scale
-  // Stage 5 (video→publish) scales with panel count
+  // Upload mode adds 2c per panel for ingest + OCR
+  const uploadIngestCost = isUploadMode ? panelCount * 2 : 0;
+
+  // Total project forecast
   const baseTotalCost = creditData?.totalProjectCost ?? 17;
   const scalableCosts = (creditData?.stageCosts ?? []).reduce(
     (sum: number, s: { cost: number; stage: number }) =>
@@ -272,7 +560,7 @@ function CostHint({ panelCount }: { panelCount: number }) {
     0
   );
   const fixedCosts = baseTotalCost - scalableCosts;
-  const scaledTotal = Math.round(fixedCosts + scalableCosts * scaleFactor);
+  const scaledTotal = Math.round(fixedCosts + scalableCosts * scaleFactor + uploadIngestCost);
 
   const balance = creditData?.balance ?? 0;
   const canAfford = balance >= scaledTotal;
@@ -281,6 +569,9 @@ function CostHint({ panelCount }: { panelCount: number }) {
     <div className="text-center">
       <p className="text-[11px] text-white/20">
         This stage: {stageCost === 0 ? "free" : `${stageCost}c`}
+        {isUploadMode && panelCount > 0 && (
+          <span> + {uploadIngestCost}c ingest</span>
+        )}
         {" \u00b7 "}
         full project forecast:{" "}
         <span className={canAfford ? "text-token-mint/40" : "text-red-400/50"}>
