@@ -35,6 +35,12 @@ export const CAPABILITY_KEYS = [
   "team_collaboration",
   "api_access",
   "white_label",
+
+  // Character & style features (Studio+)
+  "character_foundation",
+  "style_refs",
+  "character_library_reuse",
+  "whole_book_mode",
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
@@ -68,6 +74,12 @@ const CAPABILITY_MIN_TIER: Record<CapabilityKey, TierName> = {
   team_collaboration:  "studio",
   api_access:          "enterprise",
   white_label:         "enterprise",
+
+  // Character & style features
+  character_foundation:    "studio",
+  style_refs:              "studio",
+  character_library_reuse: "studio",
+  whole_book_mode:         "studio",
 };
 
 // ─── Tier Display Metadata ──────────────────────────────────────────────────

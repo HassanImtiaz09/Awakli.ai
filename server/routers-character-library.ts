@@ -1614,6 +1614,105 @@ export const characterLibraryRouter = router({
 
       return generateRetrainingRecommendation(attempts);
     }),
+
+  // ── Add Reference Images (for character foundation) ──────────────────
+  addRefImages: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+      images: z.array(z.object({
+        storageUrl: z.string(),
+        mimeType: z.string(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+      })).min(1).max(6),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Insert asset records
+      const insertedIds: number[] = [];
+      for (const img of input.images) {
+        const [result] = await db.insert(characterAssets).values({
+          characterId: input.characterId,
+          assetType: "reference_image",
+          storageUrl: img.storageUrl,
+          version: 1,
+          metadata: { width: img.width, height: img.height, mimeType: img.mimeType },
+          isActive: 1,
+        });
+        insertedIds.push((result as any).insertId as number);
+      }
+
+      return { addedCount: insertedIds.length, assetIds: insertedIds };
+    }),
+
+  // ── Compute Embeddings (trigger CLIP/DINO for character) ────────────
+  computeEmbeddings: protectedProcedure
+    .input(z.object({
+      characterId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Verify ownership
+      const [char] = await db.select()
+        .from(characterLibrary)
+        .where(and(eq(characterLibrary.id, input.characterId), eq(characterLibrary.userId, ctx.user.id)))
+        .limit(1);
+      if (!char) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+
+      // Get reference images
+      const refImages = await db.select()
+        .from(characterAssets)
+        .where(and(
+          eq(characterAssets.characterId, input.characterId),
+          eq(characterAssets.assetType, "reference_image"),
+          eq(characterAssets.isActive, 1)
+        ));
+
+      if (refImages.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No reference images found. Add at least one reference image first." });
+      }
+
+      // Import and run embedding computation
+      const { computeCharacterEmbedding } = await import("./character-embedding");
+      const result = await computeCharacterEmbedding(
+        input.characterId,
+        ctx.user.id,
+        refImages.map(r => ({ url: r.storageUrl, fileKey: r.storageUrl, mimeType: "image/png" }))
+      );
+
+      // Store embedding URL on the character record
+      await db.update(characterLibrary)
+        .set({ activeClipEmbeddingUrl: result.embeddingUrl })
+        .where(eq(characterLibrary.id, input.characterId));
+
+      // Also store as an asset
+      await db.insert(characterAssets).values({
+        characterId: input.characterId,
+        assetType: "clip_embedding",
+        storageUrl: result.embeddingUrl,
+        version: 1,
+        metadata: { dimensions: result.dimensions, computeTimeMs: result.computeTimeMs },
+        isActive: 1,
+      });
+
+      return {
+        embeddingUrl: result.embeddingUrl,
+        dimensions: result.dimensions,
+        computeTimeMs: result.computeTimeMs,
+        status: "ready" as const,
+      };
+    }),
 });
 
 // ─── Simulated Completion Helper ──────────────────────────────────────────

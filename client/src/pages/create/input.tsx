@@ -1,8 +1,9 @@
 /**
- * Stage 0 · Input — Text + Manga Upload
+ * Stage 0 · Input — Text + Manga Upload + Character Foundation
  *
  * Tab A: "Start from an idea" — IdeaPrompt textarea + LengthPicker + ChapterPicker
  * Tab B: "Upload manga / webtoon" — MangaUpload + PanelExtractor (Mangaka+ only)
+ * Tab C: "Upload character sheets / style refs" — CharacterFoundation + StyleSheetUpload (Studio+ only)
  */
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -14,6 +15,7 @@ import {
   BookOpen,
   Sparkles,
   Upload,
+  Users,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -27,6 +29,12 @@ import MangaUpload, {
 import PanelExtractor, {
   type Panel,
 } from "@/components/awakli/PanelExtractor";
+import CharacterFoundation, {
+  type CharacterData,
+} from "@/components/awakli/CharacterFoundation";
+import StyleSheetUpload, {
+  type StyleRef,
+} from "@/components/awakli/StyleSheetUpload";
 import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
 import {
   Tooltip,
@@ -37,7 +45,7 @@ import {
 const MIN_CHARS = 40;
 const MAX_CHARS = 2000;
 
-type InputTab = "idea" | "upload";
+type InputTab = "idea" | "upload" | "characters";
 
 export default function WizardInput() {
   const { user } = useAuth();
@@ -64,12 +72,17 @@ export default function WizardInput() {
   const [extractedPanels, setExtractedPanels] = useState<Panel[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Character foundation state (Studio+)
+  const [characters, setCharacters] = useState<CharacterData[]>([]);
+  const [styleRefs, setStyleRefs] = useState<StyleRef[]>([]);
+
   // Tier detection
   const { data: subData } = trpc.billing.getSubscription.useQuery(undefined, {
     enabled: !!user,
   });
   const userTier = (subData?.tier as string) ?? "free_trial";
   const isMangakaPlus = ["creator", "creator_pro", "studio", "enterprise"].includes(userTier);
+  const isStudioPlus = ["studio", "enterprise"].includes(userTier);
 
   const createMut = trpc.projects.create.useMutation();
   const { advance, advancing } = useAdvanceStage(String(projectId || ""), 0);
@@ -111,10 +124,16 @@ export default function WizardInput() {
   }, []);
 
   // ─── Validation ─────────────────────────────────────────────────────────────
-  const isValid =
-    activeTab === "idea"
-      ? prompt.trim().length >= MIN_CHARS
-      : extractedPanels.length > 0;
+  const isValid = useMemo(() => {
+    if (activeTab === "idea") return prompt.trim().length >= MIN_CHARS;
+    if (activeTab === "upload") return extractedPanels.length > 0;
+    if (activeTab === "characters") {
+      // Need at least one character with at least one ref image
+      return characters.length > 0 && characters.some((c) => c.refImages.length > 0);
+    }
+    return false;
+  }, [activeTab, prompt, extractedPanels, characters]);
+
   const isOverCap = activeTab === "idea" && prompt.length > MAX_CHARS;
   const canProceed = isValid && !isOverCap && !isUploading;
 
@@ -140,6 +159,8 @@ export default function WizardInput() {
       mode: activeTab,
       charCount: prompt.length,
       panelCount: activeTab === "upload" ? extractedPanels.length : panelCount,
+      characterCount: activeTab === "characters" ? characters.length : 0,
+      styleRefCount: activeTab === "characters" ? styleRefs.length : 0,
     });
     await advance({
       inputs: {
@@ -149,6 +170,8 @@ export default function WizardInput() {
         title,
         inputMode: activeTab,
         uploadedPanelCount: activeTab === "upload" ? extractedPanels.length : 0,
+        characterCount: activeTab === "characters" ? characters.length : 0,
+        styleRefCount: activeTab === "characters" ? styleRefs.length : 0,
       },
     });
   };
@@ -162,6 +185,18 @@ export default function WizardInput() {
         requiredDisplayName: "Mangaka",
         upgradeSku: "price_mangaka_monthly",
         ctaText: "Unlock with Mangaka — from $19/mo",
+        pricingUrl: "/pricing",
+      });
+      return;
+    }
+    if (tab === "characters" && !isStudioPlus) {
+      emitAnalytics("stage0_upgrade_prompt", { trigger: "characters_tab" });
+      UpgradeModalBus.open({
+        currentTier: userTier,
+        required: "studio",
+        requiredDisplayName: "Studio Pro",
+        upgradeSku: "price_studio_pro_monthly",
+        ctaText: "Unlock with Studio Pro — from $99/mo",
         pricingUrl: "/pricing",
       });
       return;
@@ -181,6 +216,13 @@ export default function WizardInput() {
   const handlePanelsChange = useCallback((panels: Panel[]) => {
     setExtractedPanels(panels);
   }, []);
+
+  // ─── Character foundation cost ─────────────────────────────────────────────
+  const characterCost = useMemo(() => {
+    const imageIngest = characters.reduce((sum, c) => sum + c.refImages.length * 4, 0);
+    const embeddingCompute = characters.length * 2;
+    return imageIngest + embeddingCompute;
+  }, [characters]);
 
   // ─── Loading state ──────────────────────────────────────────────────────────
   if (creating) {
@@ -215,8 +257,8 @@ export default function WizardInput() {
           </h1>
         </div>
 
-        {/* ─── Tab Switcher ─────────────────────────────────────────── */}
-        <div className="flex items-center justify-center gap-1 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.06] max-w-md mx-auto">
+        {/* ─── Tab Switcher (3 tabs) ───────────────────────────────── */}
+        <div className="flex items-center justify-center gap-1 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.06] max-w-2xl mx-auto">
           <TabButton
             active={activeTab === "idea"}
             onClick={() => handleTabSwitch("idea")}
@@ -230,11 +272,19 @@ export default function WizardInput() {
             label="Upload manga / webtoon"
             locked={!isMangakaPlus}
           />
+          <TabButton
+            active={activeTab === "characters"}
+            onClick={() => handleTabSwitch("characters")}
+            icon={<Users className="w-3.5 h-3.5" />}
+            label="Upload character sheets / style refs"
+            shortLabel="Characters"
+            locked={!isStudioPlus}
+          />
         </div>
 
         {/* ─── Tab Content ──────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
-          {activeTab === "idea" ? (
+          {activeTab === "idea" && (
             <motion.div
               key="idea"
               initial={{ opacity: 0, x: -20 }}
@@ -243,7 +293,6 @@ export default function WizardInput() {
               transition={{ duration: 0.2 }}
               className="space-y-8"
             >
-              {/* IdeaPrompt */}
               <IdeaPrompt
                 value={prompt}
                 onChange={setPrompt}
@@ -251,8 +300,6 @@ export default function WizardInput() {
                 maxChars={MAX_CHARS}
                 placeholder="A rain-soaked rooftop. Two rivals. One city. Go\u2026"
               />
-
-              {/* Controls Row */}
               <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
                 <div className="space-y-5 flex-1">
                   <LengthPicker
@@ -265,6 +312,7 @@ export default function WizardInput() {
                     value={chapterCount}
                     onChange={setChapterCount}
                     isMangakaPlus={isMangakaPlus}
+                    isStudioPlus={isStudioPlus}
                     userTier={userTier}
                   />
                 </div>
@@ -276,7 +324,9 @@ export default function WizardInput() {
                 />
               </div>
             </motion.div>
-          ) : (
+          )}
+
+          {activeTab === "upload" && (
             <motion.div
               key="upload"
               initial={{ opacity: 0, x: 20 }}
@@ -285,15 +335,12 @@ export default function WizardInput() {
               transition={{ duration: 0.2 }}
               className="space-y-8"
             >
-              {/* Upload Zone */}
               <MangaUpload
                 projectId={projectId}
                 onPanelsExtracted={handlePanelsExtracted}
                 onUploadStart={() => setIsUploading(true)}
                 onError={() => setIsUploading(false)}
               />
-
-              {/* Panel Extractor Grid */}
               {extractedPanels.length > 0 && projectId && (
                 <PanelExtractor
                   panels={extractedPanels}
@@ -301,8 +348,6 @@ export default function WizardInput() {
                   onPanelsChange={handlePanelsChange}
                 />
               )}
-
-              {/* Upload Controls Row */}
               <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
                 <div className="space-y-5 flex-1">
                   <LengthPicker
@@ -316,6 +361,7 @@ export default function WizardInput() {
                     value={chapterCount}
                     onChange={setChapterCount}
                     isMangakaPlus={isMangakaPlus}
+                    isStudioPlus={isStudioPlus}
                     maxChapters={3}
                     userTier={userTier}
                   />
@@ -330,12 +376,76 @@ export default function WizardInput() {
               </div>
             </motion.div>
           )}
+
+          {activeTab === "characters" && (
+            <motion.div
+              key="characters"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-8"
+            >
+              {/* Idea prompt (still needed for story direction) */}
+              <IdeaPrompt
+                value={prompt}
+                onChange={setPrompt}
+                minChars={MIN_CHARS}
+                maxChars={MAX_CHARS}
+                placeholder="A rain-soaked rooftop. Two rivals. One city. Go\u2026"
+              />
+
+              {/* Character Foundation */}
+              <CharacterFoundation
+                characters={characters}
+                onChange={setCharacters}
+                projectId={projectId}
+              />
+
+              {/* Style Sheet Upload */}
+              <StyleSheetUpload
+                styleRefs={styleRefs}
+                onChange={setStyleRefs}
+                projectId={projectId}
+              />
+
+              {/* Controls */}
+              <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
+                <div className="space-y-5 flex-1">
+                  <LengthPicker
+                    value={panelCount}
+                    onChange={setPanelCount}
+                    allUnlocked={false}
+                    characterMode
+                    userTier={userTier}
+                  />
+                  <ChapterPicker
+                    value={chapterCount}
+                    onChange={setChapterCount}
+                    isMangakaPlus={true}
+                    isStudioPlus={true}
+                    maxChapters={10}
+                    userTier={userTier}
+                  />
+                </div>
+                <SummonButton
+                  canProceed={canProceed}
+                  advancing={advancing}
+                  isOverCap={isOverCap}
+                  onClick={handleSummon}
+                  label="Summon with characters"
+                />
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* ─── Dynamic Cost Hint ──────────────────────────────────────────── */}
         <CostHint
           panelCount={activeTab === "upload" ? extractedPanels.length || panelCount : panelCount}
           isUploadMode={activeTab === "upload"}
+          isCharacterMode={activeTab === "characters"}
+          characterCost={characterCost}
         />
       </div>
     </CreateWizardLayout>
@@ -349,18 +459,20 @@ function TabButton({
   onClick,
   icon,
   label,
+  shortLabel,
   locked = false,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  shortLabel?: string;
   locked?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex-1 justify-center ${
+      className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all flex-1 justify-center ${
         active
           ? "bg-white/[0.08] text-white/90 shadow-sm"
           : locked
@@ -369,8 +481,8 @@ function TabButton({
       }`}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
-      <span className="sm:hidden">{locked ? "Upload" : label.split(" ").pop()}</span>
+      <span className="hidden lg:inline">{label}</span>
+      <span className="lg:hidden">{shortLabel || label.split(" ").slice(-1)[0]}</span>
       {locked && <Lock className="w-3 h-3 text-white/20" />}
     </button>
   );
@@ -382,39 +494,66 @@ function ChapterPicker({
   value,
   onChange,
   isMangakaPlus,
+  isStudioPlus = false,
   maxChapters = 1,
   userTier = "free_trial",
 }: {
   value: number;
   onChange: (v: number) => void;
   isMangakaPlus: boolean;
+  isStudioPlus?: boolean;
   maxChapters?: number;
   userTier?: string;
 }) {
-  const effectiveMax = isMangakaPlus ? maxChapters : 1;
+  // Studio+ gets up to maxChapters (10 for character mode), Mangaka gets 3, Apprentice gets 1
+  const effectiveMax = isStudioPlus ? maxChapters : isMangakaPlus ? Math.min(maxChapters, 3) : 1;
+
+  // Show a reasonable number of pills (max 5 visible, then a "more" indicator)
+  const visibleCount = Math.min(effectiveMax, 5);
 
   return (
     <div className="space-y-2">
       <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
         Chapters
       </label>
-      <div className="flex gap-2">
-        {/* Chapter pills */}
-        {Array.from({ length: Math.max(effectiveMax, 1) }, (_, i) => i + 1).map(
-          (ch) => (
-            <button
-              key={ch}
-              onClick={() => onChange(ch)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                value === ch
-                  ? "bg-token-violet/10 text-token-violet ring-1 ring-token-violet/30"
-                  : "bg-white/5 text-white/40 hover:bg-white/10"
-              }`}
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: visibleCount }, (_, i) => i + 1).map((ch) => (
+          <button
+            key={ch}
+            onClick={() => onChange(ch)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              value === ch
+                ? "bg-token-violet/10 text-token-violet ring-1 ring-token-violet/30"
+                : "bg-white/5 text-white/40 hover:bg-white/10"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Chapter {ch}
+          </button>
+        ))}
+
+        {/* Show "more" if effectiveMax > 5 */}
+        {effectiveMax > 5 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  const next = Math.min(value + 1, effectiveMax);
+                  onChange(next);
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-white/40 hover:bg-white/10 text-sm font-medium transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                +{effectiveMax - 5} more
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
             >
-              <BookOpen className="w-3.5 h-3.5" />
-              Chapter {ch}
-            </button>
-          )
+              Up to {effectiveMax} chapters available on your plan
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {/* Locked multi-chapter (for Apprentice) */}
@@ -447,11 +586,23 @@ function ChapterPicker({
           </Tooltip>
         )}
 
-        {/* Locked additional chapters for Mangaka (max 3) */}
-        {isMangakaPlus && effectiveMax < 3 && (
+        {/* Locked additional chapters for Mangaka (show Studio upgrade) */}
+        {isMangakaPlus && !isStudioPlus && effectiveMax < maxChapters && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed">
+              <button
+                onClick={() => {
+                  UpgradeModalBus.open({
+                    currentTier: userTier,
+                    required: "studio",
+                    requiredDisplayName: "Studio Pro",
+                    upgradeSku: "price_studio_pro_monthly",
+                    ctaText: "Unlock with Studio Pro — from $99/mo",
+                    pricingUrl: "/pricing",
+                  });
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed"
+              >
                 <Lock className="w-3 h-3" />
                 More chapters
               </button>
@@ -460,7 +611,7 @@ function ChapterPicker({
               side="top"
               className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
             >
-              Up to 3 chapters per project on Mangaka
+              Up to {maxChapters} chapters on Studio Pro
             </TooltipContent>
           </Tooltip>
         )}
@@ -534,9 +685,13 @@ function SummonButton({
 function CostHint({
   panelCount,
   isUploadMode = false,
+  isCharacterMode = false,
+  characterCost = 0,
 }: {
   panelCount: number;
   isUploadMode?: boolean;
+  isCharacterMode?: boolean;
+  characterCost?: number;
 }) {
   const { user } = useAuth();
   const { data: creditData } = trpc.projects.creditBalance.useQuery(undefined, {
@@ -560,7 +715,9 @@ function CostHint({
     0
   );
   const fixedCosts = baseTotalCost - scalableCosts;
-  const scaledTotal = Math.round(fixedCosts + scalableCosts * scaleFactor + uploadIngestCost);
+  const scaledTotal = Math.round(
+    fixedCosts + scalableCosts * scaleFactor + uploadIngestCost + characterCost
+  );
 
   const balance = creditData?.balance ?? 0;
   const canAfford = balance >= scaledTotal;
@@ -571,6 +728,9 @@ function CostHint({
         This stage: {stageCost === 0 ? "free" : `${stageCost}c`}
         {isUploadMode && panelCount > 0 && (
           <span> + {uploadIngestCost}c ingest</span>
+        )}
+        {isCharacterMode && characterCost > 0 && (
+          <span> + {characterCost}c characters</span>
         )}
         {" \u00b7 "}
         full project forecast:{" "}
@@ -586,6 +746,7 @@ function CostHint({
 }
 
 // ─── Analytics Helper ─────────────────────────────────────────────────────────
+
 function emitAnalytics(event: string, data?: Record<string, unknown>) {
   try {
     window.dispatchEvent(

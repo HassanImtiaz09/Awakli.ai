@@ -4028,3 +4028,17 @@
 - [x] Exact copy strings: tab labels, drop zone hint, parsed header, length locked tooltip
 - [x] Analytics events: stage0_upload_start, stage0_upload_complete, stage0_panels_reordered, stage0_upload_failed
 - [x] Write vitest tests for upload validation, panel extraction, and tier gating (30 tests passing)
+
+## Stage 0 · Input — Character Foundations & Style Refs (Studio)
+- [x] Add Tab C: "Upload character sheets / style refs" (Studio-only, tier-gated)
+- [x] Create CharacterFoundation component with character card grid (3-col)
+- [x] Character card: avatar, name, 1-6 reference images, short description
+- [x] Character states: empty (prompt), added (card), analyzing (progress ring + CLIP), ready (mint check)
+- [x] Create StyleSheetUpload component for global style refs (line weight, palette, mood)
+- [x] Server-side character embedding endpoint (CLIP/DINO embeddings)
+- [x] Library picker for reusing characters across projects (Studio Pro only)
+- [x] Extended LengthPicker: 150/200 panels + whole-book mode for Studio
+- [x] Credit cost: 4c per reference image + 2c per character embedding compute
+- [x] Exact copy strings: Tab C label, empty state, add CTA, embedding status
+- [x] Analytics events: stage0_character_added, stage0_library_import, stage0_stylesheet_uploaded
+- [x] Write vitest tests for character foundation, style upload, and tier gating (29 tests passing)
