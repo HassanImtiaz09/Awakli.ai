@@ -95,7 +95,7 @@ export function StyleDrift({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
             <div className="flex items-center gap-2">
-              <Paintbrush className="w-4 h-4 text-[#6B5BFF]" />
+              <Paintbrush className="w-4 h-4 text-[#7C4DFF]" />
               <span className="text-sm font-semibold text-white/90">
                 Style drift
               </span>
@@ -124,7 +124,7 @@ export function StyleDrift({
                 step={0.01}
                 value={driftValue}
                 onChange={(e) => handleSliderChange(parseFloat(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-[#00E8A0] via-[#6B5BFF] to-[#FF3CAC] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(107,91,255,0.6)] [&::-webkit-slider-thumb]:cursor-pointer"
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-[#00E8A0] via-[#7C4DFF] to-[#FF3CAC] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(124,77,255,0.6)] [&::-webkit-slider-thumb]:cursor-pointer"
               />
               <p className="text-[10px] text-white/20 text-center">
                 {Math.round(driftValue * 100)}% stylization
@@ -176,7 +176,7 @@ export function StyleDrift({
               <button
                 onClick={handleApply}
                 disabled={!hasPreviewedCurrent || isApplying || isPreviewing}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#6B5BFF] to-[#00F0FF] text-white text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#7C4DFF] to-[#E040FB] text-white text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {isApplying ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

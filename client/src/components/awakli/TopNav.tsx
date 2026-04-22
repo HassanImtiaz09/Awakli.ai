@@ -52,7 +52,7 @@ function NavLink({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
       >
-                <Icon size={16} className={active ? "text-[#00F0FF]" : ""} />
+                <Icon size={16} className={active ? "text-[#E040FB]" : ""} />
         {children}
         {/* Active indicator — Opening Sequence gradient sweep */}
         {active && (
@@ -109,7 +109,7 @@ export function MobileTabBar() {
                   size={20}
                   className={cn(
                     "transition-colors",
-                    active ? "text-[#00F0FF]" : "text-[#5C5C7A]"
+                    active ? "text-[#E040FB]" : "text-[#5C5C7A]"
                   )}
                 />
                 <span
@@ -215,7 +215,7 @@ export function TopNav() {
           <Link href="/">
             <motion.div
               className="cursor-pointer select-none shrink-0"
-              whileHover={{ filter: "drop-shadow(0 0 12px rgba(0,240,255,0.4))" }}
+              whileHover={{ filter: "drop-shadow(0 0 12px rgba(224,64,251,0.4))" }}
               transition={{ duration: 0.2 }}
             >
               <Logo variant="horizontal" theme="dark" size={28} animate />
@@ -283,7 +283,7 @@ export function TopNav() {
                 {/* Avatar dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <motion.button
-                    className="flex items-center gap-2 rounded-full border border-white/10 hover:border-[#00F0FF]/40 transition-colors p-0.5 pr-3"
+                    className="flex items-center gap-2 rounded-full border border-white/10 hover:border-[#E040FB]/40 transition-colors p-0.5 pr-3"
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     whileTap={{ scale: 0.97 }}
                   >

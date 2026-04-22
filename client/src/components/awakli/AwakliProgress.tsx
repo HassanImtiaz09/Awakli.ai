@@ -14,8 +14,8 @@ interface AwakliProgressProps {
 }
 
 const variantGradient = {
-  pink: "linear-gradient(90deg, #00F0FF, #6B5BFF)",
-  cyan: "linear-gradient(90deg, #00F0FF, #0099CC)",
+  pink: "linear-gradient(90deg, #E040FB, #7C4DFF)",
+  cyan: "linear-gradient(90deg, #E040FB, #AA00FF)",
   gold: "linear-gradient(90deg, #FFD60A, #FF8C00)",
 };
 

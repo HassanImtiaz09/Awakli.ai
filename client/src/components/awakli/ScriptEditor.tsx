@@ -145,7 +145,7 @@ function SceneDetailPanel({
           <div
             className={`w-8 h-8 rounded-lg grid place-items-center text-sm font-bold ${
               scene.approved
-                ? "bg-[#00F0FF]/10 text-[#00F0FF]"
+                ? "bg-[#E040FB]/10 text-[#E040FB]"
                 : "bg-white/5 text-white/40"
             }`}
           >
@@ -248,7 +248,7 @@ function SceneDetailPanel({
                   <span className="text-[10px] font-mono text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
                     P{panel.panel_number}
                   </span>
-                  <span className="text-[10px] text-[#6B5BFF]/60 px-1.5 py-0.5 rounded bg-[#6B5BFF]/5">
+                  <span className="text-[10px] text-[#7C4DFF]/60 px-1.5 py-0.5 rounded bg-[#7C4DFF]/5">
                     {panel.camera_angle}
                   </span>
                   {panel.transition && (
@@ -299,7 +299,7 @@ function SceneDetailPanel({
                 value={regenNote}
                 onChange={(e) => setRegenNote(e.target.value)}
                 placeholder="E.g., 'Make it more dramatic' or 'Add a plot twist'"
-                className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 placeholder:text-white/15 outline-none focus:ring-1 focus:ring-[#6B5BFF]/50"
+                className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 placeholder:text-white/15 outline-none focus:ring-1 focus:ring-[#7C4DFF]/50"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && regenNote.trim()) {
                     onRegenerate(scene.scene_number, regenNote.trim());
@@ -315,7 +315,7 @@ function SceneDetailPanel({
                   }
                 }}
                 disabled={!regenNote.trim() || regenerating}
-                className="px-3 py-2 rounded-xl text-xs font-medium bg-[#6B5BFF]/10 text-[#6B5BFF] hover:bg-[#6B5BFF]/20 transition-all disabled:opacity-50"
+                className="px-3 py-2 rounded-xl text-xs font-medium bg-[#7C4DFF]/10 text-[#7C4DFF] hover:bg-[#7C4DFF]/20 transition-all disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
               </button>
@@ -332,8 +332,8 @@ function SceneDetailPanel({
             disabled={scene.approved || approving}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
               scene.approved
-                ? "bg-[#00F0FF]/10 text-[#00F0FF]/60 cursor-default"
-                : "bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20"
+                ? "bg-[#E040FB]/10 text-[#E040FB]/60 cursor-default"
+                : "bg-[#E040FB]/10 text-[#E040FB] hover:bg-[#E040FB]/20"
             }`}
           >
             {approving ? (
@@ -396,7 +396,7 @@ function RenameDialog({
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 outline-none focus:ring-1 focus:ring-[#6B5BFF]/50 mb-4"
+          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-sm text-white/80 outline-none focus:ring-1 focus:ring-[#7C4DFF]/50 mb-4"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter" && newName.trim() && newName !== characterName) {
@@ -414,7 +414,7 @@ function RenameDialog({
           <button
             onClick={() => onRename(characterName, newName.trim())}
             disabled={!newName.trim() || newName === characterName || renaming}
-            className="px-4 py-2 rounded-xl text-xs font-medium bg-[#6B5BFF]/10 text-[#6B5BFF] hover:bg-[#6B5BFF]/20 transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-xs font-medium bg-[#7C4DFF]/10 text-[#7C4DFF] hover:bg-[#7C4DFF]/20 transition-all disabled:opacity-50"
           >
             {renaming ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -686,7 +686,7 @@ export function ScriptEditor({
           </div>
           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-[#6B5BFF] to-[#00F0FF]"
+              className="h-full rounded-full bg-gradient-to-r from-[#7C4DFF] to-[#E040FB]"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -699,7 +699,7 @@ export function ScriptEditor({
           <button
             onClick={() => approveAllMut.mutate({ episodeId })}
             disabled={approveAllMut.isPending}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-[#E040FB]/10 text-[#E040FB] hover:bg-[#E040FB]/20 transition-all disabled:opacity-50"
           >
             {approveAllMut.isPending ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -711,7 +711,7 @@ export function ScriptEditor({
         )}
 
         {allApproved && (
-          <div className="flex items-center gap-1.5 text-xs text-[#00F0FF]">
+          <div className="flex items-center gap-1.5 text-xs text-[#E040FB]">
             <Check className="w-3.5 h-3.5" />
             All scenes approved
           </div>

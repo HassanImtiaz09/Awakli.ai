@@ -12,7 +12,7 @@ export function SignUpBanner({ action = "vote", className }: { action?: "vote" |
 
   const messages: Record<string, { icon: React.ReactNode; title: string; subtitle: string }> = {
     vote: {
-      icon: <Heart size={20} className="text-[#00F0FF]" />,
+      icon: <Heart size={20} className="text-[#E040FB]" />,
       title: "Like what you see?",
       subtitle: "Sign in to vote and help your favorite manga become anime.",
     },
@@ -27,7 +27,7 @@ export function SignUpBanner({ action = "vote", className }: { action?: "vote" |
       subtitle: "Sign in to add this to your watchlist and get notified of new episodes.",
     },
     create: {
-      icon: <Sparkles size={20} className="text-[#00F0FF]" />,
+      icon: <Sparkles size={20} className="text-[#E040FB]" />,
       title: "Ready to create?",
       subtitle: "Sign in to start turning your manga into anime with AI.",
     },
@@ -38,7 +38,7 @@ export function SignUpBanner({ action = "vote", className }: { action?: "vote" |
   return (
     <motion.div
       className={cn(
-        "relative rounded-xl border border-[#6B5BFF]/20 bg-gradient-to-r from-[#6B5BFF]/5 to-[#9B59B6]/5 p-4",
+        "relative rounded-xl border border-[#7C4DFF]/20 bg-gradient-to-r from-[#7C4DFF]/5 to-[#9B59B6]/5 p-4",
         className
       )}
       initial={{ opacity: 0, y: 10 }}
@@ -99,7 +99,7 @@ export function FloatingSignUpPrompt() {
           <X size={16} />
         </button>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6B5BFF] to-[#B388FF] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7C4DFF] to-[#B388FF] flex items-center justify-center">
             <Sparkles size={20} className="text-white" />
           </div>
           <div>
@@ -160,7 +160,7 @@ export function PublishUpgradeModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header gradient */}
-              <div className="relative h-32 bg-gradient-to-br from-[#00F0FF] via-[#6B5BFF] to-[#B388FF] flex items-center justify-center">
+              <div className="relative h-32 bg-gradient-to-br from-[#E040FB] via-[#7C4DFF] to-[#B388FF] flex items-center justify-center">
                 <Crown size={48} className="text-white/90" />
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-50" />
               </div>
@@ -182,8 +182,8 @@ export function PublishUpgradeModal({
                     "Priority support",
                   ].map((feature, i) => (
                     <div key={i} className="flex items-center gap-2.5 text-sm">
-                      <div className="w-5 h-5 rounded-full bg-[#6B5BFF]/10 flex items-center justify-center shrink-0">
-                        <Sparkles size={12} className="text-[#00F0FF]" />
+                      <div className="w-5 h-5 rounded-full bg-[#7C4DFF]/10 flex items-center justify-center shrink-0">
+                        <Sparkles size={12} className="text-[#E040FB]" />
                       </div>
                       <span className="text-[#F0F0F5]">{feature}</span>
                     </div>

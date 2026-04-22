@@ -11,7 +11,7 @@ import { PlatformLayout } from "@/components/awakli/Layouts";
 import { useState } from "react";
 import { toast } from "sonner";
 
-function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF", trend }: {
+function StatCard({ icon: Icon, label, value, sub, color = "#7C4DFF", trend }: {
   icon: any; label: string; value: string | number; sub?: string; color?: string; trend?: string;
 }) {
   return (
@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF", trend }: {
 function EarningsBreakdown({ earnings }: { earnings: any }) {
   const sources = [
     { label: "Tips", amount: earnings?.totalEarnings ?? 0, color: "#B388FF", icon: Heart },
-    { label: "Premium Episodes", amount: 0, color: "#00F0FF", icon: Crown },
+    { label: "Premium Episodes", amount: 0, color: "#E040FB", icon: Crown },
     { label: "Subscriptions", amount: 0, color: "#2ECC71", icon: Star },
   ];
   const total = sources.reduce((s, r) => s + r.amount, 0) || 1;
@@ -170,7 +170,7 @@ export default function CreatorEarnings() {
           <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
           <h2 className="text-2xl font-heading font-bold text-white mb-3">Sign in to view earnings</h2>
           <p className="text-gray-400 mb-6">Track your tips, earnings, and creator analytics.</p>
-          <a href={getLoginUrl()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold">
+          <a href={getLoginUrl()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold">
             Sign In <ArrowRight className="w-4 h-4" />
           </a>
         </div>
@@ -215,7 +215,7 @@ export default function CreatorEarnings() {
               label="This Month"
               value={`$${((e?.monthlyEarnings?.[0]?.amount ?? 0) / 100).toFixed(2)}`}
               sub="current period"
-              color="#6B5BFF"
+              color="#7C4DFF"
             />
             <StatCard
               icon={Heart}
@@ -229,7 +229,7 @@ export default function CreatorEarnings() {
               label="Supporters"
               value={t.length}
               sub="unique tippers"
-              color="#00F0FF"
+              color="#E040FB"
             />
           </div>
 
@@ -298,7 +298,7 @@ export default function CreatorEarnings() {
               </p>
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/40 transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold shadow-lg shadow-[#7C4DFF]/20 hover:shadow-[#7C4DFF]/40 transition-all"
               >
                 View Plans <ArrowRight className="w-4 h-4" />
               </Link>

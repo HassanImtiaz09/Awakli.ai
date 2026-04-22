@@ -15,9 +15,9 @@
 
 export const colors = {
   /** Primary brand cyan — highlights, links, interactive focus */
-  cyan:     '#00F0FF',
+  cyan:     '#E040FB',
   /** Primary brand violet — buttons, accents, primary actions */
-  violet:   '#6B5BFF',
+  violet:   '#7C4DFF',
   /** Secondary lavender — soft accents, tags, secondary surfaces */
   lavender: '#B388FF',
   /** Accent gold — badges, warnings, premium indicators */
@@ -79,7 +79,7 @@ export type TokenElevation = keyof typeof elevations;
 
 export const focusRing = {
   /** Conic gradient 220deg from cyan → violet → magenta at 90% stop */
-  gradient: 'conic-gradient(from 220deg, #00F0FF, #6B5BFF, #FF2D7A 90%, #00F0FF)',
+  gradient: 'conic-gradient(from 220deg, #E040FB, #7C4DFF, #FF2D7A 90%, #E040FB)',
   /** Width of the focus ring border */
   width: '2px',
   /** Offset from the element edge */

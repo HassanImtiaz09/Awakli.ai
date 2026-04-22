@@ -100,7 +100,7 @@ export default function CreateReader() {
     return (
       <div className="min-h-screen bg-[#08080F] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 text-[#E040FB] animate-spin mx-auto mb-4" />
           <p className="text-white/50">Loading your manga...</p>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function CreateReader() {
               </button>
               <button
                 onClick={() => setShowPublishModal(true)}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-medium text-sm flex items-center gap-2"
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-medium text-sm flex items-center gap-2"
               >
                 <Globe className="w-4 h-4" /> Publish
               </button>
@@ -196,7 +196,7 @@ export default function CreateReader() {
                     transition={{ delay: i * 0.15 }}
                     className="bg-black/70 backdrop-blur-md rounded-lg px-4 py-2 border border-white/10"
                   >
-                    <span className="text-[#00F0FF] text-xs font-semibold">{d.character}</span>
+                    <span className="text-[#E040FB] text-xs font-semibold">{d.character}</span>
                     <p className="text-white text-sm">{d.text}</p>
                   </motion.div>
                 ))}
@@ -208,7 +208,7 @@ export default function CreateReader() {
               <motion.div
                 initial={{ scale: 0, rotate: -15 }}
                 animate={{ scale: 1, rotate: 0 }}
-                className="absolute top-4 right-4 bg-[#6B5BFF]/90 text-white font-bold text-lg px-3 py-1 rounded-lg transform rotate-3"
+                className="absolute top-4 right-4 bg-[#7C4DFF]/90 text-white font-bold text-lg px-3 py-1 rounded-lg transform rotate-3"
               >
                 {panel.sfx}
               </motion.div>
@@ -237,7 +237,7 @@ export default function CreateReader() {
                 onClick={() => setCurrentPanel(i)}
                 className={`flex-shrink-0 w-16 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                   i === currentPanel
-                    ? "border-[#6B5BFF] shadow-lg shadow-[#6B5BFF]/25 scale-105"
+                    ? "border-[#7C4DFF] shadow-lg shadow-[#7C4DFF]/25 scale-105"
                     : "border-white/10 opacity-50 hover:opacity-80"
                 }`}
               >
@@ -290,7 +290,7 @@ export default function CreateReader() {
                     </button>
                     <button
                       onClick={() => { setShowPublishModal(false); setPublishSuccess(false); }}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-medium"
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-medium"
                     >
                       Keep Reading
                     </button>
@@ -308,7 +308,7 @@ export default function CreateReader() {
                   <button
                     onClick={() => publishMutation.mutate({ projectId })}
                     disabled={publishMutation.isPending}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/25 hover:shadow-[#6B5BFF]/40 transition-all disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold text-lg shadow-lg shadow-[#7C4DFF]/25 hover:shadow-[#7C4DFF]/40 transition-all disabled:opacity-50"
                   >
                     {publishMutation.isPending ? (
                       <span className="flex items-center justify-center gap-2">

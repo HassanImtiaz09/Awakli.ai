@@ -359,7 +359,7 @@ export default function ScriptEditor() {
     day: "bg-[var(--token-gold)]/15 text-[var(--token-gold)]",
     night: "bg-[#6C5CE7]/15 text-[#6C5CE7]",
     dawn: "bg-[#B388FF]/15 text-[#B388FF]",
-    dusk: "bg-[#6B5BFF]/15 text-[#00F0FF]",
+    dusk: "bg-[#7C4DFF]/15 text-[#E040FB]",
   };
 
   return (

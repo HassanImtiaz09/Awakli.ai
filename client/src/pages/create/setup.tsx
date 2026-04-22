@@ -344,7 +344,7 @@ export default function WizardSetup() {
                   }}
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-sm transition-all ${
                     completedSteps.has(1) || projectCharacters.length === 0
-                      ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
+                      ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-[0_4px_20px_rgba(124,77,255,0.3)]"
                       : "bg-white/5 text-white/20 cursor-not-allowed"
                   }`}
                 >
@@ -458,7 +458,7 @@ export default function WizardSetup() {
                   }}
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-sm transition-all ${
                     completedSteps.has(2) || projectCharacters.length === 0
-                      ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
+                      ? "bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-[0_4px_20px_rgba(124,77,255,0.3)]"
                       : "bg-white/5 text-white/20 cursor-not-allowed"
                   }`}
                 >

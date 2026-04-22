@@ -219,7 +219,7 @@ function DemoSlideshow({ slides }: { slides: typeof STATIC_SLIDES }) {
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20 h-1 bg-white/5">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF]"
+            className="h-full bg-gradient-to-r from-[#E040FB] to-[#7C4DFF]"
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
             transition={{ duration: AUTO_ADVANCE_MS / 1000, ease: "linear" }}
@@ -237,7 +237,7 @@ function DemoSlideshow({ slides }: { slides: typeof STATIC_SLIDES }) {
             onClick={() => goTo(idx)}
             className={`h-2.5 rounded-full transition-all duration-300 ${
               idx === current
-                ? "bg-[#6B5BFF] w-8"
+                ? "bg-[#7C4DFF] w-8"
                 : "bg-white/20 hover:bg-white/40 w-2.5"
             }`}
             aria-label={`Go to slide ${idx + 1}`}
@@ -278,7 +278,7 @@ function StepIndicators({ current, slides, onGoTo }: {
                   onClick={() => onGoTo(idx)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 cursor-pointer ${
                     isActive
-                      ? "bg-[#6B5BFF]/15 text-[#00F0FF] border border-[#6B5BFF]/30"
+                      ? "bg-[#7C4DFF]/15 text-[#E040FB] border border-[#7C4DFF]/30"
                       : isCompleted
                       ? "text-[#00D4AA] opacity-80"
                       : "text-white/30"
@@ -322,7 +322,7 @@ export default function DemoShowcase() {
     <section className="relative py-24 md:py-32 overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#6B5BFF]/5 blur-[200px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#7C4DFF]/5 blur-[200px]" />
         <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full bg-[#6C63FF]/5 blur-[150px]" />
       </div>
 
@@ -358,13 +358,13 @@ export default function DemoShowcase() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
           style={{
-            boxShadow: "0 0 80px rgba(107,91,255, 0.08), 0 0 40px rgba(108, 99, 255, 0.06)",
+            boxShadow: "0 0 80px rgba(124,77,255, 0.08), 0 0 40px rgba(108, 99, 255, 0.06)",
           }}
         >
           {/* Glow border effect */}
           <div className="absolute inset-0 rounded-2xl pointer-events-none z-10"
             style={{
-              background: "linear-gradient(135deg, rgba(107,91,255,0.15) 0%, transparent 50%, rgba(108,99,255,0.15) 100%)",
+              background: "linear-gradient(135deg, rgba(124,77,255,0.15) 0%, transparent 50%, rgba(108,99,255,0.15) 100%)",
               mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
               maskComposite: "exclude",
               padding: "1px",
@@ -399,7 +399,7 @@ export default function DemoShowcase() {
           <p className="text-white/50 text-lg mb-6">Ready to create your own?</p>
           <button
             onClick={() => navigate("/create")}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/25 hover:shadow-[#6B5BFF]/40 hover:scale-105 transition-all duration-300"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold text-lg shadow-lg shadow-[#7C4DFF]/25 hover:shadow-[#7C4DFF]/40 hover:scale-105 transition-all duration-300"
           >
             <Sparkles className="w-5 h-5" />
             Start Creating — Free

@@ -195,7 +195,7 @@ function CharacterCard({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="relative rounded-2xl bg-[#12121F] shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_24px_rgba(107,91,255,0.15)] transition-shadow border border-white/[0.06] overflow-hidden group"
+      className="relative rounded-2xl bg-[#12121F] shadow-[0_2px_12px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_24px_rgba(124,77,255,0.15)] transition-shadow border border-white/[0.06] overflow-hidden group"
     >
       {/* Analyzing overlay */}
       {isAnalyzing && (

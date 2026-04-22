@@ -60,7 +60,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
       <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-white/5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F0FF] to-[#0099CC] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E040FB] to-[#AA00FF] flex items-center justify-center">
             <Film className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -135,7 +135,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
                 whileTap={{ scale: 0.98 }}
                 onClick={handleGenerate}
                 disabled={generatePreview.isPending}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#0099CC] text-white font-semibold text-sm shadow-lg shadow-token-cyan/20 hover:shadow-token-cyan/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#AA00FF] text-white font-semibold text-sm shadow-lg shadow-token-cyan/20 hover:shadow-token-cyan/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {generatePreview.isPending ? (
                   <>
@@ -163,7 +163,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               </p>
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-sm shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/40 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold text-sm shadow-lg shadow-[#7C4DFF]/20 hover:shadow-[#7C4DFF]/40 transition-all"
               >
                 Upgrade to Creator
                 <ArrowRight className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md p-8 rounded-2xl border border-token-violet/20 bg-[#0D0D1A] text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E040FB] to-[#7C4DFF] flex items-center justify-center mx-auto mb-6">
                 <Film className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-heading font-bold text-white mb-2">
@@ -203,7 +203,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               <div className="space-y-3">
                 <Link
                   href="/pricing"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-sm shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/40 transition-all"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold text-sm shadow-lg shadow-[#7C4DFF]/20 hover:shadow-[#7C4DFF]/40 transition-all"
                 >
                   View Plans
                   <ArrowRight className="w-4 h-4" />

@@ -320,7 +320,7 @@ export default function UpgradeModal() {
             aria-modal="true"
             aria-label={modalTitle}
           >
-            <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0D0D1A] shadow-[0_24px_80px_rgba(107,91,255,0.28)] overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0D0D1A] shadow-[0_24px_80px_rgba(124,77,255,0.28)] overflow-hidden max-h-[90vh] flex flex-col">
               {/* Gradient accent bar */}
               <div className="h-1 bg-gradient-to-r from-token-violet via-token-cyan to-token-magenta flex-shrink-0" />
 
@@ -530,7 +530,7 @@ function UpgradeTab({
               disabled={isCurrent}
               className={`w-full text-left p-4 rounded-xl border transition-all ${
                 isSelected
-                  ? "ring-2 ring-token-violet border-token-violet/40 bg-token-violet/5 shadow-[0_0_20px_rgba(107,91,255,0.15)]"
+                  ? "ring-2 ring-token-violet border-token-violet/40 bg-token-violet/5 shadow-[0_0_20px_rgba(124,77,255,0.15)]"
                   : isCurrent
                     ? "border-white/5 bg-white/[0.02] opacity-50 cursor-not-allowed"
                     : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"

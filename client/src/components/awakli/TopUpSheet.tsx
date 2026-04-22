@@ -76,7 +76,7 @@ export default function TopUpSheet({ isOpen, onClose, defaultPack }: TopUpSheetP
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 z-[101] max-h-[85vh] overflow-y-auto"
           >
-            <div className="mx-auto max-w-lg rounded-t-2xl border border-white/10 border-b-0 bg-[#0D0D1A] shadow-[0_-24px_80px_rgba(107,91,255,0.28)]">
+            <div className="mx-auto max-w-lg rounded-t-2xl border border-white/10 border-b-0 bg-[#0D0D1A] shadow-[0_-24px_80px_rgba(124,77,255,0.28)]">
               {/* Handle bar */}
               <div className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-white/20" />

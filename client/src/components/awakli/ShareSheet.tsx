@@ -192,7 +192,7 @@ export default function ShareSheet({ isOpen, onClose, projectId, projectTitle }:
                       </div>
                     ) : (
                       <p className="text-white/30 text-xs mt-3">
-                        Embed widget requires Creator tier or higher. <a href="/pricing" className="text-[#00F0FF] hover:underline">Upgrade</a>
+                        Embed widget requires Creator tier or higher. <a href="/pricing" className="text-[#E040FB] hover:underline">Upgrade</a>
                       </p>
                     )}
                   </motion.div>

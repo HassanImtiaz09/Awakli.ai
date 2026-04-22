@@ -19,7 +19,7 @@ export default function CustomizeSummary({
   const toneInfo = TONE_INFO[tone];
 
   const items = [
-    { icon: Palette, label: "Art Style", value: styleInfo.name, color: "#6B5BFF" },
+    { icon: Palette, label: "Art Style", value: styleInfo.name, color: "#7C4DFF" },
     { icon: Drama, label: "Tone", value: `${toneInfo.emoji} ${toneInfo.name}`, color: "#6C63FF" },
     { icon: BookOpen, label: "Chapters", value: `${chapters} × ${chapterLength}`, color: "#00D4AA" },
     { icon: Sparkles, label: "Genre", value: genre, color: "#B388FF" },

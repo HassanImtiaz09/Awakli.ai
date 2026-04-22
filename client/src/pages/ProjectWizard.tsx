@@ -17,12 +17,12 @@ import { cn } from "@/lib/utils";
 const GENRES = [
   { id: "action",   label: "Action",   icon: Swords, color: "#FF4444" },
   { id: "romance",  label: "Romance",  icon: Heart,  color: "#FF69B4" },
-  { id: "sci-fi",   label: "Sci-Fi",   icon: Rocket, color: "#00F0FF" },
+  { id: "sci-fi",   label: "Sci-Fi",   icon: Rocket, color: "#E040FB" },
   { id: "horror",   label: "Horror",   icon: Ghost,  color: "#E74C3C" },
   { id: "comedy",   label: "Comedy",   icon: Laugh,  color: "#F39C12" },
   { id: "fantasy",  label: "Fantasy",  icon: Wand2,  color: "#9B59B6" },
   { id: "drama",    label: "Drama",    icon: Crown,  color: "#FFD60A" },
-  { id: "thriller", label: "Thriller", icon: Skull,  color: "#6B5BFF" },
+  { id: "thriller", label: "Thriller", icon: Skull,  color: "#7C4DFF" },
   { id: "slice-of-life", label: "Slice of Life", icon: Palette, color: "#2ECC71" },
 ] as const;
 
@@ -65,9 +65,9 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
             animate={{
               scale: i === current ? 1.4 : 1,
               boxShadow: i === current
-                ? "0 0 16px rgba(107,91,255,0.6)"
+                ? "0 0 16px rgba(124,77,255,0.6)"
                 : i < current
-                  ? "0 0 8px rgba(0,240,255,0.4)"
+                  ? "0 0 8px rgba(224,64,251,0.4)"
                   : "none",
             }}
             transition={{ duration: 0.4 }}
@@ -494,7 +494,7 @@ function StepReview({
         disabled={isCreating || !title.trim()}
         className={cn(
           "w-full py-4 rounded-xl text-lg font-heading font-semibold transition-all",
-          "bg-gradient-to-r from-[var(--token-cyan)] to-[#6B5BFF] text-white",
+          "bg-gradient-to-r from-[var(--token-cyan)] to-[#7C4DFF] text-white",
           "hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
         )}
         whileHover={{ scale: 1.01 }}
@@ -559,7 +559,7 @@ export default function ProjectWizard() {
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ["#6B5BFF", "#B388FF", "#00F0FF", "#FFD60A", "#9B59B6"],
+        colors: ["#7C4DFF", "#B388FF", "#E040FB", "#FFD60A", "#9B59B6"],
       });
 
       toast.success("Project created! Redirecting to studio...");

@@ -81,7 +81,7 @@ export function PanelBatchBar({
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   placeholder="Shared prompt for all selected panels…"
-                  className="flex-1 min-w-[280px] px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#6B5BFF]/50"
+                  className="flex-1 min-w-[280px] px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#7C4DFF]/50"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !isProcessing && !overLimit) {
@@ -104,7 +104,7 @@ export function PanelBatchBar({
                     }
                   }}
                   disabled={isProcessing || overLimit}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#6B5BFF] to-[#00F0FF] text-white text-xs font-semibold disabled:opacity-40 whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#7C4DFF] to-[#E040FB] text-white text-xs font-semibold disabled:opacity-40 whitespace-nowrap"
                 >
                   {isProcessing ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -121,7 +121,7 @@ export function PanelBatchBar({
         {/* Main bar row */}
         <div className="flex items-center gap-3">
           {/* Count badge */}
-          <span className="text-sm font-semibold text-[#00F0FF]">
+          <span className="text-sm font-semibold text-[#E040FB]">
             {count} selected
           </span>
 

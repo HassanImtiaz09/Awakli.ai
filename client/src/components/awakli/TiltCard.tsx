@@ -19,7 +19,7 @@ interface TiltCardProps {
  */
 export function TiltCard({
   children,
-  color = "#6B5BFF",
+  color = "#7C4DFF",
   className = "",
   maxTilt = 4,
   asLink = false,

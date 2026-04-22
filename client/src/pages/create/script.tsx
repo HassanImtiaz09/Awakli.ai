@@ -335,7 +335,7 @@ export default function WizardScript() {
             disabled={!canProceed || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
               canProceed && !advancing
-                ? "bg-gradient-to-r from-token-mint to-token-cyan text-white shadow-[0_4px_20px_rgba(0,240,255,0.2)]"
+                ? "bg-gradient-to-r from-token-mint to-token-cyan text-white shadow-[0_4px_20px_rgba(224,64,251,0.2)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >

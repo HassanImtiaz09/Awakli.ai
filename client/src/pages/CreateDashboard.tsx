@@ -81,7 +81,7 @@ function ProjectCard({ project }: { project: any }) {
       className={`group relative rounded-2xl border transition-all overflow-hidden ${
         isArchived
           ? "bg-white/[0.01] border-white/5 opacity-60"
-          : "bg-white/[0.03] border-white/5 hover:border-white/15 hover:shadow-[0_4px_24px_rgba(107,91,255,0.08)]"
+          : "bg-white/[0.03] border-white/5 hover:border-white/15 hover:shadow-[0_4px_24px_rgba(124,77,255,0.08)]"
       }`}
     >
       <div className="p-5 space-y-4">
@@ -218,7 +218,7 @@ export default function CreateDashboard() {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => navigate("/create/input?projectId=new")}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-token-violet to-token-cyan text-white text-sm font-semibold shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-token-violet to-token-cyan text-white text-sm font-semibold shadow-[0_4px_20px_rgba(124,77,255,0.3)]"
           >
             <Plus className="w-4 h-4" />
             New Project
@@ -261,7 +261,7 @@ export default function CreateDashboard() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate("/create/input?projectId=new")}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-token-violet to-token-cyan text-white font-semibold shadow-[0_4px_24px_rgba(107,91,255,0.3)]"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-token-violet to-token-cyan text-white font-semibold shadow-[0_4px_24px_rgba(124,77,255,0.3)]"
             >
               <Plus className="w-5 h-5" />
               New Project

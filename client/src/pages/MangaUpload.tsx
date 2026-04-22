@@ -149,7 +149,7 @@ export default function MangaUpload() {
     return (
       <StudioLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-          <Upload size={48} className="text-[#00F0FF] mb-4" />
+          <Upload size={48} className="text-[#E040FB] mb-4" />
           <h2 className="text-h2 text-[#F0F0F5] mb-2">Sign in to upload artwork</h2>
           <a href={getLoginUrl()}>
             <AwakliButton variant="primary" size="lg">Sign In</AwakliButton>
@@ -182,7 +182,7 @@ export default function MangaUpload() {
                   onClick={() => setSelectedProjectId(project.id)}
                   className={`text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
                     selectedProjectId === project.id
-                      ? "bg-[rgba(107,91,255,0.1)] border-[rgba(107,91,255,0.4)] text-[#00F0FF]"
+                      ? "bg-[rgba(124,77,255,0.1)] border-[rgba(124,77,255,0.4)] text-[#E040FB]"
                       : "bg-[#151528] border-white/10 text-[#9494B8] hover:border-white/20"
                   }`}
                 >
@@ -211,11 +211,11 @@ export default function MangaUpload() {
                 onClick={() => setSelectedStyle(style.value)}
                 className={`px-3 py-3 rounded-xl border text-left transition-all ${
                   selectedStyle === style.value
-                    ? "bg-[rgba(107,91,255,0.1)] border-[rgba(107,91,255,0.4)]"
+                    ? "bg-[rgba(124,77,255,0.1)] border-[rgba(124,77,255,0.4)]"
                     : "bg-[#151528] border-white/10 hover:border-white/20"
                 }`}
               >
-                <div className={`text-sm font-medium ${selectedStyle === style.value ? "text-[#00F0FF]" : "text-[#F0F0F5]"}`}>
+                <div className={`text-sm font-medium ${selectedStyle === style.value ? "text-[#E040FB]" : "text-[#F0F0F5]"}`}>
                   {style.label}
                 </div>
                 <div className="text-xs text-[#5C5C7A] mt-0.5">{style.desc}</div>
@@ -228,7 +228,7 @@ export default function MangaUpload() {
         <motion.div
           className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
             isDragging
-              ? "border-[#6B5BFF] bg-[rgba(107,91,255,0.05)]"
+              ? "border-[#7C4DFF] bg-[rgba(124,77,255,0.05)]"
               : "border-white/10 hover:border-white/20 bg-[#0D0D1A]"
           }`}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -250,7 +250,7 @@ export default function MangaUpload() {
             animate={isDragging ? { scale: 1.1 } : { scale: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <Upload size={40} className={`mx-auto mb-4 ${isDragging ? "text-[#00F0FF]" : "text-[#5C5C7A]"}`} />
+            <Upload size={40} className={`mx-auto mb-4 ${isDragging ? "text-[#E040FB]" : "text-[#5C5C7A]"}`} />
           </motion.div>
           <p className="text-base font-medium text-[#F0F0F5] mb-1">
             {isDragging ? "Drop your manga panels here" : "Drag & drop manga panels"}
@@ -329,7 +329,7 @@ export default function MangaUpload() {
                           )}
                           {(item.state === "uploading" || item.state === "processing") && (
                             <div className="space-y-1.5">
-                              <div className="flex items-center gap-1.5 text-xs text-[#00F0FF]">
+                              <div className="flex items-center gap-1.5 text-xs text-[#E040FB]">
                                 <Loader2 size={12} className="animate-spin" />
                                 {item.state === "uploading" ? "Uploading..." : "Processing..."}
                               </div>

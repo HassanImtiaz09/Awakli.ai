@@ -62,8 +62,8 @@
   --color-error:         var(--status-error);
 
   /* Design Token Colors (bg-token-cyan, text-token-violet, etc.) */
-  --color-token-cyan:     #00F0FF;
-  --color-token-violet:   #6B5BFF;
+  --color-token-cyan:     #E040FB;
+  --color-token-violet:   #7C4DFF;
   --color-token-lavender: #B388FF;
   --color-token-gold:     #FFD60A;
   --color-token-magenta:  #FF2D7A;
@@ -87,9 +87,9 @@
   --radius-sigil: 999px;
 
   /* Typography */
-  --font-display:  'Bebas Neue', sans-serif;
-  --font-heading:  'Space Grotesk', sans-serif;
-  --font-sans:     'Inter Tight', sans-serif;
+  --font-display:  'Orbitron', sans-serif;
+  --font-heading:  'Orbitron', sans-serif;
+  --font-sans:     'Orbitron', sans-serif;
   --font-mono:     'JetBrains Mono', monospace;
 
   /* Design Token Font Sizes (text-display-hero, text-display-md, etc.) */
@@ -149,11 +149,11 @@
 
   /* Token Elevations */
   --token-shadow-rest:   0 1px 2px rgba(11, 11, 24, 0.08);
-  --token-shadow-hover:  0 6px 24px rgba(107, 91, 255, 0.20);
-  --token-shadow-active: 0 10px 36px rgba(107, 91, 255, 0.30);
+  --token-shadow-hover:  0 6px 24px rgba(124, 77, 255, 0.20);
+  --token-shadow-active: 0 10px 36px rgba(124, 77, 255, 0.30);
 
   /* Token Focus Ring */
-  --token-focus-ring: conic-gradient(from 220deg, #00F0FF, #6B5BFF, #FF2D7A 90%, #00F0FF);
+  --token-focus-ring: conic-gradient(from 220deg, #E040FB, #7C4DFF, #FF6E7F 90%, #E040FB);
 
   /* Token Surfaces — Default */
   --token-surface-bg:  #0B0B18;
@@ -192,36 +192,36 @@
   --text-muted:     #5C5C7A;
 
   /* Accents — Anime Palette (migrated to token-* system) */
-  --token-violet:       #6B5BFF;
-  --token-violet-glow:  rgba(107,91,255, 0.3);
-  --token-cyan:       #00F0FF;
-  --token-cyan-hover: #33DFFF;
-  --token-cyan-glow:  rgba(0, 240, 255, 0.2);
+  --token-violet:       #7C4DFF;
+  --token-violet-glow:  rgba(124,77,255, 0.3);
+  --token-cyan:       #E040FB;
+  --token-cyan-hover: #EA80FC;
+  --token-cyan-glow:  rgba(224, 64, 251, 0.2);
   --token-gold:       #FFD60A;
 
   /* Status */
   --status-success: #00FFB2;
   --status-warning: #FF8A3D;
   --status-error:   #E74C3C;
-  --status-info:    #00F0FF;
+  --status-info:    #E040FB;
 
   /* Named Gradients §3.1 */
-  --gradient-opening:   linear-gradient(135deg, #00F0FF 0%, #6B5BFF 55%, #B388FF 100%);
-  --gradient-night:     linear-gradient(135deg, #00F0FF, #6B5BFF);
+  --gradient-opening:   linear-gradient(135deg, #E040FB 0%, #7C4DFF 55%, #FF6E7F 100%);
+  --gradient-night:     linear-gradient(135deg, #E040FB, #7C4DFF);
   --gradient-heat:      linear-gradient(135deg, #FFD60A 0%, #FF8A00 50%, #FF2D7A 100%);
   --gradient-moonrise:  linear-gradient(180deg, #05050C, #151528);
-  --gradient-sakuga:    linear-gradient(90deg, #00FFB2, #00F0FF);
-  --gradient-hero:      linear-gradient(135deg, #05050C 0%, #1A0A2E 50%, #0D1A2E 100%);
+  --gradient-sakuga:    linear-gradient(90deg, #FF6E7F, #E040FB);
+  --gradient-hero:      linear-gradient(135deg, #05050C 0%, #1A0A2E 50%, #1A0D2E 100%);
   --gradient-card:      linear-gradient(180deg, rgba(21,21,40,0.8) 0%, rgba(13,13,26,0.9) 100%);
-  --gradient-accent:    linear-gradient(135deg, #00F0FF, #6B5BFF);
-  --gradient-cyan:      linear-gradient(135deg, #00F0FF, #0099CC);
-  --gradient-radial-pink: radial-gradient(ellipse at center, rgba(107,91,255,0.15) 0%, transparent 70%);
-  --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(0,240,255,0.1) 0%, transparent 70%);
+  --gradient-accent:    linear-gradient(135deg, #E040FB, #7C4DFF);
+  --gradient-cyan:      linear-gradient(135deg, #E040FB, #AA00FF);
+  --gradient-radial-pink: radial-gradient(ellipse at center, rgba(124,77,255,0.15) 0%, transparent 70%);
+  --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(224,64,251,0.1) 0%, transparent 70%);
 
   /* Shadows */
-  --shadow-glow-pink:   0 0 20px rgba(107,91,255,0.3), 0 0 40px rgba(107,91,255,0.1);
-  --shadow-glow-cyan:   0 0 20px rgba(0,240,255,0.2), 0 0 40px rgba(0,240,255,0.08);
-  --shadow-glow-violet: 0 0 20px rgba(107,91,255,0.2), 0 0 40px rgba(107,91,255,0.08);
+  --shadow-glow-pink:   0 0 20px rgba(124,77,255,0.3), 0 0 40px rgba(124,77,255,0.1);
+  --shadow-glow-cyan:   0 0 20px rgba(224,64,251,0.2), 0 0 40px rgba(224,64,251,0.08);
+  --shadow-glow-violet: 0 0 20px rgba(124,77,255,0.2), 0 0 40px rgba(124,77,255,0.08);
   --shadow-glow-jade:   0 0 20px rgba(0,255,178,0.2), 0 0 40px rgba(0,255,178,0.08);
   --shadow-card:        0 4px 24px rgba(0,0,0,0.5);
 
@@ -232,27 +232,27 @@
   --card-foreground: #F0F0F5;
   --popover:       #151528;
   --popover-foreground: #F0F0F5;
-  --primary:       #6B5BFF;
+  --primary:       #7C4DFF;
   --primary-foreground: #F0F0F5;
   --secondary:     #1C1C35;
   --secondary-foreground: #9494B8;
   --muted:         #1C1C35;
   --muted-foreground: #5C5C7A;
-  --accent:        #00F0FF;
+  --accent:        #E040FB;
   --accent-foreground: #05050C;
   --destructive:   #E74C3C;
   --destructive-foreground: #F0F0F5;
   --border:        rgba(255,255,255,0.07);
   --input:         #151528;
-  --ring:          #00F0FF;
+  --ring:          #E040FB;
   --sidebar:       #0D0D1A;
   --sidebar-foreground: #9494B8;
-  --sidebar-primary: #6B5BFF;
+  --sidebar-primary: #7C4DFF;
   --sidebar-primary-foreground: #F0F0F5;
   --sidebar-accent: #1C1C35;
   --sidebar-accent-foreground: #F0F0F5;
   --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-ring:  #00F0FF;
+  --sidebar-ring:  #E040FB;
 }
 
 /* ============================================================
@@ -267,7 +267,7 @@ html {
 body {
   background-color: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Inter Tight', sans-serif;
+  font-family: 'Orbitron', sans-serif;
   font-size: 1rem;
   line-height: 1.6;
   min-height: 100vh;
@@ -282,11 +282,11 @@ body {
 /* ============================================================
    Typography Utilities §3.1
    ============================================================ */
-.font-display  { font-family: 'Bebas Neue', sans-serif; }
-.font-heading  { font-family: 'Space Grotesk', sans-serif; }
+.font-display  { font-family: 'Orbitron', sans-serif; }
+.font-heading  { font-family: 'Orbitron', sans-serif; }
 
 .text-display {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Orbitron', sans-serif;
   font-size: clamp(3rem, 7vw, 6.5rem);
   line-height: 1.05;
   font-weight: 400;
@@ -294,20 +294,20 @@ body {
   text-transform: uppercase;
 }
 .text-h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Orbitron', sans-serif;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .text-h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Orbitron', sans-serif;
   font-size: clamp(1.5rem, 3vw, 2.25rem);
   line-height: 1.2;
   font-weight: 600;
 }
 .text-h3 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Orbitron', sans-serif;
   font-size: 1.5rem;
   line-height: 1.3;
   font-weight: 600;
@@ -368,9 +368,9 @@ body {
 .glow-cyan   { box-shadow: var(--shadow-glow-cyan); }
 .glow-violet { box-shadow: var(--shadow-glow-violet); }
 .glow-jade   { box-shadow: var(--shadow-glow-jade); }
-.text-glow-pink   { text-shadow: 0 0 20px rgba(107,91,255,0.6); }
-.text-glow-cyan   { text-shadow: 0 0 20px rgba(0,240,255,0.5); }
-.text-glow-violet { text-shadow: 0 0 20px rgba(107,91,255,0.5); }
+.text-glow-pink   { text-shadow: 0 0 20px rgba(124,77,255,0.6); }
+.text-glow-cyan   { text-shadow: 0 0 20px rgba(224,64,251,0.5); }
+.text-glow-violet { text-shadow: 0 0 20px rgba(124,77,255,0.5); }
 .text-glow-jade   { text-shadow: 0 0 20px rgba(0,255,178,0.5); }
 
 /* ============================================================
@@ -382,7 +382,7 @@ body {
 .bg-sakuga-glow      { background: var(--gradient-sakuga); }
 .bg-shonen-heat      { background: var(--gradient-heat); }
 .text-gradient-heat {
-  background: linear-gradient(135deg, #FFD60A 0%, #FF2D7A 100%);
+  background: linear-gradient(135deg, #FF6E7F 0%, #E040FB 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -393,9 +393,9 @@ body {
    ============================================================ */
 @keyframes chromatic-beat {
   0%   { filter: none; transform: translateX(0); }
-  20%  { filter: drop-shadow(-3px 0 0 rgba(0,240,255,0.6)) drop-shadow(3px 0 0 rgba(107,91,255,0.6)); transform: translateX(-2px); }
-  40%  { filter: drop-shadow(2px 0 0 rgba(0,240,255,0.4)) drop-shadow(-2px 0 0 rgba(107,91,255,0.4)); transform: translateX(2px); }
-  60%  { filter: drop-shadow(-1px 0 0 rgba(0,240,255,0.2)) drop-shadow(1px 0 0 rgba(107,91,255,0.2)); transform: translateX(-1px); }
+  20%  { filter: drop-shadow(-3px 0 0 rgba(224,64,251,0.6)) drop-shadow(3px 0 0 rgba(124,77,255,0.6)); transform: translateX(-2px); }
+  40%  { filter: drop-shadow(2px 0 0 rgba(224,64,251,0.4)) drop-shadow(-2px 0 0 rgba(124,77,255,0.4)); transform: translateX(2px); }
+  60%  { filter: drop-shadow(-1px 0 0 rgba(224,64,251,0.2)) drop-shadow(1px 0 0 rgba(124,77,255,0.2)); transform: translateX(-1px); }
   100% { filter: none; transform: translateX(0); }
 }
 .animate-beat {
@@ -481,7 +481,7 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0D0D1A; }
 ::-webkit-scrollbar-thumb { background: #252545; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #6B5BFF; }
+::-webkit-scrollbar-thumb:hover { background: #7C4DFF; }
 
 /* ============================================================
    Focus Ring §3.10 — Cyan glow, never OS default
@@ -489,7 +489,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--token-cyan);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 0 4px rgba(224, 64, 251, 0.15);
 }
 
 /* ============================================================
@@ -545,7 +545,7 @@ body {
     @apply cursor-pointer;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Orbitron', sans-serif;
   }
   /* Skip to main link §3.10 */
   .skip-to-main {

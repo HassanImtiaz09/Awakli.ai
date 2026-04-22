@@ -415,8 +415,8 @@ export default function MangaUpload({
                     />
                     <defs>
                       <linearGradient id="progressGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#00F0FF" />
-                        <stop offset="100%" stopColor="#6B5BFF" />
+                        <stop offset="0%" stopColor="#E040FB" />
+                        <stop offset="100%" stopColor="#7C4DFF" />
                       </linearGradient>
                     </defs>
                   </svg>

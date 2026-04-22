@@ -29,8 +29,8 @@ function Sigil({ className }: { className?: string }) {
       <circle cx="16" cy="16" r="3" fill="url(#sigil-grad)" fillOpacity="0.5" />
       <defs>
         <linearGradient id="sigil-grad" x1="2" y1="2" x2="30" y2="30">
-          <stop stopColor="#00F0FF" />
-          <stop offset="0.5" stopColor="#6B5BFF" />
+          <stop stopColor="#E040FB" />
+          <stop offset="0.5" stopColor="#7C4DFF" />
           <stop offset="1" stopColor="#FF2D7A" />
         </linearGradient>
       </defs>
@@ -81,13 +81,13 @@ export default function IdeaPrompt({
       <div
         className={`relative p-[2px] rounded-[36px] transition-all duration-500 ${
           focused
-            ? "shadow-[0_0_40px_rgba(107,91,255,0.2),0_0_80px_rgba(0,240,255,0.1)]"
+            ? "shadow-[0_0_40px_rgba(124,77,255,0.2),0_0_80px_rgba(224,64,251,0.1)]"
             : ""
         }`}
         style={{
           background: focused
-            ? "conic-gradient(from 220deg, #00F0FF, #6B5BFF, #FF2D7A, #00F0FF)"
-            : "conic-gradient(from 220deg, rgba(0,240,255,0.3), rgba(107,91,255,0.3), rgba(255,45,122,0.3), rgba(0,240,255,0.3))",
+            ? "conic-gradient(from 220deg, #E040FB, #7C4DFF, #FF2D7A, #E040FB)"
+            : "conic-gradient(from 220deg, rgba(224,64,251,0.3), rgba(124,77,255,0.3), rgba(255,45,122,0.3), rgba(224,64,251,0.3))",
         }}
       >
         {/* ─── Shimmer Overlay (on focus) ──────────────────────────── */}
@@ -107,7 +107,7 @@ export default function IdeaPrompt({
                 className="absolute inset-[-50%] origin-center"
                 style={{
                   background:
-                    "conic-gradient(from 0deg, transparent 0%, rgba(0,240,255,0.15) 10%, transparent 20%, rgba(107,91,255,0.15) 40%, transparent 50%, rgba(255,45,122,0.1) 70%, transparent 80%)",
+                    "conic-gradient(from 0deg, transparent 0%, rgba(224,64,251,0.15) 10%, transparent 20%, rgba(124,77,255,0.15) 40%, transparent 50%, rgba(255,45,122,0.1) 70%, transparent 80%)",
                 }}
               />
             </motion.div>

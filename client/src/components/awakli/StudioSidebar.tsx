@@ -172,12 +172,12 @@ function SidebarItem({ item, active, collapsed }: { item: NavItem; active: boole
         {/* Active indicator */}
         {active && (
           <motion.div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gradient-to-b from-[#00F0FF] to-[#6B5BFF] rounded-full"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gradient-to-b from-[#E040FB] to-[#7C4DFF] rounded-full"
             layoutId="sidebar-active"
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           />
         )}
-        <span className={cn("shrink-0", active && "text-[#00F0FF]")}>{item.icon}</span>
+        <span className={cn("shrink-0", active && "text-[#E040FB]")}>{item.icon}</span>
         <AnimatePresence>
           {!collapsed && (
             <motion.span

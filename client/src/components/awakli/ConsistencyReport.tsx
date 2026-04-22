@@ -187,7 +187,7 @@ export function ConsistencyReport({
               {isStudio && (
                 <button
                   onClick={onOpenLoraRetraining}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#6B5BFF]/10 border border-[#6B5BFF]/20 text-[#6B5BFF] text-xs font-medium hover:bg-[#6B5BFF]/15 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#7C4DFF]/10 border border-[#7C4DFF]/20 text-[#7C4DFF] text-xs font-medium hover:bg-[#7C4DFF]/15 transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Retrain LoRA for better consistency

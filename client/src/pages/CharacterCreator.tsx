@@ -20,9 +20,9 @@ import LoraTrainingCard from "@/components/awakli/LoraTrainingCard";
 // ─── Constants ────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { id: "protagonist" as const, label: "Protagonist", color: "#6B5BFF" },
+  { id: "protagonist" as const, label: "Protagonist", color: "#7C4DFF" },
   { id: "antagonist" as const,  label: "Antagonist",  color: "#E74C3C" },
-  { id: "supporting" as const,  label: "Supporting",  color: "#00F0FF" },
+  { id: "supporting" as const,  label: "Supporting",  color: "#E040FB" },
   { id: "background" as const,  label: "Background",  color: "#5C5C7A" },
 ] as const;
 
@@ -503,7 +503,7 @@ function CharacterFormModal({
               disabled={generatingRef || !name.trim()}
               className={cn(
                 "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
-                "bg-gradient-to-r from-[var(--token-cyan)] to-[#6B5BFF] text-white",
+                "bg-gradient-to-r from-[var(--token-cyan)] to-[#7C4DFF] text-white",
                 "hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
               )}
               whileHover={{ scale: 1.01 }}

@@ -72,11 +72,12 @@ describe("B5: Navigation rename and regroup", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   B2 — Logo system
+   B2 — Logo system (Kitsune Mask identity)
    ═══════════════════════════════════════════════════════════════════════ */
-describe("B2: Logo component", () => {
+describe("B2: Logo component — Kitsune Mask", () => {
   const logo = read("client/src/components/awakli/Logo.tsx");
   const topNav = read("client/src/components/awakli/TopNav.tsx");
+  const footer = read("client/src/components/awakli/MarketingFooter.tsx");
 
   it("Logo.tsx exports Logo component with variant and theme props", () => {
     expect(logo).toContain("variant");
@@ -84,54 +85,67 @@ describe("B2: Logo component", () => {
     expect(logo).toMatch(/mark|horizontal|stacked/);
   });
 
-  it("Logo.tsx contains SVG mark", () => {
-    expect(logo).toContain("<svg");
-    expect(logo).toContain("viewBox");
+  it("Logo.tsx uses an image-based mark (Kitsune Mask) via /manus-storage/", () => {
+    expect(logo).toContain("/manus-storage/");
+    expect(logo).toContain("<img");
+    expect(logo).toContain("Kitsune");
   });
 
-  it("TopNav imports and uses Logo component instead of text-only AWAKLI", () => {
+  it("Logo.tsx does NOT contain old inline SVG mark", () => {
+    expect(logo).not.toContain("<svg");
+    expect(logo).not.toContain("viewBox");
+    expect(logo).not.toContain("logo-stroke-reveal");
+  });
+
+  it("Logo wordmark uses Orbitron font", () => {
+    expect(logo).toContain("Orbitron");
+    expect(logo).toContain("font-display");
+  });
+
+  it("TopNav imports and uses Logo component", () => {
     expect(topNav).toContain("Logo");
     expect(topNav).toMatch(/import.*Logo/);
   });
 
-  it("Logo has animated stroke-reveal class", () => {
-    expect(logo).toContain("logo-stroke-reveal");
-  });
-
-  it("Logo uses Bebas Neue display font for wordmark", () => {
-    expect(logo).toContain("font-display");
+  it("MarketingFooter imports and uses Logo component", () => {
+    expect(footer).toContain("Logo");
+    expect(footer).toMatch(/import.*Logo/);
   });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   B1 — Typography
+   B1 — Typography (Orbitron throughout)
    ═══════════════════════════════════════════════════════════════════════ */
-describe("B1: Typography update", () => {
+describe("B1: Typography update — Orbitron", () => {
   const indexHtml = read("client/index.html");
   const indexCss = read("client/src/index.css");
 
-  it("index.html loads Bebas Neue from Google Fonts", () => {
-    expect(indexHtml).toContain("Bebas+Neue");
+  it("index.html loads Orbitron from Google Fonts", () => {
+    expect(indexHtml).toContain("Orbitron");
   });
 
-  it("index.html loads Space Grotesk from Google Fonts", () => {
-    expect(indexHtml).toContain("Space+Grotesk");
+  it("index.html does NOT load old fonts (Bebas Neue, Space Grotesk, Inter Tight)", () => {
+    expect(indexHtml).not.toContain("Bebas+Neue");
+    expect(indexHtml).not.toContain("Space+Grotesk");
+    expect(indexHtml).not.toContain("Inter+Tight");
   });
 
-  it("index.html loads Inter Tight from Google Fonts", () => {
-    expect(indexHtml).toContain("Inter+Tight");
+  it("CSS tokens use Orbitron for display font", () => {
+    expect(indexCss).toContain("--font-display:  'Orbitron'");
   });
 
-  it("CSS tokens use Bebas Neue for display font", () => {
-    expect(indexCss).toContain("Bebas Neue");
+  it("CSS tokens use Orbitron for heading font", () => {
+    expect(indexCss).toContain("--font-heading:  'Orbitron'");
   });
 
-  it("CSS tokens use Space Grotesk for heading font", () => {
-    expect(indexCss).toContain("Space Grotesk");
+  it("CSS tokens use Orbitron for body font", () => {
+    expect(indexCss).toContain("--font-sans:     'Orbitron'");
   });
 
-  it("CSS tokens use Inter Tight for body font", () => {
-    expect(indexCss).toContain("Inter Tight");
+  it("CSS does NOT contain old font references", () => {
+    expect(indexCss).not.toContain("Bebas Neue");
+    expect(indexCss).not.toContain("Space Grotesk");
+    expect(indexCss).not.toContain("Inter Tight");
   });
 
   it("Hero font size is scaled down (clamp with 6.5rem max)", () => {
@@ -140,15 +154,80 @@ describe("B1: Typography update", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Color Theme — Violet/Magenta/Coral palette
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("Color theme: Violet/Magenta/Coral palette", () => {
+  const indexCss = read("client/src/index.css");
+
+  it("Primary accent is now #E040FB (magenta) instead of old #00F0FF (cyan)", () => {
+    expect(indexCss).toContain("--token-cyan:       #E040FB");
+    expect(indexCss).not.toContain("--token-cyan:       #00F0FF");
+  });
+
+  it("Violet token is now #7C4DFF instead of old #6B5BFF", () => {
+    expect(indexCss).toContain("--token-violet:       #7C4DFF");
+    expect(indexCss).not.toContain("--token-violet:       #6B5BFF");
+  });
+
+  it("Opening gradient uses magenta/violet/coral (#E040FB, #7C4DFF, #FF6E7F)", () => {
+    expect(indexCss).toContain("#E040FB");
+    expect(indexCss).toContain("#7C4DFF");
+    expect(indexCss).toContain("#FF6E7F");
+  });
+
+  it("Shadcn primary is #7C4DFF", () => {
+    expect(indexCss).toContain("--primary:       #7C4DFF");
+  });
+
+  it("Shadcn accent is #E040FB", () => {
+    expect(indexCss).toContain("--accent:        #E040FB");
+  });
+
+  it("Ring color is #E040FB", () => {
+    expect(indexCss).toContain("--ring:          #E040FB");
+  });
+
+  it("Component files do NOT contain old #00F0FF or #6B5BFF hex values", () => {
+    // Check key components that previously had hard-coded old colors
+    const button = read("client/src/components/awakli/AwakliButton.tsx");
+    const input = read("client/src/components/awakli/AwakliInput.tsx");
+    const demo = read("client/src/components/awakli/DemoShowcase.tsx");
+
+    expect(button).not.toContain("#00F0FF");
+    expect(button).not.toContain("#6B5BFF");
+    expect(input).not.toContain("#00F0FF");
+    expect(input).not.toContain("#6B5BFF");
+    expect(demo).not.toContain("#00F0FF");
+    expect(demo).not.toContain("#6B5BFF");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Storage Proxy — Required for logo image serving
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("Storage proxy setup", () => {
+  const proxy = read("server/_core/storageProxy.ts");
+  const index = read("server/_core/index.ts");
+
+  it("storageProxy.ts exists and handles /manus-storage/* routes", () => {
+    expect(proxy).toContain("manus-storage");
+    expect(proxy).toContain("registerStorageProxy");
+    expect(proxy).toContain("presign/get");
+  });
+
+  it("server/_core/index.ts imports and registers the storage proxy", () => {
+    expect(index).toContain("registerStorageProxy");
+    expect(index).toMatch(/import.*storageProxy/);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
    B3/B4 — Homepage section trim (UI Improvement Brief)
-   Sections WatchItHappen, StreamingTonight, MarqueeStrip are commented
-   out in Home.tsx and deferred until real content exists.
    ═══════════════════════════════════════════════════════════════════════ */
 describe("Homepage trim: 5-section layout", () => {
   const home = read("client/src/pages/Home.tsx");
 
   it("WatchItHappen, StreamingTonight, MarqueeStrip imports are commented out", () => {
-    // Should NOT have active imports
     expect(home).not.toMatch(/^import.*WatchItHappen/m);
     expect(home).not.toMatch(/^import.*StreamingTonight/m);
     expect(home).not.toMatch(/^import.*MarqueeStrip/m);
@@ -170,7 +249,7 @@ describe("Homepage trim: 5-section layout", () => {
   });
 
   it("Scroll indicator is removed", () => {
-    expect(home).not.toContain("tracking-widest font-mono\">Scroll</span>");
+    expect(home).not.toContain('tracking-widest font-mono">Scroll</span>');
   });
 
   it("Home.tsx has 'More titles coming tonight' fallback", () => {
@@ -226,8 +305,7 @@ describe("UI Brief: Navigation transparency + contrast", () => {
   });
 
   it("TopNav inactive links use higher contrast text (not /20 or /30)", () => {
-    // Inactive links should use at least text-white/60 or similar
-    expect(topNav).toMatch(/text-\[#(9494B8|F0F0F5|B8B8CC)\]/);
+    expect(topNav).toMatch(/text-\[#(9494B8|F0F0F5|B8B8CC|B0B0CC)\]/);
   });
 });
 
@@ -249,7 +327,7 @@ describe("UI Brief: Pricing comparison toggle", () => {
 
   it("Pricing page has PricingView state type", () => {
     expect(pricing).toContain("PricingView");
-    expect(pricing).toMatch(/\"cards\"\s*\|\s*\"table\"/);
+    expect(pricing).toMatch(/"cards"\s*\|\s*"table"/);
   });
 
   it("Pricing page conditionally renders cards or table based on view state", () => {
@@ -319,7 +397,6 @@ describe("UI Brief: Create dashboard cleanup", () => {
   const create = read("client/src/pages/CreateDashboard.tsx");
 
   it("Active projects grid does NOT have a duplicate New Project card", () => {
-    // The grid should not contain a dashed border new-project card
     const gridSection = create.slice(
       create.indexOf("Active projects grid"),
       create.indexOf("Archived projects")

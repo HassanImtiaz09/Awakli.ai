@@ -102,7 +102,7 @@ export default function Terms() {
             <h2 className="text-lg font-semibold text-[#F0F0F5] mb-3">10. Contact</h2>
             <p>
               For questions about these terms, please contact us at{" "}
-              <a href="mailto:legal@awakli.ai" className="text-[#00F0FF] hover:text-[#33DFFF]">legal@awakli.ai</a>.
+              <a href="mailto:legal@awakli.ai" className="text-[#E040FB] hover:text-[#EA80FC]">legal@awakli.ai</a>.
             </p>
           </section>
         </div>

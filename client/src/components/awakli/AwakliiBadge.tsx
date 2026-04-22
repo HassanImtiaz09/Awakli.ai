@@ -10,7 +10,7 @@ interface AwakliiBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default:  "bg-[#1C1C35] text-[#9494B8] border border-white/10",
-  pink:     "bg-[rgba(107,91,255,0.15)] text-[#00F0FF] border border-[rgba(107,91,255,0.2)]",
+  pink:     "bg-[rgba(124,77,255,0.15)] text-[#E040FB] border border-[rgba(124,77,255,0.2)]",
   cyan:     "bg-token-cyan/15 text-token-cyan border border-token-cyan/20",
   gold:     "bg-[rgba(255,184,0,0.15)] text-[#FFD60A] border border-[rgba(255,184,0,0.2)]",
   success:  "bg-[rgba(46,204,113,0.15)] text-[#2ECC71] border border-[rgba(46,204,113,0.2)]",

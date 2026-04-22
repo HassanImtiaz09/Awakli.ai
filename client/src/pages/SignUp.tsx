@@ -16,9 +16,9 @@ export default function SignUp() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#08080F]">
       <StarField count={120} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(0,240,255,0.07) 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(224,64,251,0.07) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 80% 70%, rgba(107,91,255,0.06) 0%, transparent 50%)" }} />
+        style={{ background: "radial-gradient(ellipse at 80% 70%, rgba(124,77,255,0.06) 0%, transparent 50%)" }} />
 
       <motion.div
         className="relative z-10 w-full max-w-md mx-4"
@@ -36,7 +36,7 @@ export default function SignUp() {
           <div className="space-y-3 mb-6">
             {BENEFITS.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-sm text-[#9494B8]">
-                <Icon size={16} className="text-[#00F0FF] shrink-0" />
+                <Icon size={16} className="text-[#E040FB] shrink-0" />
                 <span>{text}</span>
               </div>
             ))}
@@ -58,16 +58,16 @@ export default function SignUp() {
           {/* Terms */}
           <p className="text-xs text-[#5C5C7A] text-center mb-6">
             By signing up, you agree to our{" "}
-            <Link href="/terms"><span className="text-[#00F0FF] hover:text-[#33DFFF] cursor-pointer">Terms of Service</span></Link>{" "}
+            <Link href="/terms"><span className="text-[#E040FB] hover:text-[#EA80FC] cursor-pointer">Terms of Service</span></Link>{" "}
             and{" "}
-            <Link href="/privacy"><span className="text-[#00F0FF] hover:text-[#33DFFF] cursor-pointer">Privacy Policy</span></Link>.
+            <Link href="/privacy"><span className="text-[#E040FB] hover:text-[#EA80FC] cursor-pointer">Privacy Policy</span></Link>.
           </p>
 
           {/* Sign in link */}
           <p className="text-center text-sm text-[#9494B8]">
             Already have an account?{" "}
             <Link href="/signin">
-              <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
+              <span className="text-[#E040FB] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
                 Sign in
               </span>
             </Link>

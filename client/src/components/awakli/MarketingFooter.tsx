@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Twitter, MessageCircle, Youtube } from "lucide-react";
 import React from "react";
 import { Link } from "wouter";
+import { Logo } from "./Logo";
 
 const MARQUEE_TEXT = "AWAKLI \u00B7 WHERE IDEAS BECOME ANIME \u00B7 CREATE \u00B7 VOTE \u00B7 ANIMATE \u00B7 ";
 
@@ -53,9 +54,7 @@ export function MarketingFooter() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           {/* Left: logo + tagline */}
           <div className="space-y-3">
-            <span className="font-display text-2xl font-bold text-gradient-opening">
-              AWAKLI
-            </span>
+            <Logo variant="horizontal" theme="dark" size={32} />
             <p className="text-sm text-[#5C5C7A] max-w-xs leading-relaxed">
               Where stories become manga, and manga becomes anime.
             </p>

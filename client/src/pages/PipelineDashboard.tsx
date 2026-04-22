@@ -169,7 +169,7 @@ function NodeGraph({
                   <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
                 </circle>
               )}
-              <text x={node.x} y={node.y + 5} fill="white" fontSize="13" fontWeight="600" textAnchor="middle" fontFamily="Space Grotesk, sans-serif">
+              <text x={node.x} y={node.y + 5} fill="white" fontSize="13" fontWeight="600" textAnchor="middle" fontFamily="Orbitron, sans-serif">
                 {node.label}
               </text>
               <text x={node.x} y={node.y + 22} fill={colors.stroke} fontSize="10" textAnchor="middle" fontFamily="Inter, sans-serif" style={{ textTransform: "uppercase" }}>

@@ -157,7 +157,7 @@ export function PanelTile({
       {panel.status === "generating" && hasImage && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-[#6B5BFF]" />
+            <Loader2 className="w-6 h-6 animate-spin text-[#7C4DFF]" />
             <span className="text-[10px] text-white/50">Redrawing...</span>
           </div>
         </div>

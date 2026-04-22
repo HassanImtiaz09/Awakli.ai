@@ -60,7 +60,7 @@ function JustCreatedRow() {
       <section>
         <ScrollReveal>
           <div className="flex items-center gap-2 mb-6">
-            <Wand2 size={20} className="text-[#00F0FF]" />
+            <Wand2 size={20} className="text-[#E040FB]" />
             <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
           </div>
         </ScrollReveal>
@@ -80,12 +80,12 @@ function JustCreatedRow() {
       <ScrollReveal>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Wand2 size={20} className="text-[#00F0FF]" />
+            <Wand2 size={20} className="text-[#E040FB]" />
             <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
 
           </div>
           <Link href="/create">
-            <span className="text-sm text-[#00F0FF] hover:underline cursor-pointer flex items-center gap-1">
+            <span className="text-sm text-[#E040FB] hover:underline cursor-pointer flex items-center gap-1">
               Create yours <ArrowRight size={14} />
             </span>
           </Link>
@@ -378,7 +378,7 @@ function BrowseAllSection() {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all",
                 genre === g.value
-                  ? "bg-[#6B5BFF]/20 text-[#00F0FF] border border-[#6B5BFF]/30"
+                  ? "bg-[#7C4DFF]/20 text-[#E040FB] border border-[#7C4DFF]/30"
                   : "text-[#9494B8] hover:text-[#F0F0F5] bg-[#1C1C35]/50 border border-white/5 hover:border-white/10"
               )}
               onClick={() => handleGenreChange(g.value)}
@@ -393,7 +393,7 @@ function BrowseAllSection() {
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as typeof sort)}
-            className="appearance-none bg-[#1C1C35] border border-white/10 rounded-lg px-3 py-1.5 pr-8 text-xs text-[#F0F0F5] focus:outline-none focus:border-[#6B5BFF]/30"
+            className="appearance-none bg-[#1C1C35] border border-white/10 rounded-lg px-3 py-1.5 pr-8 text-xs text-[#F0F0F5] focus:outline-none focus:border-[#7C4DFF]/30"
           >
             {SORT_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -411,7 +411,7 @@ function BrowseAllSection() {
           placeholder="Search manga & anime..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[#1C1C35]/50 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#F0F0F5] placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#6B5BFF]/20"
+          className="w-full bg-[#1C1C35]/50 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#F0F0F5] placeholder:text-[#5C5C7A] focus:outline-none focus:border-[#7C4DFF]/20"
         />
       </div>
 
@@ -431,7 +431,7 @@ function BrowseAllSection() {
           <Search size={32} className="text-white/20 mx-auto mb-3" />
           <p className="text-white/40 mb-2">No content found matching your filters.</p>
           <button
-            className="text-sm text-[#00F0FF] hover:underline"
+            className="text-sm text-[#E040FB] hover:underline"
             onClick={() => { setGenre(""); setSort("trending"); setSearchQuery(""); }}
           >
             Clear all filters
@@ -442,8 +442,8 @@ function BrowseAllSection() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {items.map((item: any) => (
               <Link key={item.id} href={`/watch/${item.slug}`}>
-                <TiltCard color="#6B5BFF" className="cursor-pointer" asLink>
-                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#6B5BFF]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#6B5BFF]/10">
+                <TiltCard color="#7C4DFF" className="cursor-pointer" asLink>
+                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-[#1C1C35] border border-white/5 group-hover:border-[#7C4DFF]/30 transition-all group-hover:shadow-lg group-hover:shadow-[#7C4DFF]/10">
                     {item.coverImageUrl ? (
                       <img
                         src={item.coverImageUrl}
@@ -468,13 +468,13 @@ function BrowseAllSection() {
                       </span>
                     </div>
                     {item.animeStatus === "completed" && (
-                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#6B5BFF]/90 text-[10px] font-bold text-white uppercase tracking-wide">
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#7C4DFF]/90 text-[10px] font-bold text-white uppercase tracking-wide">
                         Anime
                       </div>
                     )}
                   </div>
                   <div className="mt-2 px-0.5">
-                    <h3 className="text-sm font-medium text-[#F0F0F5] line-clamp-1 group-hover:text-[#00F0FF] transition-colors">
+                    <h3 className="text-sm font-medium text-[#F0F0F5] line-clamp-1 group-hover:text-[#E040FB] transition-colors">
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -524,7 +524,7 @@ export default function Discover() {
           <div className="relative rounded-2xl overflow-hidden p-10 md:p-16"
             style={{ background: "linear-gradient(135deg, #1A0A2E 0%, #0D1A2E 50%, #0A1A1A 100%)" }}>
             <div className="absolute inset-0 opacity-30"
-              style={{ background: "radial-gradient(ellipse at 30% 50%, rgba(107,91,255,0.3) 0%, transparent 60%)" }} />
+              style={{ background: "radial-gradient(ellipse at 30% 50%, rgba(124,77,255,0.3) 0%, transparent 60%)" }} />
             <div className="relative z-10 max-w-2xl">
               <AwakliiBadge variant="pink" size="md" className="mb-4">
                 <Sparkles size={12} className="mr-1" /> Discover
@@ -535,7 +535,7 @@ export default function Discover() {
               </p>
               <div className="flex items-center gap-3">
                 <Link href="/trending">
-                  <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-medium cursor-pointer text-sm hover:shadow-lg hover:shadow-[#6B5BFF]/20 transition-shadow">
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-medium cursor-pointer text-sm hover:shadow-lg hover:shadow-[#7C4DFF]/20 transition-shadow">
                     <Flame size={16} /> Trending Now
                   </span>
                 </Link>

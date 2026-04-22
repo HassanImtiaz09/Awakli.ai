@@ -164,7 +164,7 @@ export function PanelLightbox({
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="Make it rain. Pull the camera in. Remove the second character…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#6B5BFF]/50"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#7C4DFF]/50"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !atRegenCap && !isRedrawing) {
@@ -183,7 +183,7 @@ export function PanelLightbox({
                   }
                 }}
                 disabled={atRegenCap || isRedrawing}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#6B5BFF] to-[#00F0FF] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#7C4DFF] to-[#E040FB] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {isRedrawing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

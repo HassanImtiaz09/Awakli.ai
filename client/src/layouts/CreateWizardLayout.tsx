@@ -121,7 +121,7 @@ function StageRail({
               animate={isCurrent ? { scale: 1.08 } : { scale: 1 }}
               className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                 isCurrent
-                  ? "bg-token-violet/30 ring-2 ring-token-violet shadow-[0_0_20px_rgba(107,91,255,0.4)]"
+                  ? "bg-token-violet/30 ring-2 ring-token-violet shadow-[0_0_20px_rgba(124,77,255,0.4)]"
                   : isComplete
                   ? "bg-token-mint/20 ring-2 ring-token-mint"
                   : isLocked

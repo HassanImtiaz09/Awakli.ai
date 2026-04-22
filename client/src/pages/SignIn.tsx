@@ -11,9 +11,9 @@ export default function SignIn() {
       {/* Animated background */}
       <StarField count={120} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(107,91,255,0.08) 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(124,77,255,0.08) 0%, transparent 60%)" }} />
       <div className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 70% 80%, rgba(0,240,255,0.05) 0%, transparent 50%)" }} />
+        style={{ background: "radial-gradient(ellipse at 70% 80%, rgba(224,64,251,0.05) 0%, transparent 50%)" }} />
 
       {/* Card */}
       <motion.div
@@ -44,7 +44,7 @@ export default function SignIn() {
 
           {/* Security note */}
           <div className="flex items-start gap-3 p-3 rounded-lg bg-[#151528] border border-white/5">
-            <Shield size={16} className="text-[#00F0FF] mt-0.5 shrink-0" />
+            <Shield size={16} className="text-[#E040FB] mt-0.5 shrink-0" />
             <p className="text-xs text-[#9494B8] leading-relaxed">
               We use secure OAuth authentication — no passwords to remember or manage.
               Your data is protected with industry-standard encryption.
@@ -55,7 +55,7 @@ export default function SignIn() {
           <p className="text-center text-sm text-[#9494B8] mt-6">
             Don't have an account?{" "}
             <Link href="/signup">
-              <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
+              <span className="text-[#E040FB] hover:text-[#B388FF] transition-colors cursor-pointer font-medium">
                 Sign up free
               </span>
             </Link>

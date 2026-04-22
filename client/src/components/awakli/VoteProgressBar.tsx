@@ -39,10 +39,10 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
     return (
       <div className={`space-y-1 ${className}`}>
         <div className="flex items-center justify-between text-xs">
-          <span className={`font-medium ${isNearThreshold ? "text-[#00F0FF]" : "text-white/60"}`}>
+          <span className={`font-medium ${isNearThreshold ? "text-[#E040FB]" : "text-white/60"}`}>
             {totalVotes}/{threshold}
           </span>
-          <span className={`${isNearThreshold ? "text-[#00F0FF] font-semibold" : "text-white/40"}`}>
+          <span className={`${isNearThreshold ? "text-[#E040FB] font-semibold" : "text-white/40"}`}>
             {percentage}%
           </span>
         </div>
@@ -55,8 +55,8 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
               isReached
                 ? "bg-gradient-to-r from-amber-400 to-yellow-300"
                 : isNearThreshold
-                  ? "bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF]"
-                  : "bg-gradient-to-r from-[#00F0FF]/60 to-[#6B5BFF]/60"
+                  ? "bg-gradient-to-r from-[#E040FB] to-[#7C4DFF]"
+                  : "bg-gradient-to-r from-[#E040FB]/60 to-[#7C4DFF]/60"
             }`}
           />
         </div>
@@ -91,7 +91,7 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
                 transition={{ duration: 2 + Math.random() * 2, delay: Math.random() * 0.5 }}
                 className="absolute w-2 h-2 rounded-sm"
                 style={{
-                  backgroundColor: ["#6B5BFF", "#FFD700", "#B388FF", "#00F0FF", "#A855F7"][i % 5],
+                  backgroundColor: ["#7C4DFF", "#FFD700", "#B388FF", "#E040FB", "#A855F7"][i % 5],
                 }}
               />
             ))}
@@ -119,8 +119,8 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
             </>
           ) : isNearThreshold ? (
             <>
-              <Flame className="w-5 h-5 text-[#00F0FF] animate-pulse" />
-              <span className="text-[#00F0FF] font-semibold">Almost there! This manga is close to becoming anime!</span>
+              <Flame className="w-5 h-5 text-[#E040FB] animate-pulse" />
+              <span className="text-[#E040FB] font-semibold">Almost there! This manga is close to becoming anime!</span>
             </>
           ) : (
             <>
@@ -130,7 +130,7 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
           )}
         </div>
         <span className={`text-sm font-mono ${
-          isReached ? "text-amber-400" : isNearThreshold ? "text-[#00F0FF]" : "text-white/50"
+          isReached ? "text-amber-400" : isNearThreshold ? "text-[#E040FB]" : "text-white/50"
         }`}>
           {percentage}%
         </span>
@@ -148,8 +148,8 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
             isReached
               ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300"
               : isNearThreshold
-                ? "bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF]"
-                : "bg-gradient-to-r from-[#00F0FF]/70 to-[#6B5BFF]/70"
+                ? "bg-gradient-to-r from-[#E040FB] to-[#7C4DFF]"
+                : "bg-gradient-to-r from-[#E040FB]/70 to-[#7C4DFF]/70"
           }`}
         >
           {/* Shimmer effect at leading edge */}
@@ -177,7 +177,7 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
             transition={{ duration: 2, repeat: Infinity }}
             className="absolute inset-0 rounded-full"
             style={{
-              boxShadow: "0 0 20px rgba(107,91,255,0.5), inset 0 0 20px rgba(107,91,255,0.2)",
+              boxShadow: "0 0 20px rgba(124,77,255,0.5), inset 0 0 20px rgba(124,77,255,0.2)",
             }}
           />
         )}
@@ -228,7 +228,7 @@ export function FirstVoterModal({ open, onClose, onVote }: FirstVoterModalProps)
             onClick={(e) => e.stopPropagation()}
             className="bg-[#1A1A2E] border border-white/10 rounded-2xl p-8 max-w-md mx-4 text-center"
           >
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#E040FB] to-[#7C4DFF] flex items-center justify-center">
               <Trophy className="w-8 h-8 text-white" />
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Your Vote Matters!</h3>
@@ -246,7 +246,7 @@ export function FirstVoterModal({ open, onClose, onVote }: FirstVoterModalProps)
               </button>
               <button
                 onClick={() => { onVote(); onClose(); }}
-                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold hover:shadow-lg hover:shadow-[#6B5BFF]/25 transition-all"
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold hover:shadow-lg hover:shadow-[#7C4DFF]/25 transition-all"
               >
                 Cast My Vote
               </button>
@@ -330,7 +330,7 @@ export function EnhancedVoteButton({ episodeId, size = "md", showCount = true, c
           inline-flex items-center rounded-lg font-medium transition-all
           ${sizeClasses[size]}
           ${isUpvoted
-            ? "bg-[#6B5BFF] text-white shadow-lg shadow-[#6B5BFF]/25"
+            ? "bg-[#7C4DFF] text-white shadow-lg shadow-[#7C4DFF]/25"
             : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
           }
           disabled:opacity-50

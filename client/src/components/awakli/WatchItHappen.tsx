@@ -15,7 +15,7 @@ const ENCODED_PROMPT = encodeURIComponent(DEMO_PROMPT);
 
 /* Placeholder poster — gradient overlay until real video is recorded */
 const POSTER_GRADIENT =
-  "linear-gradient(135deg, rgba(13,13,26,0.95) 0%, rgba(107,91,255,0.2) 50%, rgba(0,240,255,0.15) 100%)";
+  "linear-gradient(135deg, rgba(13,13,26,0.95) 0%, rgba(124,77,255,0.2) 50%, rgba(224,64,251,0.15) 100%)";
 
 /* 3-up proof strip stages */
 const PROOF_STAGES = [
@@ -91,7 +91,7 @@ export function WatchItHappen() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(107,91,255,0.15)]"
+          className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(124,77,255,0.15)]"
         >
           {/* Video element — placeholder until real screencap is recorded */}
           <div
@@ -182,7 +182,7 @@ export function WatchItHappen() {
         >
           <Link
             href={`/create/input?prompt=${ENCODED_PROMPT}`}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[var(--token-violet)] to-[var(--token-cyan)] text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(107,91,255,0.4)] transition-shadow"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[var(--token-violet)] to-[var(--token-cyan)] text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(124,77,255,0.4)] transition-shadow"
           >
             Try the demo prompt
             <ArrowRight size={16} />

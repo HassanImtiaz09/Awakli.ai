@@ -127,9 +127,9 @@ export function SceneCard({
       data-scene-number={scene.scene_number}
       className={`relative rounded-2xl border transition-all duration-200 ${
         isSelected
-          ? "border-[#6B5BFF]/50 bg-[#6B5BFF]/5 shadow-[0_0_20px_rgba(107,91,255,0.1)]"
+          ? "border-[#7C4DFF]/50 bg-[#7C4DFF]/5 shadow-[0_0_20px_rgba(124,77,255,0.1)]"
           : isApproved
-          ? "border-[#00F0FF]/30 bg-[#00F0FF]/[0.02]"
+          ? "border-[#E040FB]/30 bg-[#E040FB]/[0.02]"
           : "border-white/10 bg-white/[0.02] hover:border-white/20"
       }`}
     >
@@ -143,7 +143,7 @@ export function SceneCard({
             className="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-2xl z-10 grid place-items-center"
           >
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-6 h-6 text-[#6B5BFF] animate-spin" />
+              <Loader2 className="w-6 h-6 text-[#7C4DFF] animate-spin" />
               <span className="text-white/60 text-xs">Regenerating scene...</span>
             </div>
           </motion.div>
@@ -170,7 +170,7 @@ export function SceneCard({
         <div
           className={`flex-shrink-0 w-7 h-7 rounded-lg grid place-items-center text-xs font-bold ${
             isApproved
-              ? "bg-[#00F0FF]/10 text-[#00F0FF]"
+              ? "bg-[#E040FB]/10 text-[#E040FB]"
               : "bg-white/5 text-white/40"
           }`}
         >
@@ -184,7 +184,7 @@ export function SceneCard({
               {scene.title || `${scene.location} — ${scene.mood}`}
             </span>
             {isApproved && (
-              <Check className="w-3.5 h-3.5 text-[#00F0FF] flex-shrink-0" />
+              <Check className="w-3.5 h-3.5 text-[#E040FB] flex-shrink-0" />
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5">
@@ -292,7 +292,7 @@ export function SceneCard({
                         <span className="text-[10px] font-mono text-white/30">
                           P{panel.panel_number}
                         </span>
-                        <span className="text-[10px] text-[#6B5BFF]/60 px-1.5 py-0.5 rounded bg-[#6B5BFF]/5">
+                        <span className="text-[10px] text-[#7C4DFF]/60 px-1.5 py-0.5 rounded bg-[#7C4DFF]/5">
                           {panel.camera_angle}
                         </span>
                         {panel.transition && (
@@ -308,7 +308,7 @@ export function SceneCard({
                         <div className="space-y-1 mt-2">
                           {panel.dialogue.map((d, i) => (
                             <div key={i} className="flex items-start gap-2">
-                              <span className="text-[10px] font-semibold text-[#00F0FF]/60 flex-shrink-0 mt-0.5">
+                              <span className="text-[10px] font-semibold text-[#E040FB]/60 flex-shrink-0 mt-0.5">
                                 {d.character}:
                               </span>
                               <span className="text-[11px] text-white/50">
@@ -339,10 +339,10 @@ export function SceneCard({
                     disabled={isApproved || approving}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                       isApproved
-                        ? "bg-[#00F0FF]/10 text-[#00F0FF]/60 cursor-default"
+                        ? "bg-[#E040FB]/10 text-[#E040FB]/60 cursor-default"
                         : approving
                         ? "bg-white/5 text-white/30"
-                        : "bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20"
+                        : "bg-[#E040FB]/10 text-[#E040FB] hover:bg-[#E040FB]/20"
                     }`}
                   >
                     {approving ? (

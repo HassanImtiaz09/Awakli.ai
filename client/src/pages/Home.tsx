@@ -118,7 +118,7 @@ function ActOneHero() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#05050C]/85 via-[#05050C]/60 to-[#05050C]/95" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#05050C]/70 to-transparent" />
       {/* Radial accent glow */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6B5BFF]/12 rounded-full blur-[150px]" />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#7C4DFF]/12 rounded-full blur-[150px]" />
 
       {/* Content */}
       <div className="container relative z-10 py-32 md:py-0">
@@ -128,9 +128,9 @@ function ActOneHero() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00F0FF]/30 bg-[#00F0FF]/5 text-[#00F0FF] text-[11px] font-semibold uppercase tracking-[0.16em] mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E040FB]/30 bg-[#E040FB]/5 text-[#E040FB] text-[11px] font-semibold uppercase tracking-[0.16em] mb-8"
           >
-            <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#E040FB] animate-pulse" />
             Now in Public Beta
           </motion.div>
 
@@ -142,7 +142,7 @@ function ActOneHero() {
             className="text-display text-white mb-6 tracking-tighter"
           >
             <span className="block">Tonight, your idea</span>
-            <span className="block">becomes <span className="text-gradient-opening drop-shadow-[0_0_40px_rgba(107,91,255,0.35)]" style={{ textShadow: "0 0 60px rgba(0,240,255,0.3)" }}>ANIME</span>.</span>
+            <span className="block">becomes <span className="text-gradient-opening drop-shadow-[0_0_40px_rgba(124,77,255,0.35)]" style={{ textShadow: "0 0 60px rgba(224,64,251,0.3)" }}>ANIME</span>.</span>
           </motion.h1>
 
           {/* Subheadline — §10 */}
@@ -163,11 +163,11 @@ function ActOneHero() {
           >
             <motion.button
               onClick={handleCTA}
-              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
+              whileHover={{ scale: 1.04, boxShadow: "0 0 40px rgba(224,64,251,0.5)" }}
               whileTap={{ scale: 0.96 }}
               className="px-10 py-4 rounded-xl bg-opening-sequence text-white font-semibold text-lg flex items-center gap-3 mx-auto relative overflow-hidden"
               style={{
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 34px -10px rgba(0,240,255,0.5), 0 4px 10px rgba(0,0,0,0.4)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 14px 34px -10px rgba(224,64,251,0.5), 0 4px 10px rgba(0,0,0,0.4)",
               }}
             >
               {/* Shimmer sweep */}
@@ -237,7 +237,7 @@ const PROOF_SECTIONS = [
     heading: "From a sentence.",
     description: "Describe your story in plain text. A single sentence is enough. AI writes the screenplay, designs the world, and draws every panel.",
     icon: PenTool,
-    color: "#00F0FF",
+    color: "#E040FB",
     visual: "typewriter",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-icon-ZhgJFNjN2NbN3yYVHa8mGM.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step01-panel-6JkYCd3cPfjfaqNUyWmLHw.webp",
@@ -248,7 +248,7 @@ const PROOF_SECTIONS = [
     heading: "To a character.",
     description: "AI extracts your characters from the script, generates consistent designs, and builds a visual identity that persists across every panel and episode.",
     icon: Users,
-    color: "#6B5BFF",
+    color: "#7C4DFF",
     visual: "character",
     iconImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-icon-SNLB3dDwDNfZzwFHfA2syi.webp",
     panelImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/step02-panel-erd4jMX29QPXQ7KRqAisod.webp",
@@ -449,7 +449,7 @@ function ActThreeInvitation() {
   return (
     <section className="py-24 md:py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-[#05050C]/50" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#6B5BFF]/10 blur-[150px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-[#7C4DFF]/10 blur-[150px]" />
 
       <div className="container relative z-10">
         {/* Heading */}
@@ -502,7 +502,7 @@ function ActThreeInvitation() {
                     <div
                       className="absolute -inset-[1px] rounded-xl opacity-60 group-focus-within:opacity-100 transition-opacity"
                       style={{
-                        background: "linear-gradient(135deg, #00F0FF40, #6B5BFF40, #FF2D7A40)",
+                        background: "linear-gradient(135deg, #E040FB40, #7C4DFF40, #FF2D7A40)",
                       }}
                     />
                     {/* Inner input surface */}
@@ -516,10 +516,10 @@ function ActThreeInvitation() {
                         className="w-full bg-transparent rounded-xl text-white placeholder:text-[#5C5C7A] focus:outline-none transition-all px-5 py-4 text-base relative z-10"
                       />
                       {/* Corner sigils */}
-                      <svg className="absolute top-1 left-1 w-3 h-3 text-[#00F0FF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg className="absolute top-1 left-1 w-3 h-3 text-[#E040FB] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M1 5 V1 H5" />
                       </svg>
-                      <svg className="absolute top-1 right-1 w-3 h-3 text-[#6B5BFF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                      <svg className="absolute top-1 right-1 w-3 h-3 text-[#7C4DFF] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <path d="M7 1 H11 V5" />
                       </svg>
                       <svg className="absolute bottom-1 left-1 w-3 h-3 text-[#FFD60A] opacity-70" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -532,11 +532,11 @@ function ActThreeInvitation() {
                   </div>
                   <motion.button
                     onClick={handleCreate}
-                    whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(0,240,255,0.5)" }}
+                    whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(224,64,251,0.5)" }}
                     whileTap={{ scale: 0.97 }}
                     className="flex-shrink-0 bg-opening-sequence text-white font-bold rounded-xl flex items-center gap-2 px-10 py-4 text-lg tracking-wide relative overflow-hidden group/summon"
                     style={{
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 12px 30px -8px rgba(0,240,255,0.45), 0 4px 8px rgba(0,0,0,0.4)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28), 0 12px 30px -8px rgba(224,64,251,0.45), 0 4px 8px rgba(0,0,0,0.4)",
                     }}
                   >
                     {/* Shimmer sweep */}
@@ -574,10 +574,10 @@ function CreatorShowcase() {
   if (displayItems.length === 0) {
     return (
       <div className="text-center py-16">
-        <Sparkles className="w-10 h-10 text-[#6B5BFF]/60 mx-auto mb-4" strokeWidth={2} />
+        <Sparkles className="w-10 h-10 text-[#7C4DFF]/60 mx-auto mb-4" strokeWidth={2} />
         <p className="text-[#B8B8CC] text-lg mb-2">The gallery is waiting for its first stories.</p>
         <Link href="/create">
-          <span className="text-[#00F0FF] hover:text-[#B388FF] transition-colors cursor-pointer font-medium text-sm">
+          <span className="text-[#E040FB] hover:text-[#B388FF] transition-colors cursor-pointer font-medium text-sm">
             Be the first creator <ArrowRight className="inline w-4 h-4 ml-1" strokeWidth={1.5} />
           </span>
         </Link>
@@ -629,8 +629,8 @@ function CreatorShowcase() {
 
 /* ─── AI-Powered Feature Strip ────────────────────────────────────────── */
 const AI_FEATURES = [
-  { name: "AI Screenwriting", icon: Brain, color: "#6B5BFF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-screenwriting-HsAEycmYpa3TuhFXcpny9U.webp" },
-  { name: "Panel Generation", icon: ImageIcon, color: "#00F0FF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-panel-gen-2QJtuqX7x7L5NdixecJQAc.webp" },
+  { name: "AI Screenwriting", icon: Brain, color: "#7C4DFF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-screenwriting-HsAEycmYpa3TuhFXcpny9U.webp" },
+  { name: "Panel Generation", icon: ImageIcon, color: "#E040FB", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-panel-gen-2QJtuqX7x7L5NdixecJQAc.webp" },
   { name: "Video Animation", icon: Film, color: "#B388FF", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-video-anim-nh8rKgBmQiLzcwkzDt5sti.webp" },
   { name: "Voice Acting", icon: Mic, color: "#FFD60A", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-voice-acting-kADJ9u6puCy5tBmEumnhrE.webp" },
   { name: "Community Voting", icon: Heart, color: "#FF2D7A", chipImg: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/chip-community-voting-bGSg8MyBdujfSUrdiJF8M6.webp" },
@@ -711,7 +711,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
           <h2 className="text-xl md:text-2xl font-heading font-bold text-white">{title}</h2>
         </div>
         {seeAllLink && (
-          <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#00F0FF] transition-colors flex items-center gap-1">
+          <Link href={seeAllLink} className="text-sm text-[#9494B8] hover:text-[#E040FB] transition-colors flex items-center gap-1">
             See all <ChevronRight className="w-4 h-4" strokeWidth={1.5} />
           </Link>
         )}
@@ -758,7 +758,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                         <img src={project.coverImageUrl} alt={project.title} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${
-                          ["from-[#6B5BFF]/30 to-[#B388FF]/20", "from-[#00F0FF]/30 to-blue-500/20", "from-[#B388FF]/30 to-[#6B5BFF]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
+                          ["from-[#7C4DFF]/30 to-[#B388FF]/20", "from-[#E040FB]/30 to-blue-500/20", "from-[#B388FF]/30 to-[#7C4DFF]/20", "from-emerald-500/30 to-teal-500/20"][i % 4]
                         }`}>
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Film className="w-12 h-12 text-white/20" strokeWidth={1.5} />
@@ -767,7 +767,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-[#6B5BFF]/90 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-[#7C4DFF]/90 flex items-center justify-center">
                             <Play className="w-5 h-5 text-white fill-white ml-0.5" strokeWidth={1.5} />
                           </div>
                           <span className="text-sm text-white font-medium">Watch Now</span>
@@ -780,7 +780,7 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
                       )}
                     </div>
                     <div className="mt-3 px-1">
-                      <h3 className="text-sm font-semibold text-white truncate group-hover/card:text-[#00F0FF] transition-colors">
+                      <h3 className="text-sm font-semibold text-white truncate group-hover/card:text-[#E040FB] transition-colors">
                         {project.title}
                       </h3>
                       <p className="text-xs text-[#5C5C7A] mt-1 truncate">
@@ -847,7 +847,7 @@ export default function Home() {
           {(trending.isLoading || liveTrending.length > 0) && (
             <ContentRow
               title="Trending Now"
-              icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
+              icon={<TrendingUp className="w-5 h-5 text-[#E040FB]" strokeWidth={1.5} />}
               projects={liveTrending}
               isLoading={trending.isLoading}
               seeAllLink="/discover"
@@ -856,7 +856,7 @@ export default function Home() {
           {(newReleases.isLoading || liveNewReleases.length > 0) && (
             <ContentRow
               title="New Releases"
-              icon={<Clock className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
+              icon={<Clock className="w-5 h-5 text-[#E040FB]" strokeWidth={1.5} />}
               projects={liveNewReleases}
               isLoading={newReleases.isLoading}
               seeAllLink="/discover"

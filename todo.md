@@ -4387,3 +4387,24 @@
 - [x] LOW: Characters — redesign empty state with explanation and hide toolbar when empty
 - [x] LOW: Create dashboard — remove duplicate New Project button, add background art
 - [x] Write vitest tests for UI improvement changes
+
+## Typography, Color Theme & Logo Redesign
+- [x] Generate 5 typography style mockup images for user selection
+- [x] Generate anime-style logo and title design for Awakli using AI
+- [ ] Redesign color theme for more immersive, eye-catching appearance (move away from blue)
+- [ ] Apply selected typography to the website
+- [ ] Apply new color theme across all pages
+- [ ] Integrate new anime logo as website identity
+- [ ] Write vitest tests for typography/color/logo changes
+
+## User Selection: Orbitron + Kitsune Mask Logo
+- [x] Replace all fonts with Orbitron (display, heading, body) — no DM Sans
+- [x] Update index.html Google Fonts link to load Orbitron only
+- [x] Update index.css font tokens to use Orbitron throughout
+- [x] Redesign color theme: violet/magenta/coral immersive palette (replace blue)
+- [x] Integrate Kitsune Mask logo (Option F) into TopNav
+- [x] Integrate Kitsune Mask logo into MarketingFooter
+- [x] Integrate Kitsune Mask logo into favicon/brand touchpoints (storage proxy set up)
+- [x] Update Logo.tsx component to use the new logo image
+- [x] Verify all pages render correctly with new typography and colors
+- [x] Write vitest tests for new typography and logo

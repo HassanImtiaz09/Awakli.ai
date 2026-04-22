@@ -62,7 +62,7 @@ export function StarField({ count = 120, className = "" }: StarFieldProps) {
           height: "40%",
           top: "10%",
           left: "5%",
-          background: "radial-gradient(ellipse, rgba(107,91,255,0.08) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(124,77,255,0.08) 0%, transparent 70%)",
         }}
       />
       <div
@@ -72,7 +72,7 @@ export function StarField({ count = 120, className = "" }: StarFieldProps) {
           height: "35%",
           bottom: "15%",
           right: "5%",
-          background: "radial-gradient(ellipse, rgba(0,240,255,0.06) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(224,64,251,0.06) 0%, transparent 70%)",
         }}
       />
       <div

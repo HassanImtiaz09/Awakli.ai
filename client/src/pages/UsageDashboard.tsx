@@ -12,7 +12,7 @@ import { PlatformLayout } from "@/components/awakli/Layouts";
 import { useState } from "react";
 
 // ─── Animated Credit Ring ──────────────────────────────────────────────────
-function CreditRing({ used, total, label, color = "#6B5BFF" }: { used: number; total: number; label: string; color?: string }) {
+function CreditRing({ used, total, label, color = "#7C4DFF" }: { used: number; total: number; label: string; color?: string }) {
   const pct = total > 0 ? Math.min(used / total, 1) : 0;
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
@@ -47,7 +47,7 @@ function CreditRing({ used, total, label, color = "#6B5BFF" }: { used: number; t
 }
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF" }: {
+function StatCard({ icon: Icon, label, value, sub, color = "#7C4DFF" }: {
   icon: any; label: string; value: string | number; sub?: string; color?: string;
 }) {
   return (
@@ -72,13 +72,13 @@ function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF" }: {
 // ─── Transaction Type Labels ───────────────────────────────────────────────
 const TX_LABELS: Record<string, { label: string; color: string; icon: any }> = {
   grant_subscription: { label: "Subscription Grant", color: "#2ECC71", icon: Crown },
-  grant_pack_purchase: { label: "Pack Purchase", color: "#00F0FF", icon: Package },
+  grant_pack_purchase: { label: "Pack Purchase", color: "#E040FB", icon: Package },
   grant_promotional: { label: "Promo Credit", color: "#FFD60A", icon: Zap },
   hold_preauth: { label: "Hold (Pending)", color: "#F59E0B", icon: Clock },
-  commit_consumption: { label: "Used", color: "#6B5BFF", icon: Film },
+  commit_consumption: { label: "Used", color: "#7C4DFF", icon: Film },
   release_hold: { label: "Hold Released", color: "#8B5CF6", icon: RefreshCw },
   refund_generation: { label: "Refund", color: "#2ECC71", icon: RefreshCw },
-  rollover: { label: "Rollover", color: "#00F0FF", icon: TrendingUp },
+  rollover: { label: "Rollover", color: "#E040FB", icon: TrendingUp },
   expiry: { label: "Expired", color: "#6B7280", icon: AlertCircle },
   admin_adjustment: { label: "Admin Adjustment", color: "#FFD60A", icon: Shield },
 };
@@ -129,7 +129,7 @@ export default function UsageDashboard() {
           <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
           <h2 className="text-2xl font-heading font-bold text-white mb-3">Sign in to view billing</h2>
           <p className="text-gray-400 mb-6">Track your credits, usage, and subscription details.</p>
-          <a href={getLoginUrl()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold">
+          <a href={getLoginUrl()} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold">
             Sign In <ArrowRight className="w-4 h-4" />
           </a>
         </div>
@@ -168,7 +168,7 @@ export default function UsageDashboard() {
                 <Link href="/pricing">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
-                    className="px-5 py-2 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white text-sm font-semibold"
+                    className="px-5 py-2 rounded-full bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white text-sm font-semibold"
                   >
                     Upgrade
                   </motion.button>
@@ -219,7 +219,7 @@ export default function UsageDashboard() {
                 used={b?.lifetimeConsumption ?? 0}
                 total={allocation}
                 label="Period Credits"
-                color="#6B5BFF"
+                color="#7C4DFF"
               />
               <CreditRing
                 used={b?.activeHolds ?? 0}
@@ -237,7 +237,7 @@ export default function UsageDashboard() {
                 used={u?.byType?.image ?? 0}
                 total={Math.max(u?.byType?.image ?? 0, 20)}
                 label="Image Generations"
-                color="#00F0FF"
+                color="#E040FB"
               />
             </div>
           </div>
@@ -289,10 +289,10 @@ export default function UsageDashboard() {
           {u && (
             <div className="grid md:grid-cols-5 gap-4 mb-8">
               <StatCard icon={Film} label="Video" value={u.byType?.video ?? 0} sub="credits" color="#8B5CF6" />
-              <StatCard icon={Palette} label="Image" value={u.byType?.image ?? 0} sub="credits" color="#00F0FF" />
+              <StatCard icon={Palette} label="Image" value={u.byType?.image ?? 0} sub="credits" color="#E040FB" />
               <StatCard icon={Mic} label="Voice" value={u.byType?.voice ?? 0} sub="credits" color="#2ECC71" />
               <StatCard icon={Layers} label="Script" value={u.byType?.script ?? 0} sub="credits" color="#FFD60A" />
-              <StatCard icon={Package} label="Music" value={u.byType?.music ?? 0} sub="credits" color="#6B5BFF" />
+              <StatCard icon={Package} label="Music" value={u.byType?.music ?? 0} sub="credits" color="#7C4DFF" />
             </div>
           )}
 
@@ -393,7 +393,7 @@ export default function UsageDashboard() {
                 <Link href="/pricing">
                   <motion.button
                     whileHover={{ scale: 1.03 }}
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold shadow-lg shadow-[#6B5BFF]/20"
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold shadow-lg shadow-[#7C4DFF]/20"
                   >
                     View Plans <ArrowRight className="inline ml-2 w-4 h-4" />
                   </motion.button>

@@ -178,7 +178,7 @@ function RegenerateDialog({ panel, onClose, onSuccess }: RegenerateDialogProps) 
               onClick={() => setIsCustom(false)}
               className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition border ${
                 !isCustom
-                  ? "bg-[#6B5BFF]/10 border-[#6B5BFF]/30 text-[#00F0FF]"
+                  ? "bg-[#7C4DFF]/10 border-[#7C4DFF]/30 text-[#E040FB]"
                   : "bg-white/[0.03] border-white/5 text-white/40 hover:text-white/60"
               }`}
             >
@@ -241,7 +241,7 @@ function RegenerateDialog({ panel, onClose, onSuccess }: RegenerateDialogProps) 
           <button
             onClick={handleRegenerate}
             disabled={isLoading || (isCustom && prompt.trim().length < 5)}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white text-sm font-medium shadow-lg shadow-[#6B5BFF]/20 hover:shadow-[#6B5BFF]/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white text-sm font-medium shadow-lg shadow-[#7C4DFF]/20 hover:shadow-[#7C4DFF]/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -356,7 +356,7 @@ export default function CreateGenerate() {
   if (statusLoading) {
     return (
       <div className="min-h-screen bg-[#08080F] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#E040FB] animate-spin" />
       </div>
     );
   }
@@ -367,7 +367,7 @@ export default function CreateGenerate() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-white/30 mx-auto mb-4" />
           <p className="text-white/50">Project not found</p>
-          <button onClick={() => navigate("/create")} className="mt-4 text-[#00F0FF] hover:underline">
+          <button onClick={() => navigate("/create")} className="mt-4 text-[#E040FB] hover:underline">
             Create a new manga
           </button>
         </div>
@@ -409,7 +409,7 @@ export default function CreateGenerate() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 onClick={() => navigate(`/create/${projectId}/read`)}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-medium text-sm flex items-center gap-2"
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-medium text-sm flex items-center gap-2"
               >
                 Read Manga <ArrowRight className="w-4 h-4" />
               </motion.button>
@@ -420,7 +420,7 @@ export default function CreateGenerate() {
         {/* Progress bar */}
         <div className="h-1 bg-white/5">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF]"
+            className="h-full bg-gradient-to-r from-[#E040FB] to-[#7C4DFF]"
             initial={{ width: 0 }}
             animate={{ width: `${overallProgress}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -475,7 +475,7 @@ export default function CreateGenerate() {
         <div className="lg:w-1/3 border-r border-white/5 overflow-y-auto max-h-[calc(100vh-100px)]">
           <div className="p-4">
             <div className="flex items-center gap-2 mb-4">
-              <div className={`w-2 h-2 rounded-full ${script ? "bg-green-500" : "bg-[#6B5BFF] animate-pulse"}`} />
+              <div className={`w-2 h-2 rounded-full ${script ? "bg-green-500" : "bg-[#7C4DFF] animate-pulse"}`} />
               <span className="text-white/60 text-sm font-medium">
                 {script ? "Script Generated" : "Writing Script..."}
               </span>
@@ -485,7 +485,7 @@ export default function CreateGenerate() {
               <div className="space-y-3">
                 <div className="bg-white/[0.03] rounded-lg p-4 border border-white/5">
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                    <Sparkles className="w-4 h-4 text-[#E040FB] animate-pulse" />
                     <span className="text-white/40 text-xs font-mono">AI is writing your story...</span>
                   </div>
                   <div className="space-y-2">
@@ -517,10 +517,10 @@ export default function CreateGenerate() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-br from-[#6B5BFF]/10 to-[#6C63FF]/10 rounded-lg p-4 border border-[#6B5BFF]/20"
+                    className="bg-gradient-to-br from-[#7C4DFF]/10 to-[#6C63FF]/10 rounded-lg p-4 border border-[#7C4DFF]/20"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <User2 className="w-4 h-4 text-[#00F0FF]" />
+                      <User2 className="w-4 h-4 text-[#E040FB]" />
                       <h3 className="text-white/70 text-xs font-semibold uppercase tracking-wider">Character Reference</h3>
                     </div>
                     <p className="text-white/40 text-[11px] mb-2">
@@ -529,7 +529,7 @@ export default function CreateGenerate() {
                     <img
                       src={status.characterRefUrl}
                       alt="Character reference sheet"
-                      className="w-full rounded-lg border border-white/10 cursor-pointer hover:border-[#6B5BFF]/40 transition"
+                      className="w-full rounded-lg border border-white/10 cursor-pointer hover:border-[#7C4DFF]/40 transition"
                       onClick={() => setLightboxPanel(status.characterRefUrl!)}
                     />
                   </motion.div>
@@ -548,7 +548,7 @@ export default function CreateGenerate() {
                       className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/[0.02] transition"
                     >
                       <div>
-                        <span className="text-[#00F0FF] text-xs font-mono">Scene {scene.scene_number}</span>
+                        <span className="text-[#E040FB] text-xs font-mono">Scene {scene.scene_number}</span>
                         <span className="text-white/30 text-xs ml-2">{scene.location}</span>
                       </div>
                       <span className="text-white/20 text-xs">{scene.time_of_day}</span>
@@ -569,7 +569,7 @@ export default function CreateGenerate() {
                                 <p className="text-white/30 text-[11px] font-mono">{panel.visual_description.slice(0, 120)}...</p>
                                 {panel.dialogue.map((d, di) => (
                                   <p key={di} className="text-white/50 text-[11px] italic mt-0.5">
-                                    <span className="text-[#00F0FF]/60">{d.character}:</span> "{d.text}"
+                                    <span className="text-[#E040FB]/60">{d.character}:</span> "{d.text}"
                                   </p>
                                 ))}
                               </div>
@@ -678,10 +678,10 @@ export default function CreateGenerate() {
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setRegeneratePanel(panel); }}
-                              className="w-10 h-10 rounded-full bg-[#6B5BFF]/20 backdrop-blur-sm flex items-center justify-center hover:bg-[#6B5BFF]/40 transition"
+                              className="w-10 h-10 rounded-full bg-[#7C4DFF]/20 backdrop-blur-sm flex items-center justify-center hover:bg-[#7C4DFF]/40 transition"
                               title="Regenerate this panel"
                             >
-                              <RefreshCw className="w-5 h-5 text-[#00F0FF]" />
+                              <RefreshCw className="w-5 h-5 text-[#E040FB]" />
                             </button>
                           </div>
                           {/* Labels */}
@@ -733,7 +733,7 @@ export default function CreateGenerate() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             {!isComplete && (
-              <Loader2 className="w-4 h-4 text-[#00F0FF] animate-spin" />
+              <Loader2 className="w-4 h-4 text-[#E040FB] animate-spin" />
             )}
             <span className="text-white/50 text-sm">
               {status.statusMessage ?? (isComplete
@@ -774,7 +774,7 @@ export default function CreateGenerate() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", delay: 0.2 }}
-                className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] flex items-center justify-center mx-auto mb-6"
+                className="w-20 h-20 rounded-full bg-gradient-to-br from-[#E040FB] to-[#7C4DFF] flex items-center justify-center mx-auto mb-6"
               >
                 <CheckCircle2 className="w-10 h-10 text-white" />
               </motion.div>
@@ -790,15 +790,15 @@ export default function CreateGenerate() {
 
               <div className="bg-white/[0.05] rounded-lg p-3 mb-6 text-left border border-white/10">
                 <p className="text-white/40 text-xs leading-relaxed">
-                  <span className="text-[#00F0FF] font-medium">Not happy with a panel?</span> Hover over any completed panel and click the
-                  <RefreshCw className="w-3 h-3 inline mx-1 text-[#00F0FF]" />
+                  <span className="text-[#E040FB] font-medium">Not happy with a panel?</span> Hover over any completed panel and click the
+                  <RefreshCw className="w-3 h-3 inline mx-1 text-[#E040FB]" />
                   button to regenerate it with a tweaked prompt.
                 </p>
               </div>
 
               <button
                 onClick={() => navigate(`/create/${projectId}/read`)}
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white font-semibold text-lg shadow-lg shadow-[#6B5BFF]/25 hover:shadow-[#6B5BFF]/40 transition-all"
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#E040FB] to-[#7C4DFF] text-white font-semibold text-lg shadow-lg shadow-[#7C4DFF]/25 hover:shadow-[#7C4DFF]/40 transition-all"
               >
                 <BookOpen className="inline w-5 h-5 mr-2" />
                 Read Your Manga

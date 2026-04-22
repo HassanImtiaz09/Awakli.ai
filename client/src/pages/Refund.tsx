@@ -55,7 +55,7 @@ export default function Refund() {
             <h2 className="text-lg font-semibold text-[#F0F0F5] mb-3">How to Request a Refund</h2>
             <p>
               To request a refund, email{" "}
-              <a href="mailto:support@awakli.ai" className="text-[#00F0FF] hover:text-[#33DFFF]">support@awakli.ai</a>{" "}
+              <a href="mailto:support@awakli.ai" className="text-[#E040FB] hover:text-[#EA80FC]">support@awakli.ai</a>{" "}
               with your account email and reason for the refund. We aim to respond within 24 hours.
             </p>
           </section>

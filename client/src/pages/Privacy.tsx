@@ -101,7 +101,7 @@ export default function Privacy() {
             <h2 className="text-lg font-semibold text-[#F0F0F5] mb-3">10. Contact</h2>
             <p>
               For privacy-related inquiries, please contact us at{" "}
-              <a href="mailto:privacy@awakli.ai" className="text-[#00F0FF] hover:text-[#33DFFF]">privacy@awakli.ai</a>.
+              <a href="mailto:privacy@awakli.ai" className="text-[#E040FB] hover:text-[#EA80FC]">privacy@awakli.ai</a>.
             </p>
           </section>
         </div>
