@@ -9,11 +9,11 @@
  * States (non-subscribed):
  *   1. idle        — hero animates, particle field, audio toggle
  *   2. checkout    — Stripe tab opens; "Waiting for confirmation…"
- *   3. confirmed   — mint checkmark → "Welcome to Mangaka" → /create/setup
+ *   3. confirmed   — mint checkmark → "Welcome to Mangaka" → /create/character-setup
  *
  * States (subscribed):
  *   1. acknowledging — 1.2s card with checkmark
- *   2. redirecting   — navigate to /create/setup
+ *   2. redirecting   — navigate to /create/character-setup
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -95,7 +95,7 @@ export default function WizardAnimeGate() {
     // Auto-redirect after 1.2s (or immediately for reduced motion)
     const delay = prefersReducedMotion ? 0 : 1200;
     passthroughTimerRef.current = setTimeout(() => {
-      navigate(`/create/setup?projectId=${projectId}`, { replace: true });
+      navigate(`/create/character-setup?projectId=${projectId}`, { replace: true });
     }, delay);
   }, [subscription, isSubscribed, prefersReducedMotion, navigate, projectId]);
 
@@ -148,7 +148,7 @@ export default function WizardAnimeGate() {
           setPageState("confirmed");
           // stage4_confirmed
           setTimeout(() => {
-            navigate(`/create/setup?projectId=${projectId}`);
+            navigate(`/create/character-setup?projectId=${projectId}`);
           }, 2000);
         }
       } catch (err: any) {
@@ -186,7 +186,7 @@ export default function WizardAnimeGate() {
 
             // Auto-navigate after 2s
             setTimeout(() => {
-              navigate(`/create/setup?projectId=${projectId}`);
+              navigate(`/create/character-setup?projectId=${projectId}`);
             }, 2000);
           }
         } catch {

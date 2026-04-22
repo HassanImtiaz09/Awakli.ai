@@ -4128,3 +4128,16 @@
 - [x] Auto-redirect to /create/setup within 1500ms (1200ms normal, 0ms reduced-motion)
 - [x] Analytics event: stage4_passthrough_shown
 - [x] Write vitest tests for pass-through copy strings and reduced-motion behavior (14 new tests, 63 total passing)
+
+## Stage 5 · Setup — Character/Voice from Catalog (Mangaka)
+- [x] Create SetupStepper component — 3 substeps: Characters → Voices → Poses, sequential enforcement
+- [x] Create CharacterBakery component — 12 pre-baked style presets per character, no custom LoRA
+- [x] Create VoiceCatalog component — 24 stock voices filterable by age/gender/tone, 6s preview, one-per-character
+- [x] Create PoseSheet component — AI-generated front/side/back pose references, approve or regenerate (2c)
+- [x] Create character-setup.tsx with 4 states: substep 1 (characters), substep 2 (voices), substep 3 (poses), ready
+- [x] Stepper enforces sequential completion: voice locked until characters approved, etc.
+- [x] Pose sheet cost: 8 credits/character; voice and bakery free
+- [x] Tier-locked "Train a LoRA" and "Clone my voice" affordances → UpgradeModal with Studio card
+- [x] Exact copy strings: page title, subhead, substep labels, voice preview, pose regenerate, ready CTA
+- [x] Analytics events: stage5_substep_enter, stage5_preset_pick, stage5_voice_pick, stage5_pose_regen, stage5_ready
+- [x] Write vitest tests for substep logic, copy strings, credit costs, and tier gating (52 tests passing)
