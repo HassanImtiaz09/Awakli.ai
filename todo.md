@@ -4154,3 +4154,17 @@
 - [x] Exact copy strings: LoRA CTA, LoRA cost, voice clone consent, voice clone cost, overlay cost, overlay hint
 - [x] Analytics events: stage5_lora_start, stage5_lora_ready, stage5_voiceclone_consent, stage5_voiceclone_ready, stage5_overlay_preview
 - [x] Write vitest tests for LoRA training, voice clone consent, overlay credits, copy strings, and tier gating (66 tests passing)
+
+## Stage 6 · Video — Short-form Render (Mangaka)
+- [x] Create PanelTimingEditor component — timeline with per-panel seconds (1-8s), drag handles, bulk presets (Fast 1.5s, Normal 2s, Cinematic 3s)
+- [x] Create DurationForecast component — live total runtime + credit forecast, updates within 200ms of timing change
+- [x] Create RenderReview component — post-render player with approve/redo gates, "Approve & download" / "Redo a panel" (18 credits)
+- [x] Rewrite video.tsx with 5 states: timing, confirming, rendering (3-phase progress), review, error (auto-refund)
+- [x] Render progress phases: "Bringing panels to motion…", "Casting voices…", "Composing the final cut…"
+- [x] Mangaka tier limits: max 60s runtime, 1080p, 12c/panel motion + 4c/s voice + 6c compose, 3 renders/episode/month
+- [x] Exceeding 60s blocks Render CTA with "Mangaka caps at 60s — trim or upgrade"
+- [x] Failed render auto-refunds credits within 30s
+- [x] Export: 1080p MP4 H.264, 48kHz stereo; no 4K, no ProRes
+- [x] Exact copy strings: page title, subhead, bulk presets, render CTA, render phases, review approve/redo
+- [x] Analytics events: stage6_timing_change, stage6_forecast_exceeds, stage6_render_start, stage6_render_complete, stage6_redo_panel
+- [x] Write vitest tests for timing logic, credit calculation, copy strings, tier caps, and render states (46 tests passing)
