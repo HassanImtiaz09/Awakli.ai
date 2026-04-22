@@ -11,7 +11,7 @@ import { Link } from "wouter";
    - No autoplay — user initiates playback from the poster
    ═══════════════════════════════════════════════════════════════════════ */
 
-const DEMO_VIDEO_URL = "/manus-storage/awakli-demo-homepage-fix3-16x9_2fd49f77.mp4";
+const DEMO_VIDEO_URL = "/manus-storage/awakli-demo-homepage-fix4-16x9_c16c8710.mp4";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);

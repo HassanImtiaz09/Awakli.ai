@@ -4472,3 +4472,9 @@
 - [x] Beats 7-8: Animated typing text synced with narration
 - [x] Reassemble full video and upload
 - [x] Update website and run tests
+
+## Demo Video fix4: Text Overflow + Logo Size + Background Fade
+- [x] Beat 2: Wrap typed text within textbox bounds (prevent overflow)
+- [x] Beats 7-8: Enlarge Awakli logo (400x400px)
+- [x] Beats 7-8: Ensure backgrounds are exactly 50% translucency
+- [x] Reassemble, upload, update website, test, checkpoint
