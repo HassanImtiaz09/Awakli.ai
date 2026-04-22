@@ -8,6 +8,7 @@
  *   4. published         — success with link, QR, share actions
  */
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -95,6 +96,10 @@ export default function WizardPublish() {
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [coverOpen, setCoverOpen] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
+
   const [coverConfig, setCoverConfig] = useState<CoverConfig>({
     title: "",
     author: "",
@@ -405,7 +410,21 @@ export default function WizardPublish() {
                       variant="outline"
                       size="sm"
                       className="text-white/50 border-white/10"
-                      onClick={() => toast.info("QR code coming soon")}
+                      onClick={async () => {
+                        if (!publicUrl) return;
+                        trackEvent("stage3_qr_open", { projectId });
+                        try {
+                          const dataUrl = await QRCode.toDataURL(publicUrl, {
+                            width: 256,
+                            margin: 2,
+                            color: { dark: "#ffffffee", light: "#00000000" },
+                          });
+                          setQrDataUrl(dataUrl);
+                          setShowQR(true);
+                        } catch {
+                          toast.error("Failed to generate QR code");
+                        }
+                      }}
                     >
                       <QrCode className="w-4 h-4 mr-2" />
                       QR Code
@@ -610,6 +629,89 @@ export default function WizardPublish() {
             trackEvent("stage3_cover_picked", { projectId });
           }}
         />
+
+        {/* ─── QR Code Modal ──────────────────────────────────── */}
+        <AnimatePresence>
+          {showQR && qrDataUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+              onClick={() => setShowQR(false)}
+            >
+              <motion.div
+                ref={qrRef}
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="relative p-8 rounded-2xl bg-[#0D0D1A] border border-white/10 shadow-2xl max-w-sm w-full mx-4 text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setShowQR(false)}
+                  className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/60 transition-colors"
+                  aria-label="Close QR code"
+                >
+                  &times;
+                </button>
+
+                <h3 className="text-lg font-bold text-white/90 mb-1">
+                  Scan to read
+                </h3>
+                <p className="text-xs text-white/40 mb-5">
+                  {coverConfig.title || project?.title || "Your manga"}
+                </p>
+
+                <div className="inline-block p-4 rounded-xl bg-white/[0.06] border border-white/10">
+                  <img
+                    src={qrDataUrl}
+                    alt="QR code for manga"
+                    className="w-48 h-48 mx-auto"
+                  />
+                </div>
+
+                <p className="mt-4 text-[11px] text-white/30 break-all px-4">
+                  {publicUrl}
+                </p>
+
+                <div className="flex gap-2 mt-5 justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white/50 border-white/10"
+                    onClick={() => {
+                      if (!qrDataUrl) return;
+                      const link = document.createElement("a");
+                      link.download = `awakli-qr-${publishedSlug || "manga"}.png`;
+                      link.href = qrDataUrl;
+                      link.click();
+                      trackEvent("stage3_qr_download", { projectId });
+                      toast.success("QR code downloaded");
+                    }}
+                  >
+                    Download PNG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white/50 border-white/10"
+                    onClick={() => {
+                      if (publicUrl) {
+                        navigator.clipboard.writeText(publicUrl);
+                        toast.success("Link copied");
+                      }
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1.5" />
+                    Copy Link
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
     </CreateWizardLayout>
   );
 }

@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Loader2, Crown, Zap, Rocket } from "lucide-react";
+import { Check, Loader2, Crown, Zap, Rocket, BookOpen } from "lucide-react";
 
 // ─── Copy strings (exact spec) ─────────────────────────────────────────
 export const TIER_CARD_COPY = {
@@ -124,12 +124,15 @@ interface TierCompareCardProps {
   onSelectTier: (tierKey: "creator_pro" | "studio" | "enterprise") => void;
   loadingTier: string | null;
   onDecline: () => void;
+  /** Slug of the published manga — when present, shows a "Back to manga" link */
+  mangaSlug?: string | null;
 }
 
 export function TierCompareCard({
   onSelectTier,
   loadingTier,
   onDecline,
+  mangaSlug,
 }: TierCompareCardProps) {
   const [hoveredTier, setHoveredTier] = useState<string | null>(null);
 
@@ -233,14 +236,25 @@ export function TierCompareCard({
         })}
       </div>
 
-      {/* Decline link */}
-      <div className="text-center">
-        <button
-          onClick={onDecline}
-          className="text-sm text-white/25 hover:text-white/40 transition-colors underline underline-offset-4"
-        >
-          {TIER_CARD_COPY.smallLink}
-        </button>
+      {/* Decline / Back to manga links */}
+      <div className="text-center space-y-3">
+        {mangaSlug && (
+          <a
+            href={`/m/${mangaSlug}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white/50 hover:text-white/70 hover:border-white/15 transition-all"
+          >
+            <BookOpen className="w-4 h-4" />
+            Back to your manga
+          </a>
+        )}
+        <div>
+          <button
+            onClick={onDecline}
+            className="text-sm text-white/25 hover:text-white/40 transition-colors underline underline-offset-4"
+          >
+            {TIER_CARD_COPY.smallLink}
+          </button>
+        </div>
       </div>
     </div>
   );

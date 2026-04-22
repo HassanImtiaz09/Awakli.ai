@@ -4287,3 +4287,9 @@
 - [x] P2: Fix credit meter — single canonical pair (balance + used), removed redundant 'left' label
 - [x] P3: Retire legacy --accent-* palette — token-* classes in panels/setup/anime-gate (CSS vars still alias for backward compat)
 - [x] P4: Unify stage numerals — all pipeline pages use zero-padded Stage 01-06 format matching rail position
+
+## Post Fix-Brief Enhancements
+
+- [x] Debounced autosave for style/tone/audience selectors on Input page (persist without advancing)
+- [x] Real QR code generation on Publish success state (replace "coming soon" toast)
+- [x] "Back to manga" link on anime-gate page (navigate to /m/{slug} for users who decline upgrade)

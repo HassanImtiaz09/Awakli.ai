@@ -359,6 +359,7 @@ export default function WizardAnimeGate() {
                   onSelectTier={handleSelectTier}
                   loadingTier={loadingTier}
                   onDecline={handleDecline}
+                  mangaSlug={project?.slug}
                 />
               </div>
             </motion.div>
@@ -380,6 +381,7 @@ export default function WizardAnimeGate() {
                   onSelectTier={handleSelectTier}
                   loadingTier={loadingTier}
                   onDecline={handleDecline}
+                  mangaSlug={project?.slug}
                 />
               </div>
             </motion.div>

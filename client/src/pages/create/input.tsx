@@ -5,7 +5,7 @@
  * Tab B: "Upload manga / webtoon" — MangaUpload + PanelExtractor (Mangaka+ only)
  * Tab C: "Upload character sheets / style refs" — CharacterFoundation + StyleSheetUpload (Studio+ only)
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -155,6 +155,37 @@ export default function WizardInput() {
         .catch(() => setCreating(false));
     }
   }, [projectIdParam, user]);
+
+  // ─── Debounced autosave for style/tone/audience ─────────────────────────────
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevStyleRef = useRef({ animeStyle, tone, targetAudience });
+
+  useEffect(() => {
+    // Skip the initial render / project load
+    if (
+      !projectId ||
+      (prevStyleRef.current.animeStyle === animeStyle &&
+        prevStyleRef.current.tone === tone &&
+        prevStyleRef.current.targetAudience === targetAudience)
+    ) {
+      return;
+    }
+    prevStyleRef.current = { animeStyle, tone, targetAudience };
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      updateMut.mutate({
+        id: projectId,
+        animeStyle: animeStyle as any,
+        tone,
+        targetAudience: targetAudience as any,
+      });
+    }, 800);
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [animeStyle, tone, targetAudience, projectId]);
 
   // Emit analytics on mount
   useEffect(() => {
