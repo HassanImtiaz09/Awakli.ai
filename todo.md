@@ -4273,12 +4273,14 @@
 - [x] C3: Replaced mock panels with real panel data from tRPC query
 
 ## Fix Brief v1.0 — Wave 3: Completion (C4-C5)
-- [ ] C4: Setup page — SetupStepper: Character look → Voices → Pose references
-- [ ] C4: Mangaka: bakery presets, 24-voice catalog, auto pose sheet (2c regen)
-- [ ] C4: Studio: LoRATrainer (120c), VoiceClone (80c, consent checkbox), UserVoiceOverlay (6c/line)
-- [ ] C5: Video page — timeline 1-8s/panel, presets, 60s cap (Mangaka), 1080p MP4
-- [ ] C5: Studio: ChapterComposer, MusicBed, MasterExport (4K/ProRes/stems)
-- [ ] C5: Render progress: 'Bringing panels to motion…' → 'Casting voices…' → 'Composing the final cut…'
+- [x] C4: Setup page — SetupStepper: Character look → Voices → Pose references
+- [x] C4: Mangaka: bakery presets, 24-voice catalog, auto pose sheet (2c regen)
+- [x] C4: Studio: LoRATrainer (120c), VoiceClone (80c, consent checkbox), UserVoiceOverlay (6c/line)
+- [x] C5: Video page — timeline 1-8s/panel, presets, 60s cap (Mangaka), 1080p MP4
+- [x] C5: Studio: ChapterComposer, MusicBed, MasterExport (4K/ProRes/stems)
+- [x] C5: Render progress: 'Bringing panels to motion…' → 'Casting voices…' → 'Composing the final cut…'
+- [x] C5: Real panel thumbnails wired from tRPC panels.listByProject
+- [x] C5: WithTier changed from hard to soft mode (Studio features as inline locked affordances)
 
 ## Fix Brief v1.0 — Wave 4: Polish (P1-P4)
 - [ ] P1: Fix duplicated tab labels on input.tsx

@@ -135,6 +135,13 @@ export default function WizardVideo() {
     { enabled: !isNaN(numId) }
   );
 
+  // Fetch real panels for thumbnails
+  const firstEpisodeId = (episodes as any[])?.[0]?.id;
+  const { data: realPanels = [] } = trpc.panels.listByProject.useQuery(
+    { projectId: numId },
+    { enabled: !isNaN(numId) }
+  );
+
   const { data: balanceData } = trpc.projects.creditBalance.useQuery(
     undefined,
     { refetchInterval: 10_000 }
@@ -193,14 +200,32 @@ export default function WizardVideo() {
   const [exportConfig, setExportConfig] = useState<ExportConfig | null>(null);
 
   // ── Panel timings ─────────────────────────────────────────────────
-  const panelCount = (project as any)?.panelCount || 12;
-  const [panelTimings, setPanelTimings] = useState<PanelTiming[]>(() =>
-    Array.from({ length: panelCount }, (_, i) => ({
-      panelIndex: i,
-      imageUrl: null,
-      duration: TIMING_LIMITS.defaultPerPanel,
-    }))
-  );
+  const panelCount = (realPanels as any[]).length || (project as any)?.panelCount || 12;
+  const [panelTimings, setPanelTimings] = useState<PanelTiming[]>([]);
+
+  // Initialize timings from real panels when available
+  useEffect(() => {
+    const panels = realPanels as any[];
+    if (panels.length > 0 && panelTimings.length !== panels.length) {
+      setPanelTimings(
+        panels.map((p: any, i: number) => ({
+          panelIndex: i,
+          imageUrl: p.imageUrl || p.compositeImageUrl || null,
+          duration: panelTimings[i]?.duration || TIMING_LIMITS.defaultPerPanel,
+        }))
+      );
+    } else if (panels.length === 0 && panelTimings.length === 0) {
+      // Fallback to placeholder count
+      const count = (project as any)?.panelCount || 12;
+      setPanelTimings(
+        Array.from({ length: count }, (_, i) => ({
+          panelIndex: i,
+          imageUrl: null,
+          duration: TIMING_LIMITS.defaultPerPanel,
+        }))
+      );
+    }
+  }, [realPanels, project]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Studio: Chapters ──────────────────────────────────────────────
   const [chapters, setChapters] = useState<Chapter[]>(() => [
@@ -218,19 +243,23 @@ export default function WizardVideo() {
   const [musicSelection, setMusicSelection] =
     useState<MusicBedSelection | null>(null);
 
-  // Re-init when panelCount changes
+  // Re-init chapters when real panels arrive
   useEffect(() => {
-    if (panelCount > 0 && panelTimings.length !== panelCount) {
-      setPanelTimings(
-        Array.from({ length: panelCount }, (_, i) => ({
-          panelIndex: i,
-          imageUrl: panelTimings[i]?.imageUrl || null,
-          duration:
-            panelTimings[i]?.duration || TIMING_LIMITS.defaultPerPanel,
-        }))
-      );
+    const panels = realPanels as any[];
+    if (panels.length > 0) {
+      setChapters((prev) => [
+        {
+          ...prev[0],
+          scenes: panels.map((p: any, i: number) => ({
+            panelIndex: i,
+            imageUrl: p.imageUrl || p.compositeImageUrl || null,
+            duration: panelTimings[i]?.duration || TIMING_LIMITS.defaultPerPanel,
+          })),
+        },
+        ...prev.slice(1),
+      ]);
     }
-  }, [panelCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [realPanels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const forecast = useMemo(
     () => calculateCredits(panelTimings),
@@ -483,7 +512,7 @@ export default function WizardVideo() {
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
-      <WithTier capability="stage_video" mode="hard">
+      <WithTier capability="stage_video" mode="soft">
         <div className="max-w-3xl mx-auto space-y-8">
           {/* Header */}
           <div className="space-y-2">
