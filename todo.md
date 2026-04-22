@@ -4413,3 +4413,15 @@
 - [x] Add subtle background animation to the hero section (floating particles, gradient shifts, or similar)
 - [x] Ensure animation respects prefers-reduced-motion
 - [x] Write vitest tests for the hero animation
+
+## Homepage Demo Video Production
+- [x] Generate manga eye close-up reference image (Beat 1)
+- [x] Generate 4 samurai manga panels (Beat 3)
+- [x] Generate gallery/community mockup image (Beat 4)
+- [x] Generate Pro UI mockup image (Beat 5)
+- [x] Generate anime video clips for all 8 beats using Kling
+- [x] Generate voice narration (8 lines) using ElevenLabs
+- [x] Generate background music track (55s)
+- [x] Assemble all assets into 55-second video with FFmpeg
+- [x] Embed video into Awakli homepage
+- [x] Save checkpoint and deliver for review

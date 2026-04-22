@@ -13,8 +13,7 @@ import {
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import { TiltCard } from "@/components/awakli/TiltCard";
 import ScrollBackground from "@/components/awakli/ScrollBackground";
-// Removed for homepage trim — re-enable when real content exists:
-// import { WatchItHappen } from "@/components/awakli/WatchItHappen";
+import { WatchItHappen } from "@/components/awakli/WatchItHappen";
 // import { StreamingTonight } from "@/components/awakli/StreamingTonight";
 // import { MarqueeStrip } from "@/components/awakli/MarqueeStrip";
 
@@ -894,11 +893,8 @@ export default function Home() {
         {/* ACT ONE — The Hook */}
         <ActOneHero />
 
-        {/* Sections removed per UI improvement brief — re-enable when real content exists:
+        {/* Demo video section */}
         <WatchItHappen />
-        <StreamingTonight />
-        <MarqueeStrip />
-        */}
 
         {/* ACT TWO — How It Works */}
         <ActTwoProof />

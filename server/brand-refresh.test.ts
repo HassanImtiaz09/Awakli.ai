@@ -224,26 +224,27 @@ describe("Storage proxy setup", () => {
 /* ═══════════════════════════════════════════════════════════════════════
    B3/B4 — Homepage section trim (UI Improvement Brief)
    ═══════════════════════════════════════════════════════════════════════ */
-describe("Homepage trim: 5-section layout", () => {
+describe("Homepage layout: Hero → Demo → Proof → FeatureStrip → Content → Invitation", () => {
   const home = read("client/src/pages/Home.tsx");
 
-  it("WatchItHappen, StreamingTonight, MarqueeStrip imports are commented out", () => {
-    expect(home).not.toMatch(/^import.*WatchItHappen/m);
+  it("WatchItHappen (demo video) is imported and active", () => {
+    expect(home).toMatch(/^import.*WatchItHappen/m);
+  });
+
+  it("StreamingTonight and MarqueeStrip imports are still commented out", () => {
     expect(home).not.toMatch(/^import.*StreamingTonight/m);
     expect(home).not.toMatch(/^import.*MarqueeStrip/m);
   });
 
-  it("Removed sections are preserved as comments for future re-enable", () => {
-    expect(home).toContain("re-enable when real content exists");
-  });
-
-  it("Home.tsx section order: Hero → Proof → FeatureStrip → Content → Invitation", () => {
+  it("Home.tsx section order: Hero → DemoVideo → Proof → FeatureStrip → Content → Invitation", () => {
     const heroIdx = home.indexOf("ActOneHero");
-    const proofIdx = home.indexOf("ActTwoProof", heroIdx);
+    const demoIdx = home.indexOf("WatchItHappen", heroIdx);
+    const proofIdx = home.indexOf("ActTwoProof", demoIdx);
     const featureIdx = home.indexOf("FeatureStrip", proofIdx);
     const invitationIdx = home.indexOf("ActThreeInvitation", featureIdx);
     expect(heroIdx).toBeGreaterThan(-1);
-    expect(proofIdx).toBeGreaterThan(heroIdx);
+    expect(demoIdx).toBeGreaterThan(heroIdx);
+    expect(proofIdx).toBeGreaterThan(demoIdx);
     expect(featureIdx).toBeGreaterThan(proofIdx);
     expect(invitationIdx).toBeGreaterThan(featureIdx);
   });
@@ -261,9 +262,11 @@ describe("Homepage trim: 5-section layout", () => {
    B3/B4 — Component files still exist (not deleted, just unused)
    ═══════════════════════════════════════════════════════════════════════ */
 describe("Deferred components still exist for future use", () => {
-  it("WatchItHappen.tsx still exists", () => {
+  it("WatchItHappen.tsx has demo video with /manus-storage/ source", () => {
     const comp = read("client/src/components/awakli/WatchItHappen.tsx");
     expect(comp).toContain("<video");
+    expect(comp).toContain("/manus-storage/");
+    expect(comp).toContain("data-component=\"demo-video\"");
   });
 
   it("StreamingTonight.tsx still exists", () => {
