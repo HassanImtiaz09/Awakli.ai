@@ -269,6 +269,40 @@ describe("Deferred components still exist for future use", () => {
     expect(comp).toContain("data-component=\"demo-video\"");
   });
 
+  it("WatchItHappen has poster start slide with 'See how the magic happens'", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain("See how the magic happens");
+    expect(comp).toContain("here at Awakli");
+    expect(comp).toContain('data-testid="poster-slide"');
+    expect(comp).toContain("hasStarted");
+  });
+
+  it("WatchItHappen has video scrubber/progress bar", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain('data-testid="video-scrubber"');
+    expect(comp).toContain("onScrubStart");
+    expect(comp).toContain("progress");
+    expect(comp).toContain("formatTime");
+  });
+
+  it("WatchItHappen has volume slider control", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain('data-testid="volume-slider"');
+    expect(comp).toContain("handleVolumeChange");
+    expect(comp).toContain("showVolumeSlider");
+  });
+
+  it("WatchItHappen has fullscreen toggle", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain("toggleFullscreen");
+    expect(comp).toContain("Maximize");
+  });
+
+  it("WatchItHappen uses v2 video URL", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain("awakli-demo-homepage-v2");
+  });
+
   it("StreamingTonight.tsx still exists", () => {
     const comp = read("client/src/components/awakli/StreamingTonight.tsx");
     expect(comp).toContain("Free to watch");

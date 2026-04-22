@@ -4425,3 +4425,14 @@
 - [x] Assemble all assets into 55-second video with FFmpeg
 - [x] Embed video into Awakli homepage
 - [x] Save checkpoint and deliver for review
+
+## Demo Video Revision & Player Upgrade
+- [x] Regenerate narration: Beat 4 — add "watch anime for free" line
+- [x] Regenerate narration: Beat 7 — replace "10,000+ creators" with community language + first-of-its-kind
+- [x] Regenerate narration: Beat 8 — change to "Awakli, transform your ideas to anime"
+- [x] Reassemble ~60-second video with updated narration lines
+- [x] Upload revised video to storage
+- [x] Upgrade video player: add progress bar/scrubber with seek
+- [x] Upgrade video player: add volume slider control
+- [x] Upgrade video player: add poster start slide "See how the magic happens, here at Awakli"
+- [x] Write vitest tests for updated player
