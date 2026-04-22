@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { SEOHead, buildMangaJsonLd } from "@/components/awakli/SEOHead";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { useRef, useState, useMemo, useEffect } from "react";
+import { useRef, useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import {
@@ -65,6 +65,37 @@ export default function WatchProject() {
 
   const p = project.data;
 
+  // Build JSON-LD structured data — must be above early returns (React hooks rule)
+  const jsonLd = useMemo(() => {
+    if (!p) return undefined;
+    return buildMangaJsonLd({
+      title: p.title,
+      description: p.description,
+      coverImageUrl: p.coverImageUrl,
+      slug: slug,
+      userName: p.userName ?? null,
+      genre: p.genre,
+      createdAt: typeof p.createdAt === 'object' ? (p.createdAt as Date).toISOString() : p.createdAt,
+    });
+  }, [p, slug]);
+
+  // Stable references for handlers — must be above early returns (React hooks rule)
+  const inWatchlist = watchlistStatus.data?.inWatchlist ?? false;
+
+  const handleWatchlistToggle = useCallback(() => {
+    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
+    if (!p) return;
+    if (inWatchlist) {
+      removeFromWatchlist.mutate({ projectId: p.id });
+    } else {
+      addToWatchlist.mutate({ projectId: p.id });
+    }
+  }, [isAuthenticated, p, inWatchlist, addToWatchlist, removeFromWatchlist]);
+
+  const handleShare = useCallback(() => {
+    setShowShareSheet(true);
+  }, []);
+
   if (project.isLoading) {
     return (
       <div className="min-h-screen bg-bg-void">
@@ -81,49 +112,28 @@ export default function WatchProject() {
   if (!p) {
     return (
       <div className="min-h-screen bg-bg-void flex items-center justify-center">
-        <div className="text-center">
-          <Film className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-display font-bold text-white mb-2">Project Not Found</h1>
-          <p className="text-gray-400 mb-6">This project may have been removed or doesn't exist.</p>
-          <Link href="/discover">
-            <button className="px-6 py-3 rounded-xl bg-token-violet text-white font-semibold">
-              Browse Projects
-            </button>
-          </Link>
+        <div className="text-center space-y-4">
+          <Film className="w-16 h-16 text-gray-600 mx-auto" />
+          <h1 className="text-2xl font-display font-bold text-white">Coming Soon</h1>
+          <p className="text-gray-400 max-w-md mx-auto">This title is being animated — check back tomorrow to watch it.</p>
+          <div className="flex gap-3 justify-center pt-2">
+            <Link href="/discover">
+              <button className="px-6 py-3 rounded-xl bg-token-violet text-white font-semibold hover:bg-token-violet/80 transition-colors">
+                Browse Catalog
+              </button>
+            </Link>
+            <Link href="/">
+              <button className="px-6 py-3 rounded-xl border border-white/10 text-white/70 font-semibold hover:bg-white/5 transition-colors">
+                Back to Home
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   const episodes = p.episodes ?? [];
-  const inWatchlist = watchlistStatus.data?.inWatchlist ?? false;
-
-  const handleWatchlistToggle = () => {
-    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
-    if (inWatchlist) {
-      removeFromWatchlist.mutate({ projectId: p.id });
-    } else {
-      addToWatchlist.mutate({ projectId: p.id });
-    }
-  };
-
-  const handleShare = () => {
-    setShowShareSheet(true);
-  };
-
-  // Build JSON-LD structured data for this project
-  const jsonLd = useMemo(() => {
-    if (!p) return undefined;
-    return buildMangaJsonLd({
-      title: p.title,
-      description: p.description,
-      coverImageUrl: p.coverImageUrl,
-      slug: slug,
-      userName: p.userName ?? null,
-      genre: p.genre,
-      createdAt: typeof p.createdAt === 'object' ? (p.createdAt as Date).toISOString() : p.createdAt,
-    });
-  }, [p, slug]);
 
   return (
     <div className="min-h-screen bg-bg-void text-white">

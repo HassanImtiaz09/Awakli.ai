@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, Search, X, LogOut, User, LayoutDashboard, Trophy,
   PenTool, Wand2, Upload, Compass, BookOpen, Swords, Settings,
-  CreditCard, BarChart3, Crown
+  CreditCard, BarChart3, Crown, Play, Vote, Users, Tag
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
@@ -13,15 +13,21 @@ import { AwakliButton } from "./AwakliButton";
 import { cn } from "@/lib/utils";
 import SearchOverlay from "./SearchOverlay";
 import { NotificationBell } from "./NotificationCenter";
+import { Logo } from "./Logo";
 
-/* ─── Primary Navigation — §3.3 Four Tabs ─────────────────────────────── */
-const PRIMARY_NAV = [
-  { href: "/discover", label: "Feed", icon: Compass },
+/* ─── Creator Loop — left cluster ──────────────────────────────────────── */
+const CREATOR_NAV = [
+  { href: "/discover", label: "Watch", icon: Play },
   { href: "/create", label: "Create", icon: Wand2 },
-  { href: "/characters", label: "Codex", icon: BookOpen },
-  { href: "/leaderboard", label: "Compete", icon: Swords },
+  { href: "/characters", label: "Characters", icon: BookOpen },
 ];
-
+/* ─── Audience / Commerce Loop — right cluster ───────────────────────── */
+const AUDIENCE_NAV = [
+  { href: "/leaderboard", label: "Vote", icon: Trophy },
+  { href: "/pricing", label: "Pricing", icon: Tag },
+];
+/* Combined for mobile tab bar */
+const PRIMARY_NAV = [...CREATOR_NAV, ...AUDIENCE_NAV];
 /* ─── Desktop Top Nav Link ─────────────────────────────────────────────── */
 function NavLink({
   href,
@@ -206,24 +212,43 @@ export function TopNav() {
         <div className="container h-full flex items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/">
-            <motion.span
-              className="font-display text-[18px] font-black uppercase tracking-[0.08em] text-gradient-opening cursor-pointer select-none shrink-0"
-              whileHover={{ textShadow: "0 0 20px rgba(0,240,255,0.5)" }}
+            <motion.div
+              className="cursor-pointer select-none shrink-0"
+              whileHover={{ filter: "drop-shadow(0 0 12px rgba(0,240,255,0.4))" }}
               transition={{ duration: 0.2 }}
             >
-              AWAKLI
-            </motion.span>
+              <Logo variant="horizontal" theme="dark" size={28} animate />
+            </motion.div>
           </Link>
 
-          {/* Desktop nav — four primary tabs §3.3 */}
+          {/* Desktop nav — creator cluster | search divider | audience cluster */}
           <nav className="hidden md:flex items-center gap-1">
-            {PRIMARY_NAV.map((item) => {
+            {/* Creator loop: Watch · Create · Characters */}
+            {CREATOR_NAV.map((item) => {
               const active =
                 item.href === "/discover"
                   ? location === "/discover" ||
                     location === "/trending" ||
                     location === "/explore"
                   : location.startsWith(item.href);
+              return (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  active={active}
+                  icon={item.icon}
+                >
+                  {item.label}
+                </NavLink>
+              );
+            })}
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-white/10 mx-1" />
+
+            {/* Audience loop: Vote · Pricing */}
+            {AUDIENCE_NAV.map((item) => {
+              const active = location.startsWith(item.href);
               return (
                 <NavLink
                   key={item.href}
@@ -390,9 +415,7 @@ export function TopNav() {
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
             >
               <div className="flex items-center justify-between p-4 border-b border-white/5">
-                <span className="font-display text-lg font-bold text-gradient-opening">
-                  AWAKLI
-                </span>
+                <Logo variant="horizontal" theme="dark" size={24} />
                 <button
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9494B8] hover:text-[#F0F0F5] hover:bg-[#1C1C35]"
                   onClick={() => setDrawerOpen(false)}

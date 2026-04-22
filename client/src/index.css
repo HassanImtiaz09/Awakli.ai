@@ -87,9 +87,9 @@
   --radius-sigil: 999px;
 
   /* Typography */
-  --font-display:  'Zen Kaku Gothic New', 'Orbitron', sans-serif;
-  --font-heading:  'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
-  --font-sans:     'Inter', sans-serif;
+  --font-display:  'Klee One', sans-serif;
+  --font-heading:  'Klee One', sans-serif;
+  --font-sans:     'Inter Tight', sans-serif;
   --font-mono:     'JetBrains Mono', monospace;
 
   /* Design Token Font Sizes (text-display-hero, text-display-md, etc.) */
@@ -267,7 +267,7 @@ html {
 body {
   background-color: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter Tight', sans-serif;
   font-size: 1rem;
   line-height: 1.6;
   min-height: 100vh;
@@ -282,31 +282,31 @@ body {
 /* ============================================================
    Typography Utilities §3.1
    ============================================================ */
-.font-display  { font-family: 'Zen Kaku Gothic New', 'Orbitron', sans-serif; }
-.font-heading  { font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif; }
+.font-display  { font-family: 'Klee One', sans-serif; }
+.font-heading  { font-family: 'Klee One', sans-serif; }
 
 .text-display {
-  font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
-  font-size: clamp(3rem, 8vw, 7.5rem);
+  font-family: 'Klee One', sans-serif;
+  font-size: clamp(3rem, 7vw, 6.5rem);
   line-height: 1.05;
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
 }
 .text-h1 {
-  font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
+  font-family: 'Klee One', sans-serif;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .text-h2 {
-  font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
+  font-family: 'Klee One', sans-serif;
   font-size: clamp(1.5rem, 3vw, 2.25rem);
   line-height: 1.2;
   font-weight: 600;
 }
 .text-h3 {
-  font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
+  font-family: 'Klee One', sans-serif;
   font-size: 1.5rem;
   line-height: 1.3;
   font-weight: 600;
@@ -544,7 +544,7 @@ body {
     @apply cursor-pointer;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Zen Kaku Gothic New', 'Space Grotesk', sans-serif;
+    font-family: 'Klee One', sans-serif;
   }
   /* Skip to main link §3.10 */
   .skip-to-main {
@@ -748,4 +748,31 @@ body {
 }
 .tier-locked * {
   pointer-events: none;
+}
+
+/* ─── Logo stroke-reveal animation (B2) ─────────────────────────── */
+@keyframes logo-stroke-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes logo-eye-fade {
+  to { opacity: 1; }
+}
+.logo-stroke-reveal {
+  animation: logo-stroke-draw 0.8s ease-out forwards;
+}
+.logo-stroke-delay {
+  animation-delay: 0.4s;
+}
+.logo-eye-reveal {
+  animation: logo-eye-fade 0.5s ease-out 0.7s forwards;
+}
+
+/* ─── Marquee strip animation (B4) ──────────────────────────────── */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee-scroll 30s linear infinite;
+  width: max-content;
 }

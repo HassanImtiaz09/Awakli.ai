@@ -13,6 +13,9 @@ import {
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import { TiltCard } from "@/components/awakli/TiltCard";
 import ScrollBackground from "@/components/awakli/ScrollBackground";
+import { WatchItHappen } from "@/components/awakli/WatchItHappen";
+import { StreamingTonight } from "@/components/awakli/StreamingTonight";
+import { MarqueeStrip } from "@/components/awakli/MarqueeStrip";
 
 /* ─── CDN Assets ──────────────────────────────────────────────────────── */
 const HERO_IMAGES = [
@@ -178,6 +181,23 @@ function ActOneHero() {
               <PenTool className="w-5 h-5 relative z-10" strokeWidth={1.75} />
               <span className="relative z-10">Write the first scene</span>
             </motion.button>
+          </motion.div>
+
+          {/* Second CTA — B4 */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.35, duration: 0.6 }}
+            className="mt-4 text-center"
+          >
+            <Link
+              href="/discover"
+              className="inline-flex items-center gap-2 text-sm text-[#9494B8] hover:text-white transition-colors"
+            >
+              <Eye className="w-4 h-4" strokeWidth={1.5} />
+              Watch what the community made
+              <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.5} />
+            </Link>
           </motion.div>
 
           {/* Daily prompt */}
@@ -799,9 +819,19 @@ function ContentRow({ title, icon, projects, isLoading, seeAllLink }: {
 /* ═══════════════════════════════════════════════════════════════════════
    MAIN HOME PAGE
    ═══════════════════════════════════════════════════════════════════════ */
+/** Filter out broken catalog entries — only show titles with a slug and cover */
+function filterLiveTitles(projects: any[]): any[] {
+  return projects.filter(
+    (p) => p && p.slug && (p.coverImageUrl || p.title)
+  );
+}
+
 export default function Home() {
   const trending = trpc.discover.trending.useQuery();
   const newReleases = trpc.discover.newReleases.useQuery();
+
+  const liveTrending = useMemo(() => filterLiveTitles(trending.data ?? []), [trending.data]);
+  const liveNewReleases = useMemo(() => filterLiveTitles(newReleases.data ?? []), [newReleases.data]);
 
   return (
     <MarketingLayout>
@@ -813,29 +843,49 @@ export default function Home() {
         {/* ACT ONE — The Hook */}
         <ActOneHero />
 
+        {/* DEMO — Watch It Happen (B3) */}
+        <WatchItHappen />
+
+        {/* STREAMING — What's streaming tonight (B4) */}
+        <StreamingTonight />
+
+        {/* MARQUEE — Ambient panel thumbnails (B4) */}
+        <MarqueeStrip />
+
         {/* ACT TWO — Proof */}
         <ActTwoProof />
 
         {/* Feature strip */}
         <FeatureStrip />
 
-        {/* Content rows */}
+        {/* Content rows — only render if there are live titles */}
         <section className="py-8">
           <div className="container">
-          <ContentRow
-            title="Trending Now"
-            icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
-            projects={trending.data ?? []}
-            isLoading={trending.isLoading}
-            seeAllLink="/discover"
-          />
-          <ContentRow
-            title="New Releases"
-            icon={<Clock className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
-            projects={newReleases.data ?? []}
-            isLoading={newReleases.isLoading}
-            seeAllLink="/discover"
+          {(trending.isLoading || liveTrending.length > 0) && (
+            <ContentRow
+              title="Trending Now"
+              icon={<TrendingUp className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
+              projects={liveTrending}
+              isLoading={trending.isLoading}
+              seeAllLink="/discover"
             />
+          )}
+          {(newReleases.isLoading || liveNewReleases.length > 0) && (
+            <ContentRow
+              title="New Releases"
+              icon={<Clock className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
+              projects={liveNewReleases}
+              isLoading={newReleases.isLoading}
+              seeAllLink="/discover"
+            />
+          )}
+          {!trending.isLoading && !newReleases.isLoading && liveTrending.length === 0 && liveNewReleases.length === 0 && (
+            <div className="py-16 text-center">
+              <Film className="w-12 h-12 text-[#5C5C7A] mx-auto mb-3" strokeWidth={1.5} />
+              <p className="text-[#9494B8] text-lg font-medium">More titles coming tonight</p>
+              <p className="text-[#5C5C7A] text-sm mt-1">Our creators are hard at work — check back soon.</p>
+            </div>
+          )}
           </div>
         </section>
 

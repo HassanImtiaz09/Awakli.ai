@@ -4327,3 +4327,48 @@
 
 - [x] P3-100: Replace last 5 legacy hex literals (#00d4ff x3, #7c3aed x2) with token refs in compiled CSS; add Tailwind theme tokens; add lint rule to prevent regression
 - [x] Q1-100: Enable QA of Script + Panels rendering via ?qa=script and ?qa=panels dev fixture flags with deterministic data; document in README
+
+## Brand Refresh Brief v1.0
+
+### B6-Phase1 (P0 — hotfix)
+- [x] Add defensive guards in /watch/:slug — null-safe useMemo, graceful "Coming soon" fallback for missing manga
+- [x] Filter Trending/New Releases to only show titles with valid data (hide broken cards)
+
+### B5 (P1 — nav rename)
+- [x] Rename nav tabs: Feed→Watch, Codex→Characters, Compete→Vote
+- [x] Add Pricing as 5th nav tab
+- [x] Regroup nav: creator cluster (Watch·Create·Characters) left, audience cluster (Vote·Pricing) right
+- [x] Mobile bottom-tab bar with icons + short labels (replace hamburger on small screens)
+- [x] Update footer labels to match new nav names
+
+### B2 (P1 — logo system)
+- [x] Create SVG mark (brushstroke A / awakening eye concept)
+- [x] Create horizontal lockup SVG (mark + wordmark)
+- [x] Create stacked lockup SVG (mark above wordmark)
+- [x] Build Logo.tsx component with variant (mark|horizontal|stacked) and theme (light|dark|ink) props
+- [x] Replace all literal "AWAKLI" text logos with <Logo /> component
+- [x] Generate favicon set (16, 32, 180 apple-touch) and update index.html
+- [x] Optional: animated micro-reveal on homepage load (stroke-dashoffset 0.8s)
+
+### B1 (P1 — typography)
+- [x] Load Klee One (display) + Inter Tight (body) from Google Fonts in index.html
+- [x] Update CSS tokens: --font-display → Klee One, --font-body → Inter Tight
+- [x] Scale hero to ~96-104px (down from 115.2px) to fit 13" laptops
+- [x] Update tracking: hero -1.5 to -2%, eyebrow labels +80 letterSpacing uppercase
+
+### B3 (P0 — demo video section)
+- [x] Build WatchItHappen.tsx component with video player (autoplay muted on scroll, pause on scroll-out)
+- [x] Add "Try the demo prompt" CTA button that deep-links to /create/input?prompt=<encoded>
+- [x] Add 3-up proof strip (before/middle/after with timer badge)
+- [x] Insert WatchItHappen section in Home.tsx below hero, above STEP 01ItWorks
+
+### B4 (P0 — streaming rail)
+- [x] Add second hero CTA: "Watch what the community made" → /discover
+- [x] Build StreamingTonight.tsx band with 6 manga covers + play overlay + genre chip
+- [x] Build MarqueeStrip.tsx ambient panel thumbnail scroll
+- [x] Add "Free to watch · no sign-in" label
+- [x] Reorder Home.tsx: Hero → WatchItHappen → StreamingTonight → MarqueeStrip → Proof → FeatureStrip → Content rows
+
+### B6-Phase2/3 (P0 — seed content + self-healing)
+- [x] Defensive rendering: if catalog < 12 live titles, show "More coming tonight" message
+- [x] Add nightly re-rank job skeleton (server/jobs/rerankTrending.ts)
