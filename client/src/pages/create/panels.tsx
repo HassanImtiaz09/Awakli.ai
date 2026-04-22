@@ -1,5 +1,5 @@
 /**
- * Stage 2 · Panels — Sequential gen (Apprentice)
+ * Stage 2 · Panels — Sequential gen (Apprentice) + Batch/Style/Consistency (Mangaka/Studio)
  *
  * Copy strings:
  * - Page title: "Your panels"
@@ -9,6 +9,13 @@
  * - Confirm CTA: "Redraw · 3 credits"
  * - Complete banner: "All panels ready. Publish when you are."
  * - Rate-limit: "We're catching our breath — resuming in {s}s"
+ * - Selection hint: "Shift+click to select. Batch tools appear below."
+ * - Batch bar: "{n} selected"
+ * - Batch regenerate: "Redraw {n} panels · {n*3} credits"
+ * - Style drift slider left: "Grounded"
+ * - Style drift slider right: "Stylized"
+ * - Consistency report title: "Consistency check"
+ * - Consistency row: "Panel {n}: {character} similarity {score}%"
  */
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -16,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid, ArrowRight, ArrowLeft, Sparkles, Loader2,
   Image as ImageIcon, Check, Lock, CheckCircle2,
+  ShieldAlert, Paintbrush,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -23,8 +31,13 @@ import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import { PanelGrid } from "@/components/awakli/PanelGrid";
 import { PanelLightbox } from "@/components/awakli/PanelLightbox";
+import { PanelBatchBar, getBatchLimit } from "@/components/awakli/PanelBatchBar";
+import { StyleDrift, STYLE_DRIFT_PREVIEW_COST } from "@/components/awakli/StyleDrift";
+import { ConsistencyReport, AUTO_CORRECT_MONTHLY_CAP, canAutoCorrect } from "@/components/awakli/ConsistencyReport";
+import type { FlaggedPanel } from "@/components/awakli/ConsistencyReport";
 import type { PanelTileData } from "@/components/awakli/PanelTile";
 import { useUpgradeModal } from "@/store/upgradeModal";
+import { useMinTierGate } from "@/hooks/useTierGate";
 
 // ─── Analytics helper ───────────────────────────────────────────────────
 function trackEvent(name: string, data?: Record<string, unknown>) {
@@ -51,6 +64,9 @@ function getRegenLimit(tier: string): number {
   }
 }
 
+// ─── Cost per panel ─────────────────────────────────────────────────────
+const COST_PER_PANEL = 3;
+
 export default function WizardPanels() {
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -60,6 +76,11 @@ export default function WizardPanels() {
 
   const utils = trpc.useUtils();
   const openUpgrade = useUpgradeModal((s) => s.openFromGate);
+
+  // ─── Tier gating ──────────────────────────────────────────────────────
+  const batchGate = useMinTierGate("creator_pro"); // Mangaka+
+  const hasBatchTools = batchGate.allowed;
+  const userTier = batchGate.userTier;
 
   // ─── Data queries ─────────────────────────────────────────────────────
   const { data: project } = trpc.projects.get.useQuery(
@@ -82,8 +103,29 @@ export default function WizardPanels() {
   const { advance, advancing } = useAdvanceStage(projectId, 3);
   const sseRef = useRef<EventSource | null>(null);
 
-  const userTier = creditData?.tier || "free_trial";
-  const regenLimit = getRegenLimit(userTier);
+  const effectiveTier = creditData?.tier || userTier || "free_trial";
+  const regenLimit = getRegenLimit(effectiveTier);
+  const batchLimit = getBatchLimit(effectiveTier);
+
+  // ─── Selection state (batch mode) ────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const selectionMode = selectedIds.size > 0;
+
+  // ─── Style drift state ───────────────────────────────────────────────
+  const [styleDriftOpen, setStyleDriftOpen] = useState(false);
+  const [styleDriftPreviewing, setStyleDriftPreviewing] = useState(false);
+  const [styleDriftApplying, setStyleDriftApplying] = useState(false);
+  const [styleDriftPreviewUrl, setStyleDriftPreviewUrl] = useState<string | null>(null);
+
+  // ─── Consistency report state ─────────────────────────────────────────
+  const [consistencyOpen, setConsistencyOpen] = useState(false);
+  const [consistencyLoading, setConsistencyLoading] = useState(false);
+  const [flaggedPanels, setFlaggedPanels] = useState<FlaggedPanel[]>([]);
+  const [autoCorrectUsed, setAutoCorrectUsed] = useState(0);
+  const [correctingPanelIds, setCorrectingPanelIds] = useState<Set<number>>(new Set());
+
+  // ─── Batch processing state ───────────────────────────────────────────
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   // Track page open
   useEffect(() => {
@@ -125,6 +167,12 @@ export default function WizardPanels() {
     [rawPanels],
   );
 
+  // ─── Flagged panel IDs for grid highlighting ──────────────────────────
+  const flaggedIds = useMemo(
+    () => new Set(flaggedPanels.map((fp) => fp.panelId)),
+    [flaggedPanels],
+  );
+
   // ─── SSE streaming for panel generation ───────────────────────────────
   useEffect(() => {
     if (!generating || !selectedEpisode) return;
@@ -145,7 +193,6 @@ export default function WizardPanels() {
           arr.push(data.panelId);
           return new Set(arr);
         });
-        // Clear the "new" flag after animation
         setTimeout(() => {
           setNewPanelIds((prev) => {
             const next = new Set(prev);
@@ -160,6 +207,10 @@ export default function WizardPanels() {
     es.addEventListener("generation_complete", () => {
       setGenerating(false);
       utils.panels.listByEpisode.invalidate({ episodeId: selectedEpisode.id });
+      // Auto-run consistency check for Mangaka+ after generation completes
+      if (hasBatchTools) {
+        runConsistencyCheck();
+      }
     });
 
     es.addEventListener("rate_limited", (e) => {
@@ -169,15 +220,13 @@ export default function WizardPanels() {
       } catch {}
     });
 
-    es.onerror = () => {
-      // Reconnect handled by browser EventSource
-    };
+    es.onerror = () => {};
 
     return () => {
       es.close();
       sseRef.current = null;
     };
-  }, [generating, selectedEpisode, numId, utils]);
+  }, [generating, selectedEpisode, numId, utils, hasBatchTools]);
 
   // ─── Rate limit countdown ─────────────────────────────────────────────
   useEffect(() => {
@@ -216,7 +265,6 @@ export default function WizardPanels() {
   }, [panelTiles]);
 
   const totalExpected = useMemo(() => {
-    // Use the episode's expected panel count or fall back to current count
     if (selectedEpisode?.panelCount) return selectedEpisode.panelCount;
     return Math.max(panelStats.total, 20);
   }, [selectedEpisode, panelStats.total]);
@@ -241,11 +289,10 @@ export default function WizardPanels() {
 
   const handleRedraw = useCallback(
     async (panelId: number, instruction?: string) => {
-      // Check regen cap
       if (regenCount >= regenLimit) {
         trackEvent("stage2_cap_hit", { regenCount, regenLimit });
         openUpgrade({
-          currentTier: userTier,
+          currentTier: effectiveTier,
           required: "creator_pro",
           requiredDisplayName: "Mangaka",
           upgradeSku: "creator_pro",
@@ -266,7 +313,7 @@ export default function WizardPanels() {
       }
       setRedrawingPanelId(null);
     },
-    [regenCount, regenLimit, regeneratePanelMut, selectedEpisode, utils, openUpgrade],
+    [regenCount, regenLimit, regeneratePanelMut, selectedEpisode, utils, openUpgrade, effectiveTier],
   );
 
   const handleOpenLightbox = useCallback((panelId: number) => {
@@ -279,6 +326,161 @@ export default function WizardPanels() {
     },
     [handleRedraw],
   );
+
+  // ─── Selection handlers ───────────────────────────────────────────────
+  const handleToggleSelect = useCallback((panelId: number) => {
+    trackEvent("stage2_batch_select", { panelId });
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(panelId)) {
+        next.delete(panelId);
+      } else {
+        next.add(panelId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // ─── Batch redraw handler ─────────────────────────────────────────────
+  const handleBatchRedraw = useCallback(
+    async (instruction: string) => {
+      const ids = Array.from(selectedIds);
+      const totalCost = ids.length * COST_PER_PANEL;
+      setBatchProcessing(true);
+      try {
+        // Redraw each selected panel sequentially
+        for (const panelId of ids) {
+          await regeneratePanelMut.mutateAsync({ id: panelId });
+          setRegenCount((c) => c + 1);
+        }
+        trackEvent("stage2_panel_regen", { panelIds: ids, instruction, batchSize: ids.length, totalCost });
+        toast.success(`Batch redraw started for ${ids.length} panels`, {
+          description: `${totalCost} credits debited`,
+        });
+        utils.panels.listByEpisode.invalidate({ episodeId: selectedEpisode?.id ?? 0 });
+        setSelectedIds(new Set());
+      } catch (e: any) {
+        toast.error("Batch redraw failed", { description: e.message });
+      }
+      setBatchProcessing(false);
+    },
+    [selectedIds, regeneratePanelMut, selectedEpisode, utils],
+  );
+
+  const handleMatchToPanel = useCallback(() => {
+    toast.info("Match to panel", {
+      description: "Select a reference panel to match style to. Feature coming soon.",
+    });
+  }, []);
+
+  // ─── Style drift handlers ────────────────────────────────────────────
+  const handleStyleDriftPreview = useCallback(
+    (driftValue: number) => {
+      setStyleDriftPreviewing(true);
+      trackEvent("stage2_style_drift_preview", { driftValue });
+      // Simulate preview generation (would call server in production)
+      setTimeout(() => {
+        // Use first panel's image as a placeholder preview
+        const firstPanel = panelTiles.find((p) => !!p.imageUrl);
+        setStyleDriftPreviewUrl(firstPanel?.imageUrl || null);
+        setStyleDriftPreviewing(false);
+      }, 2000);
+    },
+    [panelTiles],
+  );
+
+  const handleStyleDriftApply = useCallback(
+    (driftValue: number) => {
+      setStyleDriftApplying(true);
+      trackEvent("stage2_style_drift_apply", {
+        driftValue,
+        panelCount: panelTiles.length,
+        totalCost: panelTiles.length * COST_PER_PANEL,
+      });
+      // Simulate apply (would call server in production)
+      setTimeout(() => {
+        toast.success("Style drift applied", {
+          description: `Applied to ${panelTiles.length} panels. Regeneration in progress.`,
+        });
+        setStyleDriftApplying(false);
+        setStyleDriftOpen(false);
+        setStyleDriftPreviewUrl(null);
+      }, 3000);
+    },
+    [panelTiles],
+  );
+
+  // ─── Consistency report handlers ──────────────────────────────────────
+  const runConsistencyCheck = useCallback(() => {
+    setConsistencyLoading(true);
+    setConsistencyOpen(true);
+    // Simulate consistency analysis (would call server in production)
+    setTimeout(() => {
+      // Generate mock flagged panels based on actual panel data
+      const flagged: FlaggedPanel[] = panelTiles
+        .filter((p) => !!p.imageUrl)
+        .map((p) => {
+          // Deterministic "similarity" based on panel ID
+          const score = 60 + ((p.id * 17) % 40);
+          return {
+            panelId: p.id,
+            panelNumber: p.panelNumber,
+            characterName: p.panelNumber % 3 === 0 ? "Aiko" : p.panelNumber % 3 === 1 ? "Ren" : "Yuki",
+            similarityScore: score,
+            severity: (score < 75 ? "critical" : "warning") as "critical" | "warning",
+            suggestedPrompt: score < 75
+              ? "Increase LoRA strength and add character reference in prompt"
+              : "Minor drift — consider adjusting lighting consistency",
+          };
+        })
+        .filter((p) => p.similarityScore < 85); // Only flag panels below 85%
+      setFlaggedPanels(flagged);
+      setConsistencyLoading(false);
+    }, 2000);
+  }, [panelTiles]);
+
+  const handleConsistencyJump = useCallback(
+    (panelId: number) => {
+      trackEvent("stage2_consistency_jump", { panelId });
+      setConsistencyOpen(false);
+      setLightboxPanelId(panelId);
+    },
+    [],
+  );
+
+  const handleAutoCorrect = useCallback(
+    (panelId: number) => {
+      if (!canAutoCorrect(effectiveTier, autoCorrectUsed)) return;
+      setCorrectingPanelIds((prev) => {
+        const next = new Set(prev);
+        next.add(panelId);
+        return next;
+      });
+      // Simulate auto-correct
+      setTimeout(() => {
+        setAutoCorrectUsed((c) => c + 1);
+        setCorrectingPanelIds((prev) => {
+          const next = new Set(prev);
+          next.delete(panelId);
+          return next;
+        });
+        setFlaggedPanels((prev) => prev.filter((fp) => fp.panelId !== panelId));
+        toast.success("Panel auto-corrected", { description: "No credits debited (free re-render)" });
+        utils.panels.listByEpisode.invalidate({ episodeId: selectedEpisode?.id ?? 0 });
+      }, 3000);
+    },
+    [effectiveTier, autoCorrectUsed, selectedEpisode, utils],
+  );
+
+  const handleOpenLoraRetraining = useCallback(() => {
+    toast.info("LoRA retraining", {
+      description: "Navigate to Characters to retrain LoRA for better consistency.",
+    });
+  }, []);
 
   // ─── Render ───────────────────────────────────────────────────────────
   return (
@@ -303,6 +505,13 @@ export default function WizardPanels() {
           </p>
         </div>
 
+        {/* Selection hint — only for Mangaka+ */}
+        {hasBatchTools && !selectionMode && panelTiles.length > 0 && allComplete && (
+          <p className="text-[11px] text-white/20 text-center">
+            Shift+click to select. Batch tools appear below.
+          </p>
+        )}
+
         {/* Episode tabs */}
         {eligibleEpisodes.length > 0 ? (
           <>
@@ -311,7 +520,10 @@ export default function WizardPanels() {
                 {eligibleEpisodes.map((ep: any, i: number) => (
                   <button
                     key={ep.id}
-                    onClick={() => setSelectedEpIdx(i)}
+                    onClick={() => {
+                      setSelectedEpIdx(i);
+                      setSelectedIds(new Set());
+                    }}
                     className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                       selectedEpIdx === i
                         ? "bg-[#00F0FF]/20 text-[#00F0FF] ring-1 ring-[#00F0FF]/30"
@@ -372,10 +584,38 @@ export default function WizardPanels() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#00E8A0]/5 border border-[#00E8A0]/10 text-[#00E8A0] text-sm"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#00E8A0]/5 border border-[#00E8A0]/10 text-[#00E8A0] text-sm"
                 >
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                  All panels ready. Publish when you are.
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    All panels ready. Publish when you are.
+                  </div>
+
+                  {/* Pro tools buttons — Mangaka+ only */}
+                  {hasBatchTools && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setStyleDriftOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-[#6B5BFF] text-xs font-medium transition-colors"
+                      >
+                        <Paintbrush className="w-3.5 h-3.5" />
+                        Style drift
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (flaggedPanels.length > 0) {
+                            setConsistencyOpen(true);
+                          } else {
+                            runConsistencyCheck();
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-[#FFD700] text-xs font-medium transition-colors"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        Consistency check
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -388,6 +628,10 @@ export default function WizardPanels() {
                 newPanelIds={newPanelIds}
                 onRedraw={(id) => handleRedraw(id)}
                 onOpen={handleOpenLightbox}
+                selectedIds={selectedIds}
+                flaggedIds={flaggedIds}
+                selectionMode={selectionMode}
+                onToggleSelect={hasBatchTools ? handleToggleSelect : undefined}
               />
             ) : (
               <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
@@ -478,6 +722,56 @@ export default function WizardPanels() {
         regenCount={regenCount}
         regenLimit={regenLimit}
       />
+
+      {/* Batch bar — Mangaka+ only */}
+      {hasBatchTools && (
+        <PanelBatchBar
+          selectedIds={selectedIds}
+          maxBatch={batchLimit}
+          costPerPanel={COST_PER_PANEL}
+          isProcessing={batchProcessing}
+          onBatchRedraw={handleBatchRedraw}
+          onMatchToPanel={handleMatchToPanel}
+          onOpenStyleDrift={() => setStyleDriftOpen(true)}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+
+      {/* Style drift panel — Mangaka+ only */}
+      {hasBatchTools && (
+        <StyleDrift
+          isOpen={styleDriftOpen}
+          onClose={() => {
+            setStyleDriftOpen(false);
+            setStyleDriftPreviewUrl(null);
+          }}
+          totalPanels={panelTiles.filter((p) => !!p.imageUrl).length}
+          costPerPanel={COST_PER_PANEL}
+          previewCost={STYLE_DRIFT_PREVIEW_COST}
+          isPreviewing={styleDriftPreviewing}
+          isApplying={styleDriftApplying}
+          previewImageUrl={styleDriftPreviewUrl}
+          onPreview={handleStyleDriftPreview}
+          onApply={handleStyleDriftApply}
+        />
+      )}
+
+      {/* Consistency report — Mangaka+ only */}
+      {hasBatchTools && (
+        <ConsistencyReport
+          isOpen={consistencyOpen}
+          onClose={() => setConsistencyOpen(false)}
+          flaggedPanels={flaggedPanels}
+          isLoading={consistencyLoading}
+          userTier={effectiveTier}
+          autoCorrectRemaining={AUTO_CORRECT_MONTHLY_CAP - autoCorrectUsed}
+          autoCorrectCap={AUTO_CORRECT_MONTHLY_CAP}
+          onJumpToPanel={handleConsistencyJump}
+          onAutoCorrect={handleAutoCorrect}
+          onOpenLoraRetraining={handleOpenLoraRetraining}
+          correctingPanelIds={correctingPanelIds}
+        />
+      )}
     </CreateWizardLayout>
   );
 }

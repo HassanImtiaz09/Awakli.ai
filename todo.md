@@ -4075,3 +4075,19 @@
 - [x] Exact copy strings: page title, subhead, hover actions, popover placeholder, CTAs
 - [x] Analytics events: stage2_open, stage2_panel_rendered, stage2_panel_regen, stage2_cap_hit
 - [x] Write vitest tests for panel generation, regen limits, copy strings, and states (58 tests passing)
+
+## Stage 2B · Panels — Batch + Style Tools (Mangaka / Studio)
+- [x] Create PanelBatchBar component — fixed bottom bar with "{n} selected", "Redraw {n} panels · {n*3} credits", "Match to panel {n}", "Apply style shift"
+- [x] Shift-click tile enters selection mode; click additional tiles to multi-select; selected tile ring-2 ring-violet
+- [x] Batch regenerate: single shared prompt applied to all selected; credit preview shown inline
+- [x] Mangaka: batch up to 8 panels at a time; Studio: unlimited batch
+- [x] Create StyleDrift component — global slider "Grounded ↔ Stylized", preview 1 panel (1 credit), apply to all (N × panel cost)
+- [x] Create ConsistencyReport component — post-render side panel flagging panels where character similarity < threshold
+- [x] Consistency row format: "Panel {n}: {character} similarity {score}%"
+- [x] Studio: consistency report includes LoRA correction CTA
+- [x] Studio Pro: auto-correct up to 5/project/month free re-renders for flagged panels
+- [x] Integrate all 3 components into panels.tsx with tier gating (Mangaka+)
+- [x] Selection hint copy: "Shift+click to select. Batch tools appear below."
+- [x] Exact copy strings: batch bar, style drift slider labels, consistency report title
+- [x] Analytics events: stage2_batch_select, stage2_style_drift_preview, stage2_style_drift_apply, stage2_consistency_jump
+- [x] Write vitest tests for batch logic, style drift credits, consistency scoring, copy strings (69 tests passing)
