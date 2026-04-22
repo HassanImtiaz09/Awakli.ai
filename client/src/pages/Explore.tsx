@@ -27,7 +27,7 @@ export default function Explore() {
 
   // Use discover.byGenre for genre filtering, or discover.trending/newReleases/topRated
   const projects = trpc.discover.byGenre.useQuery(
-    { genre: genreQuery || "All" },
+    { genre: genreQuery },
     { enabled: true }
   );
 

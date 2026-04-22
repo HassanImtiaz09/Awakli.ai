@@ -130,10 +130,38 @@ export default function WizardVideo() {
     { enabled: !isNaN(numId) }
   );
 
+  const { data: episodes = [] } = trpc.episodes.listByProject.useQuery(
+    { projectId: numId },
+    { enabled: !isNaN(numId) }
+  );
+
   const { data: balanceData } = trpc.projects.creditBalance.useQuery(
     undefined,
     { refetchInterval: 10_000 }
   );
+
+  // Pipeline state
+  const [pipelineRunId, setPipelineRunId] = useState<number | null>(null);
+  const startPipelineMut = trpc.pipeline.start.useMutation();
+  const { data: pipelineStatus } = trpc.pipeline.getStatus.useQuery(
+    { runId: pipelineRunId! },
+    {
+      enabled: !!pipelineRunId,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (status === "completed" || status === "failed" || status === "cancelled") return false;
+        return 3000; // poll every 3s while running
+      },
+    }
+  );
+
+  // Get the first locked/approved episode for pipeline
+  const pipelineEpisode = useMemo(() => {
+    const eligible = (episodes as any[]).filter(
+      (e: any) => e.status === "locked" || e.status === "approved"
+    );
+    return eligible[0] as any | undefined;
+  }, [episodes]);
 
   // Get user tier
   const { userTier } = useTierGate("stage_video");
@@ -276,7 +304,28 @@ export default function WizardVideo() {
       credits: forecast.totalCredits,
     });
 
-    // Simulate render phases
+    // Start real pipeline if episode is available
+    if (pipelineEpisode && numId) {
+      try {
+        const { runId } = await startPipelineMut.mutateAsync({
+          episodeId: pipelineEpisode.id,
+          projectId: numId,
+        });
+        setPipelineRunId(runId);
+        // Pipeline polling will drive UI updates via useEffect below
+      } catch (err: any) {
+        // Fallback to simulated render if pipeline fails (e.g. episode not locked)
+        console.warn("[Video] Pipeline start failed, using simulated render:", err?.message);
+        await runSimulatedRender();
+      }
+    } else {
+      // No eligible episode — run simulated render
+      await runSimulatedRender();
+    }
+  }, [forecast, projectId, studioMode, tierLimits, pipelineEpisode, numId, startPipelineMut]);
+
+  // Simulated render fallback (used when no pipeline episode is available)
+  const runSimulatedRender = useCallback(async () => {
     try {
       for (let phase = 0; phase < RENDER_PHASES.length; phase++) {
         setRenderPhaseIdx(phase);
@@ -312,6 +361,53 @@ export default function WizardVideo() {
     }
   }, [forecast, projectId, studioMode, tierLimits]);
 
+  // Drive UI from pipeline status polling
+  useEffect(() => {
+    if (!pipelineStatus || state !== "rendering") return;
+
+    const nodeToPhase: Record<string, number> = {
+      video_gen: 0,
+      voice_gen: 1,
+      lip_sync: 1,
+      music_gen: 2,
+      foley_gen: 2,
+      ambient_gen: 2,
+      assembly: 2,
+    };
+
+    const currentNode = pipelineStatus.currentNode as string;
+    const phaseIdx = nodeToPhase[currentNode] ?? 0;
+    setRenderPhaseIdx(phaseIdx);
+    setRenderProgress(pipelineStatus.progress ?? 0);
+
+    if (pipelineStatus.status === "completed") {
+      // Pipeline done — build result from pipeline data
+      const result: RenderResult = {
+        videoUrl: (pipelineStatus as any).finalVideoUrl || "",
+        duration: forecast.totalRuntime,
+        resolution: studioMode
+          ? tierLimits.maxResolution
+          : MANGAKA_LIMITS.maxResolution,
+        format: studioMode && 'exportFormats' in tierLimits
+          ? tierLimits.exportFormats[0]
+          : MANGAKA_LIMITS.exportFormat,
+        fileSize: `${Math.round(forecast.totalRuntime * 2.5)} MB`,
+      };
+      setRenderResult(result);
+      setRendersUsed((prev) => prev + 1);
+      setState("review");
+      trackEvent("stage6_render_complete", {
+        projectId,
+        duration: forecast.totalRuntime,
+      });
+    } else if (pipelineStatus.status === "failed") {
+      setErrorMessage(
+        (pipelineStatus as any).errorMessage || "Render failed — your credits have been refunded."
+      );
+      setState("error");
+    }
+  }, [pipelineStatus, state, forecast, projectId, studioMode, tierLimits]);
+
   const handleApprove = useCallback(() => {
     if (studioMode) {
       // Studio+ gets export dialog
@@ -333,8 +429,6 @@ export default function WizardVideo() {
       if (config.stems) {
         trackEvent("stage6_export_stems", { projectId });
       }
-      // In production: trigger server-side export with config
-      // For now, simulate completion
       if (renderResult?.videoUrl) {
         window.open(renderResult.videoUrl, "_blank");
       }

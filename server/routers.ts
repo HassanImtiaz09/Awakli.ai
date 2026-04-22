@@ -150,6 +150,7 @@ async function generatePanelsForEpisode(
   projectId: number,
   userId: number,
 ) {
+  const { registerGenJob, notifyPanelComplete } = await import("./panelGenService");
   const episode = await getEpisodeById(episodeId);
   if (!episode || !episode.scriptContent) return;
 
@@ -163,6 +164,9 @@ async function generatePanelsForEpisode(
 
   const allPanels = await getPanelsByEpisode(episodeId);
   const CONCURRENCY = 4;
+
+  // Register SSE job so connected clients receive real-time updates
+  registerGenJob(projectId, episodeId, userId, allPanels.length);
 
   // Process panels in batches of CONCURRENCY
   for (let i = 0; i < allPanels.length; i += CONCURRENCY) {
@@ -191,6 +195,9 @@ async function generatePanelsForEpisode(
           status: "generated",
           reviewStatus: "pending",
         });
+
+        // Broadcast to SSE clients
+        notifyPanelComplete(projectId, episodeId, panel.id, panel.panelNumber, url ?? "", "generated");
       } catch (error) {
         routerLog.error(`[PanelGen] Panel ${panel.id} failed:`, { error: String(error) });
         // Retry up to 3 times with backoff
@@ -206,6 +213,8 @@ async function generatePanelsForEpisode(
               reviewStatus: "pending",
               fluxPrompt: prompt,
             });
+            // Broadcast to SSE clients on retry success
+            notifyPanelComplete(projectId, episodeId, panel.id, panel.panelNumber, url ?? "", "generated");
             retrySuccess = true;
             break;
           } catch {
@@ -1249,12 +1258,22 @@ const panelsRouter = router({
       // Mark as generating and regenerate
       await updatePanel(input.id, { status: "generating", reviewStatus: "pending" });
 
-      // Fire-and-forget regeneration
+      // Fire-and-forget regeneration with SSE notification
       (async () => {
         try {
+          const { notifyPanelComplete } = await import("./panelGenService");
           const promptToUse = input.newPrompt || panel.fluxPrompt || panel.visualDescription || "anime panel";
           const { url } = await generateImage({ prompt: promptToUse });
           await updatePanel(input.id, { imageUrl: url, status: "generated", reviewStatus: "pending" });
+          // Broadcast to any connected SSE clients
+          notifyPanelComplete(
+            panel.projectId,
+            panel.episodeId,
+            input.id,
+            panel.panelNumber,
+            url ?? "",
+            "generated",
+          );
         } catch (error) {
           routerLog.error(`[PanelRegen] Panel ${input.id} failed:`, { error: String(error) });
           await updatePanel(input.id, { status: "draft" });
@@ -1560,7 +1579,7 @@ const discoverRouter = router({
     }),
 
   byGenre: publicProcedure
-    .input(z.object({ genre: z.string(), limit: z.number().default(20), offset: z.number().default(0) }))
+    .input(z.object({ genre: z.string().optional(), limit: z.number().default(20), offset: z.number().default(0) }))
     .query(async ({ input }) => {
       return getPublicProjects({ limit: input.limit, offset: input.offset, genre: input.genre, sort: "trending" });
     }),

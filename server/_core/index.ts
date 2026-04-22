@@ -114,6 +114,10 @@ async function startServer() {
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // ─── Panel generation SSE stream ──────────────────────────────────────────
+  const { registerPanelStreamRoutes } = await import("../panelGenService");
+  registerPanelStreamRoutes(app);
+
   // ─── OG Meta Injection for social crawlers (/m/:slug, /watch/:slug) ─────
   const SOCIAL_BOT_RE = /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|Googlebot|bingbot|Baiduspider/i;
   app.get(["/m/:slug", "/watch/:slug"], async (req, res, next) => {

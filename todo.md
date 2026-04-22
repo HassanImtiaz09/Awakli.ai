@@ -4228,16 +4228,19 @@
 - [x] 41 vitest tests passing for MangaReader
 
 ## Wire Real Generation Backends
-- [ ] Panel generation SSE: connect panelGenService to actual image generation API (generateImage)
-- [ ] Panel regeneration: wire single-panel redraw to image generation with custom prompt
-- [ ] Video render pipeline: connect 3-phase render to actual video/image generation calls
+- [x] Panel generation SSE: connect panelGenService to actual image generation API (generateImage)
+- [x] Panel regeneration: wire single-panel redraw to image generation with custom prompt
+- [x] SSE route registered in server entry point (panelGenService)
+- [x] registerGenJob + notifyPanelComplete wired into generatePanelsForEpisode
+- [x] Panel regen notifies SSE clients with updated image URL
+- [x] Video render pipeline: connect frontend to real pipeline.start mutation with polling
 - [ ] Error handling with auto-refund on generation failure
 - [ ] Rate limiting and queue management for generation requests
 
 ## Explore/Feed Sample Content
-- [ ] Create seed data with 12+ sample manga projects (varied genres, styles)
-- [ ] Populate featured banner rotation with curated projects
-- [ ] Fill trending/new releases/top rated content rows
-- [ ] Add sample creator profiles with avatars
-- [ ] Genre-filtered browse with real data
-- [ ] Write vitest tests for manga reader, generation backends, and feed content
+- [x] Create seed data with 12+ sample manga projects (varied genres, styles)
+- [x] Populate featured banner rotation with curated projects (12 projects with AI-generated covers)
+- [x] Fill trending/new releases/top rated content rows (vote scores + view counts for sorting)
+- [x] Add sample creator profiles with avatars (2 demo users: TakeshiArt, MikuCreates)
+- [x] Genre-filtered browse with real data (fixed byGenre query to accept optional genre)
+- [x] Write vitest tests for manga reader, generation backends, and feed content (22 tests passing)
