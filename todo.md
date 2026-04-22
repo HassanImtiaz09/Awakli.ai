@@ -4464,3 +4464,11 @@
 - [x] Reassemble full-length video with all beats, narration, and typewriter SFX (65.9s)
 - [x] Upload and update website video URL
 - [x] Run tests and save checkpoint
+
+## Demo Video fix3: Typing Animation + Slides Fix
+- [x] Beat 2: Character-by-character typing animation synced with typewriter SFX
+- [x] Beat 7: Restore missing "first platform of its kind" slide
+- [x] Beats 7-8: Use Orbitron font, fade background to 50%, match AWAKLI to logo gradient
+- [x] Beats 7-8: Animated typing text synced with narration
+- [x] Reassemble full video and upload
+- [x] Update website and run tests
