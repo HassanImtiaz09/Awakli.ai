@@ -4107,3 +4107,16 @@
 - [x] Analytics events: stage3_preview_shown, stage3_cover_picked, stage3_publish_start, stage3_publish_complete, stage3_anime_cta
 - [x] Wire publish route in App.tsx (already wired from prior scaffold)
 - [x] Write vitest tests for publish logic, tier gating, copy strings, and watermark rules (66 tests passing)
+
+## Stage 4 · Anime Gate — Upgrade Moment (Non-Subscribed)
+- [x] Create AnimeGateHero component — full-bleed hero with "Your manga is ready to breathe." title, animated shimmer background, audio preview toggle
+- [x] Create TierCompareCard component — 3 tier cards (Mangaka/Studio/Studio Pro) with video-relevant feature deltas (duration, resolution, voice, LoRA)
+- [x] Card CTA opens Stripe checkout in new tab; page shows "Waiting for your confirmation in the new tab…"
+- [x] Rewrite anime-gate.tsx with 4 states: idle (hero animates), checkout-opening (waiting), confirmed (mint checkmark → route to /create/setup)
+- [x] Tier routing: Apprentice sees gate; Mangaka+ auto-redirects to /create/setup
+- [x] "I'll stay with the manga for now" small link returns to /m/{slug}
+- [x] No urgency language, countdown timers, or pre-checked boxes anywhere (validated by 13 dark-pattern tests)
+- [x] Exact copy strings: hero title, hero subhead, card title, card price, card CTA, small link, waiting state
+- [x] Analytics events: stage4_gate_shown, stage4_tier_select, stage4_checkout_opened, stage4_confirmed, stage4_declined
+- [x] Subscription polling: after Stripe tab opens, poll subscription status; confirmed routes to /create/setup within 2s
+- [x] Write vitest tests for gate logic, tier routing, copy strings, and no-urgency validation (49 tests passing)

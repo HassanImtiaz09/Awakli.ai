@@ -1,11 +1,37 @@
-import { useState, useMemo } from "react";
+/**
+ * Stage 4 · Anime Gate — upgrade moment (non-subscribed).
+ *
+ * States:
+ *   1. idle        — hero animates, particle field, audio toggle
+ *   2. tier-hover  — card lifts, video sample begins
+ *   3. checkout    — Stripe tab opens; "Waiting for confirmation…"
+ *   4. confirmed   — mint checkmark → "Welcome to Mangaka" → /create/setup
+ *
+ * Tier routing:
+ *   - Audience (free_trial without publish) → /explore
+ *   - Apprentice (creator / free_trial) → gate shown, Mangaka highlighted
+ *   - Mangaka+ (creator_pro / studio / enterprise) → auto-redirect to /create/setup
+ */
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
-import { motion } from "framer-motion";
-import { Shield, ArrowRight, ArrowLeft, Users, ThumbsUp, ThumbsDown, Clock, TrendingUp, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
-import { useAdvanceStage } from "@/hooks/useAdvanceStage";
-import { WithTier } from "@/components/awakli/withTier";
+import { AnimeGateHero } from "@/components/awakli/AnimeGateHero";
+import {
+  TierCompareCard,
+  TIER_CARD_COPY,
+} from "@/components/awakli/TierCompareCard";
+
+type PageState = "idle" | "checkout" | "confirmed";
+
+// Tiers that skip this gate entirely
+const SKIP_TIERS = new Set(["creator_pro", "studio", "enterprise"]);
+// Tiers that should not be here at all (no publish access)
+const REDIRECT_TIERS = new Set<string>(); // free_trial can still arrive via direct URL
 
 export default function WizardAnimeGate() {
   const [, navigate] = useLocation();
@@ -14,28 +40,168 @@ export default function WizardAnimeGate() {
   const projectId = params.get("projectId") || "";
   const numId = parseInt(projectId, 10);
 
-  const { data: project } = trpc.projects.get.useQuery({ id: numId }, { enabled: !isNaN(numId) });
-  const { advance, advancing } = useAdvanceStage(projectId, 4);
+  const { user } = useAuth();
 
+  // ─── Data queries ──────────────────────────────────────────────────
+  const { data: project } = trpc.projects.get.useQuery(
+    { id: numId },
+    { enabled: !isNaN(numId) }
+  );
+  const { data: subscription, refetch: refetchSub } =
+    trpc.billing.getSubscription.useQuery(undefined, { enabled: !!user });
+
+  const tier = subscription?.tier ?? "free_trial";
+
+  // ─── Tier-aware routing ────────────────────────────────────────────
+  const hasRedirected = useRef(false);
+  useEffect(() => {
+    if (hasRedirected.current || !subscription) return;
+
+    if (SKIP_TIERS.has(tier)) {
+      hasRedirected.current = true;
+      navigate(`/create/setup?projectId=${projectId}`, { replace: true });
+      return;
+    }
+
+    if (REDIRECT_TIERS.has(tier)) {
+      hasRedirected.current = true;
+      navigate("/explore", { replace: true });
+      return;
+    }
+  }, [tier, subscription, navigate, projectId]);
+
+  // ─── State ─────────────────────────────────────────────────────────
+  const [pageState, setPageState] = useState<PageState>("idle");
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const [confirmedTierName, setConfirmedTierName] = useState<string | null>(
+    null
+  );
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ─── Completed stages ──────────────────────────────────────────────
   const completedStages = useMemo(() => {
     const s = new Set<number>();
-    if (project?.description && project?.genre) s.add(0);
-    if (project?.animeStyle && project?.animeStyle !== "default" && project?.tone) s.add(1);
-    s.add(2); // assume script done if we're here
-    s.add(3); // assume panels done if we're here
+    for (let i = 0; i <= 5; i++) s.add(i);
     return s;
-  }, [project]);
+  }, []);
 
-  // Placeholder voting data
-  const votes = { up: 0, down: 0, total: 0 };
-  const threshold = 100;
-  const progress = Math.min((votes.up / threshold) * 100, 100);
-  const gateOpen = votes.up >= threshold;
+  // ─── Analytics ─────────────────────────────────────────────────────
+  const analyticsRef = useRef(false);
+  useEffect(() => {
+    if (!analyticsRef.current && subscription && !SKIP_TIERS.has(tier)) {
+      analyticsRef.current = true;
+      // stage4_gate_shown
+    }
+  }, [subscription, tier]);
 
-  const handleNext = async () => {
-    if (!gateOpen) return;
-    await advance();
-  };
+  // ─── Stripe checkout ──────────────────────────────────────────────
+  const createCheckout = trpc.billing.createCheckout.useMutation();
+
+  const handleSelectTier = useCallback(
+    async (tierKey: "creator_pro" | "studio" | "enterprise") => {
+      // stage4_tier_select
+      setLoadingTier(tierKey);
+
+      // Enterprise requires contact — show toast
+      if (tierKey === "enterprise") {
+        toast.info("Enterprise plans require a custom quote. Contact us.");
+        setLoadingTier(null);
+        return;
+      }
+
+      try {
+        const result = await createCheckout.mutateAsync({
+          tier: tierKey as "creator_pro" | "studio",
+          interval: "monthly",
+        });
+
+        if (result.url) {
+          // stage4_checkout_opened
+          window.open(result.url, "_blank");
+          setPageState("checkout");
+          toast.info(TIER_CARD_COPY.waitingState);
+
+          // Start polling for subscription confirmation
+          startPolling(tierKey);
+        } else if ('upgraded' in result && result.upgraded || 'downgraded' in result && result.downgraded) {
+          // Upgrade/downgrade handled inline (existing subscription)
+          const tierName = tierKey === "creator_pro" ? "Mangaka" : "Studio";
+          toast.success(`Successfully switched to ${tierName}!`);
+          setConfirmedTierName(tierName);
+          setPageState("confirmed");
+          // stage4_confirmed
+          setTimeout(() => {
+            navigate(`/create/setup?projectId=${projectId}`);
+          }, 2000);
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Failed to create checkout session");
+      } finally {
+        setLoadingTier(null);
+      }
+    },
+    [createCheckout, navigate, projectId]
+  );
+
+  // ─── Subscription polling ─────────────────────────────────────────
+  const startPolling = useCallback(
+    (selectedTier: string) => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+
+      pollingRef.current = setInterval(async () => {
+        try {
+          const { data: freshSub } = await refetchSub();
+          if (freshSub && SKIP_TIERS.has(freshSub.tier)) {
+            // Subscription confirmed!
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            pollingRef.current = null;
+            setLoadingTier(null);
+
+            const tierName =
+              selectedTier === "creator_pro"
+                ? "Mangaka"
+                : selectedTier === "studio"
+                ? "Studio"
+                : "Studio Pro";
+            setConfirmedTierName(tierName);
+            setPageState("confirmed");
+            // stage4_confirmed
+
+            // Auto-navigate after 2s
+            setTimeout(() => {
+              navigate(`/create/setup?projectId=${projectId}`);
+            }, 2000);
+          }
+        } catch {
+          // Silently retry
+        }
+      }, 3000);
+    },
+    [refetchSub, navigate, projectId]
+  );
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  // ─── Decline handler ──────────────────────────────────────────────
+  const handleDecline = useCallback(() => {
+    // stage4_declined
+    const slug = project?.slug;
+    if (slug) {
+      navigate(`/m/${slug}`);
+    } else {
+      navigate("/explore");
+    }
+  }, [project?.slug, navigate]);
+
+  // ─── Don't render if tier should skip ──────────────────────────────
+  if (subscription && SKIP_TIERS.has(tier)) {
+    return null;
+  }
 
   return (
     <CreateWizardLayout
@@ -44,128 +210,100 @@ export default function WizardAnimeGate() {
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
-      <WithTier capability="stage_anime_gate" mode="hard">
-      <div className="max-w-3xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-token-gold text-xs font-semibold uppercase tracking-widest">
-            <Shield className="w-3.5 h-3.5" />
-            Stage 05 — Anime Gate
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
-            Community approval
-          </h1>
-          <p className="text-white/40 text-sm">
-            Your manga is submitted for community voting. Reach the threshold to unlock anime production.
-          </p>
-        </div>
-
-        {/* Voting progress */}
-        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/5 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-token-gold/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-token-gold" />
+      <div className="space-y-0">
+        <AnimatePresence mode="wait">
+          {/* ─── Confirmed state ──────────────────────────────────── */}
+          {pageState === "confirmed" && (
+            <motion.div
+              key="confirmed"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="min-h-[70vh] grid place-items-center"
+            >
+              <div className="text-center space-y-6">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", delay: 0.2 }}
+                  className="w-20 h-20 rounded-full bg-[#00E5A0]/10 flex items-center justify-center mx-auto"
+                >
+                  <Check className="w-10 h-10 text-[#00E5A0]" />
+                </motion.div>
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-3xl font-bold text-white/90"
+                >
+                  Welcome to {confirmedTierName}
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="text-white/40 text-sm"
+                >
+                  Redirecting to your anime setup…
+                </motion.p>
+                <Loader2 className="w-5 h-5 text-white/20 animate-spin mx-auto" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-white/90">{votes.up}</div>
-                <div className="text-xs text-white/40">upvotes of {threshold} needed</div>
-              </div>
-            </div>
-            <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
-              gateOpen
-                ? "bg-token-mint/10 text-token-mint ring-1 ring-token-mint/30"
-                : "bg-token-gold/10 text-token-gold ring-1 ring-token-gold/30"
-            }`}>
-              {gateOpen ? "Gate Open" : "Voting Active"}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="h-3 rounded-full bg-white/5 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-token-gold to-token-mint"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-white/30">
-              <span>{Math.round(progress)}% complete</span>
-              <span>{threshold - votes.up} more votes needed</span>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-white/[0.02] text-center">
-              <ThumbsUp className="w-5 h-5 text-token-mint mx-auto mb-2" />
-              <div className="text-lg font-bold text-white/80">{votes.up}</div>
-              <div className="text-xs text-white/30">Upvotes</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/[0.02] text-center">
-              <ThumbsDown className="w-5 h-5 text-token-magenta mx-auto mb-2" />
-              <div className="text-lg font-bold text-white/80">{votes.down}</div>
-              <div className="text-xs text-white/30">Downvotes</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/[0.02] text-center">
-              <Users className="w-5 h-5 text-token-cyan mx-auto mb-2" />
-              <div className="text-lg font-bold text-white/80">{votes.total}</div>
-              <div className="text-xs text-white/30">Total Votes</div>
-            </div>
-          </div>
-
-          {!gateOpen && (
-            <div className="flex items-center gap-2 p-4 rounded-xl bg-token-gold/5 border border-token-gold/10">
-              <Clock className="w-4 h-4 text-token-gold flex-shrink-0" />
-              <p className="text-xs text-white/50">
-                Share your project on the Feed to gather community votes. Once you reach {threshold} upvotes, the anime production stage unlocks.
-              </p>
-            </div>
+            </motion.div>
           )}
-        </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between pt-4">
-          <button
-            onClick={() => navigate(`/create/panels?projectId=${projectId}`)}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 text-white/50 hover:text-white/70 text-sm transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <motion.button
-            whileHover={{ scale: gateOpen && !advancing ? 1.02 : 1 }}
-            whileTap={{ scale: gateOpen && !advancing ? 0.98 : 1 }}
-            onClick={handleNext}
-            disabled={!gateOpen || advancing}
-            className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              gateOpen && !advancing
-                ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
-                : "bg-white/5 text-white/20 cursor-not-allowed"
-            }`}
-          >
-            {advancing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Advancing...
-              </>
-            ) : gateOpen ? (
-              <>
-                Continue to Video
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                Waiting for Votes
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </motion.button>
-        </div>
+          {/* ─── Checkout waiting state ───────────────────────────── */}
+          {pageState === "checkout" && (
+            <motion.div
+              key="checkout"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-0"
+            >
+              <AnimeGateHero coverImageUrl={null} ambientAudioUrl={null} />
+
+              <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
+                {/* Waiting banner */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-center gap-3 p-5 rounded-2xl bg-violet-500/[0.06] border border-violet-500/15 max-w-lg mx-auto"
+                >
+                  <Loader2 className="w-5 h-5 text-violet-400 animate-spin flex-shrink-0" />
+                  <span className="text-sm text-white/60">
+                    {TIER_CARD_COPY.waitingState}
+                  </span>
+                </motion.div>
+
+                <TierCompareCard
+                  onSelectTier={handleSelectTier}
+                  loadingTier={loadingTier}
+                  onDecline={handleDecline}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── Idle state (default) ─────────────────────────────── */}
+          {pageState === "idle" && (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-0"
+            >
+              <AnimeGateHero coverImageUrl={null} ambientAudioUrl={null} />
+
+              <div className="max-w-5xl mx-auto px-6 py-12">
+                <TierCompareCard
+                  onSelectTier={handleSelectTier}
+                  loadingTier={loadingTier}
+                  onDecline={handleDecline}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      </WithTier>
     </CreateWizardLayout>
   );
 }
