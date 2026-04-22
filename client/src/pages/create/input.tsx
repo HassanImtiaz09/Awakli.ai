@@ -242,18 +242,59 @@ export default function WizardInput() {
           </div>
         </div>
 
-        {/* ─── Cost Hint ────────────────────────────────────────────── */}
-        <div className="text-center">
-          <p className="text-[11px] text-white/20">
-            This stage: 6c · full project forecast: ~42c
-          </p>
-        </div>
+        {/* ─── Dynamic Cost Hint ──────────────────────────────────────────── */}
+        <CostHint panelCount={panelCount} />
       </div>
     </CreateWizardLayout>
   );
 }
+// ─── Dynamic Cost Hint Component ─────────────────────────────────────────────
+function CostHint({ panelCount }: { panelCount: number }) {
+  const { user } = useAuth();
+  const { data: creditData } = trpc.projects.creditBalance.useQuery(undefined, {
+    enabled: !!user,
+  });
 
-// ─── Analytics Helper ───────────────────────────────────────────────────────
+  // Scale costs based on panel count (base costs are for 20 panels)
+  const scaleFactor = panelCount / 20;
+
+  // Stage 0 cost (input → setup) is always 0 from server
+  const stageCost = creditData?.stageCosts?.[0]?.cost ?? 0;
+
+  // Total project forecast: scale panel-dependent stages by panel count
+  // Stages 2 (script→panels) and 3 (panels→gate) scale with panel count
+  // Stages 0,1 (free) and 4 (free gate) don't scale
+  // Stage 5 (video→publish) scales with panel count
+  const baseTotalCost = creditData?.totalProjectCost ?? 17;
+  const scalableCosts = (creditData?.stageCosts ?? []).reduce(
+    (sum: number, s: { cost: number; stage: number }) =>
+      [2, 3, 5].includes(s.stage) ? sum + s.cost : sum,
+    0
+  );
+  const fixedCosts = baseTotalCost - scalableCosts;
+  const scaledTotal = Math.round(fixedCosts + scalableCosts * scaleFactor);
+
+  const balance = creditData?.balance ?? 0;
+  const canAfford = balance >= scaledTotal;
+
+  return (
+    <div className="text-center">
+      <p className="text-[11px] text-white/20">
+        This stage: {stageCost === 0 ? "free" : `${stageCost}c`}
+        {" \u00b7 "}
+        full project forecast:{" "}
+        <span className={canAfford ? "text-token-mint/40" : "text-red-400/50"}>
+          ~{scaledTotal}c
+        </span>
+        {panelCount > 20 && (
+          <span className="text-white/15"> ({panelCount} panels)</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+// ─── Analytics Helper ─────────────────────────────────────────────────────────
 function emitAnalytics(event: string, data?: Record<string, unknown>) {
   try {
     window.dispatchEvent(

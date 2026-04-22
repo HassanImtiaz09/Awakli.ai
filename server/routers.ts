@@ -435,10 +435,29 @@ const projectsRouter = router({
       return getCheckpointHistory(input.id, ctx.user.id);
     }),
 
-  // F3: Get user's credit balance
+  // F3: Get user's credit balance + stage cost breakdown
   creditBalance: protectedProcedure.query(async ({ ctx }) => {
-    const { getUserCreditBalance } = await import("./projectService");
-    return { balance: await getUserCreditBalance(ctx.user.id) };
+    const { getUserCreditBalance, getStageCreditCost, STAGE_NAMES } = await import("./projectService");
+    const { getUserSubscriptionTier } = await import("./db");
+    const balance = await getUserCreditBalance(ctx.user.id);
+    const tier = await getUserSubscriptionTier(ctx.user.id);
+
+    // Monthly grant by tier
+    const TIER_GRANTS: Record<string, number> = {
+      free_trial: 15, creator: 100, creator_pro: 300, studio: 1000, enterprise: 5000,
+    };
+    const monthlyGrant = TIER_GRANTS[tier] ?? 15;
+
+    // Per-stage costs
+    const stageCosts = STAGE_NAMES.map((name: string, i: number) => ({
+      stage: i,
+      label: name,
+      cost: getStageCreditCost(i),
+    }));
+
+    const totalProjectCost = stageCosts.reduce((sum: number, s: { cost: number }) => sum + s.cost, 0);
+
+    return { balance, monthlyGrant, stageCosts, totalProjectCost, tier };
   }),
 
   // F3: Archive a project (soft-delete)

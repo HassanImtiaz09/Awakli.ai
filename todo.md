@@ -4008,3 +4008,9 @@
 - [x] Wire Summon to advanceStage spending 6 credits, navigate to /create/script?projectId=X
 - [x] Analytics events: stage0_open, stage0_idea_submit, stage0_length_change, stage0_upgrade_prompt
 - [x] Write vitest tests for validation, copy strings, and tier gating logic (32 tests passing)
+
+## Dynamic Cost Estimation
+- [x] Connect cost hint to trpc.projects.creditBalance for live balance display
+- [x] Compute per-stage and total project cost based on selected panel count
+- [x] Show balance, stage cost, and forecast dynamically in the input page
+- [x] Update tests for dynamic cost logic (26 tests passing)

@@ -319,8 +319,8 @@ function TopStatusBar({
 }
 
 /* ─── Credit Meter (right sidebar) ───────────────────────────────────── */
-// Per-stage credit costs (mirrors server STAGE_CREDIT_COSTS)
-const STAGE_COSTS: { label: string; cost: number }[] = [
+// Fallback stage costs (used only if server data hasn't loaded yet)
+const FALLBACK_STAGE_COSTS: { label: string; cost: number }[] = [
   { label: "Input → Setup", cost: 0 },
   { label: "Setup → Script", cost: 0 },
   { label: "Script → Panels", cost: 2 },
@@ -328,6 +328,17 @@ const STAGE_COSTS: { label: string; cost: number }[] = [
   { label: "Gate → Video", cost: 0 },
   { label: "Video → Publish", cost: 10 },
 ];
+
+// Stage transition display names
+const STAGE_LABELS: Record<string, string> = {
+  input: "Input → Setup",
+  setup: "Setup → Script",
+  script: "Script → Panels",
+  panels: "Panels → Gate",
+  "anime-gate": "Gate → Video",
+  video: "Video → Publish",
+  publish: "Complete",
+};
 
 function CreditMeter() {
   const { user } = useAuth();
@@ -337,10 +348,20 @@ function CreditMeter() {
   });
 
   const balance = creditData?.balance ?? 0;
-  // Estimate total monthly grant from balance context (free_trial = 15)
-  const monthlyGrant = 15;
+  const monthlyGrant = creditData?.monthlyGrant ?? 15;
   const used = Math.max(0, monthlyGrant - balance);
   const pct = monthlyGrant > 0 ? Math.round((used / monthlyGrant) * 100) : 0;
+  const totalProjectCost = creditData?.totalProjectCost ?? 17;
+
+  // Use server-provided stage costs or fallback
+  const stageCosts = creditData?.stageCosts
+    ? creditData.stageCosts
+        .filter((s: { label: string }) => s.label !== "publish") // publish has no transition cost
+        .map((s: { label: string; cost: number }) => ({
+          label: STAGE_LABELS[s.label] || s.label,
+          cost: s.cost,
+        }))
+    : FALLBACK_STAGE_COSTS;
 
   return (
     <div className="hidden lg:flex flex-col gap-6 p-6 border-l border-white/5 bg-white/[0.02] backdrop-blur-sm">
@@ -394,7 +415,7 @@ function CreditMeter() {
       {/* Per-stage cost estimates */}
       <div className="space-y-2.5 mt-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Stage Costs</span>
-        {STAGE_COSTS.map((s, i) => (
+        {stageCosts.map((s: { label: string; cost: number }, i: number) => (
           <div key={i} className="flex items-center justify-between text-xs">
             <span className="text-white/40">{s.label}</span>
             <span className={`font-medium ${
@@ -408,6 +429,15 @@ function CreditMeter() {
             </span>
           </div>
         ))}
+        {/* Total project forecast */}
+        <div className="flex items-center justify-between text-xs pt-2 mt-1 border-t border-white/5">
+          <span className="text-white/50 font-medium">Full project</span>
+          <span className={`font-semibold ${
+            totalProjectCost > balance ? "text-red-400/80" : "text-token-cyan/80"
+          }`}>
+            ~{totalProjectCost} cr
+          </span>
+        </div>
       </div>
 
       {/* Low balance warning */}
@@ -442,6 +472,17 @@ function MobileCreditSheet() {
   });
 
   const balance = creditData?.balance ?? 0;
+  const totalProjectCost = creditData?.totalProjectCost ?? 17;
+
+  // Use server-provided stage costs or fallback
+  const mobileStageCosts = creditData?.stageCosts
+    ? creditData.stageCosts
+        .filter((s: { label: string }) => s.label !== "publish")
+        .map((s: { label: string; cost: number }) => ({
+          label: STAGE_LABELS[s.label] || s.label,
+          cost: s.cost,
+        }))
+    : FALLBACK_STAGE_COSTS;
 
   return (
     <div className="lg:hidden">
@@ -474,7 +515,7 @@ function MobileCreditSheet() {
 
             {/* Per-stage costs */}
             <div className="space-y-2 mb-4">
-              {STAGE_COSTS.map((s, i) => (
+              {mobileStageCosts.map((s: { label: string; cost: number }, i: number) => (
                 <div key={i} className="flex items-center justify-between text-xs">
                   <span className="text-white/40">{s.label}</span>
                   <span className={`font-medium ${
@@ -484,6 +525,13 @@ function MobileCreditSheet() {
                   </span>
                 </div>
               ))}
+              {/* Total project forecast */}
+              <div className="flex items-center justify-between text-xs pt-2 mt-1 border-t border-white/5">
+                <span className="text-white/50 font-medium">Full project</span>
+                <span className={`font-semibold ${totalProjectCost > balance ? "text-red-400/80" : "text-token-cyan/80"}`}>
+                  ~{totalProjectCost} cr
+                </span>
+              </div>
             </div>
 
             <button
