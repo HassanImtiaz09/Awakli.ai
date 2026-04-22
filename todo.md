@@ -4168,3 +4168,17 @@
 - [x] Exact copy strings: page title, subhead, bulk presets, render CTA, render phases, review approve/redo
 - [x] Analytics events: stage6_timing_change, stage6_forecast_exceeds, stage6_render_start, stage6_render_complete, stage6_redo_panel
 - [x] Write vitest tests for timing logic, credit calculation, copy strings, tier caps, and render states (46 tests passing)
+
+## Stage 6B · Video — Long-form + Master Export (Studio / Studio Pro)
+- [x] Create ChapterComposer component — multi-chapter timeline, drag scenes across chapter boundaries, set chapter markers
+- [x] Create MasterExport component — export format dialog: 1080p MP4 (default), 4K MP4 (+30%), ProRes 422 HQ (+60%), separated stems (+20%)
+- [x] Create MusicBed component — 40 licensed stock cues, upload WAV/MP3 ≤20MB, auto-ducking -12dB under dialogue
+- [x] Integrate all 3 components into video.tsx with Studio/Studio Pro tier gating
+- [x] Studio: 12 min runtime cap, 4K and ProRes available, music bed free from catalog (uploads 2c each)
+- [x] Studio Pro: 24 min runtime cap, unlimited renders per episode, monthly 2000c pool toward masters
+- [x] Export pricing: 4K +30% credits, ProRes +60% credits, stems +20% credits (additive)
+- [x] Chapter composer: 4 chapters × 3 min = 12 min stays under Studio cap
+- [x] Music bed auto-ducking: -12dB dip under voice tracks
+- [x] Exact copy strings: chapter composer title, music bed title/upload, export title, export options
+- [x] Analytics events: stage6_chapters_compose, stage6_music_pick, stage6_export_4k, stage6_export_prores, stage6_export_stems
+- [x] Write vitest tests for chapter stitching, export pricing, music bed, copy strings, and tier caps (59 tests passing)

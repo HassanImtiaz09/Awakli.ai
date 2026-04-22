@@ -1,7 +1,8 @@
 /**
- * Stage 6 · Video — Short-form Render (Mangaka)
+ * Stage 6 · Video — Short-form Render (Mangaka) + Long-form + Master Export (Studio/Studio Pro)
  *
  * States: timing → confirming → rendering → review → error
+ * Studio+ adds: chapter-compose, music-bed, export-format dialog on approve
  */
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -18,6 +19,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { WithTier } from "@/components/awakli/withTier";
+import { useTierGate } from "@/hooks/useTierGate";
 import { Button } from "@/components/ui/button";
 import PanelTimingEditor, {
   type PanelTiming,
@@ -34,6 +36,24 @@ import RenderReview, {
   type RenderResult,
   type ReviewPanel,
 } from "@/components/awakli/RenderReview";
+import ChapterComposer, {
+  type Chapter,
+  type ChapterScene,
+  totalChaptersDuration,
+  createChapter,
+  CHAPTER_COPY,
+} from "@/components/awakli/ChapterComposer";
+import MusicBed, {
+  type MusicBedSelection,
+  MUSIC_COPY,
+  AUTO_DUCK_DB,
+  STOCK_CUES,
+} from "@/components/awakli/MusicBed";
+import MasterExport, {
+  type ExportConfig,
+  calculateExportCredits,
+  EXPORT_COPY,
+} from "@/components/awakli/MasterExport";
 
 // ─── Exported copy strings (exact spec) ─────────────────────────────
 export const VIDEO_COPY = {
@@ -46,8 +66,32 @@ export const VIDEO_COPY = {
   errorRefund: "Credits auto-refunded",
 } as const;
 
+// ─── Studio tier limits ─────────────────────────────────────────────
+export const STUDIO_LIMITS = {
+  maxRuntime: 720, // 12 minutes
+  maxResolution: "4K" as const,
+  exportFormats: ["MP4 H.264", "ProRes 422 HQ"] as const,
+  maxRendersPerEpisodePerMonth: 10,
+  musicUploadCost: 2,
+} as const;
+
+export const STUDIO_PRO_LIMITS = {
+  maxRuntime: 1440, // 24 minutes
+  maxResolution: "4K" as const,
+  exportFormats: ["MP4 H.264", "ProRes 422 HQ"] as const,
+  maxRendersPerEpisodePerMonth: Infinity,
+  monthlyMasterPool: 2000,
+  musicUploadCost: 2,
+} as const;
+
 // ─── Types ──────────────────────────────────────────────────────────
-type VideoState = "timing" | "confirming" | "rendering" | "review" | "error";
+type VideoState =
+  | "timing"
+  | "confirming"
+  | "rendering"
+  | "review"
+  | "error"
+  | "exporting";
 
 const RENDER_PHASES = [
   VIDEO_COPY.renderPhase1,
@@ -60,6 +104,17 @@ function trackEvent(event: string, data?: Record<string, unknown>) {
   if (typeof window !== "undefined" && (window as any).__awakli_track) {
     (window as any).__awakli_track(event, data);
   }
+}
+
+// ─── Tier helpers ───────────────────────────────────────────────────
+function getTierLimits(tier: string) {
+  if (tier === "studio_pro") return STUDIO_PRO_LIMITS;
+  if (tier === "studio") return STUDIO_LIMITS;
+  return MANGAKA_LIMITS;
+}
+
+function isStudioTier(tier: string) {
+  return tier === "studio" || tier === "studio_pro";
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -75,14 +130,24 @@ export default function WizardVideo() {
     { enabled: !isNaN(numId) }
   );
 
-  const { data: balanceData } = trpc.projects.creditBalance.useQuery(undefined, {
-    refetchInterval: 10_000,
-  });
+  const { data: balanceData } = trpc.projects.creditBalance.useQuery(
+    undefined,
+    { refetchInterval: 10_000 }
+  );
+
+  // Get user tier
+  const { userTier } = useTierGate("stage_video");
+  const tierLimits = getTierLimits(userTier);
+  const studioMode = isStudioTier(userTier);
 
   const completedStages = useMemo(() => {
     const s = new Set<number>();
     if (project?.description && project?.genre) s.add(0);
-    if (project?.animeStyle && project?.animeStyle !== "default" && project?.tone)
+    if (
+      project?.animeStyle &&
+      project?.animeStyle !== "default" &&
+      project?.tone
+    )
       s.add(1);
     s.add(2);
     s.add(3);
@@ -97,9 +162,9 @@ export default function WizardVideo() {
   const [renderResult, setRenderResult] = useState<RenderResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rendersUsed, setRendersUsed] = useState(0);
+  const [exportConfig, setExportConfig] = useState<ExportConfig | null>(null);
 
   // ── Panel timings ─────────────────────────────────────────────────
-  // Use scene count as proxy for panel count; default 12
   const panelCount = (project as any)?.panelCount || 12;
   const [panelTimings, setPanelTimings] = useState<PanelTiming[]>(() =>
     Array.from({ length: panelCount }, (_, i) => ({
@@ -109,6 +174,22 @@ export default function WizardVideo() {
     }))
   );
 
+  // ── Studio: Chapters ──────────────────────────────────────────────
+  const [chapters, setChapters] = useState<Chapter[]>(() => [
+    {
+      ...createChapter(0),
+      scenes: Array.from({ length: panelCount }, (_, i) => ({
+        panelIndex: i,
+        imageUrl: null,
+        duration: TIMING_LIMITS.defaultPerPanel,
+      })),
+    },
+  ]);
+
+  // ── Studio: Music bed ─────────────────────────────────────────────
+  const [musicSelection, setMusicSelection] =
+    useState<MusicBedSelection | null>(null);
+
   // Re-init when panelCount changes
   useEffect(() => {
     if (panelCount > 0 && panelTimings.length !== panelCount) {
@@ -116,16 +197,24 @@ export default function WizardVideo() {
         Array.from({ length: panelCount }, (_, i) => ({
           panelIndex: i,
           imageUrl: panelTimings[i]?.imageUrl || null,
-          duration: panelTimings[i]?.duration || TIMING_LIMITS.defaultPerPanel,
+          duration:
+            panelTimings[i]?.duration || TIMING_LIMITS.defaultPerPanel,
         }))
       );
     }
   }, [panelCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const forecast = useMemo(() => calculateCredits(panelTimings), [panelTimings]);
-  const overBudget = forecast.totalRuntime > MANGAKA_LIMITS.maxRuntime;
-  const rendersRemaining =
-    MANGAKA_LIMITS.maxRendersPerEpisodePerMonth - rendersUsed;
+  const forecast = useMemo(
+    () => calculateCredits(panelTimings),
+    [panelTimings]
+  );
+  const maxRuntime = tierLimits.maxRuntime;
+  const overBudget = forecast.totalRuntime > maxRuntime;
+  const maxRenders =
+    "maxRendersPerEpisodePerMonth" in tierLimits
+      ? tierLimits.maxRendersPerEpisodePerMonth
+      : 3;
+  const rendersRemaining = maxRenders - rendersUsed;
   const availableCredits = balanceData?.balance ?? 0;
 
   // ── Handlers ──────────────────────────────────────────────────────
@@ -133,7 +222,7 @@ export default function WizardVideo() {
     (updated: PanelTiming[]) => {
       setPanelTimings(updated);
       const newTotal = updated.reduce((s, p) => s + p.duration, 0);
-      if (newTotal > MANGAKA_LIMITS.maxRuntime) {
+      if (newTotal > maxRuntime) {
         trackEvent("stage6_forecast_exceeds", {
           projectId,
           runtime: newTotal,
@@ -143,6 +232,32 @@ export default function WizardVideo() {
         projectId,
         runtime: newTotal,
       });
+    },
+    [projectId, maxRuntime]
+  );
+
+  const handleChaptersChange = useCallback(
+    (updated: Chapter[]) => {
+      setChapters(updated);
+      trackEvent("stage6_chapters_compose", {
+        projectId,
+        chapterCount: updated.length,
+        totalDuration: totalChaptersDuration(updated),
+      });
+    },
+    [projectId]
+  );
+
+  const handleMusicChange = useCallback(
+    (sel: MusicBedSelection | null) => {
+      setMusicSelection(sel);
+      if (sel) {
+        trackEvent("stage6_music_pick", {
+          projectId,
+          type: sel.type,
+          cueId: sel.cueId,
+        });
+      }
     },
     [projectId]
   );
@@ -161,7 +276,7 @@ export default function WizardVideo() {
       credits: forecast.totalCredits,
     });
 
-    // Simulate render phases (in production, this would be SSE from server)
+    // Simulate render phases
     try {
       for (let phase = 0; phase < RENDER_PHASES.length; phase++) {
         setRenderPhaseIdx(phase);
@@ -174,8 +289,12 @@ export default function WizardVideo() {
       const result: RenderResult = {
         videoUrl: "",
         duration: forecast.totalRuntime,
-        resolution: MANGAKA_LIMITS.maxResolution,
-        format: MANGAKA_LIMITS.exportFormat,
+        resolution: studioMode
+          ? tierLimits.maxResolution
+          : MANGAKA_LIMITS.maxResolution,
+        format: studioMode && 'exportFormats' in tierLimits
+          ? tierLimits.exportFormats[0]
+          : MANGAKA_LIMITS.exportFormat,
         fileSize: `${Math.round(forecast.totalRuntime * 2.5)} MB`,
       };
       setRenderResult(result);
@@ -186,16 +305,43 @@ export default function WizardVideo() {
         duration: forecast.totalRuntime,
       });
     } catch {
-      setErrorMessage("Render failed — your credits have been refunded.");
+      setErrorMessage(
+        "Render failed — your credits have been refunded."
+      );
       setState("error");
     }
-  }, [forecast, projectId]);
+  }, [forecast, projectId, studioMode, tierLimits]);
 
   const handleApprove = useCallback(() => {
-    if (renderResult?.videoUrl) {
+    if (studioMode) {
+      // Studio+ gets export dialog
+      setState("exporting");
+    } else if (renderResult?.videoUrl) {
       window.open(renderResult.videoUrl, "_blank");
     }
-  }, [renderResult]);
+  }, [renderResult, studioMode]);
+
+  const handleExport = useCallback(
+    (config: ExportConfig) => {
+      setExportConfig(config);
+      if (config.resolution === "4k") {
+        trackEvent("stage6_export_4k", { projectId });
+      }
+      if (config.format === "prores") {
+        trackEvent("stage6_export_prores", { projectId });
+      }
+      if (config.stems) {
+        trackEvent("stage6_export_stems", { projectId });
+      }
+      // In production: trigger server-side export with config
+      // For now, simulate completion
+      if (renderResult?.videoUrl) {
+        window.open(renderResult.videoUrl, "_blank");
+      }
+      setState("review");
+    },
+    [projectId, renderResult]
+  );
 
   const handleRedo = useCallback(
     (panelIndex: number) => {
@@ -231,6 +377,11 @@ export default function WizardVideo() {
     });
   }, [panelTimings]);
 
+  // ── Over-budget message ───────────────────────────────────────────
+  const overBudgetMessage = studioMode
+    ? `Studio caps at ${maxRuntime / 60} min — trim or upgrade`
+    : FORECAST_COPY.overBudget;
+
   return (
     <CreateWizardLayout
       stage={5}
@@ -265,17 +416,54 @@ export default function WizardVideo() {
                 <PanelTimingEditor
                   panels={panelTimings}
                   onTimingsChange={handleTimingsChange}
-                  maxRuntime={MANGAKA_LIMITS.maxRuntime}
+                  maxRuntime={maxRuntime}
                 />
+
+                {/* Studio: Chapter Composer */}
+                {studioMode && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <ChapterComposer
+                      chapters={chapters}
+                      onChaptersChange={handleChaptersChange}
+                      maxRuntimeSeconds={maxRuntime}
+                      tier={userTier}
+                    />
+                  </motion.div>
+                )}
+
+                {/* Studio: Music Bed */}
+                {studioMode && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <MusicBed
+                      selection={musicSelection}
+                      onSelectionChange={handleMusicChange}
+                      tier={userTier}
+                    />
+                  </motion.div>
+                )}
 
                 <DurationForecast
                   panels={panelTimings}
-                  maxRuntime={MANGAKA_LIMITS.maxRuntime}
+                  maxRuntime={maxRuntime}
                   rendersRemaining={rendersRemaining}
                   availableCredits={availableCredits}
                   onRender={handleConfirm}
                   disabled={overBudget || rendersRemaining <= 0}
                 />
+
+                {overBudget && (
+                  <p className="text-xs text-red-400 text-center">
+                    {overBudgetMessage}
+                  </p>
+                )}
               </motion.div>
             )}
 
@@ -288,7 +476,7 @@ export default function WizardVideo() {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-6"
               >
-                <div className="rounded-card bg-paper border border-violet-500/20 p-6 space-y-4">
+                <div className="rounded-2xl bg-[hsl(240,6%,10%)] border border-violet-500/20 p-6 space-y-4">
                   <h2 className="text-lg font-semibold text-white/90">
                     Confirm render
                   </h2>
@@ -297,7 +485,9 @@ export default function WizardVideo() {
                     <div className="space-y-1">
                       <div className="text-white/40 text-xs">Runtime</div>
                       <div className="font-mono text-white/80">
-                        {forecast.totalRuntime.toFixed(1)}s
+                        {forecast.totalRuntime >= 60
+                          ? `${(forecast.totalRuntime / 60).toFixed(1)} min`
+                          : `${forecast.totalRuntime.toFixed(1)}s`}
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -309,15 +499,39 @@ export default function WizardVideo() {
                     <div className="space-y-1">
                       <div className="text-white/40 text-xs">Resolution</div>
                       <div className="font-mono text-white/80">
-                        {MANGAKA_LIMITS.maxResolution}
+                        {studioMode
+                          ? tierLimits.maxResolution
+                          : MANGAKA_LIMITS.maxResolution}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-white/40 text-xs">Format</div>
                       <div className="font-mono text-white/80">
-                        {MANGAKA_LIMITS.exportFormat}
+                        {studioMode && 'exportFormats' in tierLimits
+                          ? tierLimits.exportFormats[0]
+                          : MANGAKA_LIMITS.exportFormat}
                       </div>
                     </div>
+                    {studioMode && chapters.length > 1 && (
+                      <div className="space-y-1">
+                        <div className="text-white/40 text-xs">Chapters</div>
+                        <div className="font-mono text-white/80">
+                          {chapters.length}
+                        </div>
+                      </div>
+                    )}
+                    {musicSelection && (
+                      <div className="space-y-1">
+                        <div className="text-white/40 text-xs">Music</div>
+                        <div className="font-mono text-white/80 truncate text-xs">
+                          {musicSelection.type === "catalog"
+                            ? STOCK_CUES.find(
+                                (c) => c.id === musicSelection.cueId
+                              )?.title || "Selected"
+                            : musicSelection.fileName || "Uploaded"}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-white/5 pt-4">
@@ -371,7 +585,11 @@ export default function WizardVideo() {
               >
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 2,
+                    ease: "linear",
+                  }}
                 >
                   <Loader2 className="w-12 h-12 text-violet-400" />
                 </motion.div>
@@ -436,6 +654,24 @@ export default function WizardVideo() {
                   panels={reviewPanels}
                   onApprove={handleApprove}
                   onRedo={handleRedo}
+                />
+              </motion.div>
+            )}
+
+            {/* ── Export dialog (Studio+) ─────────────────────────── */}
+            {state === "exporting" && studioMode && (
+              <motion.div
+                key="exporting"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <MasterExport
+                  baseCredits={forecast.totalCredits}
+                  availableCredits={availableCredits}
+                  tier={userTier}
+                  onExport={handleExport}
+                  onCancel={() => setState("review")}
                 />
               </motion.div>
             )}
