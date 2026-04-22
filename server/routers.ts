@@ -877,6 +877,110 @@ const episodesRouter = router({
       await updateEpisode(input.episodeId, { assemblySettings: updated } as any);
       return updated;
     }),
+
+  // ─── Scene-level CRUD ─────────────────────────────────────────────
+
+  getScenes: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      const { getScenes } = await import("./scriptSceneService");
+      return getScenes(input.episodeId);
+    }),
+
+  updateScene: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      sceneNumber: z.number(),
+      title: z.string().max(255).optional(),
+      location: z.string().max(255).optional(),
+      time_of_day: z.string().optional(),
+      mood: z.string().max(100).optional(),
+      description: z.string().max(2000).optional(),
+      beat_summary: z.string().max(200).optional(),
+      characters: z.array(z.string()).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      if (episode.status === "locked") throw new TRPCError({ code: "BAD_REQUEST", message: "Episode is locked" });
+      const { updateScene } = await import("./scriptSceneService");
+      const { episodeId, sceneNumber, ...updates } = input;
+      return updateScene(episodeId, sceneNumber, updates);
+    }),
+
+  approveScene: protectedProcedure
+    .input(z.object({ episodeId: z.number(), sceneNumber: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      const { approveScene } = await import("./scriptSceneService");
+      const allApproved = await approveScene(input.episodeId, input.sceneNumber);
+      return { allApproved };
+    }),
+
+  approveAllScenes: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      const { approveAllScenes } = await import("./scriptSceneService");
+      await approveAllScenes(input.episodeId);
+      return { success: true };
+    }),
+
+  reorderScenes: protectedProcedure
+    .input(z.object({ episodeId: z.number(), newOrder: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      if (episode.status === "locked") throw new TRPCError({ code: "BAD_REQUEST", message: "Episode is locked" });
+      const { reorderScenes } = await import("./scriptSceneService");
+      await reorderScenes(input.episodeId, input.newOrder);
+      return { success: true };
+    }),
+
+  renameCharacter: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      oldName: z.string().min(1),
+      newName: z.string().min(1).max(100),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      const { renameCharacter } = await import("./scriptSceneService");
+      return renameCharacter(input.episodeId, input.oldName, input.newName);
+    }),
+
+  regenerateScene: protectedProcedure
+    .input(z.object({
+      episodeId: z.number(),
+      sceneNumber: z.number(),
+      instruction: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      const project = await getProjectById(episode.projectId, ctx.user.id);
+      if (!project) throw new TRPCError({ code: "FORBIDDEN", message: "Not your project" });
+      if (episode.status === "locked") throw new TRPCError({ code: "BAD_REQUEST", message: "Episode is locked" });
+      const { regenerateScene } = await import("./scriptSceneService");
+      return regenerateScene(input.episodeId, input.sceneNumber, input.instruction);
+    }),
 });
 
 // Script generation helper (runs asynchronously)

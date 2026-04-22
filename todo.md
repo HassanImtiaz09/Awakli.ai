@@ -4042,3 +4042,20 @@
 - [x] Exact copy strings: Tab C label, empty state, add CTA, embedding status
 - [x] Analytics events: stage0_character_added, stage0_library_import, stage0_stylesheet_uploaded
 - [x] Write vitest tests for character foundation, style upload, and tier gating (29 tests passing)
+
+## Stage 1 · Script — Unified Script Editor
+- [x] Create SceneCard component (draggable, editable title/setting/characters/beat/panel count, approve button)
+- [x] SceneCard states: generating (skeleton shimmer), draft (editable), editing (inline form), regenerating (shimmer), approved (mint check + border)
+- [x] Create CharacterChip component (name + color swatch, click to edit name/archetype/motivation)
+- [x] Character name edits propagate globally across all scenes
+- [x] Build ScriptEditor two-column layout (left: scene list, right: scene detail with editable fields)
+- [x] Scene drag-reorder with dnd-kit, persist order index
+- [x] Server-side script generation with SSE streaming (first scene <4s, complete <20s for 20 panels)
+- [x] Per-scene regeneration popover with natural-language instruction (3 credits per scene)
+- [x] Autosave on field edits (400ms debounce)
+- [x] Approval flow: per-scene approve + bulk "Approve all scenes"
+- [x] "Draw my panels →" proceed button blocked until every scene approved
+- [x] Credit/tier logic: regen max 3 (Apprentice), 15 (Mangaka), unlimited (Studio); 1c per character prop change
+- [x] Exact copy strings: page title, subhead, approve/regen/proceed CTAs, popover placeholder
+- [x] Analytics events: stage1_open, stage1_scene_edit, stage1_scene_regen, stage1_approve_all, stage1_proceed
+- [x] Write vitest tests for script generation, approval flow, credit checks, and copy strings (34 tests passing)
