@@ -4450,3 +4450,10 @@
 - [x] Reassemble video with all changes (~66s final)
 - [x] Upload and update website video URL
 - [x] Write vitest tests for updated video
+
+## Demo Video v3 Fixes
+- [x] Reduce background music volume to 70% (from current level)
+- [x] Beat 7: Remove zoom animation, keep static background, increase font size, improve text color/contrast
+- [x] Beat 8: Remove zoom animation, keep static background, increase font size, improve text color/contrast
+- [x] Reassemble and upload revised video
+- [x] Update website video URL and run tests

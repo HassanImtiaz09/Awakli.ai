@@ -300,7 +300,7 @@ describe("Deferred components still exist for future use", () => {
 
   it("WatchItHappen uses v3 video URL", () => {
     const comp = read("client/src/components/awakli/WatchItHappen.tsx");
-    expect(comp).toContain("awakli-demo-homepage-v3");
+    expect(comp).toContain("awakli-demo-homepage-v3fix");
   });
 
   it("StreamingTonight.tsx still exists", () => {
