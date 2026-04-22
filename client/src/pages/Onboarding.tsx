@@ -17,7 +17,7 @@ export default function Onboarding() {
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6B5BFF]/5 blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/5 blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00F0FF]/5 blur-[120px]" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -100,10 +100,10 @@ export default function Onboarding() {
                 whileHover={{ scale: 1.02, borderColor: "rgba(0,212,255,0.4)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setPath("reader")}
-                className="text-left p-8 rounded-2xl border border-[#00D4FF]/15 bg-gradient-to-br from-[#0D0D1A] to-[#0A1A2E]/40 hover:shadow-lg hover:shadow-[#00D4FF]/10 transition-all group"
+                className="text-left p-8 rounded-2xl border border-[#00F0FF]/15 bg-gradient-to-br from-[#0D0D1A] to-[#0A1A2E]/40 hover:shadow-lg hover:shadow-[#00F0FF]/10 transition-all group"
               >
-                <div className="w-16 h-16 rounded-2xl bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center mb-6 group-hover:bg-[#00D4FF]/15 transition-colors">
-                  <Eye className="w-8 h-8 text-[#00D4FF]" />
+                <div className="w-16 h-16 rounded-2xl bg-[#00F0FF]/10 border border-[#00F0FF]/20 flex items-center justify-center mb-6 group-hover:bg-[#00F0FF]/15 transition-colors">
+                  <Eye className="w-8 h-8 text-[#00F0FF]" />
                 </div>
                 <h2 className="text-2xl font-heading font-bold text-white mb-3">
                   I Want to Discover
@@ -113,12 +113,12 @@ export default function Onboarding() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["Read Manga", "Vote for Anime", "Follow Creators"].map((tag) => (
-                    <span key={tag} className="px-3 py-1 rounded-full bg-[#00D4FF]/10 text-[#00D4FF] text-xs font-medium">
+                    <span key={tag} className="px-3 py-1 rounded-full bg-[#00F0FF]/10 text-[#00F0FF] text-xs font-medium">
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="mt-6 flex items-center gap-2 text-[#00D4FF] font-semibold text-sm">
+                <div className="mt-6 flex items-center gap-2 text-[#00F0FF] font-semibold text-sm">
                   Start exploring <ArrowRight className="w-4 h-4" />
                 </div>
               </motion.button>
@@ -169,8 +169,8 @@ export default function Onboarding() {
                 {[
                   { icon: PenTool, label: "Write", color: "#6B5BFF" },
                   { icon: Wand2, label: "Generate", color: "#9B59B6" },
-                  { icon: Heart, label: "Vote", color: "#00D4FF" },
-                  { icon: Film, label: "Animate", color: "#FFB800" },
+                  { icon: Heart, label: "Vote", color: "#00F0FF" },
+                  { icon: Film, label: "Animate", color: "#FFD60A" },
                 ].map((s) => (
                   <div key={s.label} className="p-3 rounded-lg border border-white/5 bg-white/[0.02] text-center">
                     <s.icon className="w-5 h-5 mx-auto mb-1.5" style={{ color: s.color }} />
@@ -212,8 +212,8 @@ export default function Onboarding() {
             className="relative w-full max-w-2xl"
           >
             <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] p-8 md:p-12 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-10 h-10 text-[#00D4FF]" />
+              <div className="w-20 h-20 rounded-2xl bg-[#00F0FF]/10 border border-[#00F0FF]/20 flex items-center justify-center mx-auto mb-6">
+                <BookOpen className="w-10 h-10 text-[#00F0FF]" />
               </div>
 
               <h1 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
@@ -228,9 +228,9 @@ export default function Onboarding() {
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">How it works</div>
                 <div className="space-y-3">
                   {[
-                    { icon: BookOpen, text: "Browse manga created by the community", color: "#00D4FF" },
+                    { icon: BookOpen, text: "Browse manga created by the community", color: "#00F0FF" },
                     { icon: Heart, text: "Vote for stories you love", color: "#6B5BFF" },
-                    { icon: Film, text: "Top-voted manga become anime", color: "#FFB800" },
+                    { icon: Film, text: "Top-voted manga become anime", color: "#FFD60A" },
                   ].map((item) => (
                     <div key={item.text} className="flex items-center gap-3">
                       <item.icon className="w-5 h-5 flex-shrink-0" style={{ color: item.color }} />
@@ -254,7 +254,7 @@ export default function Onboarding() {
                   whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(0,212,255,0.3)" }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate("/discover")}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#0099CC] text-white font-semibold shadow-lg shadow-[#00D4FF]/25"
+                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#0099CC] text-white font-semibold shadow-lg shadow-[#00F0FF]/25"
                 >
                   Explore Manga <ArrowRight className="inline ml-2 w-4 h-4" />
                 </motion.button>

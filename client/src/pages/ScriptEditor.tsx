@@ -97,8 +97,8 @@ function EpisodeListPanel({
 
   const statusColors: Record<string, string> = {
     draft: "text-[var(--text-muted)]",
-    generating: "text-[var(--accent-gold)]",
-    generated: "text-[var(--accent-cyan)]",
+    generating: "text-[var(--token-gold)]",
+    generated: "text-[var(--token-cyan)]",
     approved: "text-[var(--status-success)]",
     locked: "text-[var(--status-success)]",
   };
@@ -125,7 +125,7 @@ function EpisodeListPanel({
             className={cn(
               "w-full text-left p-3 rounded-lg border transition-all",
               activeEpisodeId === ep.id
-                ? "bg-[var(--bg-elevated)] border-l-2 border-l-[var(--accent-cyan)] border-t-white/5 border-r-white/5 border-b-white/5"
+                ? "bg-[var(--bg-elevated)] border-l-2 border-l-[var(--token-cyan)] border-t-white/5 border-r-white/5 border-b-white/5"
                 : "bg-transparent border-white/5 hover:bg-[var(--bg-elevated)]/50"
             )}
             whileHover={{ x: 2 }}
@@ -154,7 +154,7 @@ function EpisodeListPanel({
           disabled={generating || generateMutation.isPending}
           className={cn(
             "w-full p-3 rounded-lg border-2 border-dashed border-white/10 text-sm font-medium",
-            "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-cyan)]/30",
+            "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--token-cyan)]/30",
             "flex items-center justify-center gap-2 transition-all",
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
@@ -220,7 +220,7 @@ function PanelCard({ panel, onRewrite }: { panel: ScriptPanel; onRewrite: (field
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => onRewrite("visualDescription", panel.visual_description)}
-                  className="absolute -top-2 -right-2 p-1.5 rounded-full bg-[var(--accent-cyan)] text-white shadow-lg"
+                  className="absolute -top-2 -right-2 p-1.5 rounded-full bg-[var(--token-cyan)] text-white shadow-lg"
                   title="Rewrite with AI"
                 >
                   <Sparkles size={10} />
@@ -239,7 +239,7 @@ function PanelCard({ panel, onRewrite }: { panel: ScriptPanel; onRewrite: (field
                   onMouseEnter={() => setHoveredField(`dialogue-${i}`)}
                   onMouseLeave={() => setHoveredField(null)}
                 >
-                  <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]">
+                  <span className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--token-cyan)]/15 text-[var(--token-cyan)]">
                     {d.character}
                   </span>
                   <span className="text-xs text-[var(--text-primary)] flex-1">"{d.text}"</span>
@@ -251,7 +251,7 @@ function PanelCard({ panel, onRewrite }: { panel: ScriptPanel; onRewrite: (field
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         onClick={() => onRewrite("dialogue", d.text)}
-                        className="absolute -top-1 -right-1 p-1 rounded-full bg-[var(--accent-cyan)] text-white shadow-lg"
+                        className="absolute -top-1 -right-1 p-1 rounded-full bg-[var(--token-cyan)] text-white shadow-lg"
                         title="Rewrite with AI"
                       >
                         <Sparkles size={8} />
@@ -356,7 +356,7 @@ export default function ScriptEditor() {
   };
 
   const timeBadgeColors: Record<string, string> = {
-    day: "bg-[var(--accent-gold)]/15 text-[var(--accent-gold)]",
+    day: "bg-[var(--token-gold)]/15 text-[var(--token-gold)]",
     night: "bg-[#6C5CE7]/15 text-[#6C5CE7]",
     dawn: "bg-[#B388FF]/15 text-[#B388FF]",
     dusk: "bg-[#6B5BFF]/15 text-[#00F0FF]",
@@ -383,7 +383,7 @@ export default function ScriptEditor() {
           </div>
         ) : episodeLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 size={32} className="animate-spin text-[var(--accent-cyan)]" />
+            <Loader2 size={32} className="animate-spin text-[var(--token-cyan)]" />
           </div>
         ) : episode?.status === "generating" ? (
           <div className="flex-1 flex items-center justify-center">
@@ -396,13 +396,13 @@ export default function ScriptEditor() {
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
-                <Sparkles size={48} className="mx-auto text-[var(--accent-gold)]" />
+                <Sparkles size={48} className="mx-auto text-[var(--token-gold)]" />
               </motion.div>
               <p className="text-lg text-[var(--text-primary)]">Generating script...</p>
               <p className="text-sm text-[var(--text-muted)]">AI is crafting your episode. This may take a moment.</p>
               <div className="w-48 mx-auto h-1 rounded-full bg-[var(--bg-overlay)] overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)]"
+                  className="h-full bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)]"
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                   style={{ width: "50%" }}
@@ -428,7 +428,7 @@ export default function ScriptEditor() {
                   "px-2 py-0.5 rounded-md text-xs font-medium capitalize",
                   episode?.status === "locked"
                     ? "bg-[var(--status-success)]/15 text-[var(--status-success)]"
-                    : "bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]"
+                    : "bg-[var(--token-cyan)]/15 text-[var(--token-cyan)]"
                 )}>
                   {episode?.status === "locked" && <Lock size={10} className="inline mr-1" />}
                   {episode?.status}
@@ -505,7 +505,7 @@ export default function ScriptEditor() {
                 {episode?.status !== "locked" && (
                   <motion.button
                     onClick={() => setShowApproveModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--token-cyan)] text-white hover:bg-[var(--token-violet-hover)] transition-colors"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -535,7 +535,7 @@ export default function ScriptEditor() {
             <Button
               onClick={handleApprove}
               disabled={approveMutation.isPending}
-              className="bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)]"
+              className="bg-[var(--token-cyan)] text-white hover:bg-[var(--token-violet-hover)]"
             >
               {approveMutation.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : <Lock size={14} className="mr-2" />}
               Approve & Lock

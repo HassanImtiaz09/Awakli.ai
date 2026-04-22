@@ -27,8 +27,8 @@ const variantStyles: Record<Variant, string> = {
   ].join(" "),
   secondary: [
     "bg-transparent",
-    "text-[#00D4FF] font-semibold",
-    "border border-[#00D4FF]",
+    "text-[#00F0FF] font-semibold",
+    "border border-[#00F0FF]",
     "hover:bg-[rgba(0,212,255,0.1)]",
     "hover:shadow-[0_0_16px_rgba(0,212,255,0.3)]",
     "active:scale-[0.98]",
@@ -70,7 +70,7 @@ export const AwakliButton = React.forwardRef<HTMLButtonElement, AwakliButtonProp
         className={cn(
           "inline-flex items-center justify-center rounded-full",
           "transition-all duration-200 ease-out",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080F]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00F0FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080F]",
           "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
           "select-none whitespace-nowrap",
           variantStyles[variant],

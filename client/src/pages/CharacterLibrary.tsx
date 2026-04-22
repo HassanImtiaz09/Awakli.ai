@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
   untrained:         { label: "Untrained",         icon: Clock,          color: "text-muted-foreground", bg: "bg-muted/50" },
   training:          { label: "Training",          icon: Loader2,        color: "text-cyan",             bg: "bg-cyan/10" },
-  validating:        { label: "Validating",        icon: Brain,          color: "text-[var(--accent-gold)]", bg: "bg-[var(--accent-gold)]/10" },
+  validating:        { label: "Validating",        icon: Brain,          color: "text-[var(--token-gold)]", bg: "bg-[var(--token-gold)]/10" },
   active:            { label: "Active",            icon: CheckCircle2,   color: "text-[var(--status-success)]", bg: "bg-[var(--status-success)]/10" },
   needs_retraining:  { label: "Needs Retraining",  icon: AlertTriangle,  color: "text-[var(--status-warning)]", bg: "bg-[var(--status-warning)]/10" },
   failed:            { label: "Failed",            icon: AlertTriangle,  color: "text-[var(--status-error)]",   bg: "bg-[var(--status-error)]/10" },
@@ -77,7 +77,7 @@ function CharacterLibraryCard({
           <div className="text-center">
             <div
               className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl font-heading font-bold"
-              style={{ background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan))" }}
+              style={{ background: "linear-gradient(135deg, var(--token-cyan), var(--token-cyan))" }}
             >
               {character.name.charAt(0).toUpperCase()}
             </div>
@@ -140,7 +140,7 @@ function CharacterLibraryCard({
         {(character.loraStatus === "untrained" || character.loraStatus === "needs_retraining" || character.loraStatus === "failed") && (
           <Button
             size="sm"
-            className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+            className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
             onClick={(e) => { e.stopPropagation(); onTrain(); }}
           >
             <Zap className="w-4 h-4 mr-1" /> Train
@@ -325,7 +325,7 @@ function CreateCharacterModal({
               appearanceTags: Object.keys(tags).length > 0 ? tags : undefined,
             })}
             disabled={!name.trim() || createMutation.isPending}
-            className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+            className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
           >
             {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
             Create Character
@@ -391,7 +391,7 @@ export default function CharacterLibrary() {
         <div className="text-center space-y-4">
           <User className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="font-heading text-xl">Sign in to access your Character Library</h2>
-          <Button asChild className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0">
+          <Button asChild className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0">
             <a href={getLoginUrl("/characters")}>Sign In</a>
           </Button>
         </div>
@@ -406,7 +406,7 @@ export default function CharacterLibrary() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-heading text-3xl font-bold bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] bg-clip-text text-transparent">
+            <h1 className="font-heading text-3xl font-bold bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] bg-clip-text text-transparent">
               Character Library
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -415,7 +415,7 @@ export default function CharacterLibrary() {
           </div>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+            className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
           >
             <Plus className="w-4 h-4 mr-2" /> New Character
           </Button>
@@ -501,7 +501,7 @@ export default function CharacterLibrary() {
           >
             {characters && characters.length === 0 ? (
               <>
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent-cyan)]/20 to-[var(--accent-cyan)]/20 flex items-center justify-center mb-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--token-cyan)]/20 to-[var(--token-cyan)]/20 flex items-center justify-center mb-4">
                   <Sparkles className="w-10 h-10 text-pink" />
                 </div>
                 <h3 className="font-heading text-xl font-bold mb-2">Your Library is Empty</h3>
@@ -510,7 +510,7 @@ export default function CharacterLibrary() {
                 </p>
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                  className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
                 >
                   <Plus className="w-4 h-4 mr-2" /> Add First Character
                 </Button>

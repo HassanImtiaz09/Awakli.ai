@@ -88,7 +88,7 @@ export default function BatchGateReview() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -115,7 +115,7 @@ export default function BatchGateReview() {
 
       {batchQuery.isLoading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-6 h-6 animate-spin text-accent-cyan" />
+          <Loader2 className="w-6 h-6 animate-spin text-token-cyan" />
         </div>
       ) : gates.length === 0 ? (
         <AwakliCard className="p-12 text-center">
@@ -221,7 +221,7 @@ export default function BatchGateReview() {
                 onClick={() => setCurrentIndex(idx)}
                 className={`p-3 rounded-lg border text-left transition-all ${
                   idx === currentIndex
-                    ? "border-accent-cyan bg-accent-cyan/5"
+                    ? "border-token-cyan bg-token-cyan/5"
                     : "border-gray-800/50 bg-gray-900/30 hover:border-gray-700"
                 }`}
               >

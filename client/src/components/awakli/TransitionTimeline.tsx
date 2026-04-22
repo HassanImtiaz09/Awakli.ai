@@ -243,7 +243,7 @@ export default function TransitionTimeline({ episodeId, compact = false }: Trans
                       step="0.1"
                       value={bulkDuration}
                       onChange={(e) => setBulkDuration(parseFloat(e.target.value))}
-                      className="w-14 h-1 accent-cyan-500"
+                      className="w-14 h-1 token-cyan-500"
                     />
                     <span className="text-[10px] text-cyan-400 font-mono w-6">{bulkDuration.toFixed(1)}s</span>
                   </div>

@@ -496,7 +496,7 @@ export default function WizardPanels() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-token-cyan text-xs font-semibold uppercase tracking-widest">
             <LayoutGrid className="w-3.5 h-3.5" />
-            Stage 02 — Panels
+            Stage 03 — Panels
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your panels

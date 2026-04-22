@@ -100,8 +100,8 @@ export function AssemblySettingsPanel({ episodeId }: AssemblySettingsPanelProps)
         <CollapsibleTrigger className="w-full">
           <div className="flex items-center justify-between p-5 cursor-pointer hover:bg-zinc-800/30 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-pink/20 to-accent-cyan/20 flex items-center justify-center">
-                <Settings2 className="w-4.5 h-4.5 text-accent-pink" />
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-token-violet/20 to-token-cyan/20 flex items-center justify-center">
+                <Settings2 className="w-4.5 h-4.5 text-token-violet" />
               </div>
               <div className="text-left">
                 <h3 className="text-sm font-semibold text-zinc-100">Assembly Settings</h3>
@@ -135,7 +135,7 @@ export function AssemblySettingsPanel({ episodeId }: AssemblySettingsPanelProps)
                 )}
               </div>
               {isDirty && (
-                <span className="w-2 h-2 rounded-full bg-accent-pink animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-token-violet animate-pulse" />
               )}
               <ChevronDown
                 className={`w-4 h-4 text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}

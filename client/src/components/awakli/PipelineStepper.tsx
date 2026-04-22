@@ -54,7 +54,7 @@ interface PipelineStepperProps {
 
 const statusConfig: Record<StageStatus, { icon: React.ElementType; color: string; bgColor: string; pulse?: boolean }> = {
   pending: { icon: Circle, color: "text-gray-500", bgColor: "bg-gray-800/50" },
-  executing: { icon: Loader2, color: "text-accent-cyan", bgColor: "bg-accent-cyan/10", pulse: true },
+  executing: { icon: Loader2, color: "text-token-cyan", bgColor: "bg-token-cyan/10", pulse: true },
   awaiting_gate: { icon: Clock, color: "text-amber-400", bgColor: "bg-amber-400/10", pulse: true },
   approved: { icon: CheckCircle, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
   rejected: { icon: XCircle, color: "text-red-400", bgColor: "bg-red-400/10" },
@@ -84,7 +84,7 @@ export function PipelineStepper({ stages, currentStage, onStageClick, compact }:
                   className={cn(
                     "relative w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all",
                     config.bgColor,
-                    isActive ? "border-accent-cyan shadow-lg shadow-accent-cyan/20" : "border-transparent",
+                    isActive ? "border-token-cyan shadow-lg shadow-token-cyan/20" : "border-transparent",
                     isClickable ? "cursor-pointer" : "cursor-default"
                   )}
                 >
@@ -131,7 +131,7 @@ export function PipelineStepper({ stages, currentStage, onStageClick, compact }:
                   <div className={cn(
                     "h-0.5 w-4",
                     stage.status === "approved" ? "bg-emerald-400/40" :
-                    stage.status === "executing" || stage.status === "awaiting_gate" ? "bg-accent-cyan/30" :
+                    stage.status === "executing" || stage.status === "awaiting_gate" ? "bg-token-cyan/30" :
                     "bg-gray-700/50"
                   )} />
                 </div>

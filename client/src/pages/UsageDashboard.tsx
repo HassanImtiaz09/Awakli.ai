@@ -72,15 +72,15 @@ function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF" }: {
 // ─── Transaction Type Labels ───────────────────────────────────────────────
 const TX_LABELS: Record<string, { label: string; color: string; icon: any }> = {
   grant_subscription: { label: "Subscription Grant", color: "#2ECC71", icon: Crown },
-  grant_pack_purchase: { label: "Pack Purchase", color: "#00D4FF", icon: Package },
-  grant_promotional: { label: "Promo Credit", color: "#FFB800", icon: Zap },
+  grant_pack_purchase: { label: "Pack Purchase", color: "#00F0FF", icon: Package },
+  grant_promotional: { label: "Promo Credit", color: "#FFD60A", icon: Zap },
   hold_preauth: { label: "Hold (Pending)", color: "#F59E0B", icon: Clock },
   commit_consumption: { label: "Used", color: "#6B5BFF", icon: Film },
   release_hold: { label: "Hold Released", color: "#8B5CF6", icon: RefreshCw },
   refund_generation: { label: "Refund", color: "#2ECC71", icon: RefreshCw },
-  rollover: { label: "Rollover", color: "#00D4FF", icon: TrendingUp },
+  rollover: { label: "Rollover", color: "#00F0FF", icon: TrendingUp },
   expiry: { label: "Expired", color: "#6B7280", icon: AlertCircle },
-  admin_adjustment: { label: "Admin Adjustment", color: "#FFB800", icon: Shield },
+  admin_adjustment: { label: "Admin Adjustment", color: "#FFD60A", icon: Shield },
 };
 
 // ─── Ledger History Row ────────────────────────────────────────────────────
@@ -156,8 +156,8 @@ export default function UsageDashboard() {
             </div>
             <div className="flex items-center gap-3">
               <div className={`px-4 py-2 rounded-full border text-sm font-semibold ${
-                tier === "studio" ? "border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10" :
-                tier === "creator_pro" ? "border-accent-pink/40 text-accent-pink bg-accent-pink/10" :
+                tier === "studio" ? "border-token-cyan/40 text-token-cyan bg-token-cyan/10" :
+                tier === "creator_pro" ? "border-token-violet/40 text-token-violet bg-token-violet/10" :
                 tier === "creator" ? "border-purple-400/40 text-purple-400 bg-purple-400/10" :
                 "border-white/10 text-gray-400 bg-white/5"
               }`}>
@@ -182,11 +182,11 @@ export default function UsageDashboard() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="md:col-span-1 p-8 rounded-2xl border border-accent-pink/20 bg-gradient-to-br from-[#0D0D1A] to-[#1A0A1A]"
+              className="md:col-span-1 p-8 rounded-2xl border border-token-violet/20 bg-gradient-to-br from-[#0D0D1A] to-[#1A0A1A]"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-accent-pink/10 flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-accent-pink" />
+                <div className="w-12 h-12 rounded-xl bg-token-violet/10 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-token-violet" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider">Available Credits</p>
@@ -237,7 +237,7 @@ export default function UsageDashboard() {
                 used={u?.byType?.image ?? 0}
                 total={Math.max(u?.byType?.image ?? 0, 20)}
                 label="Image Generations"
-                color="#00D4FF"
+                color="#00F0FF"
               />
             </div>
           </div>
@@ -245,10 +245,10 @@ export default function UsageDashboard() {
           {/* Quick Actions */}
           <div className="grid md:grid-cols-3 gap-4 mb-8">
             <Link href="/pricing">
-              <motion.div whileHover={{ y: -2 }} className="p-5 rounded-xl border border-white/5 bg-[#0D0D1A] cursor-pointer hover:border-accent-pink/30 transition-colors">
+              <motion.div whileHover={{ y: -2 }} className="p-5 rounded-xl border border-white/5 bg-[#0D0D1A] cursor-pointer hover:border-token-violet/30 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent-pink/10 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-accent-pink" />
+                  <div className="w-10 h-10 rounded-lg bg-token-violet/10 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-token-violet" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">Buy Credit Pack</p>
@@ -272,8 +272,8 @@ export default function UsageDashboard() {
             </Link>
             <motion.div whileHover={{ y: -2 }} className="p-5 rounded-xl border border-white/5 bg-[#0D0D1A]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent-cyan/10 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-accent-cyan" />
+                <div className="w-10 h-10 rounded-lg bg-token-cyan/10 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-token-cyan" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">Period Usage</p>
@@ -289,9 +289,9 @@ export default function UsageDashboard() {
           {u && (
             <div className="grid md:grid-cols-5 gap-4 mb-8">
               <StatCard icon={Film} label="Video" value={u.byType?.video ?? 0} sub="credits" color="#8B5CF6" />
-              <StatCard icon={Palette} label="Image" value={u.byType?.image ?? 0} sub="credits" color="#00D4FF" />
+              <StatCard icon={Palette} label="Image" value={u.byType?.image ?? 0} sub="credits" color="#00F0FF" />
               <StatCard icon={Mic} label="Voice" value={u.byType?.voice ?? 0} sub="credits" color="#2ECC71" />
-              <StatCard icon={Layers} label="Script" value={u.byType?.script ?? 0} sub="credits" color="#FFB800" />
+              <StatCard icon={Layers} label="Script" value={u.byType?.script ?? 0} sub="credits" color="#FFD60A" />
               <StatCard icon={Package} label="Music" value={u.byType?.music ?? 0} sub="credits" color="#6B5BFF" />
             </div>
           )}
@@ -333,7 +333,7 @@ export default function UsageDashboard() {
                 {Object.entries(costs.data).filter(([_, v]) => v > 0).map(([action, cost]) => (
                   <div key={action} className="flex justify-between items-center px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5">
                     <span className="text-xs text-gray-400 truncate">{action.replace(/_/g, " ")}</span>
-                    <span className="text-xs font-mono text-accent-pink ml-2">{cost}cr</span>
+                    <span className="text-xs font-mono text-token-violet ml-2">{cost}cr</span>
                   </div>
                 ))}
               </div>
@@ -383,7 +383,7 @@ export default function UsageDashboard() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="p-8 rounded-2xl border border-accent-pink/20 bg-gradient-to-r from-accent-pink/5 via-transparent to-accent-cyan/5"
+              className="p-8 rounded-2xl border border-token-violet/20 bg-gradient-to-r from-token-violet/5 via-transparent to-token-cyan/5"
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>

@@ -60,7 +60,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
       <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-white/5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0099CC] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F0FF] to-[#0099CC] flex items-center justify-center">
             <Film className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -68,7 +68,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
             <p className="text-xs text-gray-500">See your manga animated</p>
           </div>
           {canGenerate && (
-            <span className="ml-auto px-2 py-0.5 rounded-full bg-accent-cyan/10 text-accent-cyan text-xs font-semibold">
+            <span className="ml-auto px-2 py-0.5 rounded-full bg-token-cyan/10 text-token-cyan text-xs font-semibold">
               Free
             </span>
           )}
@@ -105,8 +105,8 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
                     <div className="w-full h-full bg-gradient-to-br from-[#151528] to-[#0D0D1A]" />
                   )}
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                    <div className="w-16 h-16 rounded-full bg-accent-cyan/20 backdrop-blur-sm flex items-center justify-center border border-accent-cyan/30 group-hover:scale-110 transition-transform">
-                      <Play className="w-7 h-7 text-accent-cyan ml-1" />
+                    <div className="w-16 h-16 rounded-full bg-token-cyan/20 backdrop-blur-sm flex items-center justify-center border border-token-cyan/30 group-hover:scale-110 transition-transform">
+                      <Play className="w-7 h-7 text-token-cyan ml-1" />
                     </div>
                   </div>
                   <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-black/60 text-xs text-white font-medium">
@@ -121,8 +121,8 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
             </div>
           ) : canGenerate ? (
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-accent-cyan/10 to-accent-cyan/5 flex items-center justify-center mx-auto mb-4 border border-accent-cyan/20">
-                <Sparkles className="w-7 h-7 text-accent-cyan" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-token-cyan/10 to-token-cyan/5 flex items-center justify-center mx-auto mb-4 border border-token-cyan/20">
+                <Sparkles className="w-7 h-7 text-token-cyan" />
               </div>
               <p className="text-sm text-gray-300 mb-1">
                 Get a free 15-second anime preview
@@ -135,7 +135,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
                 whileTap={{ scale: 0.98 }}
                 onClick={handleGenerate}
                 disabled={generatePreview.isPending}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#0099CC] text-white font-semibold text-sm shadow-lg shadow-accent-cyan/20 hover:shadow-accent-cyan/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#0099CC] text-white font-semibold text-sm shadow-lg shadow-token-cyan/20 hover:shadow-token-cyan/40 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {generatePreview.isPending ? (
                   <>
@@ -188,7 +188,7 @@ export function AnimePreviewPlayer({ projectId, projectTitle, coverUrl }: AnimeP
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md p-8 rounded-2xl border border-accent-pink/20 bg-[#0D0D1A] text-center"
+              className="w-full max-w-md p-8 rounded-2xl border border-token-violet/20 bg-[#0D0D1A] text-center"
             >
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#6B5BFF] flex items-center justify-center mx-auto mb-6">
                 <Film className="w-8 h-8 text-white" />

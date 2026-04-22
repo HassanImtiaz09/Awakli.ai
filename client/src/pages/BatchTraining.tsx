@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const JOB_STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
   queued:         { label: "Queued",         icon: Clock,          color: "text-muted-foreground", bg: "bg-muted/50" },
-  preprocessing:  { label: "Preprocessing",  icon: Activity,       color: "text-[var(--accent-gold)]", bg: "bg-[var(--accent-gold)]/10" },
+  preprocessing:  { label: "Preprocessing",  icon: Activity,       color: "text-[var(--token-gold)]", bg: "bg-[var(--token-gold)]/10" },
   training:       { label: "Training",       icon: Loader2,        color: "text-cyan",             bg: "bg-cyan/10" },
   validating:     { label: "Validating",     icon: Brain,          color: "text-purple-400",       bg: "bg-purple-400/10" },
   completed:      { label: "Completed",      icon: CheckCircle2,   color: "text-[var(--status-success)]", bg: "bg-[var(--status-success)]/10" },
@@ -59,8 +59,8 @@ function ProgressRing({ percent, size = 80, stroke = 6 }: { percent: number; siz
       />
       <defs>
         <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--accent-cyan)" />
-          <stop offset="100%" stopColor="var(--accent-cyan)" />
+          <stop offset="0%" stopColor="var(--token-cyan)" />
+          <stop offset="100%" stopColor="var(--token-cyan)" />
         </linearGradient>
       </defs>
     </svg>
@@ -229,7 +229,7 @@ export default function BatchTraining() {
         <div className="text-center space-y-4">
           <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="font-heading text-xl">Sign in to access batch training</h2>
-          <Button asChild className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0">
+          <Button asChild className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0">
             <a href={getLoginUrl("/batch-training")}>Sign In</a>
           </Button>
         </div>
@@ -369,7 +369,7 @@ export default function BatchTraining() {
                             ) : (
                               <div
                                 className="w-full h-full flex items-center justify-center text-sm font-heading font-bold"
-                                style={{ background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan))" }}
+                                style={{ background: "linear-gradient(135deg, var(--token-cyan), var(--token-cyan))" }}
                               >
                                 {char.name.charAt(0)}
                               </div>
@@ -409,7 +409,7 @@ export default function BatchTraining() {
                   className="rounded-xl border border-cyan/20 bg-cyan/5 p-5"
                 >
                   <h3 className="font-heading font-bold mb-3 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-[var(--accent-gold)]" /> Batch Estimate
+                    <DollarSign className="w-4 h-4 text-[var(--token-gold)]" /> Batch Estimate
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <div className="rounded bg-white/5 p-3">
@@ -418,7 +418,7 @@ export default function BatchTraining() {
                     </div>
                     <div className="rounded bg-white/5 p-3">
                       <div className="text-xs text-muted-foreground">Total Credits</div>
-                      <div className="text-xl font-heading font-bold text-[var(--accent-gold)]">
+                      <div className="text-xl font-heading font-bold text-[var(--token-gold)]">
                         {batchEstimate.totalEstimatedCredits?.toFixed(0) ?? "—"}
                       </div>
                     </div>
@@ -449,7 +449,7 @@ export default function BatchTraining() {
                 <Button
                   size="lg"
                   disabled={selectedCharacters.length === 0 || batchTrainMutation.isPending}
-                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                  className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
                   onClick={() => batchTrainMutation.mutate({
                     characterIds: selectedCharacters,
                     gpuType,

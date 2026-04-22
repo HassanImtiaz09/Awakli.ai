@@ -44,7 +44,7 @@ export default function SignIn() {
 
           {/* Security note */}
           <div className="flex items-start gap-3 p-3 rounded-lg bg-[#151528] border border-white/5">
-            <Shield size={16} className="text-[#00D4FF] mt-0.5 shrink-0" />
+            <Shield size={16} className="text-[#00F0FF] mt-0.5 shrink-0" />
             <p className="text-xs text-[#9494B8] leading-relaxed">
               We use secure OAuth authentication — no passwords to remember or manage.
               Your data is protected with industry-standard encryption.

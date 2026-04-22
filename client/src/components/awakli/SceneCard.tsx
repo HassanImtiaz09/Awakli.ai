@@ -23,6 +23,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { CharacterChip } from "./CharacterChip";
+import { RegenPopover } from "./RegenPopover";
 
 export interface DialogueLine {
   character: string;
@@ -103,7 +104,7 @@ export function SceneCard({
   locked,
 }: SceneCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [regenInstruction, setRegenInstruction] = useState("");
+
   const [showRegenInput, setShowRegenInput] = useState(false);
 
   const dialogueCount = scene.panels.reduce((sum, p) => sum + p.dialogue.length, 0);
@@ -117,27 +118,7 @@ export function SceneCard({
     [isApproved, locked, onApprove, scene.scene_number]
   );
 
-  const handleRegenerate = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (showRegenInput && regenInstruction.trim()) {
-        onRegenerate(scene.scene_number, regenInstruction.trim());
-        setRegenInstruction("");
-        setShowRegenInput(false);
-      } else {
-        setShowRegenInput(!showRegenInput);
-      }
-    },
-    [showRegenInput, regenInstruction, onRegenerate, scene.scene_number]
-  );
 
-  const handleQuickRegen = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onRegenerate(scene.scene_number);
-    },
-    [onRegenerate, scene.scene_number]
-  );
 
   return (
     <motion.div
@@ -370,68 +351,32 @@ export function SceneCard({
                     {isApproved ? "Approved" : "Approve scene"}
                   </button>
 
-                  <button
-                    onClick={handleQuickRegen}
-                    disabled={regenerating || locked}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    Regenerate <span className="text-white/20 ml-0.5">(3c)</span>
-                  </button>
-
-                  <button
-                    onClick={handleRegenerate}
-                    disabled={regenerating || locked}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    Regen with notes <span className="text-white/20 ml-0.5">(3c)</span>
-                  </button>
+                  {/* Regen popover trigger */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowRegenInput(!showRegenInput);
+                      }}
+                      disabled={regenerating || locked}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Regenerate <span className="text-white/20 ml-0.5">(3c)</span>
+                    </button>
+                    <RegenPopover
+                      open={showRegenInput}
+                      onClose={() => setShowRegenInput(false)}
+                      onRegenerate={(instruction) => {
+                        onRegenerate(scene.scene_number, instruction);
+                        setShowRegenInput(false);
+                      }}
+                      regenerating={regenerating}
+                      sceneName={scene.title || `Scene ${scene.scene_number}`}
+                    />
+                  </div>
                 </div>
               )}
-
-              {/* Regen instruction input */}
-              <AnimatePresence>
-                {showRegenInput && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={regenInstruction}
-                        onChange={(e) => setRegenInstruction(e.target.value)}
-                        placeholder="E.g., 'Make it more dramatic' or 'Add a plot twist'"
-                        className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/70 placeholder:text-white/15 outline-none focus:ring-1 focus:ring-[#6B5BFF]/50"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && regenInstruction.trim()) {
-                            onRegenerate(scene.scene_number, regenInstruction.trim());
-                            setRegenInstruction("");
-                            setShowRegenInput(false);
-                          }
-                        }}
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (regenInstruction.trim()) {
-                            onRegenerate(scene.scene_number, regenInstruction.trim());
-                            setRegenInstruction("");
-                            setShowRegenInput(false);
-                          }
-                        }}
-                        disabled={!regenInstruction.trim()}
-                        className="px-3 py-2 rounded-xl text-xs font-medium bg-[#6B5BFF]/10 text-[#6B5BFF] hover:bg-[#6B5BFF]/20 transition-all disabled:opacity-50"
-                      >
-                        Go
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </motion.div>
         )}

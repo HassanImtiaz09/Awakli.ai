@@ -221,7 +221,7 @@ export default function StoryboardPreview() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-pink" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-violet" />
       </div>
     );
   }
@@ -250,7 +250,7 @@ export default function StoryboardPreview() {
       <div className="border-b border-white/10 bg-deep/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-display font-bold bg-gradient-to-r from-accent-pink to-accent-cyan bg-clip-text text-transparent">
+            <h1 className="text-xl font-display font-bold bg-gradient-to-r from-token-violet to-token-cyan bg-clip-text text-transparent">
               Storyboard
             </h1>
             <p className="text-xs text-muted">{project?.title}</p>
@@ -264,7 +264,7 @@ export default function StoryboardPreview() {
                 setActiveEpisodeId(Number(e.target.value));
                 setSlideshowIndex(0);
               }}
-              className="bg-surface border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-accent-pink/50"
+              className="bg-surface border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-token-violet/50"
             >
               {episodes?.map((ep: any) => (
                 <option key={ep.id} value={ep.id}>
@@ -278,7 +278,7 @@ export default function StoryboardPreview() {
               <button
                 onClick={() => setMode("reader")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  mode === "reader" ? "bg-accent-pink/20 text-accent-pink" : "text-muted hover:text-white"
+                  mode === "reader" ? "bg-token-violet/20 text-token-violet" : "text-muted hover:text-white"
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" /> Reader
@@ -286,7 +286,7 @@ export default function StoryboardPreview() {
               <button
                 onClick={() => { setMode("slideshow"); setSlideshowIndex(0); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  mode === "slideshow" ? "bg-accent-cyan/20 text-accent-cyan" : "text-muted hover:text-white"
+                  mode === "slideshow" ? "bg-token-cyan/20 text-token-cyan" : "text-muted hover:text-white"
                 }`}
               >
                 <Monitor className="w-3.5 h-3.5" /> Slideshow
@@ -366,7 +366,7 @@ export default function StoryboardPreview() {
                       panel.dialogue && Array.isArray(panel.dialogue) ? (
                         (panel.dialogue as { character: string; text: string; emotion: string }[]).map((d, di) => (
                           <div key={`${panel.id}-${di}`} className="text-xs text-muted/70 pl-2 border-l border-white/5">
-                            <span className="text-accent-pink/70 font-semibold">{d.character}</span>
+                            <span className="text-token-violet/70 font-semibold">{d.character}</span>
                             <span className="ml-1">"{d.text}"</span>
                           </div>
                         ))
@@ -420,7 +420,7 @@ export default function StoryboardPreview() {
               </button>
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="p-2 rounded-full bg-accent-pink/20 border border-accent-pink/30 text-accent-pink hover:bg-accent-pink/30"
+                className="p-2 rounded-full bg-token-violet/20 border border-token-violet/30 text-token-violet hover:bg-token-violet/30"
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </button>
@@ -464,7 +464,7 @@ export default function StoryboardPreview() {
                     >
                       <pre className="text-sm text-white/80 font-sans whitespace-pre-wrap leading-relaxed">
                         {typewriterText}
-                        <span className="animate-pulse text-accent-pink">|</span>
+                        <span className="animate-pulse text-token-violet">|</span>
                       </pre>
                     </motion.div>
                   )}
@@ -491,7 +491,7 @@ export default function StoryboardPreview() {
           {/* Progress bar */}
           <div className="h-1 bg-surface">
             <motion.div
-              className="h-full bg-gradient-to-r from-accent-pink to-accent-cyan"
+              className="h-full bg-gradient-to-r from-token-violet to-token-cyan"
               animate={{ width: `${((slideshowIndex + 1) / panels.length) * 100}%` }}
               transition={{ duration: 0.3 }}
             />

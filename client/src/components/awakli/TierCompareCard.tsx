@@ -8,18 +8,23 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Loader2, Crown, Zap, Rocket, BookOpen } from "lucide-react";
+import {
+  TIER_DISPLAY_NAMES,
+  TIER_MONTHLY_PRICE_CENTS,
+  tierPriceLabel,
+} from "@shared/pricingCatalog";
 
-// ─── Copy strings (exact spec) ─────────────────────────────────────────
+// ─── Copy strings (derived from pricingCatalog — single source of truth) ─────
 export const TIER_CARD_COPY = {
-  mangakaTitle: "Mangaka",
-  mangakaPrice: "from $19/mo",
-  mangakaCTA: "Continue with Mangaka",
-  studioTitle: "Studio",
-  studioPrice: "from $99/mo",
-  studioCTA: "Continue with Studio",
-  studioProTitle: "Studio Pro",
-  studioProPrice: "from $499/mo",
-  studioProCTA: "Continue with Studio Pro",
+  mangakaTitle: TIER_DISPLAY_NAMES.creator,
+  mangakaPrice: `from ${tierPriceLabel("creator")}`,
+  mangakaCTA: `Continue with ${TIER_DISPLAY_NAMES.creator}`,
+  studioTitle: TIER_DISPLAY_NAMES.creator_pro,
+  studioPrice: `from ${tierPriceLabel("creator_pro")}`,
+  studioCTA: `Continue with ${TIER_DISPLAY_NAMES.creator_pro}`,
+  studioProTitle: TIER_DISPLAY_NAMES.studio,
+  studioProPrice: `from ${tierPriceLabel("studio")}`,
+  studioProCTA: `Continue with ${TIER_DISPLAY_NAMES.studio}`,
   smallLink: "I'll stay with the manga for now",
   waitingState: "Waiting for your confirmation in the new tab…",
 };

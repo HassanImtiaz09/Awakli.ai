@@ -42,8 +42,8 @@ interface LoraComparisonModalProps {
 
 const CATEGORY_CONFIG: Record<string, { icon: typeof Eye; label: string; color: string }> = {
   portrait:  { icon: Eye,      label: "Portrait Close-up",  color: "text-cyan" },
-  action:    { icon: Zap,      label: "Action Pose",        color: "text-[var(--accent-cyan)]" },
-  emotion:   { icon: Sparkles, label: "Emotional Expression", color: "text-[var(--accent-gold)]" },
+  action:    { icon: Zap,      label: "Action Pose",        color: "text-[var(--token-cyan)]" },
+  emotion:   { icon: Sparkles, label: "Emotional Expression", color: "text-[var(--token-gold)]" },
   group:     { icon: Target,   label: "Group Scene",        color: "text-[var(--status-success)]" },
   lighting:  { icon: Palette,  label: "Dramatic Lighting",  color: "text-purple-400" },
   custom:    { icon: Send,     label: "Custom Prompt",      color: "text-orange-400" },
@@ -67,7 +67,7 @@ function MetricBar({
   leftLabel,
   rightLabel,
   leftColor = "cyan",
-  rightColor = "var(--accent-cyan)",
+  rightColor = "var(--token-cyan)",
 }: {
   label: string;
   valueA: number;
@@ -162,7 +162,7 @@ function PromptResultCard({
     : result.winner === "A"
     ? { label: `${leftLabel} wins`, color: "bg-cyan/20 text-cyan border-cyan/30" }
     : result.winner === "B"
-    ? { label: `${rightLabel} wins`, color: "bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30" }
+    ? { label: `${rightLabel} wins`, color: "bg-[var(--token-cyan)]/20 text-[var(--token-cyan)] border-[var(--token-cyan)]/30" }
     : { label: "Tie", color: "bg-white/10 text-muted-foreground border-white/20" };
 
   return (
@@ -189,7 +189,7 @@ function PromptResultCard({
             <div className="text-right">
               <div className="text-xs font-mono text-cyan">{result.metrics.overallScoreA}</div>
               <div className="text-[10px] text-muted-foreground">vs</div>
-              <div className="text-xs font-mono text-[var(--accent-cyan)]">{result.metrics.overallScoreB}</div>
+              <div className="text-xs font-mono text-[var(--token-cyan)]">{result.metrics.overallScoreB}</div>
             </div>
           )}
           {blindMode && (
@@ -242,19 +242,19 @@ function PromptResultCard({
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className={cn("w-3 h-3 rounded-full", blindMode ? "bg-violet-400" : "bg-[var(--accent-cyan)]")} />
+                    <div className={cn("w-3 h-3 rounded-full", blindMode ? "bg-violet-400" : "bg-[var(--token-cyan)]")} />
                     <span className="text-xs font-medium">{rightLabel}</span>
                     {!blindMode && (
-                      <span className="text-xs font-mono text-[var(--accent-cyan)] ml-auto">{result.metrics.overallScoreB}/100</span>
+                      <span className="text-xs font-mono text-[var(--token-cyan)] ml-auto">{result.metrics.overallScoreB}/100</span>
                     )}
                   </div>
                   <div className={cn(
                     "aspect-square rounded-lg border bg-[var(--bg-elevated)] overflow-hidden relative",
-                    blindMode ? "border-violet-400/20" : "border-[var(--accent-cyan)]/20"
+                    blindMode ? "border-violet-400/20" : "border-[var(--token-cyan)]/20"
                   )}>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
-                        <Eye className={cn("w-8 h-8 mx-auto mb-2", blindMode ? "text-violet-400/30" : "text-[var(--accent-cyan)]/30")} />
+                        <Eye className={cn("w-8 h-8 mx-auto mb-2", blindMode ? "text-violet-400/30" : "text-[var(--token-cyan)]/30")} />
                         <p className="text-xs text-muted-foreground">Generated with {rightLabel}</p>
                       </div>
                     </div>
@@ -320,25 +320,25 @@ function WinnerBanner({
 
   const confidenceColor =
     aggregated.confidence >= 0.7 ? "text-[var(--status-success)]" :
-    aggregated.confidence >= 0.4 ? "text-[var(--accent-gold)]" : "text-muted-foreground";
+    aggregated.confidence >= 0.4 ? "text-[var(--token-gold)]" : "text-muted-foreground";
 
   return (
     <div className={cn(
       "rounded-xl border p-5",
       winner === "A" ? "border-cyan/30 bg-cyan/5" :
-      winner === "B" ? "border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5" :
+      winner === "B" ? "border-[var(--token-cyan)]/30 bg-[var(--token-cyan)]/5" :
       "border-white/10 bg-white/5"
     )}>
       <div className="flex items-start gap-4">
         <div className={cn(
           "w-12 h-12 rounded-xl flex items-center justify-center",
           winner === "tie" ? "bg-white/10" :
-          winner === "A" ? "bg-cyan/20" : "bg-[var(--accent-cyan)]/20"
+          winner === "A" ? "bg-cyan/20" : "bg-[var(--token-cyan)]/20"
         )}>
           {winner === "tie" ? (
             <Scale className="w-6 h-6 text-muted-foreground" />
           ) : (
-            <Crown className={cn("w-6 h-6", winner === "A" ? "text-cyan" : "text-[var(--accent-cyan)]")} />
+            <Crown className={cn("w-6 h-6", winner === "A" ? "text-cyan" : "text-[var(--token-cyan)]")} />
           )}
         </div>
         <div className="flex-1">
@@ -360,9 +360,9 @@ function WinnerBanner({
               <span className="text-sm font-mono font-bold text-cyan">{aggregated.avgScoreA}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)]" />
+              <div className="w-2 h-2 rounded-full bg-[var(--token-cyan)]" />
               <span className="text-xs text-muted-foreground">{rightLabel}:</span>
-              <span className="text-sm font-mono font-bold text-[var(--accent-cyan)]">{aggregated.avgScoreB}</span>
+              <span className="text-sm font-mono font-bold text-[var(--token-cyan)]">{aggregated.avgScoreB}</span>
             </div>
             <div className="text-xs text-muted-foreground ml-auto">
               {aggregated.winsA}W / {aggregated.ties}T / {aggregated.winsB}W
@@ -377,7 +377,7 @@ function WinnerBanner({
                 "mt-3 border-0",
                 winner === "A"
                   ? "bg-cyan/20 text-cyan hover:bg-cyan/30"
-                  : "bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/30"
+                  : "bg-[var(--token-cyan)]/20 text-[var(--token-cyan)] hover:bg-[var(--token-cyan)]/30"
               )}
               onClick={() => onActivate(winnerId)}
             >
@@ -429,7 +429,7 @@ function AggregatedMetrics({
           <span className="text-muted-foreground">{leftLabel}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
-          <div className="w-3 h-1.5 rounded-full bg-[var(--accent-cyan)]" />
+          <div className="w-3 h-1.5 rounded-full bg-[var(--token-cyan)]" />
           <span className="text-muted-foreground">{rightLabel}</span>
         </div>
       </div>
@@ -717,7 +717,7 @@ export default function LoraComparisonModal({
                 "w-10 h-10 rounded-xl flex items-center justify-center",
                 blindMode
                   ? "bg-gradient-to-br from-amber-400/20 to-violet-400/20"
-                  : "bg-gradient-to-br from-cyan/20 to-[var(--accent-cyan)]/20"
+                  : "bg-gradient-to-br from-cyan/20 to-[var(--token-cyan)]/20"
               )}>
                 {blindMode ? <EyeOff className="w-5 h-5 text-amber-400" /> : <Scale className="w-5 h-5 text-foreground" />}
               </div>
@@ -798,7 +798,7 @@ export default function LoraComparisonModal({
 
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)]" />
+                    <div className="w-2 h-2 rounded-full bg-[var(--token-cyan)]" />
                     Version B
                   </label>
                   <Select
@@ -806,7 +806,7 @@ export default function LoraComparisonModal({
                     onValueChange={(val) => setVersionBId(Number(val))}
                     disabled={blindMode}
                   >
-                    <SelectTrigger className="bg-[var(--bg-base)] border-[var(--accent-cyan)]/20">
+                    <SelectTrigger className="bg-[var(--bg-base)] border-[var(--token-cyan)]/20">
                       <SelectValue placeholder="Select version B" />
                     </SelectTrigger>
                     <SelectContent>

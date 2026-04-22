@@ -30,6 +30,14 @@ import {
   type ActiveTab,
 } from "@/store/upgradeModal";
 import { TIER_ORDER, TIER_META, type TierName } from "@shared/tierMatrix";
+import {
+  TIER_DISPLAY_NAMES,
+  TIER_MONTHLY_PRICE_CENTS,
+  TIER_MONTHLY_CREDITS,
+  TIER_TAGLINES,
+  tierPriceLabel,
+  formatPrice,
+} from "@shared/pricingCatalog";
 
 // ─── Legacy Event Bus (backward compat with withTier + tierErrorLink) ───────
 type Listener = (payload: UpgradePayload) => void;
@@ -76,11 +84,11 @@ const UPGRADE_TIERS: {
 }[] = [
   {
     key: "creator",
-    displayName: "Mangaka",
-    price: "$29",
+    displayName: TIER_DISPLAY_NAMES.creator,
+    price: formatPrice(TIER_MONTHLY_PRICE_CENTS.creator),
     priceNote: "/mo",
     features: [
-      "35 credits/month",
+      `${TIER_MONTHLY_CREDITS.creator} credits/month`,
       "Anime previews & community voting",
       "HD export (PDF, PNG, MP4)",
       "3 LoRA characters",
@@ -91,11 +99,11 @@ const UPGRADE_TIERS: {
   },
   {
     key: "creator_pro",
-    displayName: "Studio",
-    price: "$99",
+    displayName: TIER_DISPLAY_NAMES.creator_pro,
+    price: formatPrice(TIER_MONTHLY_PRICE_CENTS.creator_pro),
     priceNote: "/mo",
     features: [
-      "120 credits/month",
+      `${TIER_MONTHLY_CREDITS.creator_pro} credits/month`,
       "Full anime pipeline (video + publish)",
       "Priority queue",
       "10 LoRA characters + voice cloning",
@@ -107,11 +115,11 @@ const UPGRADE_TIERS: {
   },
   {
     key: "studio",
-    displayName: "Studio Pro",
-    price: "$499",
+    displayName: TIER_DISPLAY_NAMES.studio,
+    price: formatPrice(TIER_MONTHLY_PRICE_CENTS.studio),
     priceNote: "/mo",
     features: [
-      "600 credits/month",
+      `${TIER_MONTHLY_CREDITS.studio} credits/month`,
       "4K resolution + all export formats",
       "Unlimited LoRA + voice clones",
       "Team collaboration (10 seats)",

@@ -17,11 +17,11 @@ import { cn } from "@/lib/utils";
 const GENRES = [
   { id: "action",   label: "Action",   icon: Swords, color: "#FF4444" },
   { id: "romance",  label: "Romance",  icon: Heart,  color: "#FF69B4" },
-  { id: "sci-fi",   label: "Sci-Fi",   icon: Rocket, color: "#00D4FF" },
+  { id: "sci-fi",   label: "Sci-Fi",   icon: Rocket, color: "#00F0FF" },
   { id: "horror",   label: "Horror",   icon: Ghost,  color: "#E74C3C" },
   { id: "comedy",   label: "Comedy",   icon: Laugh,  color: "#F39C12" },
   { id: "fantasy",  label: "Fantasy",  icon: Wand2,  color: "#9B59B6" },
-  { id: "drama",    label: "Drama",    icon: Crown,  color: "#FFB800" },
+  { id: "drama",    label: "Drama",    icon: Crown,  color: "#FFD60A" },
   { id: "thriller", label: "Thriller", icon: Skull,  color: "#6B5BFF" },
   { id: "slice-of-life", label: "Slice of Life", icon: Palette, color: "#2ECC71" },
 ] as const;
@@ -58,8 +58,8 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
           <motion.div
             className={cn(
               "w-3 h-3 rounded-full relative z-10 transition-all duration-500",
-              i < current ? "bg-[var(--accent-cyan)]" :
-              i === current ? "bg-[var(--accent-cyan)]" :
+              i < current ? "bg-[var(--token-cyan)]" :
+              i === current ? "bg-[var(--token-cyan)]" :
               "bg-[var(--text-muted)]"
             )}
             animate={{
@@ -77,7 +77,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
               <motion.div
                 className="h-full rounded-full"
                 animate={{
-                  backgroundColor: i < current ? "var(--accent-cyan)" : "var(--text-muted)",
+                  backgroundColor: i < current ? "var(--token-cyan)" : "var(--text-muted)",
                   opacity: i < current ? 1 : 0.3,
                 }}
                 transition={{ duration: 0.4 }}
@@ -118,7 +118,7 @@ function StepName({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter your story title..."
-          className="w-full bg-transparent text-h2 text-center text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 border-b-2 border-[var(--text-muted)] focus:border-[var(--accent-cyan)] outline-none pb-3 transition-colors"
+          className="w-full bg-transparent text-h2 text-center text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 border-b-2 border-[var(--text-muted)] focus:border-[var(--token-cyan)] outline-none pb-3 transition-colors"
           maxLength={255}
         />
       </div>
@@ -169,7 +169,7 @@ function StepName({
               className={cn(
                 "px-3 py-2 rounded-lg text-sm font-medium border transition-all",
                 tone === t
-                  ? "bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/40 text-[var(--accent-cyan)]"
+                  ? "bg-[var(--token-cyan)]/15 border-[var(--token-cyan)]/40 text-[var(--token-cyan)]"
                   : "bg-[var(--bg-elevated)] border-white/10 text-[var(--text-secondary)] hover:border-white/20"
               )}
               whileHover={{ scale: 1.03 }}
@@ -195,14 +195,14 @@ function StepName({
                 className={cn(
                   "flex flex-col items-center gap-2 p-5 rounded-xl border transition-all",
                   selected
-                    ? "bg-[var(--accent-cyan)]/10 border-[var(--accent-cyan)]/40"
+                    ? "bg-[var(--token-cyan)]/10 border-[var(--token-cyan)]/40"
                     : "bg-[var(--bg-elevated)] border-white/10 hover:border-white/20"
                 )}
                 style={{ boxShadow: selected ? "var(--shadow-glow-pink)" : "none" }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Icon size={24} className={selected ? "text-[var(--accent-cyan)]" : "text-[var(--text-muted)]"} />
+                <Icon size={24} className={selected ? "text-[var(--token-cyan)]" : "text-[var(--text-muted)]"} />
                 <span className={cn("font-medium", selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
                   {a.label}
                 </span>
@@ -269,7 +269,7 @@ function StepDescribe({
         <h1 className="text-display text-[var(--text-primary)]">
           {headingText}
           <motion.span
-            className="inline-block w-0.5 h-[0.8em] bg-[var(--accent-cyan)] ml-1 align-middle"
+            className="inline-block w-0.5 h-[0.8em] bg-[var(--token-cyan)] ml-1 align-middle"
             animate={{ opacity: [1, 0] }}
             transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
           />
@@ -292,8 +292,8 @@ function StepDescribe({
             "w-full min-h-[200px] p-5 rounded-xl border text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none transition-all",
             "bg-[var(--bg-elevated)] focus:outline-none",
             showEnhanced
-              ? "border-[var(--accent-cyan)]/40"
-              : "border-white/10 focus:border-[var(--accent-cyan)]/40"
+              ? "border-[var(--token-cyan)]/40"
+              : "border-white/10 focus:border-[var(--token-cyan)]/40"
           )}
           maxLength={5000}
         />
@@ -314,7 +314,7 @@ function StepDescribe({
                 </motion.button>
                 <motion.button
                   onClick={acceptEnhanced}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/25 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--token-cyan)]/15 text-[var(--token-cyan)] hover:bg-[var(--token-cyan)]/25 transition-colors"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                 >
@@ -327,7 +327,7 @@ function StepDescribe({
               disabled={enhanceMutation.isPending || !description.trim()}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                "bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/25",
+                "bg-[var(--token-cyan)]/15 text-[var(--token-cyan)] hover:bg-[var(--token-cyan)]/25",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
               whileHover={{ scale: 1.02 }}
@@ -372,7 +372,7 @@ function StepStyle({
                 "relative overflow-hidden rounded-xl border transition-all",
                 "aspect-[3/4] flex flex-col justify-end p-4",
                 selected
-                  ? "border-[var(--accent-cyan)] ring-2 ring-[var(--accent-cyan)]/30"
+                  ? "border-[var(--token-cyan)] ring-2 ring-[var(--token-cyan)]/30"
                   : "border-white/10 hover:border-white/20"
               )}
               style={{
@@ -399,7 +399,7 @@ function StepStyle({
 
               {selected && (
                 <motion.div
-                  className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[var(--accent-cyan)] flex items-center justify-center"
+                  className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[var(--token-cyan)] flex items-center justify-center"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -494,7 +494,7 @@ function StepReview({
         disabled={isCreating || !title.trim()}
         className={cn(
           "w-full py-4 rounded-xl text-lg font-heading font-semibold transition-all",
-          "bg-gradient-to-r from-[var(--accent-cyan)] to-[#6B5BFF] text-white",
+          "bg-gradient-to-r from-[var(--token-cyan)] to-[#6B5BFF] text-white",
           "hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
         )}
         whileHover={{ scale: 1.01 }}
@@ -559,7 +559,7 @@ export default function ProjectWizard() {
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ["#6B5BFF", "#B388FF", "#00D4FF", "#FFB800", "#9B59B6"],
+        colors: ["#6B5BFF", "#B388FF", "#00F0FF", "#FFD60A", "#9B59B6"],
       });
 
       toast.success("Project created! Redirecting to studio...");
@@ -677,7 +677,7 @@ export default function ProjectWizard() {
             disabled={!canNext()}
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all",
-              "bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)]",
+              "bg-[var(--token-cyan)] text-white hover:bg-[var(--token-violet-hover)]",
               "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
             whileHover={{ scale: canNext() ? 1.02 : 1 }}

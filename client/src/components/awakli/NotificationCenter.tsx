@@ -53,14 +53,14 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Bell className="w-5 h-5 text-accent-pink" />
+                <Bell className="w-5 h-5 text-token-violet" />
                 Notifications
               </h3>
               <div className="flex items-center gap-2">
                 {items.some((n: any) => !n.isRead) && (
                   <button
                     onClick={() => markAllRead.mutate()}
-                    className="text-xs text-accent-cyan hover:text-accent-cyan/80 transition-colors flex items-center gap-1"
+                    className="text-xs text-token-cyan hover:text-token-cyan/80 transition-colors flex items-center gap-1"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
                     Mark all read
@@ -92,13 +92,13 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                     const content = (
                       <div
                         className={`flex gap-3 px-5 py-3 hover:bg-white/5 transition-colors cursor-pointer ${
-                          !notif.isRead ? "bg-accent-pink/5" : ""
+                          !notif.isRead ? "bg-token-violet/5" : ""
                         }`}
                       >
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          !notif.isRead ? "bg-accent-pink/10" : "bg-white/5"
+                          !notif.isRead ? "bg-token-violet/10" : "bg-white/5"
                         }`}>
-                          <Icon className={`w-4 h-4 ${!notif.isRead ? "text-accent-pink" : "text-gray-500"}`} />
+                          <Icon className={`w-4 h-4 ${!notif.isRead ? "text-token-violet" : "text-gray-500"}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm ${!notif.isRead ? "text-white font-medium" : "text-gray-300"}`}>
@@ -112,7 +112,7 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                           </p>
                         </div>
                         {!notif.isRead && (
-                          <div className="w-2 h-2 rounded-full bg-accent-pink flex-shrink-0 mt-2" />
+                          <div className="w-2 h-2 rounded-full bg-token-violet flex-shrink-0 mt-2" />
                         )}
                       </div>
                     );
@@ -152,7 +152,7 @@ export function NotificationBell() {
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent-pink text-[10px] font-bold flex items-center justify-center text-white"
+            className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-token-violet text-[10px] font-bold flex items-center justify-center text-white"
           >
             {count > 9 ? "9+" : count}
           </motion.span>

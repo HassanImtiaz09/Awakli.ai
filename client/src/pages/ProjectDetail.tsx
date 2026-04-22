@@ -127,8 +127,8 @@ export default function ProjectDetail() {
             <div key={stat.label} className="bg-[#0D0D1A] border border-white/5 rounded-xl p-4">
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${
                 stat.color === "pink" ? "bg-[rgba(107,91,255,0.15)] text-[#00F0FF]"
-                : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00D4FF]"
-                : "bg-[rgba(255,184,0,0.15)] text-[#FFB800]"
+                : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00F0FF]"
+                : "bg-[rgba(255,184,0,0.15)] text-[#FFD60A]"
               }`}>
                 {stat.icon}
               </div>
@@ -142,7 +142,7 @@ export default function ProjectDetail() {
         {activeJobs.length > 0 && (
           <section>
             <h2 className="text-base font-semibold text-[#F0F0F5] mb-4 flex items-center gap-2">
-              <Loader2 size={16} className="text-[#00D4FF] animate-spin" />
+              <Loader2 size={16} className="text-[#00F0FF] animate-spin" />
               Processing
             </h2>
             <div className="space-y-3">

@@ -274,7 +274,7 @@ export default function WizardPublish() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[#00E5A0] text-xs font-semibold uppercase tracking-widest">
               <Send className="w-3.5 h-3.5" />
-              Stage 03 — Publish
+              Stage 04 — Publish
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
               {pageState === "published" ? COPY.successTitle : COPY.pageTitle}

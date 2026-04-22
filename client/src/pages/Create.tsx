@@ -244,8 +244,8 @@ export default function Create() {
 
         {/* Subtle floating particles */}
         <div className="absolute top-20 left-[15%] w-1 h-1 rounded-full bg-[#6B5BFF]/30 animate-float" />
-        <div className="absolute top-40 right-[20%] w-1.5 h-1.5 rounded-full bg-[#00D4FF]/20 animate-float" style={{ animationDelay: "2s" }} />
-        <div className="absolute bottom-32 left-[30%] w-1 h-1 rounded-full bg-[#7C3AED]/25 animate-float" style={{ animationDelay: "4s" }} />
+        <div className="absolute top-40 right-[20%] w-1.5 h-1.5 rounded-full bg-[#00F0FF]/20 animate-float" style={{ animationDelay: "2s" }} />
+        <div className="absolute bottom-32 left-[30%] w-1 h-1 rounded-full bg-[#B388FF]/25 animate-float" style={{ animationDelay: "4s" }} />
       </div>
 
       {/* Subtle grid pattern */}
@@ -345,7 +345,7 @@ export default function Create() {
                   {!prompt && (
                     <div className="absolute top-6 left-6 right-6 pointer-events-none text-lg text-[#9494B8]/40">
                       {placeholder}
-                      <span className="inline-block w-0.5 h-5 bg-[#00D4FF] ml-0.5 animate-pulse" />
+                      <span className="inline-block w-0.5 h-5 bg-[#00F0FF] ml-0.5 animate-pulse" />
                     </div>
                   )}
                 </div>
@@ -412,7 +412,7 @@ export default function Create() {
                   className="py-4 px-6 rounded-xl bg-white/[0.05] border border-white/15 text-white font-semibold text-lg hover:bg-white/[0.08] hover:border-white/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed group"
                 >
                   <span className="flex items-center justify-center gap-2">
-                    <Palette className="w-5 h-5 text-[#7C3AED]" />
+                    <Palette className="w-5 h-5 text-[#B388FF]" />
                     Customize First
                     <ChevronRight className="w-4 h-4 text-[#9494B8]/40 group-hover:translate-x-0.5 transition-transform" />
                   </span>

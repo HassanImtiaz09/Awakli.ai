@@ -234,7 +234,7 @@ export default function WizardSetup() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-violet-400 text-xs font-semibold uppercase tracking-widest">
             <Settings2 className="w-3.5 h-3.5" />
-            Stage 05 — Anime Setup
+            Stage 06 — Anime Setup
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Prepare your characters

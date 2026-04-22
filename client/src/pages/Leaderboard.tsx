@@ -35,10 +35,10 @@ export default function Leaderboard() {
       <PageBackground src="https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/page-bg-compete-QTSG48KbgV7GRX4twLnzyE.webp" opacity={0.4} />
       {/* Hero */}
       <section className="relative py-16 md:py-20 overflow-hidden" style={{ zIndex: 1 }}>
-        <div className="absolute inset-0 bg-gradient-to-b from-accent-pink/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-token-violet/5 via-transparent to-transparent" />
         <div className="container relative text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-sm mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-token-violet/10 border border-token-violet/20 text-token-violet text-sm mb-4">
               <Crown className="w-4 h-4" /> Community-Driven
             </div>
             <h1 className="text-4xl md:text-5xl font-display font-bold mb-3">Road to Anime</h1>
@@ -145,7 +145,7 @@ function RisingTopCard({ item, rank, threshold }: { item: any; rank: number; thr
             {item.coverImageUrl ? (
               <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-accent-pink/20 to-accent-purple/20 flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-token-violet/20 to-token-lavender/20 flex items-center justify-center">
                 <Film className="w-10 h-10 text-gray-600" />
               </div>
             )}
@@ -183,7 +183,7 @@ function RisingRow({ item, threshold }: { item: any; threshold: number }) {
             {item.coverImageUrl ? (
               <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-accent-pink/20 to-accent-purple/20 flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-token-violet/20 to-token-lavender/20 flex items-center justify-center">
                 <Film className="w-5 h-5 text-gray-600" />
               </div>
             )}
@@ -357,7 +357,7 @@ function EmptyState({ icon: Icon, message }: { icon: typeof Trophy; message: str
       <Icon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
       <p className="text-gray-400 max-w-md mx-auto">{message}</p>
       <Link href="/discover">
-        <span className="inline-block mt-4 px-6 py-2.5 rounded-lg bg-accent-pink/10 border border-accent-pink/20 text-accent-pink text-sm font-medium hover:bg-accent-pink/20 transition-colors cursor-pointer">
+        <span className="inline-block mt-4 px-6 py-2.5 rounded-lg bg-token-violet/10 border border-token-violet/20 text-token-violet text-sm font-medium hover:bg-token-violet/20 transition-colors cursor-pointer">
           Explore Manga
         </span>
       </Link>

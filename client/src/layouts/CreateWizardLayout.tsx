@@ -10,6 +10,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageBackground from "@/components/awakli/PageBackground";
 import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
+import { useProjectCreditForecast } from "@/hooks/useProjectCreditForecast";
+import { STAGE_DISPLAY_LABELS } from "@shared/creditMath";
 
 /* ─── Stage definitions ──────────────────────────────────────────────── */
 export const STAGES = [
@@ -318,49 +320,32 @@ function TopStatusBar({
   );
 }
 
-/* ─── Credit Meter (right sidebar) ───────────────────────────────────── */
-// Fallback stage costs (used only if server data hasn't loaded yet)
-const FALLBACK_STAGE_COSTS: { label: string; cost: number }[] = [
-  { label: "Input → Script", cost: 0 },
-  { label: "Script → Panels", cost: 2 },
-  { label: "Panels → Publish", cost: 5 },
-  { label: "Publish → Gate", cost: 0 },
-  { label: "Gate → Setup", cost: 0 },
-  { label: "Setup → Video", cost: 10 },
-];
-// Stage transition display names
-const STAGE_LABELS: Record<string, string> = {
-  input: "Input → Script",
-  script: "Script → Panels",
-  panels: "Panels → Publish",
-  publish: "Publish → Gate",
-  "anime-gate": "Gate → Setup",
-  setup: "Setup → Video",
-  video: "Complete",
-};
+/* ─── Credit Meter (right sidebar) — wired to live forecast (X4-F) ──── */
 
-function CreditMeter() {
+function CreditMeter({ projectId }: { projectId?: number | null }) {
   const { user } = useAuth();
   const { data: creditData, isLoading } = trpc.projects.creditBalance.useQuery(undefined, {
     enabled: !!user,
-    refetchInterval: 30_000, // refresh every 30s
+    refetchInterval: 30_000,
   });
+
+  // Live forecast from shared/creditMath via the hook
+  const forecast = useProjectCreditForecast(projectId ?? null);
 
   const balance = creditData?.balance ?? 0;
   const monthlyGrant = creditData?.monthlyGrant ?? 15;
   const used = Math.max(0, monthlyGrant - balance);
   const pct = monthlyGrant > 0 ? Math.round((used / monthlyGrant) * 100) : 0;
-  const totalProjectCost = creditData?.totalProjectCost ?? 17;
+  const totalProjectCost = forecast.total;
 
-  // Use server-provided stage costs or fallback
-  const stageCosts = creditData?.stageCosts
-    ? creditData.stageCosts
-        .filter((s: { label: string }) => s.label !== "publish") // publish has no transition cost
-        .map((s: { label: string; cost: number }) => ({
-          label: STAGE_LABELS[s.label] || s.label,
-          cost: s.cost,
-        }))
-    : FALLBACK_STAGE_COSTS;
+  // Use live forecast stages, filtering out free stages for cleaner display
+  const stageCosts = forecast.stages
+    .filter(s => s.stage !== "publish" && s.stage !== "anime-gate")
+    .map(s => ({
+      label: s.label,
+      cost: s.cost,
+      isEstimate: s.isEstimate,
+    }));
 
   return (
     <div className="hidden lg:flex flex-col gap-6 p-6 border-l border-white/5 bg-white/[0.02] backdrop-blur-sm">
@@ -413,7 +398,7 @@ function CreditMeter() {
       {/* Per-stage cost estimates */}
       <div className="space-y-2.5 mt-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Stage Costs</span>
-        {stageCosts.map((s: { label: string; cost: number }, i: number) => (
+        {stageCosts.map((s, i) => (
           <div key={i} className="flex items-center justify-between text-xs">
             <span className="text-white/40">{s.label}</span>
             <span className={`font-medium ${
@@ -423,7 +408,7 @@ function CreditMeter() {
                 ? "text-red-400/80"
                 : "text-white/60"
             }`}>
-              {s.cost === 0 ? "Free" : `${s.cost} cr`}
+              {s.cost === 0 ? "Free" : `${s.isEstimate ? "~" : ""}${s.cost} cr`}
             </span>
           </div>
         ))}
@@ -461,7 +446,7 @@ function CreditMeter() {
 }
 
 /* ─── Mobile Credit Bottom Sheet ─────────────────────────────────────── */
-function MobileCreditSheet() {
+function MobileCreditSheet({ projectId }: { projectId?: number | null }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { data: creditData } = trpc.projects.creditBalance.useQuery(undefined, {
@@ -469,18 +454,17 @@ function MobileCreditSheet() {
     refetchInterval: 30_000,
   });
 
+  const forecast = useProjectCreditForecast(projectId ?? null);
   const balance = creditData?.balance ?? 0;
-  const totalProjectCost = creditData?.totalProjectCost ?? 17;
+  const totalProjectCost = forecast.total;
 
-  // Use server-provided stage costs or fallback
-  const mobileStageCosts = creditData?.stageCosts
-    ? creditData.stageCosts
-        .filter((s: { label: string }) => s.label !== "publish")
-        .map((s: { label: string; cost: number }) => ({
-          label: STAGE_LABELS[s.label] || s.label,
-          cost: s.cost,
-        }))
-    : FALLBACK_STAGE_COSTS;
+  const mobileStageCosts = forecast.stages
+    .filter(s => s.stage !== "publish" && s.stage !== "anime-gate")
+    .map(s => ({
+      label: s.label,
+      cost: s.cost,
+      isEstimate: s.isEstimate,
+    }));
 
   return (
     <div className="lg:hidden">
@@ -513,13 +497,13 @@ function MobileCreditSheet() {
 
             {/* Per-stage costs */}
             <div className="space-y-2 mb-4">
-              {mobileStageCosts.map((s: { label: string; cost: number }, i: number) => (
+              {mobileStageCosts.map((s, i) => (
                 <div key={i} className="flex items-center justify-between text-xs">
                   <span className="text-white/40">{s.label}</span>
                   <span className={`font-medium ${
                     s.cost === 0 ? "text-token-mint/60" : s.cost > balance ? "text-red-400/80" : "text-white/60"
                   }`}>
-                    {s.cost === 0 ? "Free" : `${s.cost} cr`}
+                    {s.cost === 0 ? "Free" : `${s.isEstimate ? "~" : ""}${s.cost} cr`}
                   </span>
                 </div>
               ))}
@@ -645,11 +629,11 @@ export default function CreateWizardLayout({
         </main>
 
         {/* Right credit meter */}
-        <CreditMeter />
+        <CreditMeter projectId={numericId} />
       </div>
 
       {/* Mobile credit sheet */}
-      <MobileCreditSheet />
+      <MobileCreditSheet projectId={numericId} />
     </div>
   );
 }

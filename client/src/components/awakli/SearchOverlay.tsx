@@ -91,7 +91,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
                 onKeyDown={handleKeyDown}
                 placeholder="Search projects, genres, creators..."
-                className="w-full pl-14 pr-14 py-5 bg-surface-1/80 border border-white/10 rounded-2xl text-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-pink/50"
+                className="w-full pl-14 pr-14 py-5 bg-surface-1/80 border border-white/10 rounded-2xl text-lg text-white placeholder-gray-500 focus:outline-none focus:border-token-violet/50"
               />
               {query && (
                 <button onClick={() => setQuery("")} className="absolute right-5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-white/10 transition-colors">
@@ -109,7 +109,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               >
                 {searchResults.isLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-accent-pink animate-spin" />
+                    <Loader2 className="w-6 h-6 text-token-violet animate-spin" />
                   </div>
                 ) : results.length === 0 ? (
                   <div className="text-center py-12">
@@ -123,14 +123,14 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                         <div
                           onClick={onClose}
                           className={`flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors ${
-                            i === selectedIndex ? "bg-accent-pink/10" : "hover:bg-white/5"
+                            i === selectedIndex ? "bg-token-violet/10" : "hover:bg-white/5"
                           }`}
                         >
                           <div className="w-10 h-14 rounded-lg overflow-hidden bg-surface-2 flex-shrink-0">
                             {item.coverImageUrl ? (
                               <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-accent-pink/20 to-accent-purple/20 flex items-center justify-center">
+                              <div className="w-full h-full bg-gradient-to-br from-token-violet/20 to-token-lavender/20 flex items-center justify-center">
                                 <Film className="w-4 h-4 text-gray-600" />
                               </div>
                             )}

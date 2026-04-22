@@ -131,7 +131,7 @@ export default function VoiceCloning() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function VoiceCloning() {
           {/* Upload Zone */}
           <AwakliCard className="p-6">
             <h2 className="text-lg font-semibold text-white font-display mb-4">
-              <Mic className="w-5 h-5 inline mr-2 text-accent-pink" />
+              <Mic className="w-5 h-5 inline mr-2 text-token-violet" />
               Reference Audio
             </h2>
 
@@ -178,7 +178,7 @@ export default function VoiceCloning() {
               onClick={() => fileInputRef.current?.click()}
               className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? "border-accent-cyan bg-accent-cyan/5"
+                  ? "border-token-cyan bg-token-cyan/5"
                   : audioFile
                   ? "border-green-500/50 bg-green-500/5"
                   : "border-gray-700 hover:border-gray-500 bg-gray-900/30"
@@ -215,7 +215,7 @@ export default function VoiceCloning() {
                             : Math.sin(i * 0.3) * 12 + 16,
                         }}
                         transition={{ duration: 0.15 }}
-                        className="w-1 bg-accent-cyan/60 rounded-full"
+                        className="w-1 bg-token-cyan/60 rounded-full"
                       />
                     ))}
                   </div>
@@ -262,7 +262,7 @@ export default function VoiceCloning() {
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   <span>Cloning Voice...</span>
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-accent-pink/20 to-accent-cyan/20 rounded-lg"
+                    className="absolute inset-0 bg-gradient-to-r from-token-violet/20 to-token-cyan/20 rounded-lg"
                     animate={{ opacity: [0.3, 0.6, 0.3] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
@@ -294,7 +294,7 @@ export default function VoiceCloning() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-400">
                   <span>Voice ID</span>
-                  <span className="text-accent-cyan font-mono text-xs">{voiceSettings?.voiceId || "—"}</span>
+                  <span className="text-token-cyan font-mono text-xs">{voiceSettings?.voiceId || "—"}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
                   <span>Stability</span>
@@ -313,7 +313,7 @@ export default function VoiceCloning() {
         <div className="space-y-6">
           <AwakliCard className="p-6">
             <h2 className="text-lg font-semibold text-white font-display mb-4">
-              <Volume2 className="w-5 h-5 inline mr-2 text-accent-cyan" />
+              <Volume2 className="w-5 h-5 inline mr-2 text-token-cyan" />
               Test Voice
             </h2>
 
@@ -321,7 +321,7 @@ export default function VoiceCloning() {
               value={testText}
               onChange={(e) => setTestText(e.target.value)}
               placeholder="Type text to test the cloned voice..."
-              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-cyan resize-none mb-4"
+              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-token-cyan resize-none mb-4"
               rows={4}
             />
 
@@ -374,7 +374,7 @@ export default function VoiceCloning() {
                             : Math.sin(i * 0.25) * 16 + 20,
                         }}
                         transition={{ duration: 0.15 }}
-                        className="w-1 bg-accent-pink/60 rounded-full"
+                        className="w-1 bg-token-violet/60 rounded-full"
                       />
                     ))}
                   </div>

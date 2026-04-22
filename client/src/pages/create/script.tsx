@@ -146,7 +146,7 @@ export default function WizardScript() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-token-lavender text-xs font-semibold uppercase tracking-widest">
             <BookOpen className="w-3.5 h-3.5" />
-            Stage 01 — Script
+            Stage 02 — Script
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your script

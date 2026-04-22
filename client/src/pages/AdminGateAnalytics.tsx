@@ -122,7 +122,7 @@ export default function AdminGateAnalytics() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -149,7 +149,7 @@ export default function AdminGateAnalytics() {
 
       {dashboardQuery.isLoading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-6 h-6 animate-spin text-accent-cyan" />
+          <Loader2 className="w-6 h-6 animate-spin text-token-cyan" />
         </div>
       ) : (
         <>
@@ -160,7 +160,7 @@ export default function AdminGateAnalytics() {
               label="Total Gates"
               value={stats?.totalGates || 0}
               subtext={`${stats?.pendingCount || 0} pending`}
-              color="bg-accent-cyan/10 text-accent-cyan"
+              color="bg-token-cyan/10 text-token-cyan"
             />
             <StatCard
               icon={CheckCircle}

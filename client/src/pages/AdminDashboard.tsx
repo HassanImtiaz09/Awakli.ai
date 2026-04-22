@@ -124,7 +124,7 @@ function UserList() {
     <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
       <div className="p-6 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Users className="w-5 h-5 text-accent-cyan" />
+          <Users className="w-5 h-5 text-token-cyan" />
           <h2 className="text-lg font-heading font-semibold text-white">Users</h2>
         </div>
         <span className="text-xs text-gray-500">{data?.total ?? 0} total</span>
@@ -146,7 +146,7 @@ function UserList() {
               <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-pink to-accent-cyan flex items-center justify-center text-xs font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-token-violet to-token-cyan flex items-center justify-center text-xs font-bold text-white">
                       {(u.name || "?").charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -164,8 +164,8 @@ function UserList() {
                 </td>
                 <td className="p-4">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    u.tier === "studio" ? "bg-accent-cyan/10 text-accent-cyan" :
-                    u.tier === "creator_pro" ? "bg-accent-pink/10 text-accent-pink" :
+                    u.tier === "studio" ? "bg-token-cyan/10 text-token-cyan" :
+                    u.tier === "creator_pro" ? "bg-token-violet/10 text-token-violet" :
                     "bg-white/5 text-gray-400"
                   }`}>
                     {u.tier || "free"}
@@ -233,9 +233,9 @@ function SubscriptionOverview() {
           const pct = (count / total) * 100;
           const colors: Record<string, { bar: string; label: string }> = {
             free_trial: { bar: "#6B7280", label: "text-gray-400" },
-            creator: { bar: "#6B5BFF", label: "text-accent-pink" },
+            creator: { bar: "#6B5BFF", label: "text-token-violet" },
             creator_pro: { bar: "#F59E0B", label: "text-amber-400" },
-            studio: { bar: "#00D4FF", label: "text-accent-cyan" },
+            studio: { bar: "#00F0FF", label: "text-token-cyan" },
           };
           return (
             <div key={tier}>
@@ -385,7 +385,7 @@ function CreditAnalytics() {
           </div>
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Pack Revenue</p>
-            <p className="text-2xl font-display font-bold text-accent-cyan">${((a?.packs?.revenueCents || 0) / 100).toLocaleString()}</p>
+            <p className="text-2xl font-display font-bold text-token-cyan">${((a?.packs?.revenueCents || 0) / 100).toLocaleString()}</p>
             <p className="text-xs text-gray-500">{a?.packs?.count || 0} packs sold</p>
           </div>
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
@@ -422,7 +422,7 @@ function CreditAnalytics() {
       {/* Top Consumers */}
       <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
         <div className="p-6 border-b border-white/5 flex items-center gap-3">
-          <TrendingUp className="w-5 h-5 text-accent-pink" />
+          <TrendingUp className="w-5 h-5 text-token-violet" />
           <h2 className="text-lg font-heading font-semibold text-white">Top Consumers (This Month)</h2>
         </div>
         <div className="overflow-x-auto">
@@ -446,8 +446,8 @@ function CreditAnalytics() {
                   </td>
                   <td className="p-4">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      c.tier === "studio" ? "bg-accent-cyan/10 text-accent-cyan" :
-                      c.tier === "creator_pro" ? "bg-accent-pink/10 text-accent-pink" :
+                      c.tier === "studio" ? "bg-token-cyan/10 text-token-cyan" :
+                      c.tier === "creator_pro" ? "bg-token-violet/10 text-token-violet" :
                       c.tier === "creator" ? "bg-purple-400/10 text-purple-400" :
                       "bg-white/5 text-gray-400"
                     }`}>{c.tier}</span>
@@ -478,21 +478,21 @@ function CreditAnalytics() {
             placeholder="User ID"
             value={promoUserId}
             onChange={(e) => setPromoUserId(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-token-violet/50 outline-none"
           />
           <input
             type="number"
             placeholder="Credits"
             value={promoAmount}
             onChange={(e) => setPromoAmount(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-token-violet/50 outline-none"
           />
           <input
             type="text"
             placeholder="Reason code"
             value={promoReason}
             onChange={(e) => setPromoReason(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-accent-pink/50 outline-none"
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:border-token-violet/50 outline-none"
           />
           <button
             onClick={() => {
@@ -546,9 +546,9 @@ export default function AdminDashboard() {
 
           {/* Metric Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <MetricCard icon={Users} label="Total Users" value={m?.totalUsers ?? 0} change="+12%" color="#00D4FF" />
+            <MetricCard icon={Users} label="Total Users" value={m?.totalUsers ?? 0} change="+12%" color="#00F0FF" />
             <MetricCard icon={Film} label="Total Projects" value={m?.totalProjects ?? 0} change="+8%" color="#6B5BFF" />
-            <MetricCard icon={Zap} label="Total Creators" value={m?.totalCreators ?? 0} color="#FFB800" />
+            <MetricCard icon={Zap} label="Total Creators" value={m?.totalCreators ?? 0} color="#FFD60A" />
             <MetricCard icon={DollarSign} label="Revenue" value={`$${((m?.totalRevenue ?? 0) / 100).toFixed(0)}`} change="+15%" color="#2ECC71" />
           </div>
 
@@ -565,18 +565,18 @@ export default function AdminDashboard() {
 
           {/* Provider Router Admin */}
           <div className="mb-8">
-            <a href="/admin/providers" className="block p-6 rounded-2xl border border-white/5 bg-[#0D0D1A] hover:border-accent-cyan/30 transition-colors group">
+            <a href="/admin/providers" className="block p-6 rounded-2xl border border-white/5 bg-[#0D0D1A] hover:border-token-cyan/30 transition-colors group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-lg flex items-center justify-center bg-accent-cyan/10">
-                    <Zap className="w-5 h-5 text-accent-cyan" />
+                  <div className="w-11 h-11 rounded-lg flex items-center justify-center bg-token-cyan/10">
+                    <Zap className="w-5 h-5 text-token-cyan" />
                   </div>
                   <div>
                     <h3 className="text-lg font-heading font-semibold text-white">Provider Router</h3>
                     <p className="text-sm text-gray-500">Manage AI providers, API keys, circuit breakers, and health monitoring</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-accent-cyan transition-colors" />
+                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-token-cyan transition-colors" />
               </div>
             </a>
           </div>

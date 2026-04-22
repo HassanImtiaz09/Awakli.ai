@@ -100,7 +100,7 @@ export default function QualityInsights() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function QualityInsights() {
 
       {dashboardQuery.isLoading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-6 h-6 animate-spin text-accent-cyan" />
+          <Loader2 className="w-6 h-6 animate-spin text-token-cyan" />
         </div>
       ) : (
         <>
@@ -155,7 +155,7 @@ export default function QualityInsights() {
               title="Total Regenerations"
               value={insights?.totalRegenerated || 0}
               description="Number of times you requested a stage to be regenerated"
-              color="bg-accent-pink/10 text-accent-pink"
+              color="bg-token-violet/10 text-token-violet"
             />
           </div>
 
@@ -222,7 +222,7 @@ export default function QualityInsights() {
           {/* Stage-by-Stage Breakdown */}
           <AwakliCard className="p-5">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-accent-cyan" />
+              <TrendingUp className="w-4 h-4 text-token-cyan" />
               Stage-by-Stage Performance
             </h3>
             {dashboard?.approvalRates && dashboard.approvalRates.length > 0 ? (

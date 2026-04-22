@@ -49,16 +49,16 @@
   --color-text-primary:  var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted:    var(--text-muted);
-  --color-pink:          var(--accent-cyan);
-  --color-pink-hover:    var(--accent-sakura);
-  --color-cyan:          var(--accent-cyan);
-  --color-cyan-hover:    var(--accent-cyan-hover);
-  --color-jade:          var(--accent-jade);
-  --color-violet:        var(--accent-violet);
-  --color-ember:         var(--accent-ember);
-  --color-gold:          var(--accent-gold);
-  --color-success:       var(--accent-jade);
-  --color-warning:       var(--accent-ember);
+  --color-pink:          var(--token-cyan);
+  --color-pink-hover:    var(--token-cyan);
+  --color-cyan:          var(--token-cyan);
+  --color-cyan-hover:    var(--token-cyan);
+  --color-jade:          var(--token-mint);
+  --color-violet:        var(--token-lavender);
+  --color-ember:         var(--token-gold);
+  --color-gold:          var(--token-gold);
+  --color-success:       var(--token-mint);
+  --color-warning:       var(--token-gold);
   --color-error:         var(--status-error);
 
   /* Design Token Colors (bg-token-cyan, text-token-violet, etc.) */
@@ -191,37 +191,30 @@
   --text-secondary: #9494B8;
   --text-muted:     #5C5C7A;
 
-  /* Accents — Anime Palette */
-  --accent-pink:       #6B5BFF;
-  --accent-sakura:     #00F0FF;
-  --accent-pink-glow:  rgba(107,91,255, 0.3);
-  --accent-cyan:       #00D4FF;
-  --accent-cyan-hover: #33DFFF;
-  --accent-cyan-glow:  rgba(0, 212, 255, 0.2);
-  --accent-jade:       #00FFB2;
-  --accent-jade-glow:  rgba(0, 255, 178, 0.2);
-  --accent-violet:     #7C3AED;
-  --accent-violet-glow: rgba(124, 58, 237, 0.2);
-  --accent-ember:      #FF8A3D;
-  --accent-ember-glow: rgba(255, 138, 61, 0.2);
-  --accent-gold:       #FFB800;
+  /* Accents — Anime Palette (migrated to token-* system) */
+  --token-violet:       #6B5BFF;
+  --token-violet-glow:  rgba(107,91,255, 0.3);
+  --token-cyan:       #00F0FF;
+  --token-cyan-hover: #33DFFF;
+  --token-cyan-glow:  rgba(0, 240, 255, 0.2);
+  --token-gold:       #FFD60A;
 
   /* Status */
   --status-success: #00FFB2;
   --status-warning: #FF8A3D;
   --status-error:   #E74C3C;
-  --status-info:    #00D4FF;
+  --status-info:    #00F0FF;
 
   /* Named Gradients §3.1 */
   --gradient-opening:   linear-gradient(135deg, #00F0FF 0%, #6B5BFF 55%, #B388FF 100%);
-  --gradient-night:     linear-gradient(135deg, #00D4FF, #6B5BFF);
+  --gradient-night:     linear-gradient(135deg, #00F0FF, #6B5BFF);
   --gradient-heat:      linear-gradient(135deg, #FFD60A 0%, #FF8A00 50%, #FF2D7A 100%);
   --gradient-moonrise:  linear-gradient(180deg, #05050C, #151528);
-  --gradient-sakuga:    linear-gradient(90deg, #00FFB2, #00D4FF);
+  --gradient-sakuga:    linear-gradient(90deg, #00FFB2, #00F0FF);
   --gradient-hero:      linear-gradient(135deg, #05050C 0%, #1A0A2E 50%, #0D1A2E 100%);
   --gradient-card:      linear-gradient(180deg, rgba(21,21,40,0.8) 0%, rgba(13,13,26,0.9) 100%);
   --gradient-accent:    linear-gradient(135deg, #00F0FF, #6B5BFF);
-  --gradient-cyan:      linear-gradient(135deg, #00D4FF, #0099CC);
+  --gradient-cyan:      linear-gradient(135deg, #00F0FF, #0099CC);
   --gradient-radial-pink: radial-gradient(ellipse at center, rgba(107,91,255,0.15) 0%, transparent 70%);
   --gradient-radial-cyan: radial-gradient(ellipse at center, rgba(0,212,255,0.1) 0%, transparent 70%);
 
@@ -245,13 +238,13 @@
   --secondary-foreground: #9494B8;
   --muted:         #1C1C35;
   --muted-foreground: #5C5C7A;
-  --accent:        #00D4FF;
+  --accent:        #00F0FF;
   --accent-foreground: #05050C;
   --destructive:   #E74C3C;
   --destructive-foreground: #F0F0F5;
   --border:        rgba(255,255,255,0.07);
   --input:         #151528;
-  --ring:          #00D4FF;
+  --ring:          #00F0FF;
   --sidebar:       #0D0D1A;
   --sidebar-foreground: #9494B8;
   --sidebar-primary: #6B5BFF;
@@ -259,7 +252,7 @@
   --sidebar-accent: #1C1C35;
   --sidebar-accent-foreground: #F0F0F5;
   --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-ring:  #00D4FF;
+  --sidebar-ring:  #00F0FF;
 }
 
 /* ============================================================
@@ -493,7 +486,7 @@ body {
    Focus Ring §3.10 — Cyan glow, never OS default
    ============================================================ */
 :focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid var(--token-cyan);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.15);
 }
@@ -527,7 +520,7 @@ body {
    ============================================================ */
 .badge-action  { background: rgba(255,68,68,0.15);  color: #FF4444; }
 .badge-romance { background: rgba(255,105,180,0.15); color: #FF69B4; }
-.badge-scifi   { background: rgba(0,212,255,0.15);   color: #00D4FF; }
+.badge-scifi   { background: rgba(0,212,255,0.15);   color: #00F0FF; }
 .badge-fantasy { background: rgba(155,89,182,0.15);  color: #9B59B6; }
 .badge-horror  { background: rgba(231,76,60,0.15);   color: #E74C3C; }
 .badge-comedy  { background: rgba(243,156,18,0.15);  color: #F39C12; }
@@ -560,7 +553,7 @@ body {
     left: 16px;
     z-index: 9999;
     padding: 8px 16px;
-    background: var(--accent-cyan);
+    background: var(--token-cyan);
     color: var(--bg-void);
     font-weight: 600;
     border-radius: 0 0 8px 8px;
@@ -642,7 +635,7 @@ body {
   position: absolute;
   width: 8px;
   height: 6px;
-  background: var(--accent-sakura);
+  background: var(--token-cyan);
   border-radius: 50% 0 50% 0;
   opacity: 0;
   pointer-events: none;
@@ -666,8 +659,8 @@ body {
    ============================================================ */
 .error-shake {
   animation: shake-x 200ms ease-out;
-  border-color: var(--accent-ember) !important;
-  box-shadow: 0 0 12px var(--accent-ember-glow);
+  border-color: var(--token-gold) !important;
+  box-shadow: 0 0 12px rgba(255, 214, 10, 0.2);
 }
 
 /* ============================================================

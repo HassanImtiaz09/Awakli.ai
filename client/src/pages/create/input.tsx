@@ -20,6 +20,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { TIER_DISPLAY_NAMES, TIER_CTA } from "@shared/pricingCatalog";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import IdeaPrompt from "@/components/awakli/IdeaPrompt";
 import LengthPicker from "@/components/awakli/LengthPicker";
@@ -263,9 +264,9 @@ export default function WizardInput() {
       UpgradeModalBus.open({
         currentTier: userTier,
         required: "creator",
-        requiredDisplayName: "Mangaka",
+        requiredDisplayName: TIER_DISPLAY_NAMES.creator,
         upgradeSku: "price_mangaka_monthly",
-        ctaText: "Unlock with Mangaka — from $19/mo",
+        ctaText: TIER_CTA.creator,
         pricingUrl: "/pricing",
       });
       return;
@@ -275,9 +276,9 @@ export default function WizardInput() {
       UpgradeModalBus.open({
         currentTier: userTier,
         required: "studio",
-        requiredDisplayName: "Studio Pro",
+        requiredDisplayName: TIER_DISPLAY_NAMES.studio,
         upgradeSku: "price_studio_pro_monthly",
-        ctaText: "Unlock with Studio Pro — from $99/mo",
+        ctaText: TIER_CTA.studio,
         pricingUrl: "/pricing",
       });
       return;
@@ -753,9 +754,9 @@ function ChapterPicker({
                   UpgradeModalBus.open({
                     currentTier: userTier,
                     required: "studio",
-                    requiredDisplayName: "Studio Pro",
+                    requiredDisplayName: TIER_DISPLAY_NAMES.studio,
                     upgradeSku: "price_studio_pro_monthly",
-                    ctaText: "Unlock with Studio Pro — from $99/mo",
+                    ctaText: TIER_CTA.studio,
                     pricingUrl: "/pricing",
                   });
                 }}

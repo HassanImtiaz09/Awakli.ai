@@ -79,7 +79,7 @@ export function CreditPanel({
         {userBalance !== undefined && (
           <div className="pl-4 border-l border-gray-700/50">
             <p className="text-[11px] text-gray-500 uppercase tracking-wider">Balance</p>
-            <p className="text-sm font-bold text-accent-cyan">{userBalance.toFixed(1)} cr</p>
+            <p className="text-sm font-bold text-token-cyan">{userBalance.toFixed(1)} cr</p>
           </div>
         )}
       </div>

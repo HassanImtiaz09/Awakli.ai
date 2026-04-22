@@ -51,7 +51,7 @@ const TIERS = [
     icon: Zap,
     accentColor: "#6B5BFF",
     gradientFrom: "#6B5BFF",
-    gradientTo: "#7C3AED",
+    gradientTo: "#B388FF",
     popular: true,
     ctaText: `Upgrade to ${TIER_DISPLAY_NAMES.creator}`,
     highlights: [
@@ -72,8 +72,8 @@ const TIERS = [
     annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator_pro / 100,
     narrative: "Run the studio. Ship the universe.",
     icon: Crown,
-    accentColor: "#00D4FF",
-    gradientFrom: "#00D4FF",
+    accentColor: "#00F0FF",
+    gradientFrom: "#00F0FF",
     gradientTo: "#00FFB2",
     ctaText: `Go ${TIER_DISPLAY_NAMES.creator_pro}`,
     highlights: [
@@ -271,7 +271,7 @@ function TierScene({
                   {price === 0 ? "/forever" : "/mo"}
                 </span>
                 {interval === "annual" && price > 0 && (
-                  <p className="text-xs text-[#00D4FF] mt-1 font-mono">
+                  <p className="text-xs text-[#00F0FF] mt-1 font-mono">
                     Billed ${price * 12}/year (save ${(tier.monthlyPrice - tier.annualMonthlyPrice) * 12}/yr)
                   </p>
                 )}
@@ -336,7 +336,7 @@ function TierScene({
                   <Shield className="w-3.5 h-3.5 inline mr-1.5 text-[#00FFB2]" />
                   14-day no-questions refund. Credits consumed are non-refundable.{" "}
                   <Link href="/refund">
-                    <span className="text-[#00D4FF] hover:underline cursor-pointer">Full policy</span>
+                    <span className="text-[#00F0FF] hover:underline cursor-pointer">Full policy</span>
                   </Link>
                 </p>
               </div>
@@ -425,7 +425,7 @@ export default function Pricing() {
                 }`}
               >
                 Annual
-                <span className="ml-2 text-xs text-[#00D4FF] font-bold">Save 20%</span>
+                <span className="ml-2 text-xs text-[#00F0FF] font-bold">Save 20%</span>
               </button>
             </div>
           </motion.div>
@@ -444,9 +444,9 @@ export default function Pricing() {
 
           {/* Anime Preview Callout */}
           <ScrollReveal>
-            <div className="max-w-3xl mx-auto my-16 p-8 rounded-2xl border border-[#00D4FF]/20 bg-gradient-to-r from-[#00D4FF]/5 to-transparent">
+            <div className="max-w-3xl mx-auto my-16 p-8 rounded-2xl border border-[#00F0FF]/20 bg-gradient-to-r from-[#00F0FF]/5 to-transparent">
               <div className="flex items-start gap-6">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#00D4FF] to-[#0099CC] flex items-center justify-center shrink-0">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0099CC] flex items-center justify-center shrink-0">
                   <Film className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -457,7 +457,7 @@ export default function Pricing() {
                     Every user gets one complimentary 15-second anime preview. See your manga come alive
                     with AI-generated animation, voice acting, and music. No credit card required.
                   </p>
-                  <Link href="/create" className="inline-flex items-center gap-2 text-[#00D4FF] text-sm font-semibold hover:underline">
+                  <Link href="/create" className="inline-flex items-center gap-2 text-[#00F0FF] text-sm font-semibold hover:underline">
                     Create your first manga <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>

@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value, sub, color = "#6B5BFF", trend }: {
 function EarningsBreakdown({ earnings }: { earnings: any }) {
   const sources = [
     { label: "Tips", amount: earnings?.totalEarnings ?? 0, color: "#B388FF", icon: Heart },
-    { label: "Premium Episodes", amount: 0, color: "#00D4FF", icon: Crown },
+    { label: "Premium Episodes", amount: 0, color: "#00F0FF", icon: Crown },
     { label: "Subscriptions", amount: 0, color: "#2ECC71", icon: Star },
   ];
   const total = sources.reduce((s, r) => s + r.amount, 0) || 1;
@@ -51,7 +51,7 @@ function EarningsBreakdown({ earnings }: { earnings: any }) {
   return (
     <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden">
       <div className="p-6 border-b border-white/5 flex items-center gap-3">
-        <BarChart3 className="w-5 h-5 text-accent-pink" />
+        <BarChart3 className="w-5 h-5 text-token-violet" />
         <h2 className="text-lg font-heading font-semibold text-white">Earnings Breakdown</h2>
       </div>
       <div className="p-6">
@@ -129,7 +129,7 @@ function PremiumEpisodeManager() {
                   {project.coverImageUrl ? (
                     <img src={project.coverImageUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-accent-pink/20 to-accent-cyan/20" />
+                    <div className="w-full h-full bg-gradient-to-br from-token-violet/20 to-token-cyan/20" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -229,7 +229,7 @@ export default function CreatorEarnings() {
               label="Supporters"
               value={t.length}
               sub="unique tippers"
-              color="#00D4FF"
+              color="#00F0FF"
             />
           </div>
 
@@ -242,7 +242,7 @@ export default function CreatorEarnings() {
           {/* Recent Tips */}
           <div className="rounded-2xl border border-white/5 bg-[#0D0D1A] overflow-hidden mb-8">
             <div className="p-6 border-b border-white/5 flex items-center gap-3">
-              <Gift className="w-5 h-5 text-accent-pink" />
+              <Gift className="w-5 h-5 text-token-violet" />
               <h2 className="text-lg font-heading font-semibold text-white">Recent Tips</h2>
               <span className="ml-auto text-xs text-gray-500">{t.length} total</span>
             </div>
@@ -253,7 +253,7 @@ export default function CreatorEarnings() {
                 <p className="text-gray-500 text-sm mb-4">No tips received yet. Share your creations to start earning!</p>
                 <Link
                   href="/discover"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-pink/10 text-accent-pink text-sm font-semibold hover:bg-accent-pink/20 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-token-violet/10 text-token-violet text-sm font-semibold hover:bg-token-violet/20 transition-colors"
                 >
                   Explore Community <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -263,7 +263,7 @@ export default function CreatorEarnings() {
                 {t.map((tip: any) => (
                   <div key={tip.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-pink to-accent-cyan flex items-center justify-center text-xs font-bold text-white">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-token-violet to-token-cyan flex items-center justify-center text-xs font-bold text-white">
                         {(tip.senderName || "?").charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -288,7 +288,7 @@ export default function CreatorEarnings() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-8 rounded-2xl border border-accent-pink/20 bg-gradient-to-r from-accent-pink/5 to-accent-cyan/5 text-center"
+              className="p-8 rounded-2xl border border-token-violet/20 bg-gradient-to-r from-token-violet/5 to-token-cyan/5 text-center"
             >
               <Crown className="w-10 h-10 text-yellow-400 mx-auto mb-4" />
               <h3 className="text-xl font-heading font-bold text-white mb-2">Unlock Creator Monetization</h3>
@@ -306,9 +306,9 @@ export default function CreatorEarnings() {
           )}
 
           {/* Payout info */}
-          <div className="mt-8 p-6 rounded-2xl border border-accent-cyan/20 bg-accent-cyan/5">
+          <div className="mt-8 p-6 rounded-2xl border border-token-cyan/20 bg-token-cyan/5">
             <div className="flex items-start gap-4">
-              <Calendar className="w-6 h-6 text-accent-cyan mt-0.5 flex-shrink-0" />
+              <Calendar className="w-6 h-6 text-token-cyan mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="text-sm font-semibold text-white mb-1">Payout Information</h3>
                 <p className="text-sm text-gray-400 leading-relaxed">

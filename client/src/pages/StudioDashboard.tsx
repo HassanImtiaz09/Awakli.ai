@@ -114,10 +114,10 @@ export default function StudioDashboard() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 }}
-              className="group p-5 rounded-xl border border-[#00D4FF]/20 bg-gradient-to-br from-[#00D4FF]/5 to-transparent hover:border-[#00D4FF]/40 hover:bg-[#00D4FF]/10 transition-all cursor-pointer"
+              className="group p-5 rounded-xl border border-[#00F0FF]/20 bg-gradient-to-br from-[#00F0FF]/5 to-transparent hover:border-[#00F0FF]/40 hover:bg-[#00F0FF]/10 transition-all cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#00D4FF]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Upload size={24} className="text-[#00D4FF]" />
+              <div className="w-12 h-12 rounded-xl bg-[#00F0FF]/15 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Upload size={24} className="text-[#00F0FF]" />
               </div>
               <h3 className="font-semibold text-[#F0F0F5] mb-1">Upload Manga</h3>
               <p className="text-xs text-[#9494B8] leading-relaxed">Already have manga art? Upload it and let the community vote it to anime.</p>
@@ -142,9 +142,9 @@ export default function StudioDashboard() {
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
                 stat.color === "pink" ? "bg-[rgba(107,91,255,0.15)] text-[#00F0FF]"
-                : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00D4FF]"
+                : stat.color === "cyan" ? "bg-[rgba(0,212,255,0.15)] text-[#00F0FF]"
                 : stat.color === "success" ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]"
-                : "bg-[rgba(255,184,0,0.15)] text-[#FFB800]"
+                : "bg-[rgba(255,184,0,0.15)] text-[#FFD60A]"
               }`}>
                 {stat.icon}
               </div>
@@ -158,7 +158,7 @@ export default function StudioDashboard() {
         {activeJobs.length > 0 && (
           <section>
             <h2 className="text-base font-semibold text-[#F0F0F5] mb-4 flex items-center gap-2">
-              <Loader2 size={16} className="text-[#00D4FF] animate-spin" />
+              <Loader2 size={16} className="text-[#00F0FF] animate-spin" />
               Processing Jobs
             </h2>
             <div className="space-y-3">
@@ -196,7 +196,7 @@ export default function StudioDashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-[#F0F0F5]">Your Projects</h2>
             <Link href="/studio/projects">
-              <span className="text-sm text-[#00D4FF] hover:text-[#33DFFF] cursor-pointer flex items-center gap-1">
+              <span className="text-sm text-[#00F0FF] hover:text-[#33DFFF] cursor-pointer flex items-center gap-1">
                 View all <ArrowRight size={14} />
               </span>
             </Link>

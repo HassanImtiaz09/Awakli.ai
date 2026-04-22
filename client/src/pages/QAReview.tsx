@@ -99,7 +99,7 @@ export default function QAReview() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -143,7 +143,7 @@ export default function QAReview() {
                   onClick={() => setIsPlaying(true)}
                   className="absolute inset-0 flex items-center justify-center bg-black/40"
                 >
-                  <div className="w-20 h-20 rounded-full bg-accent-pink/90 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-token-violet/90 flex items-center justify-center">
                     <Play className="w-8 h-8 text-white ml-1" />
                   </div>
                 </motion.button>
@@ -166,7 +166,7 @@ export default function QAReview() {
             <div className="flex items-center gap-4 text-sm text-gray-400">
               <span>Episode Pipeline #{run.id}</span>
               {run.totalCost && (
-                <span className="text-accent-cyan">
+                <span className="text-token-cyan">
                   Cost: ${(Number(run.totalCost) / 100).toFixed(2)}
                 </span>
               )}
@@ -267,13 +267,13 @@ export default function QAReview() {
                 onClick={() => toggleIssue(id)}
                 className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all text-left ${
                   selectedIssues.has(id)
-                    ? "border-accent-pink bg-accent-pink/10"
+                    ? "border-token-violet bg-token-violet/10"
                     : "border-gray-700/50 bg-gray-800/30 hover:border-gray-600"
                 }`}
               >
                 <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${
                   selectedIssues.has(id)
-                    ? "bg-accent-pink border-accent-pink"
+                    ? "bg-token-violet border-token-violet"
                     : "border-gray-600"
                 }`}>
                   {selectedIssues.has(id) && (
@@ -302,7 +302,7 @@ export default function QAReview() {
                     value={otherDescription}
                     onChange={(e) => setOtherDescription(e.target.value)}
                     placeholder="Describe the issue..."
-                    className="w-full mt-2 p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-cyan resize-none"
+                    className="w-full mt-2 p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-token-cyan resize-none"
                     rows={3}
                   />
                 </motion.div>

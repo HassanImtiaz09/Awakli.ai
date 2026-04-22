@@ -329,7 +329,7 @@ export default function MangaUpload() {
                           )}
                           {(item.state === "uploading" || item.state === "processing") && (
                             <div className="space-y-1.5">
-                              <div className="flex items-center gap-1.5 text-xs text-[#00D4FF]">
+                              <div className="flex items-center gap-1.5 text-xs text-[#00F0FF]">
                                 <Loader2 size={12} className="animate-spin" />
                                 {item.state === "uploading" ? "Uploading..." : "Processing..."}
                               </div>

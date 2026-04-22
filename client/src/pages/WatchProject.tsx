@@ -86,7 +86,7 @@ export default function WatchProject() {
           <h1 className="text-2xl font-display font-bold text-white mb-2">Project Not Found</h1>
           <p className="text-gray-400 mb-6">This project may have been removed or doesn't exist.</p>
           <Link href="/discover">
-            <button className="px-6 py-3 rounded-xl bg-accent-pink text-white font-semibold">
+            <button className="px-6 py-3 rounded-xl bg-token-violet text-white font-semibold">
               Browse Projects
             </button>
           </Link>
@@ -144,7 +144,7 @@ export default function WatchProject() {
         {p.coverImageUrl ? (
           <img src={p.coverImageUrl} alt={p.title} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-pink/30 via-accent-purple/20 to-accent-cyan/20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-token-violet/30 via-token-lavender/20 to-token-cyan/20" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-bg-void via-bg-void/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg-void/80 to-transparent" />
@@ -171,7 +171,7 @@ export default function WatchProject() {
                     {g.trim()}
                   </span>
                 ))}
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent-pink/20 border border-accent-pink/30 text-accent-pink">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-token-violet/20 border border-token-violet/30 text-token-violet">
                   {p.animeStyle}
                 </span>
               </div>
@@ -196,7 +196,7 @@ export default function WatchProject() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white font-semibold shadow-lg shadow-[#6B5BFF]/25"
+                      className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-token-violet to-token-lavender text-white font-semibold shadow-lg shadow-[#6B5BFF]/25"
                     >
                       <Play className="w-5 h-5 fill-white" />
                       Watch Now
@@ -209,11 +209,11 @@ export default function WatchProject() {
                   onClick={handleWatchlistToggle}
                   className={`flex items-center gap-2 px-6 py-3.5 rounded-xl border font-semibold transition-colors ${
                     inWatchlist
-                      ? "border-accent-cyan/50 bg-accent-cyan/10 text-accent-cyan"
+                      ? "border-token-cyan/50 bg-token-cyan/10 text-token-cyan"
                       : "border-white/10 bg-white/5 text-white hover:bg-white/10"
                   }`}
                 >
-                  {inWatchlist ? <Bookmark className="w-5 h-5 fill-accent-cyan" /> : <BookmarkPlus className="w-5 h-5" />}
+                  {inWatchlist ? <Bookmark className="w-5 h-5 fill-token-cyan" /> : <BookmarkPlus className="w-5 h-5" />}
                   {inWatchlist ? "In Watchlist" : "Add to Watchlist"}
                 </motion.button>
                 <motion.button
@@ -238,7 +238,7 @@ export default function WatchProject() {
           <div className="lg:col-span-2">
             <ScrollReveal>
               <h2 className="text-2xl font-display font-bold mb-6 flex items-center gap-2">
-                <Film className="w-5 h-5 text-accent-pink" />
+                <Film className="w-5 h-5 text-token-violet" />
                 Episodes
               </h2>
 
@@ -276,7 +276,7 @@ export default function WatchProject() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Visibility</span>
-                      <span className="text-accent-cyan capitalize">{p.visibility}</span>
+                      <span className="text-token-cyan capitalize">{p.visibility}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Created</span>
@@ -339,7 +339,7 @@ export default function WatchProject() {
                   <div className="space-y-2">
                     {episodes.length > 0 && (
                       <Link href={`/watch/${slug}/1`}>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-accent-pink/10 text-accent-pink hover:bg-accent-pink/20 transition-colors text-sm font-medium">
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-token-violet/10 text-token-violet hover:bg-token-violet/20 transition-colors text-sm font-medium">
                           <Play className="w-4 h-4" />
                           Start from Episode 1
                         </button>
@@ -349,7 +349,7 @@ export default function WatchProject() {
                       onClick={handleWatchlistToggle}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 transition-colors text-sm font-medium"
                     >
-                      {inWatchlist ? <Check className="w-4 h-4 text-accent-cyan" /> : <Plus className="w-4 h-4" />}
+                      {inWatchlist ? <Check className="w-4 h-4 text-token-cyan" /> : <Plus className="w-4 h-4" />}
                       {inWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
                     </button>
                     <button
@@ -410,15 +410,15 @@ function EpisodeCard({ episode, slug, index }: { episode: any; slug: string; ind
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
       <Link href={`/watch/${slug}/${episode.episodeNumber}`}>
-        <div className="group flex gap-4 p-4 rounded-xl border border-white/5 bg-surface-1/30 hover:bg-surface-1/60 hover:border-accent-pink/20 transition-all cursor-pointer">
+        <div className="group flex gap-4 p-4 rounded-xl border border-white/5 bg-surface-1/30 hover:bg-surface-1/60 hover:border-token-violet/20 transition-all cursor-pointer">
           {/* Episode number */}
-          <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-accent-pink/20 to-accent-purple/20 flex items-center justify-center border border-white/5">
+          <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-token-violet/20 to-token-lavender/20 flex items-center justify-center border border-white/5">
             <span className="text-lg font-display font-bold text-white">{episode.episodeNumber}</span>
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white group-hover:text-accent-pink transition-colors truncate">
+            <h3 className="font-semibold text-white group-hover:text-token-violet transition-colors truncate">
               {episode.title || `Episode ${episode.episodeNumber}`}
             </h3>
             {episode.synopsis && (
@@ -441,8 +441,8 @@ function EpisodeCard({ episode, slug, index }: { episode: any; slug: string; ind
 
           {/* Play icon */}
           <div className="flex-shrink-0 flex items-center">
-            <div className="w-10 h-10 rounded-full bg-accent-pink/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Play className="w-5 h-5 text-accent-pink fill-accent-pink ml-0.5" />
+            <div className="w-10 h-10 rounded-full bg-token-violet/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Play className="w-5 h-5 text-token-violet fill-token-violet ml-0.5" />
             </div>
           </div>
         </div>

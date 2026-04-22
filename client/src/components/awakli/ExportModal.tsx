@@ -90,7 +90,7 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
                   onClick={() => setActiveTab("manga")}
                   className={`flex-1 py-3 text-sm font-medium transition-colors ${
                     activeTab === "manga"
-                      ? "text-white border-b-2 border-accent-pink"
+                      ? "text-white border-b-2 border-token-violet"
                       : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
@@ -100,7 +100,7 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
                   onClick={() => setActiveTab("anime")}
                   className={`flex-1 py-3 text-sm font-medium transition-colors ${
                     activeTab === "anime"
-                      ? "text-white border-b-2 border-accent-cyan"
+                      ? "text-white border-b-2 border-token-cyan"
                       : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
@@ -125,14 +125,14 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
                       isLocked
                         ? "border-white/5 bg-[#08080F] opacity-50 cursor-not-allowed"
                         : isExporting
-                        ? "border-accent-pink/30 bg-accent-pink/5"
+                        ? "border-token-violet/30 bg-token-violet/5"
                         : "border-white/5 bg-[#08080F] hover:border-white/10 hover:bg-white/[0.02]"
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                       activeTab === "manga"
-                        ? "bg-accent-pink/10 text-accent-pink"
-                        : "bg-accent-cyan/10 text-accent-cyan"
+                        ? "bg-token-violet/10 text-token-violet"
+                        : "bg-token-cyan/10 text-token-cyan"
                     }`}>
                       <Icon className="w-5 h-5" />
                     </div>
@@ -140,7 +140,7 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-white">{fmt.label}</span>
                         {fmt.tier === "studio" && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent-cyan/10 text-accent-cyan">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-token-cyan/10 text-token-cyan">
                             STUDIO
                           </span>
                         )}
@@ -151,7 +151,7 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
                       {isLocked ? (
                         <Lock className="w-4 h-4 text-gray-600" />
                       ) : isExporting ? (
-                        <Loader2 className="w-4 h-4 text-accent-pink animate-spin" />
+                        <Loader2 className="w-4 h-4 text-token-violet animate-spin" />
                       ) : (
                         <Download className="w-4 h-4 text-gray-500" />
                       )}
@@ -168,7 +168,7 @@ export function ExportModal({ isOpen, onClose, projectId, projectTitle, hasAnime
               </p>
               <Link
                 href="/pricing"
-                className="text-xs text-accent-pink hover:underline flex items-center gap-1"
+                className="text-xs text-token-violet hover:underline flex items-center gap-1"
               >
                 View plans <ArrowRight className="w-3 h-3" />
               </Link>

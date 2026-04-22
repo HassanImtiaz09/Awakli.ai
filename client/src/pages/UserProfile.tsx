@@ -49,7 +49,7 @@ export default function UserProfile() {
           <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h1 className="text-2xl font-display font-bold mb-2">User Not Found</h1>
           <Link href="/">
-            <button className="px-6 py-3 rounded-xl bg-accent-pink text-white font-semibold mt-4">Go Home</button>
+            <button className="px-6 py-3 rounded-xl bg-token-violet text-white font-semibold mt-4">Go Home</button>
           </Link>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function UserProfile() {
   return (
     <div className="min-h-screen bg-bg-void text-white">
       {/* Banner */}
-      <div className="relative h-48 md:h-56 bg-gradient-to-br from-accent-pink/20 via-accent-purple/10 to-accent-cyan/20 overflow-hidden">
+      <div className="relative h-48 md:h-56 bg-gradient-to-br from-token-violet/20 via-token-lavender/10 to-token-cyan/20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-bg-void to-transparent" />
       </div>
 
@@ -67,7 +67,7 @@ export default function UserProfile() {
       <div className="container relative -mt-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row items-start md:items-end gap-6">
           {/* Avatar */}
-          <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-accent-pink to-accent-purple flex items-center justify-center border-4 border-bg-void shadow-xl text-3xl font-display font-bold">
+          <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-token-violet to-token-lavender flex items-center justify-center border-4 border-bg-void shadow-xl text-3xl font-display font-bold">
             {(p.name || "U").charAt(0).toUpperCase()}
           </div>
 
@@ -93,8 +93,8 @@ export default function UserProfile() {
               disabled={toggleFollow.isPending}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-colors ${
                 isFollowing
-                  ? "border border-accent-cyan/50 bg-accent-cyan/10 text-accent-cyan hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50"
-                  : "bg-accent-pink text-white hover:bg-accent-pink/80"
+                  ? "border border-token-cyan/50 bg-token-cyan/10 text-token-cyan hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50"
+                  : "bg-token-violet text-white hover:bg-token-violet/80"
               }`}
             >
               {isFollowing ? <><UserMinus className="w-4 h-4" /> Unfollow</> : <><UserPlus className="w-4 h-4" /> Follow</>}
@@ -110,7 +110,7 @@ export default function UserProfile() {
               onClick={() => setActiveTab(tab)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === tab
-                  ? "border-accent-pink text-accent-pink"
+                  ? "border-token-violet text-token-violet"
                   : "border-transparent text-gray-400 hover:text-white"
               }`}
             >
@@ -149,13 +149,13 @@ function ProjectGrid({ projects, emptyText }: { projects: any[]; emptyText: stri
         <Link key={p.id} href={p.slug ? `/watch/${p.slug}` : "#"}>
           <motion.div
             whileHover={{ scale: 1.03 }}
-            className="group rounded-xl overflow-hidden border border-white/5 bg-surface-1/30 hover:border-accent-pink/20 transition-all cursor-pointer"
+            className="group rounded-xl overflow-hidden border border-white/5 bg-surface-1/30 hover:border-token-violet/20 transition-all cursor-pointer"
           >
             <div className="aspect-[3/4] bg-surface-2 relative overflow-hidden">
               {p.coverImageUrl ? (
                 <img src={p.coverImageUrl} alt={p.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-accent-pink/20 to-accent-purple/20 flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-token-violet/20 to-token-lavender/20 flex items-center justify-center">
                   <Film className="w-8 h-8 text-gray-600" />
                 </div>
               )}

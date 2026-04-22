@@ -103,7 +103,7 @@ function GateCard({ gate }: { gate: any }) {
             ? "bg-[#6B5BFF]/15 text-[#00F0FF]"
             : gate.gateType === "advisory"
             ? "bg-[#F39C12]/15 text-[#F39C12]"
-            : "bg-[#00D4FF]/15 text-[#00D4FF]"
+            : "bg-[#00F0FF]/15 text-[#00F0FF]"
         }`}>
           {gate.stageNumber}
         </div>

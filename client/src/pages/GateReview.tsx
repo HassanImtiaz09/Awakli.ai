@@ -178,7 +178,7 @@ export default function GateReview() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -187,7 +187,7 @@ export default function GateReview() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-accent-cyan mx-auto" />
+          <Loader2 className="w-8 h-8 animate-spin text-token-cyan mx-auto" />
           <p className="text-gray-400 text-sm">Loading gate review...</p>
         </div>
       </div>
@@ -280,7 +280,7 @@ export default function GateReview() {
                   onClick={() => setAbComparison("current")}
                   className={`px-3 py-1 rounded text-xs font-medium transition-all ${
                     abComparison === "current"
-                      ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30"
+                      ? "bg-token-cyan/20 text-token-cyan border border-token-cyan/30"
                       : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
@@ -323,7 +323,7 @@ export default function GateReview() {
                       {Array.from({ length: 40 }, (_, i) => (
                         <div
                           key={i}
-                          className="w-1 bg-accent-cyan/40 rounded-full"
+                          className="w-1 bg-token-cyan/40 rounded-full"
                           style={{ height: `${Math.random() * 100}%` }}
                         />
                       ))}
@@ -539,7 +539,7 @@ export default function GateReview() {
               value={regenReason}
               onChange={(e) => setRegenReason(e.target.value)}
               placeholder="Optional: describe what to improve..."
-              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-cyan resize-none"
+              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-token-cyan resize-none"
               rows={3}
             />
           </div>
@@ -567,7 +567,7 @@ export default function GateReview() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Optional: reason for rejection..."
-              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-cyan resize-none"
+              className="w-full p-3 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-token-cyan resize-none"
               rows={3}
             />
           </div>

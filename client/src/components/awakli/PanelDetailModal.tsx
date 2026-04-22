@@ -139,7 +139,7 @@ export default function PanelDetailModal({
   if (!panel) {
     return (
       <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-pink" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-violet" />
       </div>
     );
   }
@@ -195,7 +195,7 @@ export default function PanelDetailModal({
               onClick={() => setViewMode("raw")}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                 viewMode === "raw"
-                  ? "bg-accent-pink/20 text-accent-pink"
+                  ? "bg-token-violet/20 text-token-violet"
                   : "text-muted hover:text-white"
               }`}
             >
@@ -210,7 +210,7 @@ export default function PanelDetailModal({
               }}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                 viewMode === "composite"
-                  ? "bg-accent-cyan/20 text-accent-cyan"
+                  ? "bg-token-cyan/20 text-token-cyan"
                   : "text-muted hover:text-white"
               }`}
             >
@@ -252,7 +252,7 @@ export default function PanelDetailModal({
 
         {/* Panel info */}
         <div className="mt-3 text-center">
-          <span className="text-xs font-mono text-accent-cyan">
+          <span className="text-xs font-mono text-token-cyan">
             Scene {panel.sceneNumber} · Panel {panel.panelNumber}
           </span>
           <span className="text-xs text-muted ml-3">{panel.cameraAngle}</span>
@@ -304,7 +304,7 @@ export default function PanelDetailModal({
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
             panel.status === "approved" ? "bg-green-500/20 text-green-400" :
             panel.status === "rejected" ? "bg-red-500/20 text-red-400" :
-            panel.status === "generated" ? "bg-accent-cyan/20 text-accent-cyan" :
+            panel.status === "generated" ? "bg-token-cyan/20 text-token-cyan" :
             "bg-white/10 text-muted"
           }`}>
             {String(panel.status)}
@@ -324,7 +324,7 @@ export default function PanelDetailModal({
                     setEditingDesc(true);
                   }
                 }}
-                className="text-xs text-accent-cyan hover:text-white transition-colors"
+                className="text-xs text-token-cyan hover:text-white transition-colors"
               >
                 {editingDesc ? (updateMut.isPending ? "Saving..." : "Save") : "Edit"}
               </button>
@@ -336,7 +336,7 @@ export default function PanelDetailModal({
                     currentText: descText,
                   })}
                   disabled={aiRewriteMut.isPending}
-                  className="text-xs text-accent-pink hover:text-white transition-colors flex items-center gap-1"
+                  className="text-xs text-token-violet hover:text-white transition-colors flex items-center gap-1"
                 >
                   {aiRewriteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   AI
@@ -348,7 +348,7 @@ export default function PanelDetailModal({
             <textarea
               value={descText}
               onChange={(e) => setDescText(e.target.value)}
-              className="w-full bg-void border border-white/10 rounded-lg p-2 text-sm text-white resize-none focus:outline-none focus:border-accent-pink/50"
+              className="w-full bg-void border border-white/10 rounded-lg p-2 text-sm text-white resize-none focus:outline-none focus:border-token-violet/50"
               rows={4}
             />
           ) : (
@@ -378,7 +378,7 @@ export default function PanelDetailModal({
                     <textarea
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
-                      className="w-full bg-void border border-white/10 rounded-lg p-2 text-xs text-white font-mono resize-none focus:outline-none focus:border-accent-pink/50"
+                      className="w-full bg-void border border-white/10 rounded-lg p-2 text-xs text-white font-mono resize-none focus:outline-none focus:border-token-violet/50"
                       rows={5}
                     />
                     <div className="flex gap-2 mt-1">
@@ -393,7 +393,7 @@ export default function PanelDetailModal({
                           onRegenerate(panel.id, promptText);
                           setEditingPrompt(false);
                         }}
-                        className="text-xs text-accent-pink hover:text-white flex items-center gap-1"
+                        className="text-xs text-token-violet hover:text-white flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" /> Regenerate with edit
                       </button>
@@ -406,7 +406,7 @@ export default function PanelDetailModal({
                     </p>
                     <button
                       onClick={() => setEditingPrompt(true)}
-                      className="text-xs text-accent-cyan hover:text-white mt-1 flex items-center gap-1"
+                      className="text-xs text-token-cyan hover:text-white mt-1 flex items-center gap-1"
                     >
                       <Edit3 className="w-3 h-3" /> Edit & Regenerate
                     </button>
@@ -425,7 +425,7 @@ export default function PanelDetailModal({
               {(panel.dialogue as { character: string; text: string; emotion: string }[]).map((d, i) => (
                 <div key={i} className="bg-void/50 border border-white/5 rounded-lg p-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-accent-pink">{d.character}</span>
+                    <span className="text-xs font-semibold text-token-violet">{d.character}</span>
                     <span className="text-[10px] text-muted italic">({d.emotion})</span>
                   </div>
                   <p className="text-sm text-white/80">"{d.text}"</p>
@@ -477,7 +477,7 @@ export default function PanelDetailModal({
                   max="2.0"
                   step="0.1"
                   defaultValue={String((panel as any).transitionDuration ?? 0.5)}
-                  className="w-20 h-1 accent-cyan-500"
+                  className="w-20 h-1 token-cyan-500"
                   onMouseUp={(e) => {
                     const val = parseFloat((e.target as HTMLInputElement).value);
                     updateMut.mutate({

@@ -124,9 +124,9 @@ function ActOneHero() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/5 text-[#00D4FF] text-[11px] font-semibold uppercase tracking-[0.16em] mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00F0FF]/30 bg-[#00F0FF]/5 text-[#00F0FF] text-[11px] font-semibold uppercase tracking-[0.16em] mb-8"
           >
-            <span className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
             Now in Public Beta
           </motion.div>
 
@@ -189,7 +189,7 @@ function ActOneHero() {
           >
             <Link href="/create?prompt=A+time-traveling+samurai+discovers+modern+Tokyo">
               <span className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/8 bg-white/3 cursor-pointer hover:bg-white/5 transition-colors">
-                <Sparkles className="w-4 h-4 text-[#FFB800]" strokeWidth={1.5} />
+                <Sparkles className="w-4 h-4 text-[#FFD60A]" strokeWidth={1.5} />
                 <span className="text-sm text-[#9494B8]">
                   <span className="text-white font-medium">Daily Prompt:</span>{" "}
                   &ldquo;A time-traveling samurai discovers modern Tokyo&rdquo;
@@ -831,7 +831,7 @@ export default function Home() {
           />
           <ContentRow
             title="New Releases"
-            icon={<Clock className="w-5 h-5 text-[#00D4FF]" strokeWidth={1.5} />}
+            icon={<Clock className="w-5 h-5 text-[#00F0FF]" strokeWidth={1.5} />}
             projects={newReleases.data ?? []}
             isLoading={newReleases.isLoading}
             seeAllLink="/discover"

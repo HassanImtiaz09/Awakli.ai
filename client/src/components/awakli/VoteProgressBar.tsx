@@ -91,7 +91,7 @@ export function VoteProgressBar({ projectId, compact = false, className = "" }: 
                 transition={{ duration: 2 + Math.random() * 2, delay: Math.random() * 0.5 }}
                 className="absolute w-2 h-2 rounded-sm"
                 style={{
-                  backgroundColor: ["#6B5BFF", "#FFD700", "#B388FF", "#00D4FF", "#A855F7"][i % 5],
+                  backgroundColor: ["#6B5BFF", "#FFD700", "#B388FF", "#00F0FF", "#A855F7"][i % 5],
                 }}
               />
             ))}

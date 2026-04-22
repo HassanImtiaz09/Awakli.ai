@@ -72,7 +72,7 @@ export default function LoraTrainingCard({
     <div className="bg-[var(--bg-elevated)] border border-white/10 rounded-xl p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-accent-cyan" />
+          <Cpu className="w-4 h-4 text-token-cyan" />
           <h4 className="text-sm font-semibold text-white">LoRA Model</h4>
         </div>
         {isComplete && (
@@ -110,8 +110,8 @@ export default function LoraTrainingCard({
               />
               <defs>
                 <linearGradient id="lora-gradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--accent-cyan)" />
-                  <stop offset="100%" stopColor="var(--accent-cyan)" />
+                  <stop offset="0%" stopColor="var(--token-cyan)" />
+                  <stop offset="100%" stopColor="var(--token-cyan)" />
                 </linearGradient>
               </defs>
             </svg>
@@ -129,7 +129,7 @@ export default function LoraTrainingCard({
                   key={stage.key}
                   className={`flex items-center gap-2 text-xs transition-all ${
                     isCurrent
-                      ? "text-accent-cyan font-semibold"
+                      ? "text-token-cyan font-semibold"
                       : isDone
                       ? "text-green-400/70"
                       : "text-muted/40"
@@ -153,7 +153,7 @@ export default function LoraTrainingCard({
         <div className="space-y-2">
           {loraTriggerWord && (
             <div className="text-xs text-muted">
-              Trigger word: <code className="px-1.5 py-0.5 rounded bg-white/10 text-accent-cyan font-mono">{loraTriggerWord}</code>
+              Trigger word: <code className="px-1.5 py-0.5 rounded bg-white/10 text-token-cyan font-mono">{loraTriggerWord}</code>
             </div>
           )}
           <p className="text-xs text-muted/70">
@@ -169,7 +169,7 @@ export default function LoraTrainingCard({
           whileTap={{ scale: 0.98 }}
           onClick={() => trainMut.mutate({ characterId })}
           disabled={trainMut.isPending}
-          className="w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-accent-pink/20 to-accent-cyan/20 border border-white/10 text-white hover:border-accent-cyan/30 disabled:opacity-50"
+          className="w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-token-violet/20 to-token-cyan/20 border border-white/10 text-white hover:border-token-cyan/30 disabled:opacity-50"
         >
           {trainMut.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />

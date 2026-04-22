@@ -34,7 +34,7 @@ export const AwakliInput = React.forwardRef<HTMLInputElement, AwakliInputProps>(
               "text-[#F0F0F5] placeholder:text-[#5C5C7A]",
               "px-4 py-2.5 text-sm",
               "transition-all duration-200",
-              "focus:outline-none focus:border-[#00D4FF] focus:ring-2 focus:ring-[rgba(0,212,255,0.2)]",
+              "focus:outline-none focus:border-[#00F0FF] focus:ring-2 focus:ring-[rgba(0,212,255,0.2)]",
               error && "border-[#E74C3C] focus:border-[#E74C3C] focus:ring-[rgba(231,76,60,0.2)]",
               icon && iconPosition === "left" && "pl-10",
               icon && iconPosition === "right" && "pr-10",
@@ -81,7 +81,7 @@ export const AwakliTextarea = React.forwardRef<HTMLTextAreaElement, AwakliTextar
             "text-[#F0F0F5] placeholder:text-[#5C5C7A]",
             "px-4 py-3 text-sm resize-y min-h-[100px]",
             "transition-all duration-200",
-            "focus:outline-none focus:border-[#00D4FF] focus:ring-2 focus:ring-[rgba(0,212,255,0.2)]",
+            "focus:outline-none focus:border-[#00F0FF] focus:ring-2 focus:ring-[rgba(0,212,255,0.2)]",
             error && "border-[#E74C3C] focus:border-[#E74C3C] focus:ring-[rgba(231,76,60,0.2)]",
             className
           )}

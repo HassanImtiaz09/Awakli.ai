@@ -42,7 +42,7 @@ import {
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
   untrained:         { label: "Untrained",         icon: Clock,          color: "text-muted-foreground", bg: "bg-muted/50" },
   training:          { label: "Training",          icon: Loader2,        color: "text-cyan",             bg: "bg-cyan/10" },
-  validating:        { label: "Validating",        icon: Brain,          color: "text-[var(--accent-gold)]", bg: "bg-[var(--accent-gold)]/10" },
+  validating:        { label: "Validating",        icon: Brain,          color: "text-[var(--token-gold)]", bg: "bg-[var(--token-gold)]/10" },
   active:            { label: "Active",            icon: CheckCircle2,   color: "text-[var(--status-success)]", bg: "bg-[var(--status-success)]/10" },
   needs_retraining:  { label: "Needs Retraining",  icon: AlertTriangle,  color: "text-[var(--status-warning)]", bg: "bg-[var(--status-warning)]/10" },
   failed:            { label: "Failed",            icon: AlertTriangle,  color: "text-[var(--status-error)]",   bg: "bg-[var(--status-error)]/10" },
@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; 
 
 const VALIDATION_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending:     { label: "Pending",    color: "text-muted-foreground" },
-  validating:  { label: "Validating", color: "text-[var(--accent-gold)]" },
+  validating:  { label: "Validating", color: "text-[var(--token-gold)]" },
   approved:    { label: "Approved",   color: "text-[var(--status-success)]" },
   rejected:    { label: "Rejected",   color: "text-[var(--status-error)]" },
   deprecated:  { label: "Deprecated", color: "text-muted-foreground" },
@@ -63,13 +63,13 @@ const VALIDATION_STATUS_CONFIG: Record<string, { label: string; color: string }>
 const QUALITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   excellent: { label: "Excellent", color: "text-[var(--status-success)]", bg: "bg-[var(--status-success)]/10" },
   good:      { label: "Good",      color: "text-cyan",                    bg: "bg-cyan/10" },
-  fair:      { label: "Fair",      color: "text-[var(--accent-gold)]",     bg: "bg-[var(--accent-gold)]/10" },
+  fair:      { label: "Fair",      color: "text-[var(--token-gold)]",     bg: "bg-[var(--token-gold)]/10" },
   poor:      { label: "Poor",      color: "text-[var(--status-error)]",    bg: "bg-[var(--status-error)]/10" },
 };
 
 const CONFIDENCE_COLORS = {
   high: "border-[var(--status-success)]/50 bg-[var(--status-success)]/5",
-  medium: "border-[var(--accent-gold)]/50 bg-[var(--accent-gold)]/5",
+  medium: "border-[var(--token-gold)]/50 bg-[var(--token-gold)]/5",
   low: "border-[var(--status-error)]/50 bg-[var(--status-error)]/5",
 };
 
@@ -176,7 +176,7 @@ function TrainLoraModal({
           <div className="space-y-4 mt-2">
             {!referenceSheetUrl ? (
               <div className="text-center py-8">
-                <AlertTriangle className="w-10 h-10 text-[var(--accent-gold)] mx-auto mb-3" />
+                <AlertTriangle className="w-10 h-10 text-[var(--token-gold)] mx-auto mb-3" />
                 <p className="text-muted-foreground">No reference sheet uploaded for this character.</p>
                 <p className="text-xs text-muted-foreground mt-1">Upload a reference sheet first, then return to train.</p>
               </div>
@@ -270,7 +270,7 @@ function TrainLoraModal({
                               <ImageIcon className={cn(
                                 "w-6 h-6 mx-auto mb-1",
                                 confLevel === "high" ? "text-[var(--status-success)]" :
-                                confLevel === "medium" ? "text-[var(--accent-gold)]" :
+                                confLevel === "medium" ? "text-[var(--token-gold)]" :
                                 "text-[var(--status-error)]"
                               )} />
                               <span className="text-[10px] font-mono">
@@ -282,7 +282,7 @@ function TrainLoraModal({
                           <div className={cn(
                             "text-[10px] mt-0.5",
                             confLevel === "high" ? "text-[var(--status-success)]" :
-                            confLevel === "medium" ? "text-[var(--accent-gold)]" :
+                            confLevel === "medium" ? "text-[var(--token-gold)]" :
                             "text-[var(--status-error)]"
                           )}>
                             {confLevel === "high" ? "High" : confLevel === "medium" ? "Medium" : "Low"}
@@ -328,7 +328,7 @@ function TrainLoraModal({
                           </Button>
                         </div>
                         {extraction.views[selectedView].qualityWarning && (
-                          <div className="mt-2 flex items-start gap-2 text-xs text-[var(--accent-gold)] bg-[var(--accent-gold)]/5 rounded-md p-2">
+                          <div className="mt-2 flex items-start gap-2 text-xs text-[var(--token-gold)] bg-[var(--token-gold)]/5 rounded-md p-2">
                             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                             {extraction.views[selectedView].qualityWarning}
                           </div>
@@ -340,14 +340,14 @@ function TrainLoraModal({
 
                 {/* Warnings */}
                 {extraction.warnings.length > 0 && (
-                  <div className="rounded-lg border border-[var(--accent-gold)]/20 bg-[var(--accent-gold)]/5 p-3">
-                    <h5 className="text-xs font-medium text-[var(--accent-gold)] mb-2 flex items-center gap-1">
+                  <div className="rounded-lg border border-[var(--token-gold)]/20 bg-[var(--token-gold)]/5 p-3">
+                    <h5 className="text-xs font-medium text-[var(--token-gold)] mb-2 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5" /> Quality Warnings
                     </h5>
                     <ul className="space-y-1">
                       {extraction.warnings.map((w, i) => (
-                        <li key={i} className="text-xs text-[var(--accent-gold)]/80 flex items-start gap-1.5">
-                          <span className="mt-1.5 w-1 h-1 rounded-full bg-[var(--accent-gold)]/60 shrink-0" />
+                        <li key={i} className="text-xs text-[var(--token-gold)]/80 flex items-start gap-1.5">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-[var(--token-gold)]/60 shrink-0" />
                           {w}
                         </li>
                       ))}
@@ -465,7 +465,7 @@ function TrainLoraModal({
             {estimate && (
               <div className="rounded-lg border border-white/10 bg-[var(--bg-base)] p-4">
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-[var(--accent-gold)]" /> Cost Estimate
+                  <DollarSign className="w-4 h-4 text-[var(--token-gold)]" /> Cost Estimate
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -474,7 +474,7 @@ function TrainLoraModal({
                   </div>
                   <div>
                     <span className="text-muted-foreground">Cost</span>
-                    <div className="font-mono text-[var(--accent-gold)]">
+                    <div className="font-mono text-[var(--token-gold)]">
                       {estimate.withMargin.costCredits.toFixed(0)} credits
                     </div>
                   </div>
@@ -505,7 +505,7 @@ function TrainLoraModal({
                   setStep("config");
                 }}
                 disabled={!extraction || extractionLoading}
-                className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
               >
                 <CheckCircle2 className="w-4 h-4 mr-1" />
                 Approve & Continue
@@ -526,7 +526,7 @@ function TrainLoraModal({
                   trainingSteps,
                 })}
                 disabled={trainMutation.isPending}
-                className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
               >
                 {trainMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Zap className="w-4 h-4 mr-1" />}
                 Start Training
@@ -604,7 +604,7 @@ function VersionRow({
               <div className={cn(
                 "text-sm font-mono font-bold",
                 version.qualityScore >= 7 ? "text-[var(--status-success)]" :
-                version.qualityScore >= 5 ? "text-[var(--accent-gold)]" : "text-[var(--status-error)]"
+                version.qualityScore >= 5 ? "text-[var(--token-gold)]" : "text-[var(--status-error)]"
               )}>
                 {version.qualityScore.toFixed(1)}
               </div>
@@ -800,7 +800,7 @@ export default function CharacterDetail() {
         <div className="text-center space-y-4">
           <Sparkles className="w-12 h-12 mx-auto text-muted-foreground" />
           <h2 className="font-heading text-xl">Sign in to view this character</h2>
-          <Button asChild className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0">
+          <Button asChild className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0">
             <a href={getLoginUrl(`/characters/${characterId}`)}>Sign In</a>
           </Button>
         </div>
@@ -859,7 +859,7 @@ export default function CharacterDetail() {
                   <div className="text-center">
                     <div
                       className="w-20 h-20 rounded-full mx-auto flex items-center justify-center text-3xl font-heading font-bold"
-                      style={{ background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan))" }}
+                      style={{ background: "linear-gradient(135deg, var(--token-cyan), var(--token-cyan))" }}
                     >
                       {character.name.charAt(0).toUpperCase()}
                     </div>
@@ -942,7 +942,7 @@ export default function CharacterDetail() {
                     {(character.loraStatus === "untrained" || character.loraStatus === "needs_retraining" || character.loraStatus === "failed") && (
                       <Button
                         size="sm"
-                        className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                        className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
                         onClick={() => setShowTrainModal(true)}
                       >
                         <Zap className="w-4 h-4 mr-1" /> Train LoRA
@@ -1080,7 +1080,7 @@ export default function CharacterDetail() {
                 </p>
                 <Button
                   onClick={() => setShowTrainModal(true)}
-                  className="bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-cyan)] text-white border-0"
+                  className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
                   disabled={!character.referenceSheetUrl}
                 >
                   <Zap className="w-4 h-4 mr-2" /> Train LoRA
@@ -1138,7 +1138,7 @@ export default function CharacterDetail() {
                     <div className={cn(
                       "text-xl font-heading font-bold",
                       usageStats.avgQualityScore >= 7 ? "text-[var(--status-success)]" :
-                      usageStats.avgQualityScore >= 5 ? "text-[var(--accent-gold)]" : "text-[var(--status-error)]"
+                      usageStats.avgQualityScore >= 5 ? "text-[var(--token-gold)]" : "text-[var(--status-error)]"
                     )}>
                       {usageStats.avgQualityScore > 0 ? usageStats.avgQualityScore.toFixed(1) : "—"}
                     </div>
@@ -1162,7 +1162,7 @@ export default function CharacterDetail() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-white/10 bg-gradient-to-r from-cyan/10 to-[var(--accent-cyan)]/10 hover:from-cyan/20 hover:to-[var(--accent-cyan)]/20"
+                      className="border-white/10 bg-gradient-to-r from-cyan/10 to-[var(--token-cyan)]/10 hover:from-cyan/20 hover:to-[var(--token-cyan)]/20"
                       onClick={() => setShowCompareModal(true)}
                     >
                       <Scale className="w-3.5 h-3.5 mr-1.5" /> A/B Compare Versions

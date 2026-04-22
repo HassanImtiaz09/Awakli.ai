@@ -267,7 +267,7 @@ function VideoGenDetail({ assets }: { assets: any[] }) {
               <div className="p-2">
                 <p className="text-xs text-gray-400 truncate">Panel {meta?.panelNumber || i + 1}</p>
                 {meta?.duration && (
-                  <p className="text-xs text-accent-cyan">{meta.duration}s</p>
+                  <p className="text-xs text-token-cyan">{meta.duration}s</p>
                 )}
                 {motionMissing && motionReason && (
                   <p className="text-[9px] text-amber-400/80 mt-0.5 truncate" title={MISSING_REASON_LABELS[motionReason] || motionReason}>
@@ -290,7 +290,7 @@ function VoiceGenDetail({ assets }: { assets: any[] }) {
     <div className="space-y-2">
       {voiceAssets.map((asset: any, i: number) => (
         <div key={asset.id || i} className="flex items-center gap-3 bg-gray-800/60 rounded-lg p-3 border border-gray-700/50">
-          <Volume2 className="w-5 h-5 text-accent-cyan shrink-0" />
+          <Volume2 className="w-5 h-5 text-token-cyan shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-white">{(asset.metadata as any)?.character || `Voice Clip ${i + 1}`}</p>
             <p className="text-xs text-gray-400 truncate">{(asset.metadata as any)?.dialogue || "Dialogue line"}</p>
@@ -300,7 +300,7 @@ function VoiceGenDetail({ assets }: { assets: any[] }) {
             {Array.from({ length: 20 }, (_, j) => (
               <motion.div
                 key={j}
-                className="w-[3px] bg-accent-cyan/60 rounded-full"
+                className="w-[3px] bg-token-cyan/60 rounded-full"
                 initial={{ height: 4 }}
                 animate={{ height: 4 + Math.random() * 16 }}
                 transition={{ duration: 0.4, repeat: Infinity, repeatType: "reverse", delay: j * 0.05 }}
@@ -376,7 +376,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
       case "synced": return <CheckCircle className="w-4 h-4 text-green-400" />;
       case "failed": return <XCircle className="w-4 h-4 text-red-400" />;
       case "skipped": return <Ban className="w-4 h-4 text-gray-500" />;
-      case "retrying": return <Loader2 className="w-4 h-4 text-accent-cyan animate-spin" />;
+      case "retrying": return <Loader2 className="w-4 h-4 text-token-cyan animate-spin" />;
       case "needs_review": return <ShieldAlert className="w-4 h-4 text-amber-400" />;
       default: return <Clock className="w-4 h-4 text-gray-400" />;
     }
@@ -387,7 +387,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
       case "synced": return "border-green-500/30 bg-green-950/20";
       case "failed": return "border-red-500/30 bg-red-950/20";
       case "skipped": return "border-gray-600/30 bg-gray-900/20";
-      case "retrying": return "border-accent-cyan/30 bg-cyan-950/20";
+      case "retrying": return "border-token-cyan/30 bg-cyan-950/20";
       case "needs_review": return "border-amber-500/30 bg-amber-950/20";
       default: return "border-gray-700/30 bg-gray-800/20";
     }
@@ -429,8 +429,8 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
         </div>
         {retryingPanels.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 text-accent-cyan animate-spin" />
-            <span className="text-xs text-accent-cyan">{retryingPanels.length} retrying</span>
+            <Loader2 className="w-3.5 h-3.5 text-token-cyan animate-spin" />
+            <span className="text-xs text-token-cyan">{retryingPanels.length} retrying</span>
           </div>
         )}
         {needsReviewPanels.length > 0 && (
@@ -466,7 +466,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
           </span>
           <button
             onClick={selectAllFailed}
-            className="text-xs text-accent-cyan hover:text-white transition-colors px-2 py-1 rounded border border-accent-cyan/30 hover:border-accent-cyan/60"
+            className="text-xs text-token-cyan hover:text-white transition-colors px-2 py-1 rounded border border-token-cyan/30 hover:border-token-cyan/60"
           >
             Select All Failed
           </button>
@@ -474,7 +474,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
             <button
               onClick={() => setShowRetryConfirm(true)}
               disabled={retryMut.isPending}
-              className="flex items-center gap-1.5 text-xs text-white bg-accent-cyan/20 hover:bg-accent-cyan/30 border border-accent-cyan/40 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-white bg-token-cyan/20 hover:bg-token-cyan/30 border border-token-cyan/40 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
             >
               {retryMut.isPending ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -489,7 +489,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
 
       {/* Retry confirmation dialog */}
       {showRetryConfirm && (
-        <div className="p-4 rounded-lg bg-gray-800/80 border border-accent-cyan/30">
+        <div className="p-4 rounded-lg bg-gray-800/80 border border-token-cyan/30">
           <p className="text-sm text-white mb-3">
             Retry lip sync for <strong>{selectedPanels.size}</strong> panel(s)? This will delete existing synced clips and re-run face detection + lip sync via Kling API.
           </p>
@@ -500,7 +500,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
             <button
               onClick={handleRetry}
               disabled={retryMut.isPending}
-              className="flex items-center gap-1.5 text-xs text-white bg-accent-cyan/30 hover:bg-accent-cyan/40 border border-accent-cyan/50 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-white bg-token-cyan/30 hover:bg-token-cyan/40 border border-token-cyan/50 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
             >
               {retryMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
               Confirm Retry
@@ -522,7 +522,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
             {/* Modal header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Columns2 className="w-5 h-5 text-accent-cyan" />
+                <Columns2 className="w-5 h-5 text-token-cyan" />
                 <h3 className="text-lg font-semibold text-white">
                   Before / After — P{comparisonPanelData.sceneNumber}.{comparisonPanelData.panelNumber}
                   <span className="text-sm text-gray-400 ml-2">[{comparisonPanelData.character}]</span>
@@ -535,7 +535,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                     onClick={() => setComparisonMode("side-by-side")}
                     className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
                       comparisonMode === "side-by-side"
-                        ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30"
+                        ? "bg-token-cyan/20 text-token-cyan border border-token-cyan/30"
                         : "text-gray-400 hover:text-white"
                     }`}
                   >
@@ -546,7 +546,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                     onClick={() => { setComparisonMode("toggle"); setShowOriginal(false); }}
                     className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
                       comparisonMode === "toggle"
-                        ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30"
+                        ? "bg-token-cyan/20 text-token-cyan border border-token-cyan/30"
                         : "text-gray-400 hover:text-white"
                     }`}
                   >
@@ -592,7 +592,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-medium text-green-400 uppercase tracking-wider">Lip-Synced</span>
                     {comparisonPanelData.retryCount && comparisonPanelData.retryCount > 0 && (
-                      <span className="text-[10px] text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] text-token-cyan bg-token-cyan/10 px-1.5 py-0.5 rounded">
                         Attempt #{(comparisonPanelData.retryCount || 0) + 1}
                       </span>
                     )}
@@ -681,9 +681,9 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
               className={`rounded-lg p-3 border transition-all ${
                 statusColor(panel.status)
               } ${
-                isSelected ? "ring-2 ring-accent-cyan/60 border-accent-cyan/50" : ""
+                isSelected ? "ring-2 ring-token-cyan/60 border-token-cyan/50" : ""
               } ${
-                canSelect ? "cursor-pointer hover:border-accent-cyan/40" : ""
+                canSelect ? "cursor-pointer hover:border-token-cyan/40" : ""
               }`}
             >
               {/* Header */}
@@ -694,7 +694,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => togglePanel(panel.panelId)}
-                      className="w-3.5 h-3.5 rounded border-gray-600 text-accent-cyan focus:ring-accent-cyan/30"
+                      className="w-3.5 h-3.5 rounded border-gray-600 text-token-cyan focus:ring-token-cyan/30"
                     />
                   )}
                   {statusIcon(panel.status)}
@@ -703,7 +703,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                   </span>
                   <span className="text-xs text-gray-400">[{panel.character}]</span>
                   {panel.isRetry && (
-                    <span className="text-[10px] text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-token-cyan bg-token-cyan/10 px-1.5 py-0.5 rounded">
                       Retried
                     </span>
                   )}
@@ -717,7 +717,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                   {canCompare && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setComparisonPanel(panel.panelId); }}
-                      className="flex items-center gap-1 text-[10px] text-accent-cyan hover:text-white transition-colors px-1.5 py-0.5 rounded border border-accent-cyan/20 hover:border-accent-cyan/40 bg-accent-cyan/5"
+                      className="flex items-center gap-1 text-[10px] text-token-cyan hover:text-white transition-colors px-1.5 py-0.5 rounded border border-token-cyan/20 hover:border-token-cyan/40 bg-token-cyan/5"
                       title="Compare before/after lip sync"
                     >
                       <Columns2 className="w-3 h-3" />
@@ -727,7 +727,7 @@ function LipSyncDetail({ assets, runId, episodeId }: { assets: any[]; runId: num
                   <span className={`text-[10px] uppercase font-medium tracking-wider ${
                     panel.status === "synced" ? "text-green-400" :
                     panel.status === "failed" ? "text-red-400" :
-                    panel.status === "retrying" ? "text-accent-cyan" :
+                    panel.status === "retrying" ? "text-token-cyan" :
                     panel.status === "needs_review" ? "text-amber-400" :
                     "text-gray-500"
                   }`}>
@@ -785,7 +785,7 @@ function MusicGenDetail({ assets }: { assets: any[] }) {
         <div key={asset.id || i} className="bg-gray-800/60 rounded-lg p-4 border border-gray-700/50">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Music className="w-4 h-4 text-accent-pink" />
+              <Music className="w-4 h-4 text-token-violet" />
               <span className="text-sm text-white">{(asset.metadata as any)?.name || `Music Segment ${i + 1}`}</span>
             </div>
             {(asset.metadata as any)?.duration && (
@@ -801,7 +801,7 @@ function MusicGenDetail({ assets }: { assets: any[] }) {
                 {Array.from({ length: 50 }, (_, j) => (
                   <div
                     key={j}
-                    className="flex-1 bg-accent-pink/40 rounded-t"
+                    className="flex-1 bg-token-violet/40 rounded-t"
                     style={{ height: `${20 + Math.random() * 80}%` }}
                   />
                 ))}
@@ -841,7 +841,7 @@ function FoleyGenDetail({ assets }: { assets: any[] }) {
       </div>
       {Array.from(categories.entries()).map(([cat, catAssets]) => (
         <div key={cat}>
-          <h4 className="text-xs font-semibold text-accent-cyan/80 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-token-cyan/80 uppercase tracking-wider mb-2">
             {categoryIcons[cat] || "\u{1F50A}"} {cat}
           </h4>
           <div className="space-y-1">
@@ -888,7 +888,7 @@ function AmbientGenDetail({ assets }: { assets: any[] }) {
         <div key={asset.id || i} className="bg-gray-800/60 rounded-lg p-3 border border-gray-700/50">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <Layers className={`w-4 h-4 ${(asset.metadata as any)?.isPrimary !== false ? "text-accent-cyan" : "text-gray-500"}`} />
+              <Layers className={`w-4 h-4 ${(asset.metadata as any)?.isPrimary !== false ? "text-token-cyan" : "text-gray-500"}`} />
               <span className="text-sm text-white">
                 Scene {(asset.metadata as any)?.sceneNumber || "?"}: {(asset.metadata as any)?.ambientLabel || "Ambient"}
               </span>
@@ -939,13 +939,13 @@ function AssemblyDetail({ assets, runId }: { assets: any[]; runId: number }) {
       <div className="flex gap-3">
         {finalAsset?.url && (
           <a href={finalAsset.url} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-accent-cyan hover:underline flex items-center gap-1">
+            className="text-xs text-token-cyan hover:underline flex items-center gap-1">
             <Eye className="w-3 h-3" /> View Full Video
           </a>
         )}
         {subtitleAsset?.url && (
           <a href={subtitleAsset.url} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-accent-cyan hover:underline flex items-center gap-1">
+            className="text-xs text-token-cyan hover:underline flex items-center gap-1">
             Download Subtitles
           </a>
         )}
@@ -1160,7 +1160,7 @@ function EpisodePipelineTable({
                   type="checkbox"
                   checked={selectedEpisodes.size === selectableEpisodes.length && selectableEpisodes.length > 0}
                   onChange={selectAll}
-                  className="rounded border-gray-600 bg-gray-800 text-accent-pink focus:ring-accent-pink/50"
+                  className="rounded border-gray-600 bg-gray-800 text-token-violet focus:ring-token-violet/50"
                 />
               </th>
               <th className="text-left py-3 px-2">Episode</th>
@@ -1185,7 +1185,7 @@ function EpisodePipelineTable({
                       checked={selectedEpisodes.has(ep.id)}
                       onChange={() => toggleSelect(ep.id)}
                       disabled={!isSelectable}
-                      className="rounded border-gray-600 bg-gray-800 text-accent-pink focus:ring-accent-pink/50 disabled:opacity-30"
+                      className="rounded border-gray-600 bg-gray-800 text-token-violet focus:ring-token-violet/50 disabled:opacity-30"
                     />
                   </td>
                   <td className="py-3 px-2">
@@ -1214,7 +1214,7 @@ function EpisodePipelineTable({
                   </td>
                   <td className="py-3 px-2">
                     {run?.totalCost ? (
-                      <span className="text-accent-cyan">${(run.totalCost / 100).toFixed(2)}</span>
+                      <span className="text-token-cyan">${(run.totalCost / 100).toFixed(2)}</span>
                     ) : (
                       <span className="text-gray-500">—</span>
                     )}
@@ -1431,7 +1431,7 @@ export default function PipelineDashboard() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-cyan" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-cyan" />
       </div>
     );
   }
@@ -1449,7 +1449,7 @@ export default function PipelineDashboard() {
             <div className="flex items-center gap-6 text-sm">
               <div className="text-center">
                 <p className="text-gray-400">Total Cost</p>
-                <p className="text-accent-cyan font-bold text-lg">${((costQuery.data.totalCost || 0) / 100).toFixed(2)}</p>
+                <p className="text-token-cyan font-bold text-lg">${((costQuery.data.totalCost || 0) / 100).toFixed(2)}</p>
               </div>
               <div className="text-center">
                 <p className="text-gray-400">Completed</p>

@@ -98,7 +98,7 @@ export default function PanelReview() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-pink" />
+        <Loader2 className="w-8 h-8 animate-spin text-token-violet" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function PanelReview() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-accent-pink to-accent-cyan bg-clip-text text-transparent">
+              <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-token-violet to-token-cyan bg-clip-text text-transparent">
                 Panel Review
               </h1>
               <p className="text-sm text-muted mt-1">{project?.title}</p>
@@ -130,7 +130,7 @@ export default function PanelReview() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => generatePanelsMut.mutate({ id: activeEpisodeId! })}
                 disabled={generatePanelsMut.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-accent-pink to-accent-cyan text-white font-semibold text-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-token-violet to-token-cyan text-white font-semibold text-sm disabled:opacity-50"
               >
                 {generatePanelsMut.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -158,7 +158,7 @@ export default function PanelReview() {
                 {ep.id === activeEpisodeId && (
                   <motion.div
                     layoutId="episode-tab-underline"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-pink to-accent-cyan"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-token-violet to-token-cyan"
                   />
                 )}
               </button>
@@ -177,7 +177,7 @@ export default function PanelReview() {
                   <span className="text-white font-semibold">{stats.approved}</span> approved
                 </span>
                 <span className="text-muted">
-                  <span className="text-accent-cyan font-semibold">{stats.pending}</span> pending review
+                  <span className="text-token-cyan font-semibold">{stats.pending}</span> pending review
                 </span>
                 <span className="text-muted">
                   <span className="text-yellow-400 font-semibold">{stats.generating}</span> generating
@@ -196,7 +196,7 @@ export default function PanelReview() {
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="h-full bg-gradient-to-r from-accent-pink via-accent-cyan to-accent-pink rounded-full"
+                className="h-full bg-gradient-to-r from-token-violet via-token-cyan to-token-violet rounded-full"
               />
             </div>
             {stats.generating > 0 && (
@@ -348,8 +348,8 @@ function PanelCard({
         {isGenerating ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-accent-pink/30 border-t-accent-pink animate-spin" />
-              <Sparkles className="w-5 h-5 text-accent-pink absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <div className="w-12 h-12 rounded-full border-2 border-token-violet/30 border-t-token-violet animate-spin" />
+              <Sparkles className="w-5 h-5 text-token-violet absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             </div>
             <span className="text-xs text-muted">Generating...</span>
           </div>
@@ -421,7 +421,7 @@ function PanelCard({
             panel.status === "approved" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
             panel.status === "rejected" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
             panel.status === "generating" ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" :
-            panel.status === "generated" ? "bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30" :
+            panel.status === "generated" ? "bg-token-cyan/20 text-token-cyan border border-token-cyan/30" :
             "bg-white/10 text-muted border border-white/10"
           }`}>
             {panel.status}
@@ -432,7 +432,7 @@ function PanelCard({
       {/* Info */}
       <div className="p-3">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-mono text-accent-cyan">
+          <span className="text-xs font-mono text-token-cyan">
             S{panel.sceneNumber} · P{panel.panelNumber}
           </span>
           <span className="text-[10px] text-muted uppercase">{panel.cameraAngle}</span>

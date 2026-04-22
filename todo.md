@@ -4293,3 +4293,18 @@
 - [x] Debounced autosave for style/tone/audience selectors on Input page (persist without advancing)
 - [x] Real QR code generation on Publish success state (replace "coming soon" toast)
 - [x] "Back to manga" link on anime-gate page (navigate to /m/{slug} for users who decline upgrade)
+
+## Closing Brief v1.0 — Wave 1: Strategic
+
+- [x] X3-F: Reconcile pricing catalog — lock four-tier model (Apprentice $0 / Mangaka $19 / Studio $49 / Studio Pro $149), delete $99 and $499 orphans, wire anime-gate + TierCompareCard + UpgradeModal to shared/pricingCatalog.ts
+- [x] X4-F: Wire CreditMeter to live forecast engine — promote forecast logic to useProjectCreditForecast hook, replace static ~17cr sidebar with live per-stage costs from shared/creditMath.ts
+
+## Closing Brief v1.0 — Wave 2: Completion
+
+- [x] C1-F: Ship Stage 1 Script components — ScriptEditor (two-pane), SceneCard, CharacterChip, RegenPopover; connect to tRPC; approving episode unlocks Panels
+- [x] C2-F: Ship Stage 2 Panels components — PanelGrid, PanelTile, PanelLightbox, PanelBatchBar, StyleDrift, ConsistencyReport; connect to tRPC; approving panels advances to Publish
+
+## Closing Brief v1.0 — Wave 3: Polish
+
+- [x] P3-F: Delete legacy accent palette — remove --accent-* CSS vars, replace hex literals #00d4ff/#7c3aed/#ffb800 with var(--token-*) references
+- [x] P4-F: Fix stage numerals — Input=01, Script=02, Panels=03, Publish=04, Gate=05, Setup=06, Video=07; derive from stages[] array, not hardcoded strings

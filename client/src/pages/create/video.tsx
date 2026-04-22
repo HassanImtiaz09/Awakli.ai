@@ -518,7 +518,7 @@ export default function WizardVideo() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-token-magenta text-xs font-semibold uppercase tracking-widest">
               <Film className="w-3.5 h-3.5" />
-              Stage 06 — Video Production
+              Stage 07 — Video Production
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
               {VIDEO_COPY.pageTitle}

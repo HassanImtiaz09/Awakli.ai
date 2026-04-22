@@ -22,7 +22,7 @@ import LoraTrainingCard from "@/components/awakli/LoraTrainingCard";
 const ROLES = [
   { id: "protagonist" as const, label: "Protagonist", color: "#6B5BFF" },
   { id: "antagonist" as const,  label: "Antagonist",  color: "#E74C3C" },
-  { id: "supporting" as const,  label: "Supporting",  color: "#00D4FF" },
+  { id: "supporting" as const,  label: "Supporting",  color: "#00F0FF" },
   { id: "background" as const,  label: "Background",  color: "#5C5C7A" },
 ] as const;
 
@@ -125,7 +125,7 @@ function CharacterCard({
           >
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="p-2 rounded-lg bg-[var(--bg-void)]/80 text-[var(--text-primary)] hover:bg-[var(--accent-cyan)]/20 transition-colors backdrop-blur-sm"
+              className="p-2 rounded-lg bg-[var(--bg-void)]/80 text-[var(--text-primary)] hover:bg-[var(--token-cyan)]/20 transition-colors backdrop-blur-sm"
             >
               <Edit3 size={14} />
             </button>
@@ -282,7 +282,7 @@ function CharacterFormModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Character name..."
-                className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40 text-lg"
+                className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40 text-lg"
               />
             </div>
 
@@ -320,7 +320,7 @@ function CharacterFormModal({
                 {personalityTraits.map((t) => (
                   <span
                     key={t}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[var(--token-cyan)]/15 text-[var(--token-cyan)]"
                   >
                     {t}
                     <button onClick={() => removeTrait(t)} className="hover:text-white">
@@ -336,7 +336,7 @@ function CharacterFormModal({
                   onChange={(e) => setTraitInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTrait(traitInput); } }}
                   placeholder="Add trait..."
-                  className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40"
+                  className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40"
                 />
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
@@ -363,7 +363,7 @@ function CharacterFormModal({
                     value={hairColor}
                     onChange={(e) => setHairColor(e.target.value)}
                     placeholder="e.g. Silver"
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40"
                   />
                 </div>
                 <div>
@@ -373,7 +373,7 @@ function CharacterFormModal({
                     value={eyeColor}
                     onChange={(e) => setEyeColor(e.target.value)}
                     placeholder="e.g. Crimson"
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40"
                   />
                 </div>
               </div>
@@ -387,7 +387,7 @@ function CharacterFormModal({
                       className={cn(
                         "px-2 py-1 rounded-md text-[10px] font-medium border transition-all",
                         bodyType === bt
-                          ? "bg-[var(--accent-cyan)]/15 border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)]"
+                          ? "bg-[var(--token-cyan)]/15 border-[var(--token-cyan)]/30 text-[var(--token-cyan)]"
                           : "bg-[var(--bg-overlay)] border-white/10 text-[var(--text-muted)] hover:border-white/20"
                       )}
                     >
@@ -403,7 +403,7 @@ function CharacterFormModal({
                   value={clothing}
                   onChange={(e) => setClothing(e.target.value)}
                   placeholder="e.g. Dark trench coat, combat boots"
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40"
                 />
               </div>
               <div>
@@ -413,7 +413,7 @@ function CharacterFormModal({
                   value={features}
                   onChange={(e) => setFeatures(e.target.value)}
                   placeholder="e.g. Scar across left eye, glowing tattoos"
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]/40"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-overlay)] border border-white/10 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--token-cyan)]/40"
                 />
               </div>
             </div>
@@ -503,7 +503,7 @@ function CharacterFormModal({
               disabled={generatingRef || !name.trim()}
               className={cn(
                 "w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2",
-                "bg-gradient-to-r from-[var(--accent-cyan)] to-[#6B5BFF] text-white",
+                "bg-gradient-to-r from-[var(--token-cyan)] to-[#6B5BFF] text-white",
                 "hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
               )}
               whileHover={{ scale: 1.01 }}
@@ -532,7 +532,7 @@ function CharacterFormModal({
           <Button
             onClick={handleSave}
             disabled={createMutation.isPending || updateMutation.isPending || !name.trim()}
-            className="bg-[var(--accent-cyan)] text-[var(--bg-void)] hover:bg-[var(--accent-cyan-hover)]"
+            className="bg-[var(--token-cyan)] text-[var(--bg-void)] hover:bg-[var(--token-cyan-hover)]"
           >
             {(createMutation.isPending || updateMutation.isPending) && <Loader2 size={14} className="animate-spin mr-2" />}
             {editCharacter ? "Update" : "Create"} Character
@@ -586,7 +586,7 @@ export default function CharacterCreator() {
         </div>
         <motion.button
           onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)] transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--token-cyan)] text-white hover:bg-[var(--token-violet-hover)] transition-colors"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -610,7 +610,7 @@ export default function CharacterCreator() {
           </p>
           <motion.button
             onClick={handleAdd}
-            className="mt-6 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-cyan)] text-white hover:bg-[var(--accent-pink-hover)] transition-colors"
+            className="mt-6 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-[var(--token-cyan)] text-white hover:bg-[var(--token-violet-hover)] transition-colors"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -654,12 +654,12 @@ export default function CharacterCreator() {
           {/* Add card */}
           <motion.button
             onClick={handleAdd}
-            className="aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-3 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--accent-cyan)]/30 transition-all"
+            className="aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-3 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--token-cyan)]/30 transition-all"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0 },
             }}
-            whileHover={{ scale: 1.02, borderColor: "var(--accent-cyan)" }}
+            whileHover={{ scale: 1.02, borderColor: "var(--token-cyan)" }}
           >
             <Plus size={32} />
             <span className="text-sm font-medium">Add Character</span>
@@ -671,7 +671,7 @@ export default function CharacterCreator() {
       {characters && characters.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-heading text-[var(--text-primary)] flex items-center gap-2">
-            <Sparkles size={18} className="text-accent-cyan" />
+            <Sparkles size={18} className="text-token-cyan" />
             LoRA Training
           </h2>
           <p className="text-sm text-[var(--text-muted)]">

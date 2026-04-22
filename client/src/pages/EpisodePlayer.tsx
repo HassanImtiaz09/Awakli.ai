@@ -164,7 +164,7 @@ export default function EpisodePlayer() {
     return (
       <div className="min-h-screen bg-bg-void flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full border-2 border-accent-pink/30 border-t-accent-pink animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 rounded-full border-2 border-token-violet/30 border-t-token-violet animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading episode...</p>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function EpisodePlayer() {
           <Film className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h1 className="text-2xl font-display font-bold text-white mb-2">Episode Not Found</h1>
           <Link href={`/watch/${slug}`}>
-            <button className="px-6 py-3 rounded-xl bg-accent-pink text-white font-semibold mt-4">
+            <button className="px-6 py-3 rounded-xl bg-token-violet text-white font-semibold mt-4">
               Back to Project
             </button>
           </Link>
@@ -246,7 +246,7 @@ export default function EpisodePlayer() {
             <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10">
               {dialogue.map((d, i) => (
                 <div key={i} className="mb-1 last:mb-0">
-                  <span className="text-accent-pink font-semibold text-sm">{d.character}: </span>
+                  <span className="text-token-violet font-semibold text-sm">{d.character}: </span>
                   <span className="text-white text-sm">
                     {isPlaying ? <TypewriterText text={d.text} /> : d.text}
                   </span>
@@ -261,7 +261,7 @@ export default function EpisodePlayer() {
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-8 right-8 px-4 py-2 bg-accent-pink/80 rounded-lg font-display font-bold text-lg transform rotate-[-5deg]"
+            className="absolute top-8 right-8 px-4 py-2 bg-token-violet/80 rounded-lg font-display font-bold text-lg transform rotate-[-5deg]"
           >
             {panel.sfx}
           </motion.div>
@@ -302,7 +302,7 @@ export default function EpisodePlayer() {
                   }}
                 >
                   <div
-                    className="h-full bg-gradient-to-r from-accent-pink to-accent-cyan rounded-full transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-token-violet to-token-cyan rounded-full transition-all duration-300"
                     style={{ width: panels.length > 0 ? `${((currentPanel + 1) / panels.length) * 100}%` : "0%" }}
                   />
                 </div>
@@ -319,7 +319,7 @@ export default function EpisodePlayer() {
                     </button>
                     <button
                       onClick={() => setIsPlaying((p) => !p)}
-                      className="w-12 h-12 rounded-full bg-accent-pink/90 flex items-center justify-center hover:bg-accent-pink transition-colors"
+                      className="w-12 h-12 rounded-full bg-token-violet/90 flex items-center justify-center hover:bg-token-violet transition-colors"
                     >
                       {isPlaying ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white ml-0.5" />}
                     </button>
@@ -361,7 +361,7 @@ export default function EpisodePlayer() {
                 {nextEpisode ? (
                   <button
                     onClick={() => navigate(`/watch/${slug}/${nextEpisode.episodeNumber}`)}
-                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-accent-pink to-accent-purple text-white font-semibold flex items-center gap-2"
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-token-violet to-token-lavender text-white font-semibold flex items-center gap-2"
                   >
                     <SkipForward className="w-5 h-5" />
                     Next Episode
@@ -408,7 +408,7 @@ export default function EpisodePlayer() {
           {/* Right: Episode list */}
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Film className="w-4 h-4 text-accent-pink" />
+              <Film className="w-4 h-4 text-token-violet" />
               Episodes
             </h3>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
@@ -416,7 +416,7 @@ export default function EpisodePlayer() {
                 <Link key={ep.id} href={`/watch/${slug}/${ep.episodeNumber}`}>
                   <div className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                     ep.episodeNumber === episodeNumber
-                      ? "bg-accent-pink/10 border border-accent-pink/30"
+                      ? "bg-token-violet/10 border border-token-violet/30"
                       : "bg-surface-1/30 border border-white/5 hover:bg-surface-1/50"
                   }`}>
                     <span className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center text-sm font-bold">
@@ -427,7 +427,7 @@ export default function EpisodePlayer() {
                       <p className="text-xs text-gray-500">{ep.panelCount || 0} panels</p>
                     </div>
                     {ep.episodeNumber === episodeNumber && (
-                      <Play className="w-4 h-4 text-accent-pink fill-accent-pink flex-shrink-0" />
+                      <Play className="w-4 h-4 text-token-violet fill-token-violet flex-shrink-0" />
                     )}
                   </div>
                 </Link>
@@ -471,11 +471,11 @@ function VotingSection({ episodeId }: { episodeId: number }) {
         onClick={() => handleVote("up")}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
           userVote === "up"
-            ? "border-accent-pink/50 bg-accent-pink/10 text-accent-pink"
+            ? "border-token-violet/50 bg-token-violet/10 text-token-violet"
             : "border-white/10 bg-white/5 text-gray-400 hover:text-white"
         }`}
       >
-        <ThumbsUp className={`w-4 h-4 ${userVote === "up" ? "fill-accent-pink" : ""}`} />
+        <ThumbsUp className={`w-4 h-4 ${userVote === "up" ? "fill-token-violet" : ""}`} />
         <motion.span key={upvotes} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           {upvotes}
         </motion.span>
@@ -516,7 +516,7 @@ function renderMarkdown(text: string): string {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-accent-cyan text-xs">$1</code>')
+    .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-token-cyan text-xs">$1</code>')
     .replace(/\n/g, "<br/>");
   // Sanitize with DOMPurify to prevent XSS
   return DOMPurify.sanitize(escaped, {
@@ -571,10 +571,10 @@ function CommentCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={depth > 0 ? "ml-6 pl-4 border-l-2 border-accent-cyan/20" : ""}
+      className={depth > 0 ? "ml-6 pl-4 border-l-2 border-token-cyan/20" : ""}
     >
       <div className="flex gap-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-cyan/30 to-accent-purple/30 flex items-center justify-center flex-shrink-0 text-xs font-bold">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-token-cyan/30 to-token-lavender/30 flex items-center justify-center flex-shrink-0 text-xs font-bold">
           {(comment.userName || "U").charAt(0)}
         </div>
         <div className="flex-1">
@@ -590,7 +590,7 @@ function CommentCard({
             {canReply && (
               <button
                 onClick={() => { if (!isAuthenticated) { window.location.href = getLoginUrl(); return; } setReplyOpen(!replyOpen); }}
-                className="text-xs text-gray-500 hover:text-accent-cyan transition-colors"
+                className="text-xs text-gray-500 hover:text-token-cyan transition-colors"
               >
                 Reply
               </button>
@@ -620,7 +620,7 @@ function CommentCard({
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Write a reply... (supports **bold**, *italic*, `code`)"
                   rows={2}
-                  className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-cyan/50 resize-none"
+                  className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-token-cyan/50 resize-none"
                   autoFocus
                 />
                 <div className="flex justify-end gap-2 mt-2">
@@ -630,7 +630,7 @@ function CommentCard({
                   <button
                     type="submit"
                     disabled={!replyText.trim() || createComment.isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-cyan/20 text-accent-cyan text-xs font-medium disabled:opacity-50 hover:bg-accent-cyan/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-token-cyan/20 text-token-cyan text-xs font-medium disabled:opacity-50 hover:bg-token-cyan/30 transition-colors"
                   >
                     <Send className="w-3 h-3" />
                     {createComment.isPending ? "Posting..." : "Reply"}
@@ -647,7 +647,7 @@ function CommentCard({
         <div className="mt-3">
           <button
             onClick={() => setShowReplies(!showReplies)}
-            className="text-xs text-accent-cyan/70 hover:text-accent-cyan flex items-center gap-1 mb-2 ml-11"
+            className="text-xs text-token-cyan/70 hover:text-token-cyan flex items-center gap-1 mb-2 ml-11"
           >
             <ChevronDown className={`w-3 h-3 transition-transform ${showReplies ? "" : "-rotate-90"}`} />
             {replies.length} {replies.length === 1 ? "reply" : "replies"}
@@ -704,7 +704,7 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-accent-pink" />
+          <MessageSquare className="w-5 h-5 text-token-violet" />
           Comments ({commentList.length})
         </h3>
         <div className="flex gap-1">
@@ -713,7 +713,7 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
               key={s}
               onClick={() => setSort(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                sort === s ? "bg-accent-pink/10 text-accent-pink" : "text-gray-400 hover:text-white"
+                sort === s ? "bg-token-violet/10 text-token-violet" : "text-gray-400 hover:text-white"
               }`}
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -725,7 +725,7 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
       {/* Comment input */}
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="flex gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-pink/30 to-accent-purple/30 flex items-center justify-center flex-shrink-0 text-sm font-bold">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-token-violet/30 to-token-lavender/30 flex items-center justify-center flex-shrink-0 text-sm font-bold">
             {user?.name?.charAt(0) || "?"}
           </div>
           <div className="flex-1">
@@ -734,13 +734,13 @@ function CommentsSection({ episodeId }: { episodeId: number }) {
               onChange={(e) => setNewComment(e.target.value)}
               placeholder={isAuthenticated ? "Add a comment... (supports **bold**, *italic*, `code`)" : "Sign in to comment"}
               rows={2}
-              className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-pink/50 resize-none"
+              className="w-full bg-surface-1/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-token-violet/50 resize-none"
             />
             <div className="flex justify-end mt-2">
               <button
                 type="submit"
                 disabled={!newComment.trim() || createComment.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-pink text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-pink/80 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-token-violet text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-token-violet/80 transition-colors"
               >
                 <Send className="w-4 h-4" />
                 {createComment.isPending ? "Posting..." : "Post"}
