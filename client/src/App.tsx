@@ -56,6 +56,7 @@ import BatchTraining from "./pages/BatchTraining";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import DebugTokens from "./pages/DebugTokens";
+import MangaReader from "./pages/MangaReader";
 import WizardInput from "./pages/create/input";
 import WizardSetup from "./pages/create/setup";
 import WizardScript from "./pages/create/script";
@@ -112,6 +113,9 @@ function Router() {
         <Route path="/create/:projectId" component={CreateGenerate} />
         <Route path="/create/:projectId/read" component={CreateReader} />
         <Route path="/create/:projectId/character-bible" component={CharacterBible} />
+
+        {/* Public manga reader */}
+        <Route path="/m/:slug" component={MangaReader} />
 
         {/* Watch / community */}
         <Route path="/watch/:slug" component={WatchProject} />

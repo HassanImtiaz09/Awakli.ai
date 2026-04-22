@@ -76,6 +76,7 @@ async function startServer() {
       for (const p of projects) {
         if (p.slug) {
           xml += `  <url><loc>${origin}/watch/${p.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>\n`;
+          xml += `  <url><loc>${origin}/m/${p.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>\n`;
         }
       }
       xml += `</urlset>`;
@@ -113,6 +114,54 @@ async function startServer() {
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // ─── OG Meta Injection for social crawlers (/m/:slug, /watch/:slug) ─────
+  const SOCIAL_BOT_RE = /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|Googlebot|bingbot|Baiduspider/i;
+  app.get(["/m/:slug", "/watch/:slug"], async (req, res, next) => {
+    const ua = req.headers["user-agent"] || "";
+    if (!SOCIAL_BOT_RE.test(ua)) return next(); // Not a bot, let SPA handle it
+    try {
+      const { getProjectBySlug, formatViewCount } = await import("../db");
+      const project = await getProjectBySlug(req.params.slug);
+      if (!project || project.visibility !== "public") return next();
+      const origin = `${req.protocol}://${req.get("host")}`;
+      const url = `${origin}${req.originalUrl}`;
+      const title = project.title ? `${project.title} — Awakli` : "Awakli";
+      const desc = project.description || `Read ${project.title || "this manga"} on Awakli`;
+      const image = project.coverImageUrl || `${origin}/og-default.png`;
+      const views = formatViewCount(project.viewCount ?? 0);
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300");
+      res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>${title}</title>
+  <meta name="description" content="${desc}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${desc}" />
+  <meta property="og:image" content="${image}" />
+  <meta property="og:url" content="${url}" />
+  <meta property="og:site_name" content="Awakli" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${desc}" />
+  <meta name="twitter:image" content="${image}" />
+  <meta name="robots" content="index, follow" />
+</head>
+<body>
+  <h1>${title}</h1>
+  <p>${desc}</p>
+  <p>${views} views</p>
+  <a href="${url}">Read on Awakli</a>
+</body>
+</html>`);
+    } catch (err) {
+      console.error("[OG Meta] Error:", err);
+      next();
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

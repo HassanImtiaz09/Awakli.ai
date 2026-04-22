@@ -172,6 +172,23 @@ export const publicContentRouter = router({
       return { recorded: viewId !== null, viewId };
     }),
 
+  // Increment view count for a project (convenience wrapper for MangaReader)
+  incrementView: publicProcedure
+    .input(z.object({ projectId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const viewerHash = computeViewerHash(ctx.req);
+      const viewId = await recordView({
+        contentType: "project",
+        contentId: input.projectId,
+        projectId: input.projectId,
+        viewerHash,
+        sessionId: null,
+        userId: ctx.user?.id ?? null,
+        source: "direct",
+      });
+      return { ok: viewId !== null };
+    }),
+
   // Get view count for content
   getViewCount: publicProcedure
     .input(z.object({
