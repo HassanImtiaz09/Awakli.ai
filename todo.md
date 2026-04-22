@@ -4436,3 +4436,17 @@
 - [x] Upgrade video player: add volume slider control
 - [x] Upgrade video player: add poster start slide "See how the magic happens, here at Awakli"
 - [x] Write vitest tests for updated player
+
+## Demo Video Revision v3
+- [x] Beat 2: Add continuous typing animation effect to the text prompt
+- [x] Beat 4: Weave in "watch anime created by others like you" messaging
+- [x] Beat 5: Weave in "generate videos up to 15 minutes" messaging
+- [x] Beat 6: Change narration to "From words to anime, see the magic happen, here at Awakli"
+- [x] Beat 7: Change narration to "The first platform of its kind. Join the anime community, create, share and see your ideas come alive"
+- [x] Beat 7: Add anime background + Awakli logo
+- [x] Beat 8: Add animated anime background + Awakli logo
+- [x] Regenerate all changed narration lines
+- [x] Generate anime background images for Beats 7-8
+- [x] Reassemble video with all changes (~66s final)
+- [x] Upload and update website video URL
+- [x] Write vitest tests for updated video
