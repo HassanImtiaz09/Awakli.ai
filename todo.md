@@ -3997,3 +3997,14 @@
 - [x] No dark-pattern language: no countdown timers, no pre-checked boxes, no "limited offer" copy
 - [x] Exact copy strings: "Unlock this stage", "You're running low on credits", pack labels with savings
 - [x] Write vitest tests for store, dark-pattern deny list, and component behavior (44 tests passing)
+
+## Stage 0 · Input — Text-Only (Apprentice)
+- [x] Create IdeaPrompt component with conic-gradient frame, 4 corner sigils, shimmer-on-focus
+- [x] IdeaPrompt states: empty (40% sigils), focused (100% sigils + conic animation), valid (40+ chars), invalid (<40 chars), over-cap (>2000 chars magenta counter)
+- [x] Create LengthPicker with 20/30/40 panel pills (20 default), tier-locked 50/60 options opening UpgradeModal
+- [x] ChapterPicker: locked single "Chapter 1" pill with tier-lock tooltip
+- [x] Summon button: "Summon script →" — mint when valid, dimmed when invalid with tooltip
+- [x] Exact copy strings: hero headline, placeholder, length label, tooltips, CTA
+- [x] Wire Summon to advanceStage spending 6 credits, navigate to /create/script?projectId=X
+- [x] Analytics events: stage0_open, stage0_idea_submit, stage0_length_change, stage0_upgrade_prompt
+- [x] Write vitest tests for validation, copy strings, and tier gating logic (32 tests passing)

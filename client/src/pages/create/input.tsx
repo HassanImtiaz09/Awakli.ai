@@ -1,16 +1,28 @@
+/**
+ * Stage 0 · Input — Text-only (Apprentice)
+ *
+ * Magical IdeaPrompt textarea with conic-gradient frame,
+ * LengthPicker (20/30/40 pills), locked ChapterPicker,
+ * and "Summon script →" CTA.
+ */
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, Loader2, Pen } from "lucide-react";
+import { ArrowRight, Loader2, Lock, BookOpen } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import CreateWizardLayout, { STAGES } from "@/layouts/CreateWizardLayout";
+import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
+import IdeaPrompt from "@/components/awakli/IdeaPrompt";
+import LengthPicker from "@/components/awakli/LengthPicker";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-const GENRES = [
-  "Action", "Romance", "Sci-Fi", "Fantasy", "Horror",
-  "Comedy", "Mystery", "Slice of Life", "Thriller", "Adventure",
-];
+const MIN_CHARS = 40;
+const MAX_CHARS = 2000;
 
 export default function WizardInput() {
   const { user } = useAuth();
@@ -21,10 +33,12 @@ export default function WizardInput() {
   const promptParam = params.get("prompt");
 
   const [prompt, setPrompt] = useState(promptParam || "");
-  const [genre, setGenre] = useState("");
+  const [panelCount, setPanelCount] = useState(20);
   const [creating, setCreating] = useState(false);
   const [projectId, setProjectId] = useState<number | null>(
-    projectIdParam && projectIdParam !== "new" ? parseInt(projectIdParam, 10) : null
+    projectIdParam && projectIdParam !== "new"
+      ? parseInt(projectIdParam, 10)
+      : null
   );
   const [title, setTitle] = useState("Untitled Project");
 
@@ -41,7 +55,6 @@ export default function WizardInput() {
     if (project) {
       setTitle(project.title);
       setPrompt(project.originalPrompt || project.description || "");
-      setGenre(project.genre || "");
     }
   }, [project]);
 
@@ -49,39 +62,52 @@ export default function WizardInput() {
   useEffect(() => {
     if (projectIdParam === "new" && user && !creating) {
       setCreating(true);
-      createMut.mutateAsync({
-        title: "Untitled Project",
-        description: promptParam || undefined,
-      }).then(({ id }) => {
-        setProjectId(id);
-        navigate(`/create/input?projectId=${id}`, { replace: true });
-        setCreating(false);
-      }).catch(() => setCreating(false));
+      createMut
+        .mutateAsync({
+          title: "Untitled Project",
+          description: promptParam || undefined,
+        })
+        .then(({ id }) => {
+          setProjectId(id);
+          navigate(`/create/input?projectId=${id}`, { replace: true });
+          setCreating(false);
+        })
+        .catch(() => setCreating(false));
     }
   }, [projectIdParam, user]);
 
+  // Emit stage0_open analytics on mount
+  useEffect(() => {
+    emitAnalytics("stage0_open");
+  }, []);
+
+  const isValid = prompt.trim().length >= MIN_CHARS;
+  const isOverCap = prompt.length > MAX_CHARS;
+  const canProceed = isValid && !isOverCap;
+
   const completedStages = useMemo(() => {
     const s = new Set<number>();
-    // Stage 0 is complete when prompt is filled
-    if (prompt.trim().length > 10 && genre) s.add(0);
+    if (canProceed) s.add(0);
     return s;
-  }, [prompt, genre]);
+  }, [canProceed]);
 
   const autosaveData = useMemo(() => {
     if (!projectId) return null;
     return {
       title,
       description: prompt,
-      genre,
+      panelCount,
     };
-  }, [projectId, title, prompt, genre]);
+  }, [projectId, title, prompt, panelCount]);
 
-  const canProceed = prompt.trim().length > 10 && genre;
-
-  const handleNext = async () => {
+  const handleSummon = async () => {
     if (!canProceed || !projectId) return;
+    emitAnalytics("stage0_idea_submit", {
+      charCount: prompt.length,
+      panelCount,
+    });
     await advance({
-      inputs: { prompt, genre, title },
+      inputs: { prompt, panelCount, title },
     });
   };
 
@@ -105,90 +131,137 @@ export default function WizardInput() {
       completedStages={completedStages}
       unsavedChanges={prompt !== (project?.description || "")}
     >
-      <div className="max-w-2xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-token-cyan text-xs font-semibold uppercase tracking-widest">
-            <Pen className="w-3.5 h-3.5" />
-            Stage 01 — Story Input
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
-            What's your story about?
+      <div className="max-w-3xl mx-auto space-y-10 py-4">
+        {/* ─── Hero Headline ────────────────────────────────────────── */}
+        <div className="text-center space-y-3">
+          <h1 className="text-3xl lg:text-4xl font-bold text-white/90 leading-tight">
+            Tonight, your idea becomes{" "}
+            <span className="bg-gradient-to-r from-token-cyan via-token-violet to-token-magenta bg-clip-text text-transparent">
+              anime
+            </span>
+            .
           </h1>
-          <p className="text-white/40 text-sm">
-            Describe your anime concept in a few sentences. The more detail you give, the richer the script.
+        </div>
+
+        {/* ─── IdeaPrompt (magical textarea) ────────────────────────── */}
+        <IdeaPrompt
+          value={prompt}
+          onChange={setPrompt}
+          minChars={MIN_CHARS}
+          maxChars={MAX_CHARS}
+          placeholder="A rain-soaked rooftop. Two rivals. One city. Go\u2026"
+        />
+
+        {/* ─── Controls Row ─────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row gap-6 sm:items-end sm:justify-between">
+          {/* Left: Length + Chapter pickers */}
+          <div className="space-y-5 flex-1">
+            {/* Length Picker */}
+            <LengthPicker
+              value={panelCount}
+              onChange={setPanelCount}
+              allUnlocked={false}
+            />
+
+            {/* Chapter Picker (locked for Apprentice) */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                Chapters
+              </label>
+              <div className="flex gap-2">
+                {/* Active chapter */}
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-token-violet/10 text-token-violet text-sm font-medium ring-1 ring-token-violet/30">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Chapter 1
+                </div>
+
+                {/* Locked multi-chapter */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.02] text-white/20 text-sm border border-white/5 cursor-not-allowed">
+                      <Lock className="w-3 h-3" />
+                      Multi-chapter
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs"
+                  >
+                    Multi-chapter stories are part of Mangaka — upgrade to unlock
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Summon button */}
+          <div className="flex-shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <motion.button
+                    whileHover={{
+                      scale: canProceed && !advancing ? 1.02 : 1,
+                    }}
+                    whileTap={{
+                      scale: canProceed && !advancing ? 0.97 : 1,
+                    }}
+                    onClick={handleSummon}
+                    disabled={!canProceed || advancing}
+                    className={`flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all whitespace-nowrap ${
+                      canProceed && !advancing
+                        ? "bg-gradient-to-r from-token-mint to-token-cyan text-[#0B0B18] shadow-[0_4px_24px_rgba(0,229,160,0.25)]"
+                        : "bg-white/5 text-white/20 cursor-not-allowed"
+                    }`}
+                  >
+                    {advancing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Summoning...
+                      </>
+                    ) : (
+                      <>
+                        Summon script
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </TooltipTrigger>
+              {!canProceed && !advancing && (
+                <TooltipContent
+                  side="top"
+                  className="bg-[#1A1A2E] border-white/10 text-white/70 text-xs max-w-[260px]"
+                >
+                  {isOverCap
+                    ? "Your idea is over 2,000 characters — trim it down a bit"
+                    : "Give us a bit more to work with — at least 40 characters"}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* ─── Cost Hint ────────────────────────────────────────────── */}
+        <div className="text-center">
+          <p className="text-[11px] text-white/20">
+            This stage: 6c · full project forecast: ~42c
           </p>
-        </div>
-
-        {/* Prompt textarea */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Story Premise</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="A samurai who can see 10 seconds into the future must protect a blind oracle from an army of shadow assassins..."
-            rows={6}
-            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 text-white/90 placeholder:text-white/20 resize-none outline-none focus:ring-2 focus:ring-token-violet/50 transition-all text-sm leading-relaxed"
-          />
-          <div className="flex justify-between text-xs text-white/30">
-            <span>{prompt.length} characters</span>
-            <span>Min 10 characters</span>
-          </div>
-        </div>
-
-        {/* Genre pills */}
-        <div className="space-y-3">
-          <label className="text-xs font-medium text-white/50 uppercase tracking-wider">Genre</label>
-          <div className="flex flex-wrap gap-2">
-            {GENRES.map((g) => (
-              <button
-                key={g}
-                onClick={() => setGenre(genre === g ? "" : g)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  genre === g
-                    ? "bg-token-violet/30 text-token-violet ring-1 ring-token-violet/50"
-                    : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* AI Enhance */}
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white/50 hover:text-token-cyan hover:border-token-cyan/30 transition-all">
-          <Sparkles className="w-4 h-4" />
-          AI Enhance Prompt
-        </button>
-
-        {/* Next button */}
-        <div className="flex justify-end pt-4">
-          <motion.button
-            whileHover={{ scale: canProceed && !advancing ? 1.02 : 1 }}
-            whileTap={{ scale: canProceed && !advancing ? 0.98 : 1 }}
-            onClick={handleNext}
-            disabled={!canProceed || advancing}
-            className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
-              canProceed && !advancing
-                ? "bg-gradient-to-r from-token-violet to-token-cyan text-white shadow-[0_4px_20px_rgba(107,91,255,0.3)]"
-                : "bg-white/5 text-white/20 cursor-not-allowed"
-            }`}
-          >
-            {advancing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Advancing...
-              </>
-            ) : (
-              <>
-                Continue to Setup
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </motion.button>
         </div>
       </div>
     </CreateWizardLayout>
   );
+}
+
+// ─── Analytics Helper ───────────────────────────────────────────────────────
+function emitAnalytics(event: string, data?: Record<string, unknown>) {
+  try {
+    window.dispatchEvent(
+      new CustomEvent("awakli:analytics", {
+        detail: { event, ...data, timestamp: Date.now() },
+      })
+    );
+  } catch {
+    // Silently fail
+  }
 }
