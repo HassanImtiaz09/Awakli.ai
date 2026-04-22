@@ -4457,3 +4457,10 @@
 - [x] Beat 8: Remove zoom animation, keep static background, increase font size, improve text color/contrast
 - [x] Reassemble and upload revised video
 - [x] Update website video URL and run tests
+
+## Demo Video v3-fix2: Truncation Fix + Typewriter SFX
+- [x] Diagnose why video was truncated to 55s — BGM only 53s, amix produced ~55s, -shortest flag truncated 66s video
+- [x] Generate typewriter sound effect for Beat 2 typing animation (42 clicks over 6s)
+- [x] Reassemble full-length video with all beats, narration, and typewriter SFX (65.9s)
+- [x] Upload and update website video URL
+- [x] Run tests and save checkpoint
