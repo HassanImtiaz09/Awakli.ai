@@ -105,6 +105,7 @@ export default function WizardScript() {
       });
       utils.episodes.listByProject.invalidate({ projectId: numId });
       trackEvent("stage1_scene_edit", { action: "generate", projectId });
+      trackEvent("stage1_scene_regen", { projectId, sceneIndex: episodes.length, credits: 0 });
     } catch (e: any) {
       toast.error("Script generation failed", {
         description: e.message || "Please try again.",

@@ -52,13 +52,14 @@ function trackEvent(name: string, data?: Record<string, unknown>) {
 function getRegenLimit(tier: string): number {
   switch (tier) {
     case "free_trial":
+      return 5;        // Apprentice: 5 redraws per project
     case "creator":
-      return 5;
+      return 15;       // Mangaka: 15 redraws per project
     case "creator_pro":
-      return 15;
     case "studio":
     case "studio_pro":
-      return Infinity;
+    case "enterprise":
+      return Infinity; // Studio+: unlimited
     default:
       return 5;
   }
@@ -78,7 +79,7 @@ export default function WizardPanels() {
   const openUpgrade = useUpgradeModal((s) => s.openFromGate);
 
   // ─── Tier gating ──────────────────────────────────────────────────────
-  const batchGate = useMinTierGate("creator_pro"); // Mangaka+
+  const batchGate = useMinTierGate("creator"); // Mangaka+
   const hasBatchTools = batchGate.allowed;
   const userTier = batchGate.userTier;
 

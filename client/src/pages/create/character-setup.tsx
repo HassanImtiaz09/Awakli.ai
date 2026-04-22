@@ -55,6 +55,13 @@ import {
   OVERLAY_CREDITS,
 } from "@/components/awakli/UserVoiceOverlay";
 
+// ─── Analytics helper ──────────────────────────────────────────────────
+function trackEvent(name: string, data?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && (window as any).__awakli_track) {
+    (window as any).__awakli_track(name, data);
+  }
+}
+
 // ─── Tier helpers ───────────────────────────────────────────────────────
 const STUDIO_TIERS = new Set(["studio", "enterprise"]);
 function isStudioTier(tier: string): boolean {
@@ -163,7 +170,7 @@ export default function WizardCharacterSetup() {
   }, [characters, studioAccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoraStart = useCallback((characterId: number) => {
-    // stage5_lora_start
+    trackEvent("stage5_lora_start", { projectId, characterId, credits: LORA_CREDITS.perCharacter });
     if (credits < LORA_CREDITS.perCharacter) {
       toast.error("Not enough credits for LoRA training.");
       return;
@@ -189,7 +196,7 @@ export default function WizardCharacterSetup() {
               : c
           )
         );
-        // stage5_lora_ready
+        trackEvent("stage5_lora_ready", { projectId, characterId });
       } else {
         setLoraCharacters((prev) =>
           prev.map((c) =>
@@ -277,7 +284,7 @@ export default function WizardCharacterSetup() {
 
   const handleVoiceCloneConsent = useCallback(
     (characterId: number, consented: boolean) => {
-      // stage5_voiceclone_consent
+      trackEvent("stage5_voiceclone_consent", { projectId, characterId });
       setVoiceCloneCharacters((prev) =>
         prev.map((c) =>
           c.characterId === characterId
@@ -333,7 +340,7 @@ export default function WizardCharacterSetup() {
                 : c
             )
           );
-          // stage5_voiceclone_ready
+          trackEvent("stage5_voiceclone_ready", { projectId, characterId });
         } else {
           setVoiceCloneCharacters((prev) =>
             prev.map((c) =>
@@ -446,7 +453,7 @@ export default function WizardCharacterSetup() {
   );
 
   const handleOverlayPreview = useCallback((lineId: string) => {
-    // stage5_overlay_preview
+    trackEvent("stage5_overlay_preview", { projectId });
     setOverlayLines((prev) =>
       prev.map((l) =>
         l.id === lineId ? { ...l, status: "previewing" as const } : l
@@ -502,7 +509,7 @@ export default function WizardCharacterSetup() {
   // ─── Substep 1: Character style handlers ──────────────────────────
   const handleStyleSelect = useCallback(
     (characterId: number, presetKey: string) => {
-      // stage5_preset_pick
+      trackEvent("stage5_preset_pick", { projectId, characterId, preset: presetKey });
       setStyleSelections((prev) => ({ ...prev, [characterId]: presetKey }));
     },
     []
@@ -523,13 +530,13 @@ export default function WizardCharacterSetup() {
       return n;
     });
     setCurrentStep(2);
-    // stage5_substep_enter (voices)
+    trackEvent("stage5_substep_enter", { projectId, substep: "voices" });
   }, [allCharactersStyled]);
 
   // ─── Substep 2: Voice handlers ────────────────────────────────────
   const handleVoiceSelect = useCallback(
     (characterId: number, voiceId: string) => {
-      // stage5_voice_pick
+      trackEvent("stage5_voice_pick", { projectId, characterId, voiceId });
       setVoiceSelections((prev) => ({ ...prev, [characterId]: voiceId }));
     },
     []
@@ -550,7 +557,7 @@ export default function WizardCharacterSetup() {
       return n;
     });
     setCurrentStep(3);
-    // stage5_substep_enter (poses)
+    trackEvent("stage5_substep_enter", { projectId, substep: "poses" });
   }, [allCharactersVoiced]);
 
   // ─── Substep 3: Pose handlers ────────────────────────────────────
@@ -575,7 +582,7 @@ export default function WizardCharacterSetup() {
 
   const handlePoseRegenerate = useCallback(
     (characterId: number, angle: PoseAngle) => {
-      // stage5_pose_regen
+      trackEvent("stage5_pose_regen", { projectId, characterId, angle, credits: POSE_CREDITS.regenerateSingle });
       if (credits < POSE_CREDITS.regenerateSingle) {
         toast.error("Not enough credits to regenerate this pose.");
         return;
@@ -675,7 +682,7 @@ export default function WizardCharacterSetup() {
       n.add(3);
       return n;
     });
-    // stage5_ready
+    trackEvent("stage5_ready", { projectId });
   }, [allPosesApproved]);
 
   // ─── Ready state ──────────────────────────────────────────────────
@@ -689,7 +696,7 @@ export default function WizardCharacterSetup() {
   }, [navigate, projectId]);
 
   const handleStepClick = useCallback((step: SetupSubstep) => {
-    // stage5_substep_enter
+    trackEvent("stage5_substep_enter", { projectId, substep: "characters" });
     setCurrentStep(step);
   }, []);
 

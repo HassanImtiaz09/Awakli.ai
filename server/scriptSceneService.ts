@@ -380,11 +380,11 @@ Keep the same number of panels (${scene.panels.length}) and maintain continuity 
 // ─── Tier-based regeneration limits ─────────────────────────────────────────
 
 const REGEN_LIMITS: Record<string, number> = {
-  free_trial: 3,
-  apprentice: 3,
-  creator: 15,
-  creator_pro: 15,
-  studio: Infinity,
+  free_trial: 3,         // Apprentice: 3/project
+  apprentice: 3,         // alias
+  creator: 15,           // Mangaka: 15/project
+  creator_pro: Infinity, // Studio: unlimited
+  studio: Infinity,      // Studio Pro: unlimited
   enterprise: Infinity,
 };
 

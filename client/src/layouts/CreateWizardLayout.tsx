@@ -560,6 +560,15 @@ export interface CreateWizardProps {
   unsavedChanges?: boolean;
 }
 
+// ─── Analytics helper ───────────────────────────────────────────────────
+function trackEvent(name: string, data?: Record<string, unknown>) {
+  try {
+    if (typeof window !== "undefined" && (window as any).__awakli_track) {
+      (window as any).__awakli_track(name, data);
+    }
+  } catch {}
+}
+
 export default function CreateWizardLayout({
   stage,
   children,
@@ -575,6 +584,18 @@ export default function CreateWizardLayout({
     numericId && !isNaN(numericId) ? numericId : null,
     autosaveData
   );
+
+  // Fire wizard_stage_enter whenever the stage changes
+  const stageRef = useRef(stage);
+  useEffect(() => {
+    const stageKey = STAGES[stage]?.key ?? String(stage);
+    trackEvent("wizard_stage_enter", {
+      stage: stageKey,
+      stageIndex: stage,
+      projectId,
+    });
+    stageRef.current = stage;
+  }, [stage, projectId]);
 
   return (
     <div className="relative min-h-screen bg-[#05050C]">

@@ -43,6 +43,13 @@ import {
   canPublishMore,
 } from "@/components/awakli/WatermarkToggle";
 
+// ─── Analytics helper ──────────────────────────────────────────────────
+function trackEvent(name: string, data?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && (window as any).__awakli_track) {
+    (window as any).__awakli_track(name, data);
+  }
+}
+
 // ─── Copy strings (exact spec) ─────────────────────────────────────────
 const COPY = {
   pageTitle: "Publish your manga",
@@ -152,7 +159,7 @@ export default function WizardPublish() {
   useEffect(() => {
     if (!analyticsRef.current && panels.length > 0) {
       analyticsRef.current = true;
-      // stage3_preview_shown
+      trackEvent("stage3_preview_shown", { projectId, tier });
     }
   }, [panels.length]);
 
@@ -168,7 +175,7 @@ export default function WizardPublish() {
 
     setPageState("publishing");
     setPublishStep(0);
-    // stage3_publish_start
+    trackEvent("stage3_publish_start", { projectId: numId, tier });
 
     // Simulate 3-step progress
     const stepDurations = [2000, 2500, 1500];
@@ -190,7 +197,7 @@ export default function WizardPublish() {
       setPublishedSlug(slug);
       setPageState("published");
       utils.projects.get.invalidate({ id: numId });
-      // stage3_publish_complete
+      trackEvent("stage3_publish_complete", { projectId: numId, slug, tier });
     } catch {
       toast.error("Publishing failed. Please try again.");
       setPageState("ready");
@@ -390,7 +397,7 @@ export default function WizardPublish() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                   onClick={() => {
-                    // stage3_anime_cta
+                    trackEvent("stage3_anime_cta", { projectId });
                     navigate(`/create/anime-gate?projectId=${projectId}`);
                   }}
                   className="w-full flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/15 hover:border-violet-500/30 transition-all group"
@@ -551,10 +558,10 @@ export default function WizardPublish() {
           initialConfig={coverConfig}
           onSave={(config) => {
             setCoverConfig(config);
-            // stage3_cover_picked
+            trackEvent("stage3_cover_picked", { projectId, preset: config.stylePreset });
           }}
           onCoverPicked={() => {
-            // stage3_cover_picked
+            trackEvent("stage3_cover_picked", { projectId });
           }}
         />
       </WithTier>

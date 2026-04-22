@@ -1,0 +1,65 @@
+APPENDIX A · Tier capability matrix
+Single source of truth consumed by F5 (withTier HOC + requireTier middleware).
+Keep this in shared/tierMatrix.ts so client and server agree.
+
+Capability               | Apprentice       | Mangaka         | Studio          | Studio Pro
+Idea-to-script (S0)      | ✓ (cap 40 panels)| ✓ (cap 120)     | ✓ (cap 200)     | ✓ (unlimited)
+Upload manga/webtoon (S0-B) | —             | ✓               | ✓               | ✓
+Character reference uploads (S0-C) | —      | —               | ✓               | ✓
+Script regeneration (S1)  | 3/project       | 15/project      | Unlimited       | Unlimited
+Panel batch ops (S2-B)    | —               | ✓ (up to 8)     | ✓ (unlimited)   | ✓ (unlimited)
+Consistency auto-correct (S2-B) | —         | —               | —               | ✓ (5/project/mo)
+Watermark off (S3)        | —               | ✓               | ✓               | ✓
+Custom domain & RSS (S3)  | —               | —               | ✓               | ✓
+Anime gate pass-through (S4-B) | —          | ✓               | ✓               | ✓
+Pose regen (S5-A)         | —               | ✓               | ✓               | ✓
+LoRA training (S5-B)      | —               | —               | ✓               | ✓ (batch)
+Voice cloning (S5-B)      | —               | —               | ✓               | ✓
+User-voice overlay (S5-B) | —               | —               | ✓               | ✓
+Video runtime cap (S6)    | —               | 60s             | 12 min          | 24 min
+4K / ProRes export (S6-B) | —               | —               | ✓               | ✓
+Separated stems (S6-B)    | —               | —               | ✓               | ✓
+
+APPENDIX B · Analytics event dictionary
+Every event fires to both Segment (for BI) and tRPC events.track (for billing attribution).
+Names are stable — never rename; only extend properties.
+
+Event                      | Fired when                           | Key properties
+wizard_stage_enter         | User enters any /create/* route      | projectId, stage, tier
+credits_forecast_exceeds   | Forecast exceeds current balance     | projectId, stage, forecast, balance
+tier_gate_shown            | withTier soft-deny renders           | featureKey, requiredTier, currentTier
+upgrade_modal_open         | UpgradeModal opens                   | trigger (gate|credits|voluntary), target
+stage0_idea_submit         | User clicks Summon script            | projectId, chars, length
+stage1_scene_regen         | Per-scene regeneration confirmed     | projectId, sceneIndex, credits
+stage2_panel_regen         | Per-panel regeneration confirmed     | projectId, panelIndex, credits
+stage3_publish_complete    | Episode is live at /m/{slug}         | projectId, slug, tier
+stage4_checkout_opened     | Stripe tab opens from anime gate     | projectId, tier
+stage5_lora_ready          | LoRA training completes              | projectId, characterId, minutes
+stage6_render_complete     | Video render finished                | projectId, seconds, credits, exportFormat
+
+APPENDIX C · Token reference
+Full mirror of F1 exports. Any code PR introducing a new color, radius, or font size must
+extend tokens.ts — no hex literals in JSX.
+
+Token              | Value                                  | Where used
+colors.cyan        | #00F0FF                                | Focus ring outer stop · healthy credit ring · S6 stage accent
+colors.violet      | #6B5BFF                                | Primary CTA · stage rail active node · borders on approved scenes
+colors.lavender    | #B388FF                                | Focus ring mid stop · hover states on tier cards
+colors.gold        | #FFD60A                                | Publish CTA · warning ring · style-drift flagged panels
+colors.magenta     | #FF2D7A                                | Anime-gate accents · critical credit state · tier deny hard
+colors.mint        | #00E5A0                                | Approved state · healthy ring · success toast
+colors.ink         | #0B0B18                                | Primary text · dark surface on anime gate
+colors.paper       | #F7F7FB                                | Default surface
+radii.chip         | 14px                                   | Pills, tags, voice-catalog chips
+radii.card         | 28px                                   | Scene cards, panel tiles, forecast card
+radii.sheet        | 36px                                   | Modals, overlay sheets, anime-gate hero
+radii.sigil        | 9999px                                 | Credit ring · tier cap ring · avatar
+type.display-hero  | 72/80                                  | Hero headline on home, anime-gate title
+type.display-md    | 56/64                                  | Cover page title, stage-6 approve
+type.h1            | 40/48                                  | Page titles inside wizard
+type.h2            | 28/36                                  | Section headers on stage pages
+type.body          | 16/26                                  | Body copy, editable fields
+type.micro         | 12/16                                  | Labels (uppercase, tracking 0.08em)
+shadow.rest        | 0 1px 2px rgba(11,11,24,0.08)          | Default card
+shadow.hover       | 0 6px 24px rgba(107,91,255,0.20)       | Hover states
+shadow.active      | 0 10px 36px rgba(107,91,255,0.30)      | Selected / in-progress

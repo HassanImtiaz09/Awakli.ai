@@ -4182,3 +4182,29 @@
 - [x] Exact copy strings: chapter composer title, music bed title/upload, export title, export options
 - [x] Analytics events: stage6_chapters_compose, stage6_music_pick, stage6_export_4k, stage6_export_prores, stage6_export_stems
 - [x] Write vitest tests for chapter stitching, export pricing, music bed, copy strings, and tier caps (59 tests passing)
+
+## Appendix Audit — Tier Matrix, Analytics Events, Design Tokens
+- [x] Appendix A: Verify shared/tierMatrix.ts has all 16 capabilities with correct tier values
+- [x] Appendix A: Verify idea-to-script caps (40/120/200/unlimited)
+- [x] Appendix A: Verify upload manga/webtoon (—/✓/✓/✓)
+- [x] Appendix A: Verify character reference uploads (—/—/✓/✓)
+- [x] Appendix A: Verify script regeneration (3/15/unlimited/unlimited) — fixed creator_pro from 15 to unlimited
+- [x] Appendix A: Verify panel batch ops (—/up to 8/unlimited/unlimited) — fixed min tier from creator_pro to creator
+- [x] Appendix A: Verify consistency auto-correct (—/—/—/5 per project/mo)
+- [x] Appendix A: Verify watermark off (—/✓/✓/✓)
+- [x] Appendix A: Verify custom domain & RSS (—/—/✓/✓)
+- [x] Appendix A: Verify anime gate pass-through (—/✓/✓/✓)
+- [x] Appendix A: Verify pose regen (—/✓/✓/✓)
+- [x] Appendix A: Verify LoRA training (—/—/✓/✓ batch)
+- [x] Appendix A: Verify voice cloning (—/—/✓/✓)
+- [x] Appendix A: Verify user-voice overlay (—/—/✓/✓)
+- [x] Appendix A: Verify video runtime cap (—/60s/12min/24min)
+- [x] Appendix A: Verify 4K/ProRes export (—/—/✓/✓)
+- [x] Appendix A: Verify separated stems (—/—/✓/✓)
+- [x] Appendix B: Verify all 11 analytics events exist with correct names and properties — added missing events to 6 files
+- [x] Appendix C: Verify all 8 color tokens match exact hex values
+- [x] Appendix C: Verify all 4 radii tokens match exact px values — fixed sigil from 999px to 9999px
+- [x] Appendix C: Verify all 6 type tokens match exact size/line-height values
+- [x] Appendix C: Verify all 3 shadow tokens match exact values
+- [x] Fix all 10 mismatches found in audit
+- [x] Write vitest tests validating appendix compliance (63 tests passing)

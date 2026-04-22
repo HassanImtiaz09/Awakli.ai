@@ -29,6 +29,13 @@ import {
   TIER_CARD_COPY,
 } from "@/components/awakli/TierCompareCard";
 
+// ─── Analytics helper ──────────────────────────────────────────────────
+function trackEvent(name: string, data?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && (window as any).__awakli_track) {
+    (window as any).__awakli_track(name, data);
+  }
+}
+
 // ─── Copy strings (exact spec) ─────────────────────────────────────────
 export const PASSTHROUGH_COPY = {
   title: "You're in. Let's animate.",
@@ -89,7 +96,7 @@ export default function WizardAnimeGate() {
     if (!isSubscribed) return;
 
     hasTriggeredPassthrough.current = true;
-    // stage4_passthrough_shown
+    trackEvent("stage4_passthrough_shown", { projectId, tier });
     setPageState("passthrough");
 
     // Auto-redirect after 1.2s (or immediately for reduced motion)
@@ -104,7 +111,7 @@ export default function WizardAnimeGate() {
   useEffect(() => {
     if (!analyticsRef.current && subscription && !isSubscribed) {
       analyticsRef.current = true;
-      // stage4_gate_shown
+      trackEvent("stage4_gate_shown", { projectId, tier });
     }
   }, [subscription, isSubscribed]);
 
@@ -113,7 +120,7 @@ export default function WizardAnimeGate() {
 
   const handleSelectTier = useCallback(
     async (tierKey: "creator_pro" | "studio" | "enterprise") => {
-      // stage4_tier_select
+      trackEvent("stage4_tier_select", { projectId, tier: tierKey });
       setLoadingTier(tierKey);
 
       // Enterprise requires contact — show toast
@@ -130,7 +137,7 @@ export default function WizardAnimeGate() {
         });
 
         if (result.url) {
-          // stage4_checkout_opened
+          trackEvent("stage4_checkout_opened", { projectId, tier: tierKey });
           window.open(result.url, "_blank");
           setPageState("checkout");
           toast.info(TIER_CARD_COPY.waitingState);
@@ -146,7 +153,7 @@ export default function WizardAnimeGate() {
           toast.success(`Successfully switched to ${tierName}!`);
           setConfirmedTierName(tierName);
           setPageState("confirmed");
-          // stage4_confirmed
+          trackEvent("stage4_confirmed", { projectId, tier: tierKey, tierName });
           setTimeout(() => {
             navigate(`/create/character-setup?projectId=${projectId}`);
           }, 2000);
@@ -182,7 +189,7 @@ export default function WizardAnimeGate() {
                 : "Studio Pro";
             setConfirmedTierName(tierName);
             setPageState("confirmed");
-            // stage4_confirmed
+            trackEvent("stage4_confirmed", { projectId, tier: selectedTier, tierName });
 
             // Auto-navigate after 2s
             setTimeout(() => {
@@ -207,7 +214,7 @@ export default function WizardAnimeGate() {
 
   // ─── Decline handler ──────────────────────────────────────────────
   const handleDecline = useCallback(() => {
-    // stage4_declined
+    trackEvent("stage4_declined", { projectId });
     const slug = project?.slug;
     if (slug) {
       navigate(`/m/${slug}`);

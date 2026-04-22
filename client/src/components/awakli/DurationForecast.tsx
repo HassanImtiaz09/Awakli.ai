@@ -4,7 +4,7 @@
  *
  * Spec: Stage 6 · Video — Short-form Render (Mangaka)
  */
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Clock, Coins, AlertTriangle, Sparkles } from "lucide-react";
 import type { PanelTiming } from "./PanelTimingEditor";
@@ -73,6 +73,27 @@ export default function DurationForecast({
   const insufficientCredits = availableCredits < forecast.totalCredits;
   const noRendersLeft = rendersRemaining <= 0;
   const canRender = !overBudget && !insufficientCredits && !noRendersLeft && !disabled;
+
+  // Fire credits_forecast_exceeds when forecast exceeds budget or credits
+  const prevExceeds = useRef(false);
+  useEffect(() => {
+    const exceeds = overBudget || insufficientCredits;
+    if (exceeds && !prevExceeds.current) {
+      try {
+        if (typeof window !== "undefined" && (window as any).__awakli_track) {
+          (window as any).__awakli_track("credits_forecast_exceeds", {
+            totalCredits: forecast.totalCredits,
+            totalRuntime: forecast.totalRuntime,
+            maxRuntime,
+            availableCredits,
+            overBudget,
+            insufficientCredits,
+          });
+        }
+      } catch {}
+    }
+    prevExceeds.current = exceeds;
+  }, [overBudget, insufficientCredits, forecast, maxRuntime, availableCredits]);
 
   return (
     <motion.div

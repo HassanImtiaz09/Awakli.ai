@@ -1,0 +1,51 @@
+APPENDIX AUDIT FINDINGS
+========================
+
+APPENDIX A — Tier Capability Matrix Issues:
+
+1. CAPABILITY_MIN_TIER.batch_generation = "creator_pro" but should be "creator" (Mangaka)
+   - Appendix says Mangaka gets batch ops "up to 8"
+   - getBatchLimit in PanelBatchBar.tsx uses "creator_pro" for 8-batch → should be "creator"
+   
+2. CAPABILITY_MIN_TIER.voice_cloning = "studio" but should be "creator_pro" (Studio)
+   - Appendix says Studio (creator_pro) gets voice cloning ✓
+   
+3. CAPABILITY_MIN_TIER.hd_export = "creator" but should be "creator_pro" (Studio)
+   - Appendix says 4K/ProRes export starts at Studio (creator_pro)
+   
+4. CAPABILITY_MIN_TIER.character_foundation = "studio" but should be "creator_pro" (Studio)
+   - Appendix says character reference uploads start at Studio (creator_pro)
+
+5. Panel regen limits in panels.tsx: free_trial AND creator both return 5
+   - Appendix says Apprentice (free_trial) = 5, Mangaka (creator) = 15 (NOT 5)
+   - Need to fix: creator should return 15
+
+6. Script regen limits in scriptSceneService.ts: creator_pro = 15
+   - Appendix says Studio (creator_pro) = unlimited, not 15
+   - Need to fix: creator_pro should return Infinity
+
+APPENDIX B — Analytics Events Issues:
+
+7. "wizard_stage_enter" event not found in any source file
+   - Need to add to CreateWizardLayout or stage pages
+
+8. "credits_forecast_exceeds" event not found in any source file
+   - Need to add to DurationForecast or video.tsx when forecast exceeds balance
+
+APPENDIX C — Token Reference Issues:
+
+9. radii.sigil = "999px" but should be "9999px"
+   - In tokens.ts line 47: sigil: '999px' → should be '9999px'
+
+10. tokens.ts exists at client/src/styles/tokens.ts (NOT shared/tierMatrix.ts)
+    - Appendix says "Keep this in shared/tierMatrix.ts" but tokens are separate
+    - The shared/ directory doesn't have tokens.ts — should we add one?
+    - Actually the appendix says tokens should be in shared/tokens.ts
+
+All other checks PASS:
+- All 8 color hex values match exactly
+- All 6 type scale values match exactly  
+- All 3 shadow values match exactly
+- 9 of 11 analytics events found
+- Consistency auto-correct cap = 5/project/month ✓
+- Video runtime caps: 60s/720s/1440s ✓

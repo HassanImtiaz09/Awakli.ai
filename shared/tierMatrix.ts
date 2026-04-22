@@ -62,10 +62,10 @@ const CAPABILITY_MIN_TIER: Record<CapabilityKey, TierName> = {
   ai_script_generation:  "free_trial",
   ai_panel_generation:   "free_trial",
   ai_video_generation:   "creator_pro",
-  voice_cloning:         "studio",
+  voice_cloning:         "creator_pro",    // Studio: ✓
   custom_lora_training:  "creator_pro",
-  hd_export:             "creator",
-  batch_generation:      "creator_pro",
+  hd_export:             "creator_pro",    // Studio: 4K / ProRes
+  batch_generation:      "creator",       // Mangaka: up to 8 panels
 
   // Platform features
   community_voting:    "free_trial",
@@ -76,7 +76,7 @@ const CAPABILITY_MIN_TIER: Record<CapabilityKey, TierName> = {
   white_label:         "enterprise",
 
   // Character & style features
-  character_foundation:    "studio",
+  character_foundation:    "creator_pro",   // Studio: ✓
   style_refs:              "studio",
   character_library_reuse: "studio",
   whole_book_mode:         "studio",

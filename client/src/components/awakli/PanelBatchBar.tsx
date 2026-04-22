@@ -182,12 +182,13 @@ export function PanelBatchBar({
 // ─── Batch limit by tier ─────────────────────────────────────────────────────
 export function getBatchLimit(tier: string): number {
   switch (tier) {
+    case "creator":
+      return 8;  // Mangaka: up to 8 panels
     case "creator_pro":
-      return 8;  // Mangaka
     case "studio":
     case "studio_pro":
     case "enterprise":
-      return Infinity; // Studio+
+      return Infinity; // Studio+: unlimited
     default:
       return 0; // Apprentice / free_trial — no batch
   }

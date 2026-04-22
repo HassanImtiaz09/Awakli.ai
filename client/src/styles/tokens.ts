@@ -44,7 +44,7 @@ export const radii = {
   /** Large sheets, bottom drawers, hero panels */
   sheet: '36px',
   /** Fully circular: avatars, icon buttons, sigils */
-  sigil: '999px',
+  sigil: '9999px',
 } as const;
 
 export type TokenRadius = keyof typeof radii;

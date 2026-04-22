@@ -77,13 +77,14 @@ export async function incrementRegenCount(projectId: number): Promise<number> {
 export function getRegenLimit(tier: string): number {
   switch (tier) {
     case "free_trial":
+      return 5;        // Apprentice: 5/project
     case "creator":
-      return 5; // Apprentice
+      return 15;       // Mangaka: 15/project
     case "creator_pro":
-      return 15; // Mangaka
     case "studio":
     case "studio_pro":
-      return Infinity; // Studio
+    case "enterprise":
+      return Infinity; // Studio+: unlimited
     default:
       return 5;
   }
