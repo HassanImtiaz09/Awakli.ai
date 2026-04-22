@@ -494,7 +494,7 @@ export default function WizardPanels() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[#00F0FF] text-xs font-semibold uppercase tracking-widest">
+          <div className="flex items-center gap-2 text-token-cyan text-xs font-semibold uppercase tracking-widest">
             <LayoutGrid className="w-3.5 h-3.5" />
             Stage 02 — Panels
           </div>
@@ -527,7 +527,7 @@ export default function WizardPanels() {
                     }}
                     className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                       selectedEpIdx === i
-                        ? "bg-[#00F0FF]/20 text-[#00F0FF] ring-1 ring-[#00F0FF]/30"
+                        ? "bg-token-cyan/20 text-token-cyan ring-1 ring-token-cyan/30"
                         : "bg-white/5 text-white/40 hover:text-white/60"
                     }`}
                   >
@@ -545,7 +545,7 @@ export default function WizardPanels() {
                     {panelStats.withImage} / {panelStats.total} panels rendered
                   </span>
                   {panelStats.genInProgress > 0 && (
-                    <span className="text-[#FFD700] flex items-center gap-1">
+                    <span className="text-token-gold flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       {panelStats.genInProgress} generating
                     </span>
@@ -553,7 +553,7 @@ export default function WizardPanels() {
                 </div>
                 <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                   <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-[#6B5BFF] via-[#00F0FF] to-[#00E8A0]"
+                    className="h-full rounded-full bg-gradient-to-r from-token-violet via-token-cyan to-token-mint"
                     initial={{ width: 0 }}
                     animate={{
                       width: `${(panelStats.withImage / Math.max(panelStats.total, 1)) * 100}%`,
@@ -571,7 +571,7 @@ export default function WizardPanels() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#FFD700]/5 border border-[#FFD700]/10 text-[#FFD700] text-sm"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-token-gold/5 border border-token-gold/10 text-token-gold text-sm"
                 >
                   <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
                   We're catching our breath — resuming in {rateLimitSeconds}s
@@ -585,7 +585,7 @@ export default function WizardPanels() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#00E8A0]/5 border border-[#00E8A0]/10 text-[#00E8A0] text-sm"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-token-mint/5 border border-token-mint/10 text-token-mint text-sm"
                 >
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -597,7 +597,7 @@ export default function WizardPanels() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setStyleDriftOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-[#6B5BFF] text-xs font-medium transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-token-violet text-xs font-medium transition-colors"
                       >
                         <Paintbrush className="w-3.5 h-3.5" />
                         Style drift
@@ -610,7 +610,7 @@ export default function WizardPanels() {
                             runConsistencyCheck();
                           }
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-[#FFD700] text-xs font-medium transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-token-gold text-xs font-medium transition-colors"
                       >
                         <ShieldAlert className="w-3.5 h-3.5" />
                         Consistency check
@@ -648,7 +648,7 @@ export default function WizardPanels() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleGeneratePanels}
                     disabled={generating}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#6B5BFF] text-white text-sm font-semibold mt-4 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-token-cyan to-token-violet text-white text-sm font-semibold mt-4 disabled:opacity-50"
                   >
                     {generating ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -694,7 +694,7 @@ export default function WizardPanels() {
             disabled={!allComplete || advancing}
             className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
               allComplete && !advancing
-                ? "bg-gradient-to-r from-[#00E8A0] to-[#00F0FF] text-white shadow-[0_4px_20px_rgba(0,232,160,0.3)]"
+                ? "bg-gradient-to-r from-token-mint to-token-cyan text-white shadow-[0_4px_20px_rgba(0,232,160,0.3)]"
                 : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >

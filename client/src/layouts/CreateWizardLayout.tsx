@@ -386,7 +386,7 @@ function CreditMeter() {
             >
               {balance}
             </motion.span>
-            <span className="text-xs text-white/30">remaining</span>
+            <span className="text-xs text-white/30">credits</span>
           </div>
 
           {/* Bar */}
@@ -403,10 +403,9 @@ function CreditMeter() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
             </div>
-            <div className="flex justify-between text-xs text-white/40">
-              <span>{used} used</span>
-              <span>{balance} left</span>
-            </div>
+            <p className="text-[11px] text-white/30 text-center">
+              {used} of {monthlyGrant} used this cycle
+            </p>
           </div>
         </>
       )}

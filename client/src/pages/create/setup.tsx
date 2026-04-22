@@ -552,7 +552,7 @@ export default function WizardSetup() {
                   className={`flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-sm transition-all ${
                     (allStepsComplete || projectCharacters.length === 0) &&
                     !advancing
-                      ? "bg-gradient-to-r from-[#00E8A0] to-[#00F0FF] text-white shadow-[0_4px_20px_rgba(0,232,160,0.3)]"
+                      ? "bg-gradient-to-r from-token-mint to-token-cyan text-white shadow-[0_4px_20px_rgba(0,232,160,0.3)]"
                       : "bg-white/5 text-white/20 cursor-not-allowed"
                   }`}
                 >

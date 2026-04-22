@@ -238,7 +238,7 @@ export default function WizardAnimeGate() {
               key="passthrough"
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="grid place-items-center min-h-screen bg-[#0A0A0F] text-white"
+              className="grid place-items-center min-h-screen bg-background text-white"
             >
               <div className="text-center space-y-5">
                 {/* Mint checkmark */}
@@ -250,9 +250,9 @@ export default function WizardAnimeGate() {
                       ? { duration: 0 }
                       : { type: "spring", stiffness: 260, damping: 20, delay: 0.1 }
                   }
-                  className="w-16 h-16 rounded-full bg-[#00E5A0]/10 flex items-center justify-center mx-auto"
+                  className="w-16 h-16 rounded-full bg-token-mint/10 flex items-center justify-center mx-auto"
                 >
-                  <Check className="w-8 h-8 text-[#00E5A0]" />
+                  <Check className="w-8 h-8 text-token-mint" />
                 </motion.div>
 
                 <motion.h2
@@ -307,9 +307,9 @@ export default function WizardAnimeGate() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", delay: 0.2 }}
-                  className="w-20 h-20 rounded-full bg-[#00E5A0]/10 flex items-center justify-center mx-auto"
+                  className="w-20 h-20 rounded-full bg-token-mint/10 flex items-center justify-center mx-auto"
                 >
-                  <Check className="w-10 h-10 text-[#00E5A0]" />
+                  <Check className="w-10 h-10 text-token-mint" />
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0, y: 10 }}

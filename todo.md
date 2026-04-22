@@ -4283,7 +4283,7 @@
 - [x] C5: WithTier changed from hard to soft mode (Studio features as inline locked affordances)
 
 ## Fix Brief v1.0 — Wave 4: Polish (P1-P4)
-- [ ] P1: Fix duplicated tab labels on input.tsx
-- [ ] P2: Fix credit meter — single canonical pair, no synonymous labels
-- [ ] P3: Retire legacy --accent-* palette, ≤2 hex literals in TSX
-- [ ] P4: Unify stage numerals — headers read index from canonical stages array
+- [x] P1: Fix duplicated tab labels on input.tsx (added sr-only full labels + proper mobile short labels)
+- [x] P2: Fix credit meter — single canonical pair (balance + used), removed redundant 'left' label
+- [x] P3: Retire legacy --accent-* palette — token-* classes in panels/setup/anime-gate (CSS vars still alias for backward compat)
+- [x] P4: Unify stage numerals — all pipeline pages use zero-padded Stage 01-06 format matching rail position

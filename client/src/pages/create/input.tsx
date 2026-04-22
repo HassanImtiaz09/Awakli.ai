@@ -264,12 +264,14 @@ export default function WizardInput() {
             onClick={() => handleTabSwitch("idea")}
             icon={<Sparkles className="w-3.5 h-3.5" />}
             label="Start from an idea"
+            shortLabel="Idea"
           />
           <TabButton
             active={activeTab === "upload"}
             onClick={() => handleTabSwitch("upload")}
             icon={<Upload className="w-3.5 h-3.5" />}
             label="Upload manga / webtoon"
+            shortLabel="Upload"
             locked={!isMangakaPlus}
           />
           <TabButton
@@ -481,8 +483,9 @@ function TabButton({
       }`}
     >
       {icon}
-      <span className="hidden lg:inline">{label}</span>
-      <span className="lg:hidden">{shortLabel || label.split(" ").slice(-1)[0]}</span>
+      <span className="sr-only">{label}</span>
+      <span className="hidden lg:inline" aria-hidden="true">{label}</span>
+      <span className="lg:hidden" aria-hidden="true">{shortLabel || label}</span>
       {locked && <Lock className="w-3 h-3 text-white/20" />}
     </button>
   );
