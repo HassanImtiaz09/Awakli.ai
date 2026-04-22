@@ -4059,3 +4059,19 @@
 - [x] Exact copy strings: page title, subhead, approve/regen/proceed CTAs, popover placeholder
 - [x] Analytics events: stage1_open, stage1_scene_edit, stage1_scene_regen, stage1_approve_all, stage1_proceed
 - [x] Write vitest tests for script generation, approval flow, credit checks, and copy strings (34 tests passing)
+
+## Stage 2 · Panels — Sequential Gen (Apprentice)
+- [x] Create PanelTile component with image, panel index, hover actions (Redraw/Open)
+- [x] PanelTile states: empty (shimmer placeholder), streaming (pop-in animation), regenerating (overlay + progress), complete (image shown)
+- [x] Create PanelGrid responsive grid (2-col mobile, 3-col tablet, 4-col desktop)
+- [x] Create PanelLightbox full-bleed modal with regenerate text field
+- [x] Create server-side panelGen service with SSE streaming and regen tracking
+- [x] Rebuild panels.tsx with all 5 states: empty, streaming, regenerating, complete, rate-limited
+- [x] SSE streaming: panels fill in one-by-one with pop-in animation
+- [x] Per-panel regeneration popover with text field and "Redraw · 3 credits" confirm
+- [x] Apprentice: max 5 regenerations per project, hitting cap opens UpgradeModal
+- [x] Complete banner: "All panels ready. Publish when you are." with Publish button
+- [x] Rate-limit banner: "We're catching our breath — resuming in {s}s"
+- [x] Exact copy strings: page title, subhead, hover actions, popover placeholder, CTAs
+- [x] Analytics events: stage2_open, stage2_panel_rendered, stage2_panel_regen, stage2_cap_hit
+- [x] Write vitest tests for panel generation, regen limits, copy strings, and states (58 tests passing)
