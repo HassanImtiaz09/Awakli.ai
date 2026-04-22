@@ -101,7 +101,7 @@ export default function WizardPanels() {
   const [newPanelIds, setNewPanelIds] = useState<Set<number>>(new Set());
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [regenCount, setRegenCount] = useState(0);
-  const { advance, advancing } = useAdvanceStage(projectId, 3);
+  const { advance, advancing } = useAdvanceStage(projectId, 2);
   const sseRef = useRef<EventSource | null>(null);
 
   const effectiveTier = creditData?.tier || userTier || "free_trial";
@@ -486,7 +486,7 @@ export default function WizardPanels() {
   // ─── Render ───────────────────────────────────────────────────────────
   return (
     <CreateWizardLayout
-      stage={3}
+      stage={2}
       projectId={projectId}
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
@@ -496,7 +496,7 @@ export default function WizardPanels() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-[#00F0FF] text-xs font-semibold uppercase tracking-widest">
             <LayoutGrid className="w-3.5 h-3.5" />
-            Stage 03 — Panels
+            Stage 02 — Panels
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your panels

@@ -49,7 +49,7 @@ export default function WizardScript() {
   const generateMut = trpc.episodes.generateScript.useMutation();
 
   const [generating, setGenerating] = useState(false);
-  const { advance, advancing } = useAdvanceStage(projectId, 2);
+  const { advance, advancing } = useAdvanceStage(projectId, 1);
   const [styleNotes, setStyleNotes] = useState("");
   const [showStyleNotes, setShowStyleNotes] = useState(false);
   const [title, setTitle] = useState(project?.title || "Untitled Project");
@@ -85,8 +85,7 @@ export default function WizardScript() {
   const completedStages = useMemo(() => {
     const s = new Set<number>();
     if (project?.description && project?.genre) s.add(0);
-    if (project?.animeStyle && project?.animeStyle !== "default" && project?.tone) s.add(1);
-    if (episodes.length > 0 && episodes.some((e: any) => e.status === "approved" || e.status === "locked")) s.add(2);
+    if (episodes.length > 0 && episodes.some((e: any) => e.status === "approved" || e.status === "locked")) s.add(1);
     return s;
   }, [project, episodes]);
 
@@ -136,7 +135,7 @@ export default function WizardScript() {
 
   return (
     <CreateWizardLayout
-      stage={2}
+      stage={1}
       projectId={projectId}
       projectTitle={project?.title || title}
       onTitleChange={setTitle}
@@ -147,7 +146,7 @@ export default function WizardScript() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-token-lavender text-xs font-semibold uppercase tracking-widest">
             <BookOpen className="w-3.5 h-3.5" />
-            Stage 02 — Script
+            Stage 01 — Script
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your script
@@ -288,7 +287,7 @@ export default function WizardScript() {
         {/* Navigation */}
         <div className="flex justify-between pt-4">
           <button
-            onClick={() => navigate(`/create/setup?projectId=${projectId}`)}
+            onClick={() => navigate(`/create/input?projectId=${projectId}`)}
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 text-white/50 hover:text-white/70 text-sm transition-all"
           >
             <ArrowLeft className="w-4 h-4" />

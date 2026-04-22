@@ -478,7 +478,7 @@ export default function WizardVideo() {
 
   return (
     <CreateWizardLayout
-      stage={5}
+      stage={6}
       projectId={projectId}
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}

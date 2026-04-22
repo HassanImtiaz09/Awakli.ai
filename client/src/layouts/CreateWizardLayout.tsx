@@ -14,12 +14,12 @@ import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
 /* ─── Stage definitions ──────────────────────────────────────────────── */
 export const STAGES = [
   { key: "input",      label: "Input",      icon: Pen,        path: "input" },
-  { key: "setup",      label: "Setup",      icon: Settings2,  path: "setup" },
   { key: "script",     label: "Script",     icon: BookOpen,   path: "script" },
   { key: "panels",     label: "Panels",     icon: LayoutGrid, path: "panels" },
-  { key: "anime-gate", label: "Gate",       icon: Shield,     path: "anime-gate" },
-  { key: "video",      label: "Video",      icon: Film,       path: "video" },
   { key: "publish",    label: "Publish",    icon: Send,       path: "publish" },
+  { key: "anime-gate", label: "Gate",       icon: Shield,     path: "anime-gate" },
+  { key: "setup",      label: "Setup",      icon: Settings2,  path: "setup" },
+  { key: "video",      label: "Video",      icon: Film,       path: "video" },
 ] as const;
 
 export type StageKey = (typeof STAGES)[number]["key"];
@@ -321,23 +321,22 @@ function TopStatusBar({
 /* ─── Credit Meter (right sidebar) ───────────────────────────────────── */
 // Fallback stage costs (used only if server data hasn't loaded yet)
 const FALLBACK_STAGE_COSTS: { label: string; cost: number }[] = [
-  { label: "Input → Setup", cost: 0 },
-  { label: "Setup → Script", cost: 0 },
+  { label: "Input → Script", cost: 0 },
   { label: "Script → Panels", cost: 2 },
-  { label: "Panels → Gate", cost: 5 },
-  { label: "Gate → Video", cost: 0 },
-  { label: "Video → Publish", cost: 10 },
+  { label: "Panels → Publish", cost: 5 },
+  { label: "Publish → Gate", cost: 0 },
+  { label: "Gate → Setup", cost: 0 },
+  { label: "Setup → Video", cost: 10 },
 ];
-
 // Stage transition display names
 const STAGE_LABELS: Record<string, string> = {
-  input: "Input → Setup",
-  setup: "Setup → Script",
+  input: "Input → Script",
   script: "Script → Panels",
-  panels: "Panels → Gate",
-  "anime-gate": "Gate → Video",
-  video: "Video → Publish",
-  publish: "Complete",
+  panels: "Panels → Publish",
+  publish: "Publish → Gate",
+  "anime-gate": "Gate → Setup",
+  setup: "Setup → Video",
+  video: "Complete",
 };
 
 function CreditMeter() {

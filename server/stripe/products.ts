@@ -1,6 +1,8 @@
 // ─── Awakli Subscription Tiers & Pricing (Prompt 15) ─────────────────
-// 5 tiers: Free Trial / Creator / Creator Pro / Studio / Enterprise
+// 5 tiers: Apprentice / Mangaka / Studio / Studio Pro / Enterprise
+// Names & prices sourced from shared/pricingCatalog.ts (X3)
 
+import { TIER_DISPLAY_NAMES, TIER_MONTHLY_PRICE_CENTS, TIER_ANNUAL_MONTHLY_PRICE_CENTS, TIER_TAGLINES } from "../../shared/pricingCatalog";
 export type TierKey = "free_trial" | "creator" | "creator_pro" | "studio" | "enterprise";
 
 // ─── Credit Economics Constants ──────────────────────────────────────
@@ -62,7 +64,7 @@ export interface TierConfig {
 
 export const TIERS: Record<TierKey, TierConfig> = {
   free_trial: {
-    name: "Free Trial",
+    name: TIER_DISPLAY_NAMES.free_trial,
     monthlyPrice: 0,
     annualPrice: 0,
     annualMonthlyPrice: 0,
@@ -100,10 +102,10 @@ export const TIERS: Record<TierKey, TierConfig> = {
     loraStackLayers: [],  // Free: no LoRA
   },
   creator: {
-    name: "Creator",
-    monthlyPrice: 2900,
-    annualPrice: 27600,            // $23/mo * 12 = $276/year
-    annualMonthlyPrice: 2300,
+    name: TIER_DISPLAY_NAMES.creator,
+    monthlyPrice: TIER_MONTHLY_PRICE_CENTS.creator,
+    annualPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator * 12,
+    annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator,
     credits: 35,
     maxProjects: 10,
     maxChaptersPerProject: 12,
@@ -138,10 +140,10 @@ export const TIERS: Record<TierKey, TierConfig> = {
     loraStackLayers: ["appearance"],  // Starter/Creator: appearance only
   },
   creator_pro: {
-    name: "Creator Pro",
-    monthlyPrice: 9900,
-    annualPrice: 94800,            // $79/mo * 12 = $948/year
-    annualMonthlyPrice: 7900,
+    name: TIER_DISPLAY_NAMES.creator_pro,
+    monthlyPrice: TIER_MONTHLY_PRICE_CENTS.creator_pro,
+    annualPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator_pro * 12,
+    annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator_pro,
     credits: 120,
     maxProjects: 50,
     maxChaptersPerProject: 50,
@@ -176,10 +178,10 @@ export const TIERS: Record<TierKey, TierConfig> = {
     loraStackLayers: ["appearance", "motion"],  // Standard/Creator Pro: appearance + motion
   },
   studio: {
-    name: "Studio",
-    monthlyPrice: 49900,
-    annualPrice: 478800,           // $399/mo * 12 = $4788/year
-    annualMonthlyPrice: 39900,
+    name: TIER_DISPLAY_NAMES.studio,
+    monthlyPrice: TIER_MONTHLY_PRICE_CENTS.studio,
+    annualPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.studio * 12,
+    annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.studio,
     credits: 600,
     maxProjects: 999,
     maxChaptersPerProject: 999,
@@ -214,7 +216,7 @@ export const TIERS: Record<TierKey, TierConfig> = {
     loraStackLayers: ["appearance", "motion", "environment", "style"],  // Premium/Studio: all stacked (Flagship)
   },
   enterprise: {
-    name: "Enterprise",
+    name: TIER_DISPLAY_NAMES.enterprise,
     monthlyPrice: 0,               // custom pricing
     annualPrice: 0,
     annualMonthlyPrice: 0,

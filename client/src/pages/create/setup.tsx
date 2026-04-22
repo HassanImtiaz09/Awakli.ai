@@ -40,7 +40,7 @@ export default function WizardSetup() {
   const [audience, setAudience] = useState<string>("teen");
   const [title, setTitle] = useState("Untitled Project");
 
-  const { advance, advancing } = useAdvanceStage(projectId, 1);
+  const { advance, advancing } = useAdvanceStage(projectId, 5);
 
   useEffect(() => {
     if (project) {
@@ -54,7 +54,9 @@ export default function WizardSetup() {
   const completedStages = useMemo(() => {
     const s = new Set<number>();
     if (project?.description && project?.genre) s.add(0);
-    if (style !== "default" && tone) s.add(1);
+    // Stages 1-4 are completed if we're at setup (stage 5)
+    for (let i = 1; i <= 4; i++) s.add(i);
+    if (style !== "default" && tone) s.add(5);
     return s;
   }, [project, style, tone]);
 
@@ -74,7 +76,7 @@ export default function WizardSetup() {
 
   return (
     <CreateWizardLayout
-      stage={1}
+      stage={5}
       projectId={projectId}
       projectTitle={title}
       onTitleChange={setTitle}
@@ -86,7 +88,7 @@ export default function WizardSetup() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-token-violet text-xs font-semibold uppercase tracking-widest">
             <Settings2 className="w-3.5 h-3.5" />
-            Stage 02 — Project Setup
+            Stage 05 — Anime Setup
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Define your style
@@ -171,7 +173,7 @@ export default function WizardSetup() {
         {/* Navigation */}
         <div className="flex justify-between pt-4">
           <button
-            onClick={() => navigate(`/create/input?projectId=${projectId}`)}
+            onClick={() => navigate(`/create/anime-gate?projectId=${projectId}`)}
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 text-white/50 hover:text-white/70 text-sm transition-all"
           >
             <ArrowLeft className="w-4 h-4" />

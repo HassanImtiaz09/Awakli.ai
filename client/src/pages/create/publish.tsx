@@ -236,12 +236,11 @@ export default function WizardPublish() {
   // ─── Render ────────────────────────────────────────────────────────
   return (
     <CreateWizardLayout
-      stage={6}
+      stage={3}
       projectId={projectId}
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
-      <WithTier capability="stage_publish" mode="hard">
         <div className="max-w-2xl mx-auto space-y-8">
           {/* ─── Header ─────────────────────────────────────────── */}
           <div className="space-y-2">
@@ -534,7 +533,7 @@ export default function WizardPublish() {
                 <div className="flex justify-start pt-2">
                   <button
                     onClick={() =>
-                      navigate(`/create/video?projectId=${projectId}`)
+                      navigate(`/create/panels?projectId=${projectId}`)
                     }
                     className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 text-white/50 hover:text-white/70 text-sm transition-all"
                   >
@@ -564,7 +563,6 @@ export default function WizardPublish() {
             trackEvent("stage3_cover_picked", { projectId });
           }}
         />
-      </WithTier>
     </CreateWizardLayout>
   );
 }

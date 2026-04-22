@@ -29,14 +29,15 @@ const STAGE_CREDIT_COSTS: Record<number, number> = {
 };
 
 // ─── Tier Capability Matrix ──────────────────────────────────────────────
-// Which stages each tier can access. All tiers can do 0-3 (manga creation).
-// Anime stages (4-6) require higher tiers.
+// Which stages each tier can access.
+// New order: Input(0) → Script(1) → Panels(2) → Publish(3) → Gate(4) → Setup(5) → Video(6)
+// Free path: 0–3 (manga). Anime path (4–6) requires Mangaka+.
 const TIER_STAGE_ACCESS: Record<string, number> = {
-  free_trial: 3,    // Can reach up to panels (stage 3)
-  creator: 4,       // Can reach up to anime-gate (stage 4)
-  creator_pro: 6,   // Full access
-  studio: 6,        // Full access
-  enterprise: 6,    // Full access
+  free_trial: 3,    // Manga path: Input → Script → Panels → Publish
+  creator: 6,       // Mangaka: full pipeline including anime
+  creator_pro: 6,   // Studio: full access
+  studio: 6,        // Studio Pro: full access
+  enterprise: 6,    // Enterprise: full access
 };
 
 // ─── Active Project Limits Per Tier ──────────────────────────────────────

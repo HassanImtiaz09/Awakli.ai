@@ -11,6 +11,7 @@ import {
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import PageBackground from "@/components/awakli/PageBackground";
 import { toast } from "sonner";
+import { TIER_DISPLAY_NAMES, tierPriceLabel, TIER_MONTHLY_PRICE_CENTS, TIER_ANNUAL_MONTHLY_PRICE_CENTS } from "../../../shared/pricingCatalog";
 
 type BillingInterval = "monthly" | "annual";
 
@@ -18,7 +19,7 @@ type BillingInterval = "monthly" | "annual";
 const TIERS = [
   {
     key: "free",
-    name: "Free",
+    name: TIER_DISPLAY_NAMES.free_trial,
     monthlyPrice: 0,
     annualMonthlyPrice: 0,
     narrative: "Start telling stories. Feel what creation feels like.",
@@ -43,16 +44,16 @@ const TIERS = [
   },
   {
     key: "creator",
-    name: "Creator",
-    monthlyPrice: 19,
-    annualMonthlyPrice: 15,
+    name: TIER_DISPLAY_NAMES.creator,
+    monthlyPrice: TIER_MONTHLY_PRICE_CENTS.creator / 100,
+    annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator / 100,
     narrative: "Become the animator you were always going to be.",
     icon: Zap,
     accentColor: "#6B5BFF",
     gradientFrom: "#6B5BFF",
     gradientTo: "#7C3AED",
     popular: true,
-    ctaText: "Upgrade to Creator",
+    ctaText: `Upgrade to ${TIER_DISPLAY_NAMES.creator}`,
     highlights: [
       { icon: PenTool, text: "10 manga projects" },
       { icon: Wand2, text: "AI script generation (Opus)" },
@@ -66,15 +67,15 @@ const TIERS = [
   },
   {
     key: "studio",
-    name: "Studio",
-    monthlyPrice: 49,
-    annualMonthlyPrice: 39,
+    name: TIER_DISPLAY_NAMES.creator_pro,
+    monthlyPrice: TIER_MONTHLY_PRICE_CENTS.creator_pro / 100,
+    annualMonthlyPrice: TIER_ANNUAL_MONTHLY_PRICE_CENTS.creator_pro / 100,
     narrative: "Run the studio. Ship the universe.",
     icon: Crown,
     accentColor: "#00D4FF",
     gradientFrom: "#00D4FF",
     gradientTo: "#00FFB2",
-    ctaText: "Go Studio",
+    ctaText: `Go ${TIER_DISPLAY_NAMES.creator_pro}`,
     highlights: [
       { icon: PenTool, text: "Unlimited projects" },
       { icon: Wand2, text: "AI script generation (Opus)" },

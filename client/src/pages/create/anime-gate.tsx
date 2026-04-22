@@ -45,7 +45,7 @@ export const PASSTHROUGH_COPY = {
 type PageState = "idle" | "checkout" | "confirmed" | "passthrough";
 
 // Tiers that get the pass-through experience
-const SUBSCRIBED_TIERS = new Set(["creator_pro", "studio", "enterprise"]);
+const SUBSCRIBED_TIERS = new Set(["creator", "creator_pro", "studio", "enterprise"]);
 
 export default function WizardAnimeGate() {
   const [, navigate] = useLocation();
@@ -102,7 +102,7 @@ export default function WizardAnimeGate() {
     // Auto-redirect after 1.2s (or immediately for reduced motion)
     const delay = prefersReducedMotion ? 0 : 1200;
     passthroughTimerRef.current = setTimeout(() => {
-      navigate(`/create/character-setup?projectId=${projectId}`, { replace: true });
+      navigate(`/create/setup?projectId=${projectId}`, { replace: true });
     }, delay);
   }, [subscription, isSubscribed, prefersReducedMotion, navigate, projectId]);
 
@@ -155,7 +155,7 @@ export default function WizardAnimeGate() {
           setPageState("confirmed");
           trackEvent("stage4_confirmed", { projectId, tier: tierKey, tierName });
           setTimeout(() => {
-            navigate(`/create/character-setup?projectId=${projectId}`);
+            navigate(`/create/setup?projectId=${projectId}`);
           }, 2000);
         }
       } catch (err: any) {
@@ -193,7 +193,7 @@ export default function WizardAnimeGate() {
 
             // Auto-navigate after 2s
             setTimeout(() => {
-              navigate(`/create/character-setup?projectId=${projectId}`);
+              navigate(`/create/setup?projectId=${projectId}`);
             }, 2000);
           }
         } catch {

@@ -7,6 +7,7 @@
  * @see shared/tiers.ts for tier ordering helpers
  */
 import { type TierName, TIER_ORDER, tierLevel, meetsMinTier } from "./tiers";
+import { TIER_DISPLAY_NAMES, TIER_MONTHLY_PRICE_CENTS, TIER_TAGLINES, TIER_CTA, type TierKey } from "./pricingCatalog";
 
 // ─── Capability Keys ────────────────────────────────────────────────────────
 export const CAPABILITY_KEYS = [
@@ -50,13 +51,15 @@ export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
 // If a capability is not listed, it defaults to "free_trial" (available to all).
 const CAPABILITY_MIN_TIER: Record<CapabilityKey, TierName> = {
   // Wizard stages — mirrors TIER_STAGE_ACCESS in projectService.ts
+  // Manga path (free): Input → Script → Panels → Publish
   stage_input:       "free_trial",
-  stage_setup:       "free_trial",
   stage_script:      "free_trial",
   stage_panels:      "free_trial",
-  stage_anime_gate:  "creator",
-  stage_video:       "creator_pro",
-  stage_publish:     "creator_pro",
+  stage_publish:     "free_trial",   // X2: open to all tiers
+  // Anime path (paid): Gate → Setup → Video
+  stage_anime_gate:  "free_trial",   // gate itself is visible to all; it upsells
+  stage_setup:       "creator",      // X2: Mangaka+ (was free_trial)
+  stage_video:       "creator",      // X2: Mangaka+ (was creator_pro)
 
   // Generation features
   ai_script_generation:  "free_trial",
@@ -92,48 +95,32 @@ export interface TierMeta {
   ctaText: string;
 }
 
-export const TIER_META: Record<TierName, TierMeta> = {
-  free_trial: {
-    name: "free_trial",
-    displayName: "Apprentice",
-    tagline: "Start your manga journey",
-    monthlyPrice: 0,
-    upgradeSku: "",
-    ctaText: "",
-  },
-  creator: {
-    name: "creator",
-    displayName: "Mangaka",
-    tagline: "Unlock anime previews",
-    monthlyPrice: 19,
-    upgradeSku: "price_mangaka_monthly",
-    ctaText: "Unlock with Mangaka — from $19/mo",
-  },
-  creator_pro: {
-    name: "creator_pro",
-    displayName: "Studio",
-    tagline: "Full anime pipeline access",
-    monthlyPrice: 49,
-    upgradeSku: "price_studio_monthly",
-    ctaText: "Unlock with Studio — from $49/mo",
-  },
-  studio: {
-    name: "studio",
-    displayName: "Studio Pro",
-    tagline: "Voice cloning & team features",
-    monthlyPrice: 99,
-    upgradeSku: "price_studio_pro_monthly",
-    ctaText: "Unlock with Studio Pro — from $99/mo",
-  },
-  enterprise: {
-    name: "enterprise",
-    displayName: "Enterprise",
-    tagline: "Custom solutions at scale",
-    monthlyPrice: null,
-    upgradeSku: "price_enterprise",
-    ctaText: "Contact us for Enterprise pricing",
-  },
-};
+// Build TIER_META from pricingCatalog (X3: single source of truth)
+function buildTierMeta(): Record<TierName, TierMeta> {
+  const skuMap: Record<string, string> = {
+    free_trial: "",
+    creator: "price_mangaka_monthly",
+    creator_pro: "price_studio_monthly",
+    studio: "price_studio_pro_monthly",
+    enterprise: "price_enterprise",
+  };
+  const result = {} as Record<TierName, TierMeta>;
+  for (const tier of TIER_ORDER) {
+    const key = tier as TierKey;
+    const priceCents = TIER_MONTHLY_PRICE_CENTS[key] ?? 0;
+    result[tier] = {
+      name: tier,
+      displayName: TIER_DISPLAY_NAMES[key] ?? tier,
+      tagline: TIER_TAGLINES[key] ?? "",
+      monthlyPrice: priceCents === 0 && tier === "enterprise" ? null : priceCents / 100,
+      upgradeSku: skuMap[tier] ?? "",
+      ctaText: TIER_CTA[key] ?? "",
+    };
+  }
+  return result;
+}
+
+export const TIER_META: Record<TierName, TierMeta> = buildTierMeta();
 
 // ─── Matrix Query Functions ─────────────────────────────────────────────────
 
@@ -201,14 +188,15 @@ export function buildUpgradePayload(
  * Map wizard stage index (0-6) to its capability key.
  */
 export function stageToCapability(stageIndex: number): CapabilityKey | null {
+  // New pipeline order: Input(0) → Script(1) → Panels(2) → Publish(3) → Gate(4) → Setup(5) → Video(6)
   const map: Record<number, CapabilityKey> = {
     0: "stage_input",
-    1: "stage_setup",
-    2: "stage_script",
-    3: "stage_panels",
+    1: "stage_script",
+    2: "stage_panels",
+    3: "stage_publish",
     4: "stage_anime_gate",
-    5: "stage_video",
-    6: "stage_publish",
+    5: "stage_setup",
+    6: "stage_video",
   };
   return map[stageIndex] ?? null;
 }

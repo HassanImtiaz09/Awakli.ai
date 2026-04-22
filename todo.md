@@ -4246,3 +4246,41 @@
 - [x] Add sample creator profiles with avatars (2 demo users: TakeshiArt, MikuCreates)
 - [x] Genre-filtered browse with real data (fixed byGenre query to accept optional genre)
 - [x] Write vitest tests for manga reader, generation backends, and feed content (22 tests passing)
+
+## Fix Brief v1.0 — Wave 1: Strategic (X1-X4)
+- [x] X1: Restore pipeline order: INPUT→SCRIPT→PANELS→PUBLISH→GATE→SETUP→VIDEO
+- [ ] X1: Move style/tone/audience selectors from Setup into Stage 0 Input
+- [x] X1: Stage headers match rail position (01-07)
+- [ ] X1: After Publish, land on /m/{slug} with 'Make it move →' CTA to /create/anime-gate
+- [x] X2: Unlock /create/publish for all tiers (Apprentice gets watermark ON, non-removable)
+- [x] X2: Move /create/video gating from Studio to Mangaka (60s/1080p)
+- [ ] X2: Studio-only features as inline tier-locked affordances, not full-page deny
+- [x] X3: Create shared/pricingCatalog.ts — single source of truth for tier names + prices
+- [x] X3: /pricing, anime-gate, UpgradeModal all consume PricingCatalog (zero tier name literals in JSX)
+- [x] X4: Create shared/creditCostTable.ts with unit costs per action
+- [x] X4: Dynamic credit forecast from project inputs (panel count, regens, chapters, video)
+- [x] X4: Top-up packs: Spark 100c / Flame 500c / Blaze 1500c / Inferno 5000c / Supernova 15000c
+
+## Fix Brief v1.0 — Wave 2: Completion (C1-C3)
+- [ ] C1: Script page — scene list (draggable), scene detail editor, per-scene regen (3c), bulk approve
+- [ ] C1: SSE streaming — first scene ≤4s, full 20-panel ≤20s
+- [ ] C1: 'Draw my panels →' disabled until all scenes approved
+- [ ] C2: Panels page — sequential stream into grid, hover Redraw per tile, regen 3c
+- [ ] C2: Mangaka/Studio — shift-click selection, batch regen bar, style drift, consistency report
+- [ ] C3: Publish page — scrolling preview, cover designer (3 presets), publish CTA
+- [ ] C3: Progress copy: 'Composing pages…' → 'Generating thumbnails…' → 'Creating your share link…'
+- [ ] C3: Success state with 'Make it move →' CTA to /create/anime-gate
+
+## Fix Brief v1.0 — Wave 3: Completion (C4-C5)
+- [ ] C4: Setup page — SetupStepper: Character look → Voices → Pose references
+- [ ] C4: Mangaka: bakery presets, 24-voice catalog, auto pose sheet (2c regen)
+- [ ] C4: Studio: LoRATrainer (120c), VoiceClone (80c, consent checkbox), UserVoiceOverlay (6c/line)
+- [ ] C5: Video page — timeline 1-8s/panel, presets, 60s cap (Mangaka), 1080p MP4
+- [ ] C5: Studio: ChapterComposer, MusicBed, MasterExport (4K/ProRes/stems)
+- [ ] C5: Render progress: 'Bringing panels to motion…' → 'Casting voices…' → 'Composing the final cut…'
+
+## Fix Brief v1.0 — Wave 4: Polish (P1-P4)
+- [ ] P1: Fix duplicated tab labels on input.tsx
+- [ ] P2: Fix credit meter — single canonical pair, no synonymous labels
+- [ ] P3: Retire legacy --accent-* palette, ≤2 hex literals in TSX
+- [ ] P4: Unify stage numerals — headers read index from canonical stages array
