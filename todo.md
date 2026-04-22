@@ -4372,3 +4372,18 @@
 ### B6-Phase2/3 (P0 — seed content + self-healing)
 - [x] Defensive rendering: if catalog < 12 live titles, show "More coming tonight" message
 - [x] Add nightly re-rank job skeleton (server/jobs/rerankTrending.ts)
+
+## UI Improvement Brief — Implementation
+
+- [x] CRITICAL: Fix /codex 404 — audited all files, no /codex links exist (nav correctly points to /characters)
+- [x] CRITICAL: Replace Klee One with Bebas Neue (display/hero) + Space Grotesk (headings)
+- [x] HIGH: Redesign logo mark — bolder strokes, filled eye, speed-line accents
+- [x] HIGH: Trim homepage from 8+ to 5 sections (remove WatchItHappen, StreamingTonight, Social Proof)
+- [x] MEDIUM: Navigation — remove cluster divider, increase inactive text contrast, transparent-to-solid scroll
+- [x] MEDIUM: Navigation — rename Watch to Discover
+- [x] MEDIUM: Pricing — add comparison table view toggle
+- [x] LOW: Discover page — remove AI GENERATED badge, enhance card hover states
+- [x] LOW: Leaderboard — add circular progress rings instead of bars
+- [x] LOW: Characters — redesign empty state with explanation and hide toolbar when empty
+- [x] LOW: Create dashboard — remove duplicate New Project button, add background art
+- [x] Write vitest tests for UI improvement changes

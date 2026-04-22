@@ -82,7 +82,7 @@ function JustCreatedRow() {
           <div className="flex items-center gap-2">
             <Wand2 size={20} className="text-[#00F0FF]" />
             <h2 className="text-h3 text-[#F0F0F5]">Just Created</h2>
-            <AwakliiBadge variant="pink" size="sm">AI Generated</AwakliiBadge>
+
           </div>
           <Link href="/create">
             <span className="text-sm text-[#00F0FF] hover:underline cursor-pointer flex items-center gap-1">

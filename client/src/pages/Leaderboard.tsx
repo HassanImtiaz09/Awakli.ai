@@ -194,15 +194,24 @@ function RisingRow({ item, threshold }: { item: any; threshold: number }) {
             <p className="text-xs text-gray-400">by {item.userName || "Anonymous"}</p>
           </div>
 
-          {/* Mini progress bar */}
-          <div className="hidden md:block w-32">
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-orange-500 to-orange-300"
-                style={{ width: `${item.percentage}%` }}
+          {/* Circular progress ring */}
+          <div className="hidden md:flex relative items-center justify-center w-14 h-14 flex-shrink-0">
+            <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+              <circle
+                cx="24" cy="24" r="20" fill="none"
+                stroke="url(#ring-grad-row)" strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={`${(item.percentage / 100) * 125.66} 125.66`}
               />
-            </div>
-            <p className="text-[10px] text-gray-500 mt-0.5 text-right">{item.percentage}%</p>
+              <defs>
+                <linearGradient id="ring-grad-row" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#F97316" />
+                  <stop offset="100%" stopColor="#FDBA74" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span className="absolute text-[10px] font-bold text-orange-400">{item.percentage}%</span>
           </div>
 
           <div className="flex items-center gap-1 text-sm text-orange-400">

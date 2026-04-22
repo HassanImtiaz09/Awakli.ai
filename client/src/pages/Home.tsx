@@ -13,9 +13,10 @@ import {
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import { TiltCard } from "@/components/awakli/TiltCard";
 import ScrollBackground from "@/components/awakli/ScrollBackground";
-import { WatchItHappen } from "@/components/awakli/WatchItHappen";
-import { StreamingTonight } from "@/components/awakli/StreamingTonight";
-import { MarqueeStrip } from "@/components/awakli/MarqueeStrip";
+// Removed for homepage trim — re-enable when real content exists:
+// import { WatchItHappen } from "@/components/awakli/WatchItHappen";
+// import { StreamingTonight } from "@/components/awakli/StreamingTonight";
+// import { MarqueeStrip } from "@/components/awakli/MarqueeStrip";
 
 /* ─── CDN Assets ──────────────────────────────────────────────────────── */
 const HERO_IMAGES = [
@@ -221,22 +222,7 @@ function ActOneHero() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-      >
-        <span className="text-xs text-[#5C5C7A] uppercase tracking-widest font-mono">Scroll</span>
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-5 h-8 rounded-full border border-white/20 flex items-start justify-center pt-1.5"
-        >
-          <div className="w-1 h-2 rounded-full bg-white/40" />
-        </motion.div>
-      </motion.div>
+      {/* Scroll indicator removed per UI improvement brief */}
     </section>
   );
 }
@@ -843,16 +829,13 @@ export default function Home() {
         {/* ACT ONE — The Hook */}
         <ActOneHero />
 
-        {/* DEMO — Watch It Happen (B3) */}
+        {/* Sections removed per UI improvement brief — re-enable when real content exists:
         <WatchItHappen />
-
-        {/* STREAMING — What's streaming tonight (B4) */}
         <StreamingTonight />
-
-        {/* MARQUEE — Ambient panel thumbnails (B4) */}
         <MarqueeStrip />
+        */}
 
-        {/* ACT TWO — Proof */}
+        {/* ACT TWO — How It Works */}
         <ActTwoProof />
 
         {/* Feature strip */}

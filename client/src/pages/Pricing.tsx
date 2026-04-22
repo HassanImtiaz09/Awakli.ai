@@ -6,7 +6,7 @@ import { Link, useLocation } from "wouter";
 import {
   Check, X, Crown, Zap, Sparkles, ArrowRight, ChevronDown,
   Film, Palette, Mic, Download, Shield, Users, Star, Wand2,
-  PenTool, Upload, Lock, BookOpen, Clapperboard,
+  PenTool, Upload, Lock, BookOpen, Clapperboard, LayoutGrid, Table2,
 } from "lucide-react";
 import { MarketingLayout } from "@/components/awakli/Layouts";
 import PageBackground from "@/components/awakli/PageBackground";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { TIER_DISPLAY_NAMES, tierPriceLabel, TIER_MONTHLY_PRICE_CENTS, TIER_ANNUAL_MONTHLY_PRICE_CENTS } from "../../../shared/pricingCatalog";
 
 type BillingInterval = "monthly" | "annual";
+type PricingView = "cards" | "table";
 
 /* ─── Tier Data ───────────────────────────────────────────────────────── */
 const TIERS = [
@@ -353,6 +354,7 @@ function TierScene({
    ═══════════════════════════════════════════════════════════════════════ */
 export default function Pricing() {
   const [interval, setInterval] = useState<BillingInterval>("monthly");
+  const [view, setView] = useState<PricingView>("cards");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -404,43 +406,161 @@ export default function Pricing() {
               Start free. Upgrade when your story demands it.
             </p>
 
-            {/* Billing toggle */}
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[#0D0D1A] border border-white/10">
-              <button
-                onClick={() => setInterval("monthly")}
-                className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                  interval === "monthly"
-                    ? "bg-opening-sequence text-white shadow-lg"
-                    : "text-[#5C5C7A] hover:text-white"
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setInterval("annual")}
-                className={`px-5 py-2 rounded-full text-sm font-medium transition-all relative ${
-                  interval === "annual"
-                    ? "bg-opening-sequence text-white shadow-lg"
-                    : "text-[#5C5C7A] hover:text-white"
-                }`}
-              >
-                Annual
-                <span className="ml-2 text-xs text-[#00F0FF] font-bold">Save 20%</span>
-              </button>
+            {/* Controls row: billing toggle + view toggle */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {/* Billing toggle */}
+              <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[#0D0D1A] border border-white/10">
+                <button
+                  onClick={() => setInterval("monthly")}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+                    interval === "monthly"
+                      ? "bg-opening-sequence text-white shadow-lg"
+                      : "text-[#5C5C7A] hover:text-white"
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setInterval("annual")}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all relative ${
+                    interval === "annual"
+                      ? "bg-opening-sequence text-white shadow-lg"
+                      : "text-[#5C5C7A] hover:text-white"
+                  }`}
+                >
+                  Annual
+                  <span className="ml-2 text-xs text-[#00F0FF] font-bold">Save 20%</span>
+                </button>
+              </div>
+
+              {/* View toggle */}
+              <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[#0D0D1A] border border-white/10">
+                <button
+                  onClick={() => setView("cards")}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    view === "cards"
+                      ? "bg-white/10 text-white"
+                      : "text-[#5C5C7A] hover:text-white"
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  Cards
+                </button>
+                <button
+                  onClick={() => setView("table")}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    view === "table"
+                      ? "bg-white/10 text-white"
+                      : "text-[#5C5C7A] hover:text-white"
+                  }`}
+                >
+                  <Table2 className="w-3.5 h-3.5" />
+                  Compare
+                </button>
+              </div>
             </div>
           </motion.div>
 
-          {/* Three narrative scenes — §3.7 */}
-          {TIERS.map((tier, i) => (
-            <TierScene
-              key={tier.key}
-              tier={tier}
-              interval={interval}
-              onSubscribe={handleSubscribe}
-              isPending={checkout.isPending}
-              index={i}
-            />
-          ))}
+          {/* Three narrative scenes OR comparison table */}
+          {view === "cards" ? (
+            <>
+              {TIERS.map((tier, i) => (
+                <TierScene
+                  key={tier.key}
+                  tier={tier}
+                  interval={interval}
+                  onSubscribe={handleSubscribe}
+                  isPending={checkout.isPending}
+                  index={i}
+                />
+              ))}
+            </>
+          ) : (
+            /* Inline comparison table when "Compare" view is active */
+            <ScrollReveal>
+              <div className="max-w-5xl mx-auto mb-8">
+                <div className="rounded-2xl border border-white/5 overflow-hidden bg-[#0D0D1A]">
+                  {/* Header */}
+                  <div className="grid grid-cols-4 gap-4 p-4 border-b border-white/10 bg-[#151528] sticky top-16 z-10">
+                    <div className="text-sm font-semibold text-[#9494B8]">Feature</div>
+                    {TIERS.map((t) => (
+                      <div key={t.key} className="text-sm font-semibold text-white text-center">
+                        {t.name}
+                        {t.monthlyPrice > 0 && (
+                          <span className="block text-xs text-[#5C5C7A] font-normal mt-0.5">
+                            ${interval === "annual" ? t.annualMonthlyPrice : t.monthlyPrice}/mo
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Sections */}
+                  {COMPARISON_SECTIONS.map((section) => (
+                    <div key={section.title}>
+                      <div className="px-4 py-3 bg-[#0A0A18] border-b border-white/5">
+                        <span className="text-xs font-bold text-[#00F0FF] uppercase tracking-wider">
+                          {section.title}
+                        </span>
+                      </div>
+                      {section.rows.map((row, i) => (
+                        <div
+                          key={row.label}
+                          className={`grid grid-cols-4 gap-4 px-4 py-3 ${
+                            i < section.rows.length - 1 ? "border-b border-white/5" : ""
+                          } hover:bg-white/[0.02] transition-colors`}
+                        >
+                          <div className="text-sm text-[#9494B8]">{row.label}</div>
+                          {(["free", "creator", "studio"] as const).map((tierKey) => {
+                            const val = row[tierKey];
+                            if (typeof val === "boolean") {
+                              return (
+                                <div key={tierKey} className="flex justify-center">
+                                  {val ? (
+                                    <Check className="w-5 h-5 text-[#00FFB2]" />
+                                  ) : (
+                                    <X className="w-5 h-5 text-[#2A2A40]" />
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={tierKey} className="text-sm text-white text-center font-medium">
+                                {val === "0" || val === "\u2014" ? (
+                                  <span className="text-[#5C5C7A]">{val}</span>
+                                ) : (
+                                  val
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+
+                  {/* CTA row at bottom of table */}
+                  <div className="grid grid-cols-4 gap-4 p-4 border-t border-white/10 bg-[#151528]">
+                    <div />
+                    {TIERS.map((t) => (
+                      <div key={t.key} className="flex justify-center">
+                        <button
+                          onClick={() => handleSubscribe(t.key)}
+                          disabled={checkout.isPending}
+                          className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90"
+                          style={{
+                            background: `linear-gradient(135deg, ${t.gradientFrom}, ${t.gradientTo})`,
+                          }}
+                        >
+                          {t.ctaText}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
 
           {/* Anime Preview Callout */}
           <ScrollReveal>

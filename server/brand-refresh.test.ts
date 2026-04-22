@@ -15,7 +15,6 @@ describe("B6-Phase1: WatchProject defensive guards", () => {
   const src = read("client/src/pages/WatchProject.tsx");
 
   it("useMemo for jsonLd is null-safe (checks for p before accessing properties)", () => {
-    // The jsonLd useMemo should have a null guard
     const jsonLdIdx = src.indexOf("const jsonLd = useMemo");
     expect(jsonLdIdx).toBeGreaterThan(-1);
     const memoBlock = src.slice(jsonLdIdx, jsonLdIdx + 200);
@@ -42,9 +41,8 @@ describe("B5: Navigation rename and regroup", () => {
   const topNav = read("client/src/components/awakli/TopNav.tsx");
   const footer = read("client/src/components/awakli/MarketingFooter.tsx");
 
-  it("TopNav uses 'Watch' instead of 'Feed'", () => {
-    // Should have Watch label, not Feed
-    expect(topNav).toContain("Watch");
+  it("TopNav uses 'Discover' instead of 'Watch' or 'Feed'", () => {
+    expect(topNav).toContain("Discover");
     expect(topNav).not.toMatch(/label:\s*["']Feed["']/);
   });
 
@@ -68,7 +66,7 @@ describe("B5: Navigation rename and regroup", () => {
   });
 
   it("Footer labels match new nav names", () => {
-    expect(footer).toContain("Watch");
+    expect(footer).toContain("Discover");
     expect(footer).toContain("Characters");
   });
 });
@@ -93,12 +91,15 @@ describe("B2: Logo component", () => {
 
   it("TopNav imports and uses Logo component instead of text-only AWAKLI", () => {
     expect(topNav).toContain("Logo");
-    // Should import from Logo.tsx
     expect(topNav).toMatch(/import.*Logo/);
   });
 
   it("Logo has animated stroke-reveal class", () => {
     expect(logo).toContain("logo-stroke-reveal");
+  });
+
+  it("Logo uses Bebas Neue display font for wordmark", () => {
+    expect(logo).toContain("font-display");
   });
 });
 
@@ -109,16 +110,24 @@ describe("B1: Typography update", () => {
   const indexHtml = read("client/index.html");
   const indexCss = read("client/src/index.css");
 
-  it("index.html loads Klee One from Google Fonts", () => {
-    expect(indexHtml).toContain("Klee+One");
+  it("index.html loads Bebas Neue from Google Fonts", () => {
+    expect(indexHtml).toContain("Bebas+Neue");
+  });
+
+  it("index.html loads Space Grotesk from Google Fonts", () => {
+    expect(indexHtml).toContain("Space+Grotesk");
   });
 
   it("index.html loads Inter Tight from Google Fonts", () => {
     expect(indexHtml).toContain("Inter+Tight");
   });
 
-  it("CSS tokens use Klee One for display font", () => {
-    expect(indexCss).toContain("Klee One");
+  it("CSS tokens use Bebas Neue for display font", () => {
+    expect(indexCss).toContain("Bebas Neue");
+  });
+
+  it("CSS tokens use Space Grotesk for heading font", () => {
+    expect(indexCss).toContain("Space Grotesk");
   });
 
   it("CSS tokens use Inter Tight for body font", () => {
@@ -131,79 +140,61 @@ describe("B1: Typography update", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   B3 — Demo video section
+   B3/B4 — Homepage section trim (UI Improvement Brief)
+   Sections WatchItHappen, StreamingTonight, MarqueeStrip are commented
+   out in Home.tsx and deferred until real content exists.
    ═══════════════════════════════════════════════════════════════════════ */
-describe("B3: WatchItHappen component", () => {
-  const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+describe("Homepage trim: 5-section layout", () => {
   const home = read("client/src/pages/Home.tsx");
 
-  it("WatchItHappen has autoplay-on-scroll video element", () => {
-    expect(comp).toContain("<video");
-    expect(comp).toContain("muted");
-    expect(comp).toContain("playsInline");
+  it("WatchItHappen, StreamingTonight, MarqueeStrip imports are commented out", () => {
+    // Should NOT have active imports
+    expect(home).not.toMatch(/^import.*WatchItHappen/m);
+    expect(home).not.toMatch(/^import.*StreamingTonight/m);
+    expect(home).not.toMatch(/^import.*MarqueeStrip/m);
   });
 
-  it("WatchItHappen has 'Try the demo prompt' CTA", () => {
-    expect(comp).toContain("Try the demo prompt");
+  it("Removed sections are preserved as comments for future re-enable", () => {
+    expect(home).toContain("re-enable when real content exists");
   });
 
-  it("WatchItHappen has 3-up proof strip", () => {
-    expect(comp).toContain("PROOF_STAGES");
-    expect(comp).toContain("Prompt");
-    expect(comp).toContain("Script + Panels");
-    expect(comp).toContain("Anime Ready");
+  it("Home.tsx section order: Hero → Proof → FeatureStrip → Content → Invitation", () => {
+    const heroIdx = home.indexOf("ActOneHero");
+    const proofIdx = home.indexOf("ActTwoProof", heroIdx);
+    const featureIdx = home.indexOf("FeatureStrip", proofIdx);
+    const invitationIdx = home.indexOf("ActThreeInvitation", featureIdx);
+    expect(heroIdx).toBeGreaterThan(-1);
+    expect(proofIdx).toBeGreaterThan(heroIdx);
+    expect(featureIdx).toBeGreaterThan(proofIdx);
+    expect(invitationIdx).toBeGreaterThan(featureIdx);
   });
 
-  it("WatchItHappen is imported and rendered in Home.tsx", () => {
-    expect(home).toContain("WatchItHappen");
+  it("Scroll indicator is removed", () => {
+    expect(home).not.toContain("tracking-widest font-mono\">Scroll</span>");
+  });
+
+  it("Home.tsx has 'More titles coming tonight' fallback", () => {
+    expect(home).toContain("More titles coming tonight");
   });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   B4 — Streaming rail
+   B3/B4 — Component files still exist (not deleted, just unused)
    ═══════════════════════════════════════════════════════════════════════ */
-describe("B4: Streaming rail", () => {
-  const streaming = read("client/src/components/awakli/StreamingTonight.tsx");
-  const marquee = read("client/src/components/awakli/MarqueeStrip.tsx");
-  const home = read("client/src/pages/Home.tsx");
-
-  it("StreamingTonight has 'Free to watch' label", () => {
-    expect(streaming).toContain("Free to watch");
+describe("Deferred components still exist for future use", () => {
+  it("WatchItHappen.tsx still exists", () => {
+    const comp = read("client/src/components/awakli/WatchItHappen.tsx");
+    expect(comp).toContain("<video");
   });
 
-  it("StreamingTonight shows genre chips", () => {
-    expect(streaming).toContain("genre");
-    expect(streaming).toContain("GENRE_COLORS");
+  it("StreamingTonight.tsx still exists", () => {
+    const comp = read("client/src/components/awakli/StreamingTonight.tsx");
+    expect(comp).toContain("Free to watch");
   });
 
-  it("StreamingTonight has play overlay on hover", () => {
-    expect(streaming).toContain("Play");
-  });
-
-  it("MarqueeStrip has CSS animation", () => {
-    expect(marquee).toContain("marquee-track");
-  });
-
-  it("Home.tsx has second hero CTA 'Watch what the community made'", () => {
-    expect(home).toContain("Watch what the community made");
-  });
-
-  it("Home.tsx renders StreamingTonight and MarqueeStrip", () => {
-    expect(home).toContain("StreamingTonight");
-    expect(home).toContain("MarqueeStrip");
-  });
-
-  it("Home.tsx section order: Hero → WatchItHappen → StreamingTonight → MarqueeStrip → Proof", () => {
-    const heroIdx = home.indexOf("ActOneHero");
-    const watchIdx = home.indexOf("WatchItHappen", heroIdx);
-    const streamIdx = home.indexOf("StreamingTonight", watchIdx);
-    const marqueeIdx = home.indexOf("MarqueeStrip", streamIdx);
-    const proofIdx = home.indexOf("ActTwoProof", marqueeIdx);
-    expect(heroIdx).toBeGreaterThan(-1);
-    expect(watchIdx).toBeGreaterThan(heroIdx);
-    expect(streamIdx).toBeGreaterThan(watchIdx);
-    expect(marqueeIdx).toBeGreaterThan(streamIdx);
-    expect(proofIdx).toBeGreaterThan(marqueeIdx);
+  it("MarqueeStrip.tsx still exists", () => {
+    const comp = read("client/src/components/awakli/MarqueeStrip.tsx");
+    expect(comp).toContain("marquee-track");
   });
 });
 
@@ -217,13 +208,131 @@ describe("B6-Phase2/3: Defensive rendering + rerank job", () => {
     expect(job).toContain("MINIMUM_LIVE_THRESHOLD");
   });
 
-  it("Home.tsx has 'More titles coming tonight' fallback", () => {
-    const home = read("client/src/pages/Home.tsx");
-    expect(home).toContain("More titles coming tonight");
-  });
-
   it("StreamingTonight has empty state fallback", () => {
     const streaming = read("client/src/components/awakli/StreamingTonight.tsx");
     expect(streaming).toContain("More titles streaming tonight");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Navigation cleanup
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Navigation transparency + contrast", () => {
+  const topNav = read("client/src/components/awakli/TopNav.tsx");
+
+  it("TopNav uses scroll-based opacity transition (transparent-to-solid)", () => {
+    expect(topNav).toContain("scrollY");
+    expect(topNav).toMatch(/bg-\[#0D0D1A\]/);
+  });
+
+  it("TopNav inactive links use higher contrast text (not /20 or /30)", () => {
+    // Inactive links should use at least text-white/60 or similar
+    expect(topNav).toMatch(/text-\[#(9494B8|F0F0F5|B8B8CC)\]/);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Pricing page view toggle
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Pricing comparison toggle", () => {
+  const pricing = read("client/src/pages/Pricing.tsx");
+
+  it("Pricing page has Cards and Compare view toggle buttons", () => {
+    expect(pricing).toContain("Cards");
+    expect(pricing).toContain("Compare");
+  });
+
+  it("Pricing page imports LayoutGrid and Table2 icons", () => {
+    expect(pricing).toContain("LayoutGrid");
+    expect(pricing).toContain("Table2");
+  });
+
+  it("Pricing page has PricingView state type", () => {
+    expect(pricing).toContain("PricingView");
+    expect(pricing).toMatch(/\"cards\"\s*\|\s*\"table\"/);
+  });
+
+  it("Pricing page conditionally renders cards or table based on view state", () => {
+    expect(pricing).toContain('view === "cards"');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Discover page cleanup
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Discover page badge removal", () => {
+  const discover = read("client/src/pages/Discover.tsx");
+
+  it("Just Created row does NOT have AI Generated badge", () => {
+    expect(discover).not.toContain("AI Generated");
+  });
+
+  it("Just Created row still has the Wand2 icon", () => {
+    expect(discover).toContain("Wand2");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Leaderboard progress rings
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Leaderboard circular progress rings", () => {
+  const leaderboard = read("client/src/pages/Leaderboard.tsx");
+
+  it("RisingRow uses SVG circle elements for progress ring", () => {
+    expect(leaderboard).toContain("<circle");
+    expect(leaderboard).toContain("strokeDasharray");
+  });
+
+  it("Progress ring has gradient definition", () => {
+    expect(leaderboard).toContain("ring-grad-row");
+    expect(leaderboard).toContain("linearGradient");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Characters empty state
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Characters empty state redesign", () => {
+  const chars = read("client/src/pages/CharacterLibrary.tsx");
+
+  it("Toolbar is conditionally hidden when character list is empty", () => {
+    expect(chars).toMatch(/characters\s*&&\s*characters\.length\s*>\s*0\s*&&\s*<div/);
+  });
+
+  it("Empty state has how-it-works mini-steps", () => {
+    expect(chars).toContain("Create");
+    expect(chars).toContain("Upload");
+    expect(chars).toContain("Train");
+    expect(chars).toContain("Animate");
+    expect(chars).toContain("Reference sheets");
+  });
+
+  it("Empty state has decorative spinning ring", () => {
+    expect(chars).toContain("spin_20s_linear_infinite");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI Improvement Brief — Create dashboard cleanup
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("UI Brief: Create dashboard cleanup", () => {
+  const create = read("client/src/pages/CreateDashboard.tsx");
+
+  it("Active projects grid does NOT have a duplicate New Project card", () => {
+    // The grid should not contain a dashed border new-project card
+    const gridSection = create.slice(
+      create.indexOf("Active projects grid"),
+      create.indexOf("Archived projects")
+    );
+    expect(gridSection).not.toContain("border-dashed");
+    expect(gridSection).not.toContain("New Project");
+  });
+
+  it("Header still has the New Project button", () => {
+    const headerSection = create.slice(
+      create.indexOf("Header"),
+      create.indexOf("Loading state")
+    );
+    expect(headerSection).toContain("New Project");
   });
 });

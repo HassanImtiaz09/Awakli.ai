@@ -6,7 +6,7 @@ import { Link } from "wouter";
 const MARQUEE_TEXT = "AWAKLI \u00B7 WHERE IDEAS BECOME ANIME \u00B7 CREATE \u00B7 VOTE \u00B7 ANIMATE \u00B7 ";
 
 const FOOTER_LINKS = [
-  { label: "Watch", href: "/discover" },
+  { label: "Discover", href: "/discover" },
   { label: "Create", href: "/create" },
   { label: "Characters", href: "/characters" },
   { label: "Vote", href: "/leaderboard" },

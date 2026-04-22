@@ -272,19 +272,6 @@ export default function CreateDashboard() {
         {/* Active projects grid */}
         {!isLoading && activeProjects.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-            {/* New project card */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate("/create/input?projectId=new")}
-              className="rounded-2xl border border-dashed border-white/10 bg-white/[0.01] hover:border-token-violet/30 hover:bg-token-violet/[0.02] transition-all p-5 flex flex-col items-center justify-center gap-3 min-h-[200px]"
-            >
-              <div className="w-12 h-12 rounded-xl bg-token-violet/10 flex items-center justify-center">
-                <Plus className="w-6 h-6 text-token-violet" />
-              </div>
-              <span className="text-sm font-medium text-white/50">New Project</span>
-            </motion.button>
-
             {activeProjects.map((p: any) => (
               <ProjectCard key={p.id} project={p} />
             ))}

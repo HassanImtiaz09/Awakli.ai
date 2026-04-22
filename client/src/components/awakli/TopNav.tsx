@@ -17,7 +17,7 @@ import { Logo } from "./Logo";
 
 /* ─── Creator Loop — left cluster ──────────────────────────────────────── */
 const CREATOR_NAV = [
-  { href: "/discover", label: "Watch", icon: Play },
+  { href: "/discover", label: "Discover", icon: Compass },
   { href: "/create", label: "Create", icon: Wand2 },
   { href: "/characters", label: "Characters", icon: BookOpen },
 ];
@@ -47,7 +47,7 @@ function NavLink({
           "relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all",
           active
             ? "text-[#F0F0F5]"
-            : "text-[#9494B8] hover:text-[#F0F0F5] hover:bg-white/5"
+            : "text-[#B0B0CC] hover:text-[#F0F0F5] hover:bg-white/5"
         )}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
@@ -201,8 +201,9 @@ export function TopNav() {
           backdropFilter: "blur(18px) saturate(140%)",
           WebkitBackdropFilter: "blur(18px) saturate(140%)",
           background: scrolled
-            ? "rgba(5, 5, 12, 0.85)"
-            : "rgba(5, 5, 12, 0.72)",
+            ? "rgba(5, 5, 12, 0.88)"
+            : "rgba(5, 5, 12, 0)",
+          borderBottomColor: scrolled ? "rgba(255,255,255,0.06)" : "transparent",
           boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.4)" : "none",
         }}
         initial={{ y: -64 }}
@@ -242,9 +243,6 @@ export function TopNav() {
                 </NavLink>
               );
             })}
-
-            {/* Divider */}
-            <div className="w-px h-5 bg-white/10 mx-1" />
 
             {/* Audience loop: Vote · Pricing */}
             {AUDIENCE_NAV.map((item) => {

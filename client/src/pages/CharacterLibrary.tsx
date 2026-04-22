@@ -421,8 +421,8 @@ export default function CharacterLibrary() {
           </Button>
         </div>
 
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        {/* Toolbar — only show when there are characters */}
+        {characters && characters.length > 0 && <div className="flex flex-wrap items-center gap-3 mb-6">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -469,7 +469,7 @@ export default function CharacterLibrary() {
           >
             <ArrowUpDown className={cn("w-4 h-4", sortOrder === "asc" && "rotate-180")} />
           </Button>
-        </div>
+        </div>}
 
         {/* Stats bar */}
         {characters && characters.length > 0 && (
@@ -501,18 +501,41 @@ export default function CharacterLibrary() {
           >
             {characters && characters.length === 0 ? (
               <>
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--token-cyan)]/20 to-[var(--token-cyan)]/20 flex items-center justify-center mb-4">
-                  <Sparkles className="w-10 h-10 text-pink" />
+                {/* Decorative ring */}
+                <div className="relative w-28 h-28 mb-6">
+                  <div className="absolute inset-0 rounded-full border-2 border-dashed border-[var(--token-cyan)]/30 animate-[spin_20s_linear_infinite]" />
+                  <div className="absolute inset-3 rounded-full bg-gradient-to-br from-[var(--token-cyan)]/15 to-[var(--token-violet)]/15 flex items-center justify-center">
+                    <User className="w-10 h-10 text-[var(--token-cyan)]" />
+                  </div>
                 </div>
-                <h3 className="font-heading text-xl font-bold mb-2">Your Library is Empty</h3>
-                <p className="text-muted-foreground max-w-md mb-6">
-                  Add characters to your library, upload reference sheets, and train LoRAs for consistent anime generation.
+                <h3 className="font-heading text-2xl font-bold mb-2">Your Character Library is Empty</h3>
+                <p className="text-muted-foreground max-w-lg mb-4 leading-relaxed">
+                  Characters are the foundation of consistent anime. Add a character, describe their appearance,
+                  upload reference art, and train a LoRA model so every frame stays on-model.
                 </p>
+                {/* How it works mini-steps */}
+                <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
+                  {[
+                    { step: "1", label: "Create", desc: "Name & describe" },
+                    { step: "2", label: "Upload", desc: "Reference sheets" },
+                    { step: "3", label: "Train", desc: "LoRA model" },
+                    { step: "4", label: "Animate", desc: "Use in episodes" },
+                  ].map(s => (
+                    <div key={s.step} className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-[var(--token-cyan)]/20 text-[var(--token-cyan)] flex items-center justify-center text-xs font-bold">{s.step}</span>
+                      <div>
+                        <span className="text-foreground font-medium">{s.label}</span>
+                        <span className="text-muted-foreground ml-1">{s.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-cyan)] text-white border-0"
+                  size="lg"
+                  className="bg-gradient-to-r from-[var(--token-cyan)] to-[var(--token-violet)] text-white border-0 shadow-lg shadow-[var(--token-cyan)]/20"
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Add First Character
+                  <Plus className="w-5 h-5 mr-2" /> Add Your First Character
                 </Button>
               </>
             ) : (
