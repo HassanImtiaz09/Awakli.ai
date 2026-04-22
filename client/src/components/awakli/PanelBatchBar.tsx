@@ -63,6 +63,7 @@ export function PanelBatchBar({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 30 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        data-component="panel-batch-bar"
         className="fixed bottom-6 inset-x-0 mx-auto max-w-fit z-50 rounded-full px-5 py-3 bg-[#0A0A14] text-white/90 shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-white/[0.06]"
       >
         {/* Prompt input row (expanded) */}

@@ -38,6 +38,7 @@ import type { FlaggedPanel } from "@/components/awakli/ConsistencyReport";
 import type { PanelTileData } from "@/components/awakli/PanelTile";
 import { useUpgradeModal } from "@/store/upgradeModal";
 import { useMinTierGate } from "@/hooks/useTierGate";
+import { StageHeader } from "@/components/awakli/StageHeader";
 
 // ─── Analytics helper ───────────────────────────────────────────────────
 function trackEvent(name: string, data?: Record<string, unknown>) {
@@ -494,10 +495,7 @@ export default function WizardPanels() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-token-cyan text-xs font-semibold uppercase tracking-widest">
-            <LayoutGrid className="w-3.5 h-3.5" />
-            Stage 03 — Panels
-          </div>
+          <StageHeader stageKey="panels" icon={LayoutGrid} className="text-token-cyan" />
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your panels
           </h1>

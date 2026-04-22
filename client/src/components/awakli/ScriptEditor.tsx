@@ -580,7 +580,7 @@ export function ScriptEditor({
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-component="script-editor">
       {/* Top bar: character chips + stats */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2 flex-wrap">
@@ -605,9 +605,10 @@ export function ScriptEditor({
       </div>
 
       {/* Main content: two columns */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0" data-component="script-two-pane">
         {/* Left: Scene list */}
         <div
+          data-component="script-scene-list"
           className={`${
             selectedSceneData ? "w-1/2 border-r border-white/5" : "w-full"
           } overflow-y-auto p-4 space-y-2 transition-all duration-300`}

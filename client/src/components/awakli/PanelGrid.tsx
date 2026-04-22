@@ -47,7 +47,7 @@ export function PanelGrid({
   }));
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div data-component="panel-grid" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
       {panels.map((panel) => (
         <PanelTile
           key={panel.id}

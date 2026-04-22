@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import { ScriptEditor } from "@/components/awakli/ScriptEditor";
+import { StageHeader } from "@/components/awakli/StageHeader";
 
 // ─── Analytics helper ────────────────────────────────────────────────────
 function trackEvent(name: string, props?: Record<string, unknown>) {
@@ -144,10 +145,7 @@ export default function WizardScript() {
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-token-lavender text-xs font-semibold uppercase tracking-widest">
-            <BookOpen className="w-3.5 h-3.5" />
-            Stage 02 — Script
-          </div>
+          <StageHeader stageKey="script" icon={BookOpen} className="text-token-lavender" />
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Your script
           </h1>

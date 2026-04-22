@@ -4308,3 +4308,17 @@
 
 - [x] P3-F: Delete legacy accent palette — remove --accent-* CSS vars, replace hex literals #00d4ff/#7c3aed/#ffb800 with var(--token-*) references
 - [x] P4-F: Fix stage numerals — Input=01, Script=02, Panels=03, Publish=04, Gate=05, Setup=06, Video=07; derive from stages[] array, not hardcoded strings
+
+## Last-Mile Brief v1.0 — Wave 1: Small Fixes
+
+- [x] X4-LM: Remove stale 'full project forecast: ~17c' header line from sidebar; exactly ONE Full project total visible
+- [x] P3-LM: Grep out last 5 raw legacy hex literals — source already clean (0 hits); compiled CSS was stale deployment artifact
+- [x] P4-LM: Fix STAGE 04 collision + missing STAGE 01 — create StageHeader.tsx, derive numeral from stages[] index, delete all hardcoded STAGE 0X strings from page files
+
+## Last-Mile Brief v1.0 — Wave 2: Script Stage
+
+- [x] C1-LM: Ship Script stage components to DOM — ScriptEditor two-pane layout, SceneCard with data-component attr, CharacterChip with drawer, RegenPopover with scope/tone/credit-cost
+
+## Last-Mile Brief v1.0 — Wave 3: Panels Stage
+
+- [x] C2-LM: Ship Panels stage components to DOM — PanelGrid with data attributes, PanelTile with regen/select, PanelLightbox with keyboard nav, PanelBatchBar sticky bar, StyleDrift pill, ConsistencyReport drawer

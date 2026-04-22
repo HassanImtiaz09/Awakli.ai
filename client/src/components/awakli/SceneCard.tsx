@@ -123,6 +123,8 @@ export function SceneCard({
   return (
     <motion.div
       layout
+      data-component="scene-card"
+      data-scene-number={scene.scene_number}
       className={`relative rounded-2xl border transition-all duration-200 ${
         isSelected
           ? "border-[#6B5BFF]/50 bg-[#6B5BFF]/5 shadow-[0_0_20px_rgba(107,91,255,0.1)]"

@@ -20,6 +20,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { StageHeader } from "@/components/awakli/StageHeader";
 import { TIER_DISPLAY_NAMES, TIER_CTA } from "@shared/pricingCatalog";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import IdeaPrompt from "@/components/awakli/IdeaPrompt";
@@ -328,7 +329,10 @@ export default function WizardInput() {
       unsavedChanges={prompt !== (project?.description || "")}
     >
       <div className="max-w-3xl mx-auto space-y-10 py-4">
-        {/* ─── Hero Headline ────────────────────────────────────────── */}
+        {/* ─── Stage Header ─────────────────────────────────────────────── */}
+        <StageHeader stageKey="input" icon={Sparkles} className="text-token-cyan" />
+
+        {/* ─── Hero Headline ────────────────────────────────────────────── */}
         <div className="text-center space-y-3">
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90 leading-tight">
             Tonight, your idea becomes{" "}
@@ -891,13 +895,8 @@ function CostHint({
         {isCharacterMode && characterCost > 0 && (
           <span> + {characterCost}c characters</span>
         )}
-        {" \u00b7 "}
-        full project forecast:{" "}
-        <span className={canAfford ? "text-token-mint/40" : "text-red-400/50"}>
-          ~{scaledTotal}c
-        </span>
         {panelCount > 20 && (
-          <span className="text-white/15"> ({panelCount} panels)</span>
+          <span className="text-white/15"> · {panelCount} panels</span>
         )}
       </p>
     </div>

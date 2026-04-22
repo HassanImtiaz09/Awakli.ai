@@ -9,6 +9,7 @@
  */
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import QRCode from "qrcode";
+import { StageHeader } from "@/components/awakli/StageHeader";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -272,10 +273,7 @@ export default function WizardPublish() {
         <div className="max-w-2xl mx-auto space-y-8">
           {/* ─── Header ─────────────────────────────────────────── */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[#00E5A0] text-xs font-semibold uppercase tracking-widest">
-              <Send className="w-3.5 h-3.5" />
-              Stage 04 — Publish
-            </div>
+            <StageHeader stageKey="publish" icon={Send} className="text-[#00E5A0]" />
             <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
               {pageState === "published" ? COPY.successTitle : COPY.pageTitle}
             </h1>

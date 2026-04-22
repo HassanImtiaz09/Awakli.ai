@@ -19,6 +19,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { WithTier } from "@/components/awakli/withTier";
+import { StageHeader } from "@/components/awakli/StageHeader";
 import { useTierGate } from "@/hooks/useTierGate";
 import { Button } from "@/components/ui/button";
 import PanelTimingEditor, {
@@ -516,10 +517,7 @@ export default function WizardVideo() {
         <div className="max-w-3xl mx-auto space-y-8">
           {/* Header */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-token-magenta text-xs font-semibold uppercase tracking-widest">
-              <Film className="w-3.5 h-3.5" />
-              Stage 07 — Video Production
-            </div>
+            <StageHeader stageKey="video" label="Video Production" icon={Film} className="text-token-magenta" />
             <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
               {VIDEO_COPY.pageTitle}
             </h1>

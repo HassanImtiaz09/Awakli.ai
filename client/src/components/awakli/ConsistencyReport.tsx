@@ -90,6 +90,7 @@ export function ConsistencyReport({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 20 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          data-component="consistency-report"
           className="fixed right-4 top-20 bottom-20 z-50 w-80 rounded-2xl bg-[#0D0D1A] border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden"
         >
           {/* Header */}

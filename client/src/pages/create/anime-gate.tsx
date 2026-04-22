@@ -18,11 +18,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { StageHeader } from "@/components/awakli/StageHeader";
 import { AnimeGateHero } from "@/components/awakli/AnimeGateHero";
 import {
   TierCompareCard,
@@ -340,6 +341,9 @@ export default function WizardAnimeGate() {
               animate={{ opacity: 1 }}
               className="space-y-0"
             >
+              <div className="max-w-5xl mx-auto px-6 pt-8 pb-2">
+                <StageHeader stageKey="anime-gate" label="Anime Gate" icon={Shield} className="text-token-gold" />
+              </div>
               <AnimeGateHero coverImageUrl={null} ambientAudioUrl={null} />
 
               <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
@@ -374,6 +378,9 @@ export default function WizardAnimeGate() {
               exit={{ opacity: 0 }}
               className="space-y-0"
             >
+              <div className="max-w-5xl mx-auto px-6 pt-8 pb-2">
+                <StageHeader stageKey="anime-gate" label="Anime Gate" icon={Shield} className="text-token-gold" />
+              </div>
               <AnimeGateHero coverImageUrl={null} ambientAudioUrl={null} />
 
               <div className="max-w-5xl mx-auto px-6 py-12">

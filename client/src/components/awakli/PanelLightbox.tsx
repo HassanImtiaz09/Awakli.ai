@@ -75,6 +75,7 @@ export function PanelLightbox({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        data-component="panel-lightbox"
         className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();

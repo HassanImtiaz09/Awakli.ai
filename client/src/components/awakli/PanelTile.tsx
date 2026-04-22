@@ -79,6 +79,8 @@ export function PanelTile({
       initial={isNew ? { opacity: 0, scale: 0.85 } : { opacity: 1, scale: 1 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={isNew ? { type: "spring", stiffness: 400, damping: 25 } : { duration: 0.2 }}
+      data-component="panel-tile"
+      data-panel-id={panel.id}
       className={`rounded-xl aspect-[3/4] ${ringClass} relative overflow-hidden group bg-white/[0.02] cursor-pointer`}
       onClick={handleClick}
     >

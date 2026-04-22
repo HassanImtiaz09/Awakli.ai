@@ -29,6 +29,7 @@ import { PoseSheet, type CharacterPoses, type PoseAngle, type PoseData } from "@
 import { LoRATrainer } from "@/components/awakli/LoRATrainer";
 import { VoiceClone } from "@/components/awakli/VoiceClone";
 import { WithTier } from "@/components/awakli/withTier";
+import { StageHeader } from "@/components/awakli/StageHeader";
 
 // ─── Tier helpers ───────────────────────────────────────────────────────
 const STUDIO_TIERS = ["studio", "studio_pro"];
@@ -232,10 +233,7 @@ export default function WizardSetup() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-violet-400 text-xs font-semibold uppercase tracking-widest">
-            <Settings2 className="w-3.5 h-3.5" />
-            Stage 06 — Anime Setup
-          </div>
+          <StageHeader stageKey="setup" label="Anime Setup" icon={Settings2} className="text-violet-400" />
           <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
             Prepare your characters
           </h1>
