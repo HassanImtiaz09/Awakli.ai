@@ -131,18 +131,40 @@ export default function WizardPublish() {
     return s;
   }, []);
 
-  // ─── Mock panels from project (in real impl, fetched from API) ─────
+  // ─── Fetch real panels from API ────────────────────────────────────
+  const { data: episodes = [] } = trpc.episodes.listByProject.useQuery(
+    { projectId: numId },
+    { enabled: !isNaN(numId) },
+  );
+  const firstEpisode = episodes.find(
+    (e: any) => e.status === "approved" || e.status === "locked" || e.status === "generated",
+  ) as any | undefined;
+  const { data: rawPanels = [] } = trpc.panels.listByEpisode.useQuery(
+    { episodeId: firstEpisode?.id ?? 0 },
+    { enabled: !!firstEpisode },
+  );
+
   const panels: PreviewPanel[] = useMemo(() => {
-    if (!project) return [];
-    // Use project panels if available, otherwise generate placeholders
-    return Array.from({ length: 20 }, (_, i) => ({
+    if (rawPanels.length > 0) {
+      return rawPanels
+        .filter((p: any) => !!p.imageUrl)
+        .map((p: any) => ({
+          id: p.id,
+          panelNumber: p.panelNumber,
+          imageUrl: p.imageUrl,
+          compositeImageUrl: p.compositeImageUrl || null,
+          cameraAngle: p.cameraAngle || "medium",
+        }));
+    }
+    // Fallback placeholders if no panels yet
+    return Array.from({ length: 8 }, (_, i) => ({
       id: i + 1,
       panelNumber: i + 1,
       imageUrl: `https://picsum.photos/seed/${numId}-${i}/400/533`,
       compositeImageUrl: null,
       cameraAngle: i % 4 === 0 ? "wide" : i % 3 === 0 ? "close-up" : "medium",
     }));
-  }, [project, numId]);
+  }, [rawPanels, numId]);
 
   const coverPanels: CoverPanel[] = useMemo(
     () =>

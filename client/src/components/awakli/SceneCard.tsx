@@ -376,7 +376,7 @@ export function SceneCard({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    Regenerate
+                    Regenerate <span className="text-white/20 ml-0.5">(3c)</span>
                   </button>
 
                   <button
@@ -385,7 +385,7 @@ export function SceneCard({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
                   >
                     <Sparkles className="w-3 h-3" />
-                    Regen with notes
+                    Regen with notes <span className="text-white/20 ml-0.5">(3c)</span>
                   </button>
                 </div>
               )}

@@ -349,7 +349,7 @@ function SceneDetailPanel({
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-white/5 text-white/40 hover:text-white/60 hover:bg-white/10 transition-all disabled:opacity-50"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Regenerate
+            Regenerate <span className="text-white/20 ml-0.5">(3c)</span>
           </button>
         </div>
       )}

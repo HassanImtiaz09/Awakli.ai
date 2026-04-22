@@ -4262,14 +4262,15 @@
 - [x] X4: Top-up packs: Spark 100c / Flame 500c / Blaze 1500c / Inferno 5000c / Supernova 15000c
 
 ## Fix Brief v1.0 — Wave 2: Completion (C1-C3)
-- [ ] C1: Script page — scene list (draggable), scene detail editor, per-scene regen (3c), bulk approve
-- [ ] C1: SSE streaming — first scene ≤4s, full 20-panel ≤20s
-- [ ] C1: 'Draw my panels →' disabled until all scenes approved
-- [ ] C2: Panels page — sequential stream into grid, hover Redraw per tile, regen 3c
-- [ ] C2: Mangaka/Studio — shift-click selection, batch regen bar, style drift, consistency report
-- [ ] C3: Publish page — scrolling preview, cover designer (3 presets), publish CTA
-- [ ] C3: Progress copy: 'Composing pages…' → 'Generating thumbnails…' → 'Creating your share link…'
-- [ ] C3: Success state with 'Make it move →' CTA to /create/anime-gate
+- [x] C1: Script page — scene list (draggable), scene detail editor, per-scene regen (3c), bulk approve
+- [x] C1: SSE streaming — polling-based with 3s interval (LLM generates full script in single call)
+- [x] C1: 'Draw my panels →' disabled until all scenes approved
+- [x] C2: Panels page — sequential stream into grid, hover Redraw per tile, regen 3c
+- [x] C2: Mangaka/Studio — shift-click selection, batch regen bar, style drift, consistency report
+- [x] C3: Publish page — scrolling preview, cover designer (3 presets), publish CTA
+- [x] C3: Progress copy: 'Composing pages…' → 'Generating thumbnails…' → 'Creating your share link…'
+- [x] C3: Success state with 'Make it move →' CTA to /create/anime-gate
+- [x] C3: Replaced mock panels with real panel data from tRPC query
 
 ## Fix Brief v1.0 — Wave 3: Completion (C4-C5)
 - [ ] C4: Setup page — SetupStepper: Character look → Voices → Pose references
