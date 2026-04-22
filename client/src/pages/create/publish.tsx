@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Send, ArrowLeft, Rocket, Globe, Lock, Eye, Share2, Check, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
+import { WithTier } from "@/components/awakli/withTier";
 
 export default function WizardPublish() {
   const [, navigate] = useLocation();
@@ -35,6 +36,7 @@ export default function WizardPublish() {
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
+      <WithTier capability="stage_publish" mode="hard">
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -150,6 +152,7 @@ export default function WizardPublish() {
           </div>
         )}
       </div>
+      </WithTier>
     </CreateWizardLayout>
   );
 }

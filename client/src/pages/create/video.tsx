@@ -5,6 +5,7 @@ import { Film, ArrowRight, ArrowLeft, Play, Volume2, Loader2, Settings } from "l
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
+import { WithTier } from "@/components/awakli/withTier";
 
 export default function WizardVideo() {
   const [, navigate] = useLocation();
@@ -37,6 +38,7 @@ export default function WizardVideo() {
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
+      <WithTier capability="stage_video" mode="hard">
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -138,6 +140,7 @@ export default function WizardVideo() {
           </motion.button>
         </div>
       </div>
+      </WithTier>
     </CreateWizardLayout>
   );
 }

@@ -3971,3 +3971,15 @@
 - [x] Show current credit balance with animated counter
 - [x] Display per-stage cost estimates for upcoming stages
 - [x] Show credits spent so far on current project from checkpoint history
+
+## Tier Gating Middleware (HOC + Server)
+- [x] Create shared/tierMatrix.ts — single source of truth for tier capability booleans
+- [x] Create server requireTier middleware returning tRPC PAYMENT_REQUIRED (402) with upgrade payload
+- [x] Create client withTier HOC with Allow, Deny-soft (.tier-locked + lock icon), and Deny-hard (TierGate CTA card) states
+- [x] Create UpgradeModal component triggered by PAYMENT_REQUIRED errors
+- [x] Add tRPC error link to catch PAYMENT_REQUIRED and open UpgradeModal
+- [x] Add .tier-locked Tailwind styles to index.css
+- [x] Wire tier gating into existing wizard stage pages (anime-gate, video, publish as deny-hard)
+- [x] Wire requireCapability into server middleware for tRPC mutations
+- [x] Emit analytics events: tier_gate_shown, tier_gate_denied, tier_upgrade_cta_click
+- [x] Write vitest tests for tierMatrix, requireTier middleware, and procedure gating (42 tests passing)

@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import { AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
+import UpgradeModal from "./components/awakli/UpgradeModal";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { STORAGE_KEY_RETURN_PATH } from "./const";
 import Home from "./pages/Home";
@@ -278,6 +279,7 @@ function App() {
             }}
           />
           <Router />
+          <UpgradeModal />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -5,6 +5,7 @@ import { Shield, ArrowRight, ArrowLeft, Users, ThumbsUp, ThumbsDown, Clock, Tren
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
+import { WithTier } from "@/components/awakli/withTier";
 
 export default function WizardAnimeGate() {
   const [, navigate] = useLocation();
@@ -43,6 +44,7 @@ export default function WizardAnimeGate() {
       projectTitle={project?.title || "Untitled Project"}
       completedStages={completedStages}
     >
+      <WithTier capability="stage_anime_gate" mode="hard">
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -163,6 +165,7 @@ export default function WizardAnimeGate() {
           </motion.button>
         </div>
       </div>
+      </WithTier>
     </CreateWizardLayout>
   );
 }
