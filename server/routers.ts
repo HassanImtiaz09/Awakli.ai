@@ -86,6 +86,7 @@ import {
 } from "./routers-hitl";
 import { authorizeAndHold, commitTicket, releaseTicket, canAfford, canAffordBatch, getCreditCost, getAllCreditCosts, type GenerationAction } from "./credit-gateway";
 import { routerLog } from "./observability/logger";
+import { submitJob, getQueueStatus, cancelUserJobs, getQueueMetrics } from "./generation-queue";
 
 // ─── Panel Prompt Builder ────────────────────────────────────────────────
 
@@ -794,12 +795,23 @@ const episodesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No panels to generate" });
       }
 
-      // Fire-and-forget panel generation
-      generatePanelsForEpisode(input.id, episode.projectId, ctx.user.id).catch((err) => {
+      // Check queue status before submitting
+      const queueStatus = getQueueStatus(ctx.user.id);
+      if (queueStatus.userRunning >= 3) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `You have ${queueStatus.userRunning} generation jobs running. Please wait for them to complete.` });
+      }
+
+      // Submit to generation queue (handles concurrency + auto-refund on failure)
+      submitJob(
+        ctx.user.id,
+        "panel_generation",
+        () => generatePanelsForEpisode(input.id, episode.projectId, ctx.user.id),
+        { withCredits: false, episodeId: input.id, projectId: episode.projectId, description: `Generate ${draftPanels.length} panels` },
+      ).catch((err) => {
         routerLog.error(`[PanelGen] Episode ${input.id} panel generation failed:`, { error: String(err) });
       });
 
-      return { panelCount: draftPanels.length, message: "Panel generation started" };
+      return { panelCount: draftPanels.length, message: "Panel generation started", queuePosition: queueStatus.position };
     }),
 
   // NEW: Get panel generation status for an episode
@@ -1258,14 +1270,15 @@ const panelsRouter = router({
       // Mark as generating and regenerate
       await updatePanel(input.id, { status: "generating", reviewStatus: "pending" });
 
-      // Fire-and-forget regeneration with SSE notification
-      (async () => {
-        try {
+      // Submit to generation queue with auto-refund on failure
+      submitJob(
+        ctx.user.id,
+        "panel_generation",
+        async () => {
           const { notifyPanelComplete } = await import("./panelGenService");
           const promptToUse = input.newPrompt || panel.fluxPrompt || panel.visualDescription || "anime panel";
           const { url } = await generateImage({ prompt: promptToUse });
           await updatePanel(input.id, { imageUrl: url, status: "generated", reviewStatus: "pending" });
-          // Broadcast to any connected SSE clients
           notifyPanelComplete(
             panel.projectId,
             panel.episodeId,
@@ -1274,11 +1287,13 @@ const panelsRouter = router({
             url ?? "",
             "generated",
           );
-        } catch (error) {
-          routerLog.error(`[PanelRegen] Panel ${input.id} failed:`, { error: String(error) });
-          await updatePanel(input.id, { status: "draft" });
-        }
-      })();
+          return url;
+        },
+        { withCredits: false, episodeId: panel.episodeId, projectId: panel.projectId, description: `Regenerate panel ${input.id}` },
+      ).catch(async (error) => {
+        routerLog.error(`[PanelRegen] Panel ${input.id} failed:`, { error: String(error) });
+        await updatePanel(input.id, { status: "draft" });
+      });
 
       return { success: true, message: "Regeneration started" };
     }),
@@ -1349,9 +1364,19 @@ const panelsRouter = router({
 
       return { rewritten: rewritten.trim() };
     }),
-});
 
-// ─── Characters Router ────────────────────────────────────────────────────
+  // ─── Queue Management ─────────────────────────────────────────────────
+  queueStatus: protectedProcedure
+    .query(async ({ ctx }) => {
+      return getQueueStatus(ctx.user.id);
+    }),
+
+  cancelQueue: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      return cancelUserJobs(ctx.user.id);
+    }),
+});
+// ─── Characters Router ─────────────────────────────────────────────────────
 
 const charactersRouter = router({
   listByProject: protectedProcedure

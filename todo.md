@@ -4234,8 +4234,10 @@
 - [x] registerGenJob + notifyPanelComplete wired into generatePanelsForEpisode
 - [x] Panel regen notifies SSE clients with updated image URL
 - [x] Video render pipeline: connect frontend to real pipeline.start mutation with polling
-- [ ] Error handling with auto-refund on generation failure
-- [ ] Rate limiting and queue management for generation requests
+- [x] Error handling with auto-refund on generation failure (generation-queue.ts with credit hold/commit/release lifecycle)
+- [x] Rate limiting and queue management for generation requests (per-user concurrency: 3, global: 20, queue depth: 10/user)
+- [x] Queue status + cancel endpoints added to panelsRouter
+- [x] 13 vitest tests passing for generation queue (submitJob, credits, auto-refund, config)
 
 ## Explore/Feed Sample Content
 - [x] Create seed data with 12+ sample manga projects (varied genres, styles)
