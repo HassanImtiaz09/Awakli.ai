@@ -1,6 +1,6 @@
 /**
- * tRPC Error Link — Catches PAYMENT_REQUIRED (tier-gating) errors
- * and opens the UpgradeModal automatically.
+ * tRPC Error Link — Catches PAYMENT_REQUIRED (tier-gating) and
+ * insufficient_credits errors and opens the UpgradeModal automatically.
  *
  * Wire this into the tRPC client link chain in lib/trpc.ts.
  */
@@ -20,7 +20,7 @@ export function handleTierError(error: unknown): boolean {
   const data = error.data as any;
   const cause = error.shape?.data?.cause ?? data?.cause;
 
-  // Check for our custom PAYMENT_REQUIRED cause
+  // Check for our custom PAYMENT_REQUIRED cause (tier gating)
   if (cause?.type === "PAYMENT_REQUIRED") {
     const payload: UpgradePayload = {
       currentTier: cause.currentTier ?? "free_trial",
@@ -34,9 +34,18 @@ export function handleTierError(error: unknown): boolean {
     return true;
   }
 
+  // Check for insufficient_credits errors → open Top-up tab
+  if (
+    error.message?.includes("insufficient_credits") ||
+    error.message?.includes("Insufficient credits") ||
+    cause?.type === "INSUFFICIENT_CREDITS"
+  ) {
+    UpgradeModalBus.openCredits();
+    return true;
+  }
+
   // Also check the error message for FORBIDDEN errors that look like tier gates
   if (error.data?.code === "FORBIDDEN" && error.message?.includes("subscription")) {
-    // Try to parse tier info from the message
     UpgradeModalBus.open({
       currentTier: "free_trial",
       required: "creator",

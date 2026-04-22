@@ -3983,3 +3983,17 @@
 - [x] Wire requireCapability into server middleware for tRPC mutations
 - [x] Emit analytics events: tier_gate_shown, tier_gate_denied, tier_upgrade_cta_click
 - [x] Write vitest tests for tierMatrix, requireTier middleware, and procedure gating (42 tests passing)
+
+## Upgrade Modal + Top-Up Sheet (F5)
+- [x] Create Zustand store (store/upgradeModal.ts) with trigger context (gate/credits/voluntary), selected tier, active tab
+- [x] Build full UpgradeModal with Radix Dialog, two tabs (Upgrade tier / Top up credits), focus-trap, esc-close blocking during processing
+- [x] Tier comparison tab: show tiers at or above required, pre-select matching tier from PAYMENT_REQUIRED, CTA "Upgrade to {tierName}"
+- [x] TopUpSheet tab: 5 credit packs (Spark 100c, Flame 500c, Blaze 1500c, Inferno 5000c, Supernova 15000c) with pricing and savings
+- [x] Stripe Checkout integration: open in new tab, poll subscription status every 2s until confirmed or 90s timeout
+- [x] Processing state: spinner, disable close button and esc
+- [x] Success state: mint checkmark, auto-close after 1.4s, toast "Welcome to {tierName}. Your next render is on us."
+- [x] Wire into existing triggers: replace old UpgradeModal event bus, connect to withTier HOC and tRPC error link
+- [x] Analytics events: upgrade_modal_open, upgrade_tier_confirm, topup_pack_confirm, upgrade_modal_dismiss
+- [x] No dark-pattern language: no countdown timers, no pre-checked boxes, no "limited offer" copy
+- [x] Exact copy strings: "Unlock this stage", "You're running low on credits", pack labels with savings
+- [x] Write vitest tests for store, dark-pattern deny list, and component behavior (44 tests passing)

@@ -9,6 +9,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import PageBackground from "@/components/awakli/PageBackground";
+import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
 
 /* ─── Stage definitions ──────────────────────────────────────────────── */
 export const STAGES = [
@@ -420,13 +421,13 @@ function CreditMeter() {
       )}
 
       {/* Upgrade CTA */}
-      <Link
-        href="/pricing"
-        className="mt-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-token-violet/20 to-token-cyan/20 border border-token-violet/20 text-sm text-white/70 hover:text-white transition-all hover:border-token-violet/40"
+      <button
+        onClick={() => balance <= 3 ? UpgradeModalBus.openCredits() : UpgradeModalBus.openVoluntary()}
+        className="mt-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-token-violet/20 to-token-cyan/20 border border-token-violet/20 text-sm text-white/70 hover:text-white transition-all hover:border-token-violet/40 w-full"
       >
         <Zap className="w-3.5 h-3.5" />
-        Upgrade Plan
-      </Link>
+        {balance <= 3 ? "Top Up Credits" : "Upgrade Plan"}
+      </button>
     </div>
   );
 }
@@ -485,13 +486,13 @@ function MobileCreditSheet() {
               ))}
             </div>
 
-            <Link
-              href="/pricing"
+            <button
+              onClick={() => { setOpen(false); balance <= 3 ? UpgradeModalBus.openCredits() : UpgradeModalBus.openVoluntary(); }}
               className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-token-violet/20 to-token-cyan/20 border border-token-violet/20 text-sm text-white/70"
             >
               <Zap className="w-3.5 h-3.5" />
-              Upgrade Plan
-            </Link>
+              {balance <= 3 ? "Top Up Credits" : "Upgrade Plan"}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
