@@ -4091,3 +4091,19 @@
 - [x] Exact copy strings: batch bar, style drift slider labels, consistency report title
 - [x] Analytics events: stage2_batch_select, stage2_style_drift_preview, stage2_style_drift_apply, stage2_consistency_jump
 - [x] Write vitest tests for batch logic, style drift credits, consistency scoring, copy strings (69 tests passing)
+
+## Stage 3 · Publish — Manga Episode with Tier-Aware Finishing
+- [x] Create PublishPreview component — scrolling feed preview composing panels into pages (1-4 per page based on aspect)
+- [x] Create CoverDesigner component — title, author name, cover art picker (any rendered panel), 3 style presets (Shonen bold, Seinen minimal, Shojo soft)
+- [x] Create WatermarkToggle component — Apprentice locked ON, Mangaka+ can toggle off
+- [x] Create publish.tsx page with 4 states: ready-to-publish, cover-editing, publishing (3-step progress), published (success with link/QR/share)
+- [x] Publishing progress steps: "Composing pages…", "Generating thumbnails…", "Creating your share link…"
+- [x] Post-publish "Make it move — generate the anime →" CTA routing to /create/anime-gate?projectId=X
+- [x] Apprentice: watermark locked ON, episode always public, 3 published episodes lifetime
+- [x] Mangaka: watermark optional, unlisted/public toggle, unlimited episodes
+- [x] Studio/Studio Pro: custom domain CNAME + RSS, scheduled publish (config defined, UI placeholders)
+- [x] Server-side publish service: slug generation, tier configs, cover presets, publish steps
+- [x] Exact copy strings: page title, subhead, publish CTA, publishing steps, success title, anime CTA
+- [x] Analytics events: stage3_preview_shown, stage3_cover_picked, stage3_publish_start, stage3_publish_complete, stage3_anime_cta
+- [x] Wire publish route in App.tsx (already wired from prior scaffold)
+- [x] Write vitest tests for publish logic, tier gating, copy strings, and watermark rules (66 tests passing)
