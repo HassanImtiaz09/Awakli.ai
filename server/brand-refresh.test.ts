@@ -413,3 +413,66 @@ describe("UI Brief: Create dashboard cleanup", () => {
     expect(headerSection).toContain("New Project");
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Hero Background Animation
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("Hero background animation", () => {
+  const home = read("client/src/pages/Home.tsx");
+  const css = read("client/src/index.css");
+
+  it("Hero section has data-hero-animated attribute", () => {
+    expect(home).toContain("data-hero-animated");
+  });
+
+  it("Hero has animation layer with aria-hidden", () => {
+    expect(home).toContain("hero-anim-layer");
+    expect(home).toContain('aria-hidden="true"');
+  });
+
+  it("Hero has three drifting gradient orbs", () => {
+    expect(home).toContain("hero-orb-1");
+    expect(home).toContain("hero-orb-2");
+    expect(home).toContain("hero-orb-3");
+  });
+
+  it("Hero has floating particles with brand colors", () => {
+    expect(home).toContain("hero-particle");
+    expect(home).toContain("#E040FB");
+    expect(home).toContain("#7C4DFF");
+    expect(home).toContain("#FF6E7F");
+  });
+
+  it("Hero has scanline sweep element", () => {
+    expect(home).toContain("hero-scanline");
+  });
+
+  it("Particles are generated via useMemo for stable references", () => {
+    expect(home).toContain("useMemo");
+    expect(home).toMatch(/Array\.from\(\{\s*length:\s*35/);
+  });
+
+  it("CSS defines hero-orb-drift keyframes", () => {
+    expect(css).toContain("@keyframes hero-orb-drift-1");
+    expect(css).toContain("@keyframes hero-orb-drift-2");
+    expect(css).toContain("@keyframes hero-orb-drift-3");
+  });
+
+  it("CSS defines hero-particle-float keyframe", () => {
+    expect(css).toContain("@keyframes hero-particle-float");
+  });
+
+  it("CSS defines hero-scanline-sweep keyframe", () => {
+    expect(css).toContain("@keyframes hero-scanline-sweep");
+  });
+
+  it("CSS respects prefers-reduced-motion for hero animations", () => {
+    // Find the reduced-motion block that targets hero elements
+    const reducedMotionIdx = css.lastIndexOf("prefers-reduced-motion: reduce");
+    const reducedBlock = css.slice(reducedMotionIdx, reducedMotionIdx + 500);
+    expect(reducedBlock).toContain("hero-orb-1");
+    expect(reducedBlock).toContain("hero-particle");
+    expect(reducedBlock).toContain("hero-scanline");
+  });
+});

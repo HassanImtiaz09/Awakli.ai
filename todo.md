@@ -4391,11 +4391,11 @@
 ## Typography, Color Theme & Logo Redesign
 - [x] Generate 5 typography style mockup images for user selection
 - [x] Generate anime-style logo and title design for Awakli using AI
-- [ ] Redesign color theme for more immersive, eye-catching appearance (move away from blue)
-- [ ] Apply selected typography to the website
-- [ ] Apply new color theme across all pages
-- [ ] Integrate new anime logo as website identity
-- [ ] Write vitest tests for typography/color/logo changes
+- [x] Redesign color theme for more immersive, eye-catching appearance (move away from blue)
+- [x] Apply selected typography to the website
+- [x] Apply new color theme across all pages
+- [x] Integrate new anime logo as website identity
+- [x] Write vitest tests for typography/color/logo changes
 
 ## User Selection: Orbitron + Kitsune Mask Logo
 - [x] Replace all fonts with Orbitron (display, heading, body) — no DM Sans
@@ -4408,3 +4408,8 @@
 - [x] Update Logo.tsx component to use the new logo image
 - [x] Verify all pages render correctly with new typography and colors
 - [x] Write vitest tests for new typography and logo
+
+## Hero Background Animation
+- [x] Add subtle background animation to the hero section (floating particles, gradient shifts, or similar)
+- [x] Ensure animation respects prefers-reduced-motion
+- [x] Write vitest tests for the hero animation

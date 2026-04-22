@@ -93,8 +93,21 @@ function ActOneHero() {
     }
   };
 
+  /* Floating particle data — seeded once per mount */
+  const particles = useMemo(() =>
+    Array.from({ length: 35 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 1.5 + Math.random() * 2.5,
+      delay: Math.random() * 6,
+      duration: 12 + Math.random() * 18,
+      opacity: 0.15 + Math.random() * 0.35,
+    })),
+  []);
+
   return (
-    <section className="relative w-full min-h-[100vh] flex items-center overflow-hidden">
+    <section className="relative w-full min-h-[100vh] flex items-center overflow-hidden" data-hero-animated>
       {/* Ken Burns background with character art */}
       <AnimatePresence mode="sync">
         <motion.div
@@ -117,6 +130,58 @@ function ActOneHero() {
       {/* Cinematic overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#05050C]/85 via-[#05050C]/60 to-[#05050C]/95" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#05050C]/70 to-transparent" />
+
+      {/* ── Subtle background animation layer ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden hero-anim-layer" aria-hidden="true">
+        {/* Drifting gradient orbs */}
+        <div
+          className="absolute w-[600px] h-[600px] rounded-full blur-[180px] hero-orb-1"
+          style={{
+            top: "10%",
+            left: "-5%",
+            background: "radial-gradient(circle, rgba(224,64,251,0.12) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute w-[500px] h-[500px] rounded-full blur-[160px] hero-orb-2"
+          style={{
+            bottom: "5%",
+            right: "-8%",
+            background: "radial-gradient(circle, rgba(124,77,255,0.10) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute w-[400px] h-[400px] rounded-full blur-[140px] hero-orb-3"
+          style={{
+            top: "40%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "radial-gradient(circle, rgba(255,110,127,0.08) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Floating particles */}
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className="absolute rounded-full hero-particle"
+            style={{
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: p.size,
+              height: p.size,
+              opacity: p.opacity,
+              background: p.id % 3 === 0 ? "#E040FB" : p.id % 3 === 1 ? "#7C4DFF" : "#FF6E7F",
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+            }}
+          />
+        ))}
+
+        {/* Subtle scan-line sweep */}
+        <div className="absolute inset-0 hero-scanline" />
+      </div>
+
       {/* Radial accent glow */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#7C4DFF]/12 rounded-full blur-[150px]" />
 
