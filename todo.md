@@ -5133,3 +5133,8 @@
 - [x] Upload final video to Cloudflare Stream (uid: 79cb9d515bde1ada76d3ead7db8629a1)
 - [x] Update platform_config with new stream ID, embed URL, and poster URL
 - [x] Verify homepage plays the new V4 video (confirmed playing in browser)
+
+## Bug: Homepage still shows old 65s demo video
+- [x] Diagnose: WatchItHappen.tsx had hardcoded old video URL, not using Cloudflare Stream
+- [x] Fix: Uploaded V4 video to webdev storage, updated DEMO_VIDEO_URL in WatchItHappen.tsx
+- [x] Verified: New V4 video (84.5s) plays correctly on dev server homepage
