@@ -4606,3 +4606,39 @@
 - [x] Integration: generateClip flow (hold credits → call Kling → poll → upload → commit)
 - [x] Integration: batch generation with mixed tiers
 - [x] Unit: error classification and retry logic
+
+## Milestone 5: Assembly & Final Output
+
+### Service Module — video-assembler.ts (slice-aware assembly)
+- [x] Create `server/video-assembler.ts` — slice-aware FFmpeg assembly engine for the guided production pipeline
+- [x] Fetch all completed video slices for an episode ordered by sliceNumber
+- [x] Download video clips from S3 to temp directory
+- [x] Normalize all clips to 1920x1080, 24fps, yuv420p with silent audio track if missing
+- [x] FFmpeg concat with cross-fade transitions (xfade filter, configurable overlap ~0.3s)
+- [x] Voice overlay: download and place ElevenLabs voice tracks per slice at correct timestamps using safe sequential overlay (weights=1 1:normalize=0)
+- [x] Voice validation gate: verify all dialogue timecodes above -30 LUFS before final mux
+- [x] Background music: mix at -18 LUFS under dialogue with sidechain ducking
+- [x] Loudness normalization: final pass to -16 LUFS (broadcast standard)
+- [x] Upload assembled video to S3, update episode record with videoUrl
+- [x] Clean up temp files after assembly completes or fails
+- [x] Credit gateway integration: hold credits for assembly, commit on success, release on failure
+- [x] Assembly status tracking: pending → assembling → assembled → failed
+- [x] Support configurable assembly settings from episode.assembly_settings JSON
+
+### tRPC Endpoints — routers-assembly.ts
+- [x] Add `assembly.assemble` endpoint — trigger assembly for an episode with all generated slices
+- [x] Add `assembly.getStatus` endpoint — poll assembly progress and status
+- [x] Add `assembly.retry` endpoint — retry failed assembly with optional parameter adjustments
+- [x] Add `assembly.getPreview` endpoint — return assembled video URL for preview playback
+- [x] Add `assembly.getSettings` endpoint — return current assembly settings for the episode
+- [x] Add `assembly.updateSettings` endpoint — update assembly settings (voice volume, music volume, transition style)
+- [x] Register assembly router in appRouter
+
+### Tests
+- [x] Unit: fetchAndValidateSlices (validates all slices ready for assembly)
+- [x] Unit: buildSliceTimeline (calculates start times, transition overlaps, total duration)
+- [x] Unit: voice placement mapping (slice dialogue → voice track placement at correct offsets)
+- [x] Unit: assembly settings validation and defaults
+- [x] Integration: assembleEpisodeFromSlices flow (fetch → download → normalize → concat → voice → music → upload)
+- [x] Integration: retry logic for failed assembly
+- [x] Unit: credit calculation for assembly action
