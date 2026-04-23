@@ -71,6 +71,12 @@ export interface VideoParams {
   seed?: number;
   /** Subject library element IDs for lip-sync (Kling 3 Omni) */
   elementIds?: string[];
+  /** Source video URL for post-processing (e.g., lip sync) */
+  videoUrl?: string;
+  /** Audio URL for lip sync overlay */
+  audioUrl?: string;
+  /** Whether to generate native audio with the video */
+  generateAudio?: boolean;
   /** Motion LoRA stack parameters (Prompt 24) */
   motionLora?: {
     /** Path/URL to the trained motion LoRA weights */

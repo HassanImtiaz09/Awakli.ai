@@ -13,6 +13,7 @@ import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { textToSpeech, listVoices, VOICE_PRESETS, MODELS } from "./elevenlabs";
 import { imageToVideo, omniVideo, queryTask } from "./kling";
+import { generateOmniVideo, generateImageToVideo, type VideoGenerationResult } from "./video-provider";
 import { classifyScene, calculateCost, calculateV3OmniCost, MODEL_MAP, type PanelScriptData, type SceneClassification } from "./scene-classifier";
 import { createModelRoutingStat, updatePipelineAssetRouting } from "./db";
 import { buildLipSyncPrompt } from "./kling-subjects";
@@ -379,58 +380,137 @@ async function videoGenAgent(runId: number, episodeId: number, projectId: number
           omniElementList = undefined;
         }
 
-        const result = await omniVideo({
-          prompt: omniPrompt,
-          imageList: [{ image_url: panel.imageUrl, type: "first_frame" }],
-          elementList: omniElementList,
-          sound: "on",
-          duration: "10",
-          mode: "pro",
-          modelName: "kling-video-o1",
-          aspectRatio: "16:9",
-        });
-
-        if (result.code === 0 && result.data?.task_id) {
-          batchTaskIds.push({
-            panelId: panel.id,
-            taskId: result.data.task_id,
-            panelNumber: panel.panelNumber,
-            taskType: "omni-video",
-            hasDialogue: true,
-            hasNativeLipSync: !!hasMatchingElements,
-            classification,
+        // ─── fal.ai primary, Kling direct fallback (via video-provider) ───
+        try {
+          const vidResult = await generateOmniVideo({
+            prompt: omniPrompt,
+            imageUrl: panel.imageUrl,
+            elementList: omniElementList,
+            sound: "on",
+            duration: "10",
+            mode: "pro",
+            aspectRatio: "16:9",
           });
-          pipelineLog.info(`[Pipeline] Tier 1 V3 Omni task: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"}): ${result.data.task_id}`);
-        } else {
-          pipelineLog.warn(`[Pipeline] Omni task returned non-zero code for panel ${panel.id}:`, { detail: String(result) });
+
+          // fal.ai returns synchronously — store result immediately
+          const videoRes = await fetch(vidResult.videoUrl);
+          const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+          const videoKey = `pipeline/${runId}/omni-lipsync-panel${panel.id}-${nanoid(6)}.mp4`;
+          const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+
+          const durationSec = vidResult.durationSeconds;
+          const actualCost = calculateCost(classification.tier, durationSec, "pro");
+          const v3OmniCost = calculateV3OmniCost(durationSec, "pro");
+          totalActualCostUsd += actualCost;
+          totalV3OmniCostUsd += v3OmniCost;
+
+          const motionDecision = motionLoraDecisions.get(panel.id);
+          await createPipelineAsset({
+            pipelineRunId: runId,
+            episodeId,
+            panelId: panel.id,
+            assetType: "synced_clip",
+            url: storedUrl,
+            metadata: {
+              duration: durationSec,
+              format: "mp4",
+              panelNumber: panel.panelNumber,
+              provider: vidResult.provider,
+              model: vidResult.model,
+              requestId: vidResult.requestId,
+              hasNativeAudio: true,
+              hasLipSync: true,
+              hasNativeLipSync: !!hasMatchingElements,
+              usedSubjectLibrary: !!hasMatchingElements,
+              complexityTier: classification.tier,
+              lipSyncBeneficial: classification.lipSyncBeneficial,
+              motionLoraApplied: motionDecision?.fallback === "applied",
+              motionLoraWeight: motionDecision?.motionLoraWeight,
+              motionLoraFallback: motionDecision?.fallback,
+              motionLoraSceneType: motionDecision?.sceneType,
+            } as any,
+            nodeSource: "video_gen",
+            klingModelUsed: vidResult.model,
+            complexityTier: classification.tier,
+            lipSyncMethod: hasMatchingElements ? "native" : "native",
+            classificationReasoning: classification.reasoning,
+            costActual: actualCost,
+            costIfV3Omni: v3OmniCost,
+            userOverride: 0,
+          });
+
+          pipelineLog.info(`[Pipeline] Tier 1 Omni complete via ${vidResult.provider}: panel ${panel.id} (${hasMatchingElements ? "native lip sync" : "fallback"})`);
+        } catch (omniErr) {
+          pipelineLog.error(`[Pipeline] Omni video failed for panel ${panel.id}:`, { error: String(omniErr) });
         }
       } else {
         // ─── TIER 2/3/4: Use appropriate model via image2video ───
         const modelName = classification.modelName;
         const prompt = `Cinematic anime scene, smooth camera motion, ${String(panel.visualDescription || "dramatic scene")}, anime style, high quality animation, fluid movement`;
 
-        const result = await imageToVideo({
-          image: panel.imageUrl,
-          prompt,
-          negativePrompt: "static, still image, blurry, low quality, distorted",
-          duration: "10",
-          mode: "pro",
-          modelName,
-        });
-
-        if (result.code === 0 && result.data?.task_id) {
-          batchTaskIds.push({
-            panelId: panel.id,
-            taskId: result.data.task_id,
-            panelNumber: panel.panelNumber,
-            taskType: "image2video",
-            hasDialogue,
-            hasNativeLipSync: false,
-            classification,
+        // ─── fal.ai primary, Kling direct fallback (via video-provider) ───
+        try {
+          const vidResult = await generateImageToVideo({
+            imageUrl: panel.imageUrl,
+            prompt,
+            negativePrompt: "static, still image, blurry, low quality, distorted",
+            duration: "10",
+            mode: "pro",
+            modelName,
           });
-          pipelineLog.info(`[Pipeline] Tier ${classification.tier} ${classification.model} task: panel ${panel.id}: ${result.data.task_id}`);
-        } else {
-          pipelineLog.warn(`[Pipeline] Image2Video task returned non-zero code for panel ${panel.id}:`, { detail: String(result) });
+
+          // Store result immediately
+          const videoRes = await fetch(vidResult.videoUrl);
+          const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+          const suffix = `t${classification.tier}-clip`;
+          const videoKey = `pipeline/${runId}/${suffix}-panel${panel.id}-${nanoid(6)}.mp4`;
+          const { url: storedUrl } = await storagePut(videoKey, videoBuffer, "video/mp4");
+
+          const durationSec = vidResult.durationSeconds;
+          const actualCost = calculateCost(classification.tier, durationSec, "pro");
+          const v3OmniCost = calculateV3OmniCost(durationSec, "pro");
+          totalActualCostUsd += actualCost;
+          totalV3OmniCostUsd += v3OmniCost;
+
+          const lipSyncMethod = classification.lipSyncBeneficial ? "post_sync" : "none";
+          const motionDecision = motionLoraDecisions.get(panel.id);
+          await createPipelineAsset({
+            pipelineRunId: runId,
+            episodeId,
+            panelId: panel.id,
+            assetType: "video_clip",
+            url: storedUrl,
+            metadata: {
+              duration: durationSec,
+              format: "mp4",
+              panelNumber: panel.panelNumber,
+              provider: vidResult.provider,
+              model: vidResult.model,
+              requestId: vidResult.requestId,
+              hasNativeAudio: false,
+              hasLipSync: false,
+              hasNativeLipSync: false,
+              usedSubjectLibrary: false,
+              complexityTier: classification.tier,
+              lipSyncBeneficial: classification.lipSyncBeneficial,
+              motionLoraApplied: motionDecision?.fallback === "applied",
+              motionLoraWeight: motionDecision?.motionLoraWeight,
+              motionLoraFallback: motionDecision?.fallback,
+              motionLoraSceneType: motionDecision?.sceneType,
+            } as any,
+            nodeSource: "video_gen",
+            klingModelUsed: vidResult.model,
+            complexityTier: classification.tier,
+            lipSyncMethod,
+            classificationReasoning: classification.reasoning,
+            costActual: actualCost,
+            costIfV3Omni: v3OmniCost,
+            userOverride: 0,
+          });
+
+          pipelineLog.info(`[Pipeline] Tier ${classification.tier} ${classification.model} complete via ${vidResult.provider}: panel ${panel.id}`);
+        } catch (i2vErr) {
+          pipelineLog.error(`[Pipeline] Image2Video failed for panel ${panel.id}:`, { error: String(i2vErr) });
         }
       }
     } catch (err) {

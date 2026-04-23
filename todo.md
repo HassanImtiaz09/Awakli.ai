@@ -5138,3 +5138,26 @@
 - [x] Diagnose: WatchItHappen.tsx had hardcoded old video URL, not using Cloudflare Stream
 - [x] Fix: Uploaded V4 video to webdev storage, updated DEMO_VIDEO_URL in WatchItHappen.tsx
 - [x] Verified: New V4 video (84.5s) plays correctly on dev server homepage
+
+## Full Platform Audit (Pre-Launch)
+- [x] Audit database schema completeness — all tables present
+- [x] Audit all tRPC routers — 70+ sub-routers verified
+- [x] Audit all navigation links — all working correctly
+- [x] Audit pipeline stages — 12-stage HITL pipeline fully implemented
+- [x] Audit Cloudflare Stream — upload/delivery/captions working, env vars SET
+- [x] Audit Stripe — webhook wired, checkout sessions coded, SANDBOX NOT CLAIMED (blocker)
+- [x] Audit Print API — MISSING entirely (blocker)
+- [x] Audit HITL — 12 stages with blocking/advisory/ambient gates, cascade rewind
+- [x] Audit env vars — 14 integrations checked, all env vars SET
+- [x] Compile readiness report — AUDIT-REPORT.md written, verdict: NOT READY (3 blockers)
+
+## fal.ai Video Generation Integration
+- [x] Research fal.ai API docs, SDK, and Kling 3.0 endpoint schema
+- [x] Install @fal-ai/client SDK and configure FAL_API_KEY secret
+- [x] Create server/fal-video.ts module wrapping fal.ai Kling 3.0 endpoints (text-to-video, image-to-video, omni, lip sync)
+- [x] Support text-to-video, image-to-video, and lip sync modes via fal.ai
+- [x] Update pipeline orchestrator to use fal.ai as primary video provider
+- [x] Add provider abstraction (server/video-provider.ts) with fal.ai primary, Kling direct fallback
+- [x] Handle async task polling (fal.subscribe), retry logic, and error mapping
+- [x] Write vitest tests — 15/15 pass (fal-video, video-provider, fal-kling adapters, registry key resolution)
+- [x] Verify TypeScript compilation (0 errors) and all tests pass
