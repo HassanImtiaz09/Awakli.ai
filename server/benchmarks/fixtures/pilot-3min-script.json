@@ -1,0 +1,222 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "18-slice pilot script for 3-minute (180s) end-to-end benchmark. Same script used by all four pipeline variants (P1-P4).",
+    "totalSlices": 18,
+    "totalDuration": 180,
+    "sliceDuration": 10,
+    "shotDistribution": {
+      "silent_establishing": 5,
+      "silent_action": 2,
+      "dialogue_closeup": 10,
+      "stylised_action": 1,
+      "total": 18
+    },
+    "dialogueCharacters": 5000,
+    "notes": "Distribution: 11 silent + 6 dialogue + 1 stylised action. Mirrors realistic anime episode composition."
+  },
+  "slices": [
+    {
+      "sliceId": 1,
+      "type": "silent_establishing",
+      "prompt": "Aerial view of a futuristic coastal city at sunrise, waves crashing against neon-lit seawalls, birds in formation. 2D anime style, warm golden lighting.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "wide_aerial"
+    },
+    {
+      "sliceId": 2,
+      "type": "dialogue_closeup",
+      "prompt": "Teenage girl with black hair and school uniform stands at a window, morning light on her face. She speaks with quiet determination. 2D anime style, soft backlight.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Today is the day everything changes. I can feel it.",
+        "character": "Yuki",
+        "emotion": "determined"
+      },
+      "cameraAngle": "close_up"
+    },
+    {
+      "sliceId": 3,
+      "type": "silent_establishing",
+      "prompt": "School hallway, students walking, cherry blossom petals drifting through open windows. 2D anime style, bright and airy.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "medium_wide"
+    },
+    {
+      "sliceId": 4,
+      "type": "dialogue_closeup",
+      "prompt": "Young man with silver hair and a dark jacket leans against a wall, arms crossed. He speaks with a smirk. 2D anime style, cool blue shadows.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "You really think you can change anything? That's what they all say.",
+        "character": "Ren",
+        "emotion": "sarcastic"
+      },
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 5,
+      "type": "silent_establishing",
+      "prompt": "Rooftop at lunch, two bento boxes open, city skyline in background. Wind rustles hair. 2D anime style, warm midday light.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "over_shoulder"
+    },
+    {
+      "sliceId": 6,
+      "type": "dialogue_closeup",
+      "prompt": "Yuki sits on rooftop edge, looking at the city. She speaks softly, wind in her hair. 2D anime style, golden hour.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "My grandmother used to say the city remembers everyone who ever loved it.",
+        "character": "Yuki",
+        "emotion": "nostalgic"
+      },
+      "cameraAngle": "profile_close"
+    },
+    {
+      "sliceId": 7,
+      "type": "dialogue_closeup",
+      "prompt": "Ren looks away, expression softening. He speaks quietly. 2D anime style, warm light catching his eyes.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "That's a nice thought. I wish I could believe it.",
+        "character": "Ren",
+        "emotion": "vulnerable"
+      },
+      "cameraAngle": "close_up"
+    },
+    {
+      "sliceId": 8,
+      "type": "silent_establishing",
+      "prompt": "Time-lapse of clouds moving over the city, shadows shifting across buildings. 2D anime style, dramatic lighting transition from day to dusk.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "wide_timelapse"
+    },
+    {
+      "sliceId": 9,
+      "type": "dialogue_closeup",
+      "prompt": "Yuki in a dimly lit library, surrounded by old books. She discovers a glowing page. Her eyes widen. 2D anime style, dramatic spotlight.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "This can't be real. These are the coordinates my grandmother left behind.",
+        "character": "Yuki",
+        "emotion": "shocked"
+      },
+      "cameraAngle": "close_up_low_angle"
+    },
+    {
+      "sliceId": 10,
+      "type": "silent_establishing",
+      "prompt": "Underground passage, flickering fluorescent lights, water dripping from pipes. Mysterious atmosphere. 2D anime style, green-tinted shadows.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "tracking_forward"
+    },
+    {
+      "sliceId": 11,
+      "type": "silent_action",
+      "prompt": "Yuki runs through the underground passage, her footsteps echoing. Camera follows from behind. Speed lines, motion blur. 2D anime style.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "tracking_behind"
+    },
+    {
+      "sliceId": 12,
+      "type": "dialogue_closeup",
+      "prompt": "Ren blocks Yuki's path at a junction, hand raised. He speaks urgently. 2D anime style, dramatic red emergency lighting.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Stop! You don't know what's down there. I've seen what happens to people who go too deep.",
+        "character": "Ren",
+        "emotion": "urgent"
+      },
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 13,
+      "type": "stylised_action",
+      "prompt": "Yuki pushes past Ren, they struggle briefly, she breaks free and dashes forward. Dynamic camera rotation, speed lines, dramatic poses. 2D anime style, high energy.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "dynamic_rotating"
+    },
+    {
+      "sliceId": 14,
+      "type": "silent_action",
+      "prompt": "Yuki emerges into a vast underground chamber with a glowing crystal structure at its centre. She stops, awestruck. Camera pulls back to reveal scale. 2D anime style, ethereal blue glow.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "cameraAngle": "wide_reveal"
+    },
+    {
+      "sliceId": 15,
+      "type": "dialogue_closeup",
+      "prompt": "Yuki's face illuminated by the crystal's glow, tears forming. She whispers. 2D anime style, ethereal blue light on skin.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Grandmother... you were right all along. The city does remember.",
+        "character": "Yuki",
+        "emotion": "emotional"
+      },
+      "cameraAngle": "extreme_close_up"
+    },
+    {
+      "sliceId": 16,
+      "type": "dialogue_closeup",
+      "prompt": "Ren catches up, breathing hard. He sees the crystal and his expression transforms from anger to wonder. 2D anime style, blue glow reflecting in his eyes.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "What... what is this place? I've lived in this city my whole life and never knew.",
+        "character": "Ren",
+        "emotion": "awestruck"
+      },
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 17,
+      "type": "dialogue_closeup",
+      "prompt": "Both characters stand before the crystal, side by side. Yuki speaks with resolve. 2D anime style, warm and cool light mixing on their faces.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "This is just the beginning. There are more coordinates. Will you help me find them?",
+        "character": "Yuki",
+        "emotion": "resolute"
+      },
+      "cameraAngle": "two_shot_medium"
+    },
+    {
+      "sliceId": 18,
+      "type": "dialogue_closeup",
+      "prompt": "Ren looks at Yuki, then at the crystal, then back. A slow smile. He nods. 2D anime style, warm golden light breaking through.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Someone has to keep you from getting yourself killed. Let's go.",
+        "character": "Ren",
+        "emotion": "warm_sarcastic"
+      },
+      "cameraAngle": "close_up"
+    }
+  ]
+}

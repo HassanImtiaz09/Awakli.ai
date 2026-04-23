@@ -1,0 +1,195 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "updatedAt": "2026-04-23",
+    "currency": "USD",
+    "notes": "All rates are per-second of output video unless noted. Desk-research values — to be replaced with measured actuals during benchmark."
+  },
+  "video": {
+    "kling_v3_omni_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/kling-video/v3/text-to-video",
+      "mode": "omni",
+      "resolution": "1080p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": 0.140,
+      "per10sClip": 1.40,
+      "notes": "Pro mode + audio surcharge. Integrated lipsync."
+    },
+    "kling_v3_omni_atlas": {
+      "provider": "atlas_cloud",
+      "model": "kling-video-o3-pro",
+      "mode": "omni",
+      "resolution": "1080p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": 0.095,
+      "per10sClip": 0.95,
+      "notes": "15% discount vs fal.ai standard. O3 Pro with audio."
+    },
+    "kling_v3_omni_direct": {
+      "provider": "kling_direct",
+      "model": "kling-v3-omni",
+      "mode": "omni",
+      "resolution": "1080p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": null,
+      "per10sClip": null,
+      "notes": "Requires prepaid resource package. Volume quote at 500K credits/month pending."
+    },
+    "kling_v3_std_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/kling-video/v3/text-to-video",
+      "mode": "standard",
+      "resolution": "1080p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.084,
+      "per10sClip": 0.84,
+      "notes": "Silent mode. 33% cheaper than Omni."
+    },
+    "kling_v3_pro_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/kling-video/v3/text-to-video",
+      "mode": "pro",
+      "resolution": "1080p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.112,
+      "per10sClip": 1.12,
+      "notes": "Pro mode, no audio."
+    },
+    "kling_lipsync_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/kling-video/v1/pro/lip-sync",
+      "mode": "lipsync",
+      "resolution": "1080p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": 0.168,
+      "per10sClip": 1.68,
+      "notes": "Post-processing lipsync on existing video."
+    },
+    "wan22_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/wan/v2.2-a14b/text-to-video",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.080,
+      "per10sClip": 0.80,
+      "notes": "Max 720p on fal.ai. Open-weights model."
+    },
+    "wan22_replicate": {
+      "provider": "replicate",
+      "model": "wan-video/wan-2.2-a14b",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": null,
+      "per10sClip": 0.60,
+      "notes": "Replicate bills by GPU time. ~$0.06/sec estimated. 720p max."
+    },
+    "wan25_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/wan/v2.5",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.050,
+      "per10sClip": 0.50,
+      "notes": "Newer model, 37.5% cheaper than Wan 2.2 on fal.ai. Recommended variant."
+    },
+    "hunyuan_v15_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/hunyuan-video-v1.5/text-to-video",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.075,
+      "per10sClip": 0.75,
+      "notes": "Tencent open-source. LoRA-compatible."
+    },
+    "hunyuan_lora_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/hunyuan-video-lora",
+      "mode": "lora_inference",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": null,
+      "perVideo": 0.30,
+      "notes": "Fixed per-video price. LoRA inference."
+    },
+    "hedra_char3": {
+      "provider": "hedra",
+      "model": "character-3",
+      "mode": "dialogue",
+      "resolution": "720p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": 0.033,
+      "per10sClip": 0.33,
+      "notes": "Creator plan $30/mo = 5400 credits. 6 credits/sec at 720p. Single character only."
+    },
+    "latentsync_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/latentsync",
+      "mode": "lipsync",
+      "resolution": "input",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": null,
+      "perClip": 0.20,
+      "notes": "Flat $0.20 per clip up to 40s. $0.005/sec beyond 40s."
+    },
+    "musetalk_replicate": {
+      "provider": "replicate",
+      "model": "douwantech/musetalk",
+      "mode": "lipsync",
+      "resolution": "input",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": null,
+      "perRun": 0.42,
+      "notes": "~$0.42 per run on Replicate. Anime face detection failure risk 20-40%."
+    }
+  },
+  "tts": {
+    "elevenlabs": {
+      "provider": "elevenlabs",
+      "model": "turbo-v2.5",
+      "perKChars": 0.10,
+      "voiceClone": true,
+      "notes": "Best voice quality. Voice cloning available."
+    },
+    "cartesia": {
+      "provider": "cartesia",
+      "model": "sonic",
+      "perKChars": 0.10,
+      "voiceClone": false,
+      "notes": "Lowest latency (~40ms TTFA). Same price as ElevenLabs."
+    },
+    "openai_tts": {
+      "provider": "openai",
+      "model": "tts-1",
+      "perKChars": 0.015,
+      "voiceClone": false,
+      "notes": "Cheapest TTS. No voice cloning. Limited emotion control."
+    }
+  },
+  "training": {
+    "hunyuan_lora_training": {
+      "provider": "fal.ai",
+      "model": "fal-ai/hunyuan-video-lora-training",
+      "estimatedCost": { "low": 2.00, "high": 8.00 },
+      "notes": "20-image training set. Cost depends on steps and resolution. ~5-10 min wall-clock."
+    }
+  }
+}

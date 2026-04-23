@@ -5161,3 +5161,26 @@
 - [x] Handle async task polling (fal.subscribe), retry logic, and error mapping
 - [x] Write vitest tests — 15/15 pass (fal-video, video-provider, fal-kling adapters, registry key resolution)
 - [x] Verify TypeScript compilation (0 errors) and all tests pass
+
+## Cost Benchmark Runner Infrastructure (3-min pilots)
+- [x] C1: Create pricing registry (server/benchmarks/providers/pricing.json) with $/sec, $/credit, $/clip for all providers
+- [x] C1: Create provider credentials registry (server/benchmarks/providers/registry.ts) with API key env resolution
+- [x] C2: Create 3-shot standardised test fixture (server/benchmarks/fixtures/) with prompts, seed, resolution, duration
+- [x] C2: Create 18-slice pilot script fixture (server/benchmarks/fixtures/pilot-3min-script.json)
+- [x] Shared: Create benchmark runner base class with cost tracking, timing, retry logic, and CSV logging
+- [x] B1: Kling V3 Omni runner — 3 shots × 3 providers (fal.ai, Atlas Cloud, Kling Direct)
+- [x] B2: Kling V3 Standard silent runner — 2 shots via fal.ai
+- [x] B3: Wan 2.2 silent runner — 2 shots × 2 providers (fal.ai, Replicate)
+- [x] B4: Hunyuan Video silent runner + LoRA training script
+- [x] B5: Hedra Character-3 dialogue runner
+- [x] B6: TTS benchmark runner (ElevenLabs, Cartesia, OpenAI)
+- [x] B7: Lipsync comparison runner (LatentSync, MuseTalk, Kling Lip Sync)
+- [x] P1: Kling V3 Omni end-to-end pipeline runner (18 slices, 3 min)
+- [x] P2: Decomposed Balanced pipeline runner (Wan + ElevenLabs + Hedra + LatentSync, 18 slices)
+- [x] P3: Decomposed Cheap pipeline runner (Wan + OpenAI TTS + MuseTalk, 18 slices)
+- [x] P4: Decomposed Premium pipeline runner (Hunyuan + ElevenLabs + Hedra + Kling Lip Sync, 18 slices)
+- [x] A1: Cost assessment framework — per-clip CSV logger, pipeline cost aggregator, cost-per-video calculator
+- [x] A1: Cost extrapolation module — project 3-min measured costs to 1/5/7/15-min durations
+- [x] A1: Margin calculator — compute gross margin at each pricing tier ($19/$35/$49)
+- [x] run_all.ts: CLI entry point to execute any ticket or full benchmark suite
+- [x] Write vitest tests for benchmark infrastructure — 35/35 passing

@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "Three standardised anime shot archetypes. Every provider generates these same three 10-second clips for apples-to-apples comparison.",
+    "resolution": "1080p (or provider max if lower)",
+    "duration": 10,
+    "fps": 24,
+    "seed": 42
+  },
+  "shots": [
+    {
+      "id": "shot_1_establishing",
+      "name": "Establishing Shot — Silent Wide Scene",
+      "type": "establishing",
+      "prompt": "Neon-lit Tokyo rooftop at dusk, distant city hum, a lone shadow walks across the frame. 2D anime style, soft lighting.",
+      "duration": 10,
+      "resolution": "1080p",
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": null,
+      "tests": ["video_generation_cost", "aesthetic_quality", "motion_coherence"],
+      "notes": "Low complexity, ambient motion only. Tests baseline video generation quality and cost."
+    },
+    {
+      "id": "shot_2_dialogue",
+      "name": "Dialogue Close-Up — Character with Audible Line",
+      "type": "dialogue",
+      "prompt": "Teenage girl with black hair and a school uniform. She speaks the line: \"I finally understand why you came back.\" Soft lighting, 2D anime style, tight close-up on face.",
+      "duration": 10,
+      "resolution": "1080p",
+      "audio": true,
+      "dialogue": {
+        "text": "I finally understand why you came back.",
+        "characterId": "character-01",
+        "emotion": "reflective",
+        "audioSpec": {
+          "format": "wav",
+          "sampleRate": 48000,
+          "loudness": "-16 LUFS"
+        }
+      },
+      "referenceImage": "character-01.png",
+      "tests": ["lipsync_quality", "character_consistency", "mouth_artifacts", "voice_quality"],
+      "notes": "The critical test. Requires reference image + dialogue audio. Tests lipsync, character fidelity, and voice integration."
+    },
+    {
+      "id": "shot_3_action",
+      "name": "Action / Multi-Character — Dynamic Two-Character Scene",
+      "type": "action",
+      "prompt": "Samurai leaps from a moving train, sword drawn, his opponent blocks with a glowing staff. Rain, speed lines, 2D anime style.",
+      "duration": 10,
+      "resolution": "1080p",
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": null,
+      "tests": ["motion_coherence", "multi_character_consistency", "stylised_camera", "action_dynamics"],
+      "notes": "High complexity, fast motion, two characters. Tests motion handling and multi-character scenes."
+    }
+  ]
+}
