@@ -4513,3 +4513,26 @@
 - [x] Unit: determineklingModel (tier-to-model mapping, user override handling)
 - [x] Integration: slices.decompose endpoint contract test
 - [x] Integration: slices.overrideTier with cost recalculation
+
+## Milestone 2: Core Scene Preview
+
+### Backend — Core Scene Preview Service
+- [x] Create `server/core-scene-preview.ts` module with: buildCoreScenePrompt (slice → image prompt), generateCoreScenePreview (call image gen API), generateAllCoreScenesForEpisode (batch generation)
+- [x] Prompt engineering: compose visual prompt from slice metadata (action description, characters, camera angle, mood, scene context)
+- [x] Character Element binding: integrate Kling Elements/LoRA references for character consistency in preview images
+- [x] Cost tracking: deduct credits per preview image generation (~$0.04 each)
+- [x] Error handling: retry logic with exponential backoff, fallback to simpler prompt on failure
+
+### Backend — tRPC Endpoints
+- [x] Add `coreScene.generate` endpoint — generate preview image for a single slice, store URL in DB
+- [x] Add `coreScene.generateBatch` endpoint — generate previews for all pending slices in an episode
+- [x] Add `coreScene.regenerate` endpoint — regenerate a single slice's preview (user rejected it)
+- [x] Add `coreScene.approve` endpoint — mark a slice's core scene as approved
+- [x] Add `coreScene.approveAll` endpoint — bulk approve all pending core scenes
+- [x] Add `coreScene.reject` endpoint — mark as rejected with optional feedback text
+
+### Tests
+- [x] Unit: buildCoreScenePrompt (prompt composition from slice metadata)
+- [x] Unit: character element integration in prompts
+- [x] Unit: approve/reject state transitions
+- [x] Integration: generate → approve flow

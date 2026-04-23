@@ -41,7 +41,7 @@ export type GenerationAction =
   | "video_10s_budget" | "video_10s_standard" | "video_10s_premium"
   | "voice_synthesis" | "voice_clone"
   | "script_generation"
-  | "panel_generation" | "image_upscale"
+  | "panel_generation" | "image_upscale" | "core_scene_preview"
   | "music_generation"
   | "sfx_generation" | "narrator_generation"
   | "lora_train";

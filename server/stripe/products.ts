@@ -303,6 +303,7 @@ export const CREDIT_COSTS: Record<string, number> = {
   // Image generation
   panel_generation: 1,
   image_upscale: 1,
+  core_scene_preview: 1,  // ~$0.04 per preview image
   // Music
   music_generation: 2,
   // Post-processing
