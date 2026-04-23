@@ -5184,3 +5184,12 @@
 - [x] A1: Margin calculator — compute gross margin at each pricing tier ($19/$35/$49)
 - [x] run_all.ts: CLI entry point to execute any ticket or full benchmark suite
 - [x] Write vitest tests for benchmark infrastructure — 35/35 passing
+
+## Benchmark API Key Provisioning
+- [x] Check current provider credential status (FAL, KLING, ELEVENLABS, OPENAI already set; ATLAS_CLOUD, REPLICATE, HEDRA, CARTESIA missing)
+- [x] Provision ATLAS_CLOUD_API_KEY — validated (200 OK)
+- [x] Provision REPLICATE_API_TOKEN — validated (200 OK)
+- [x] Provision HEDRA_API_KEY — validated (200 OK)
+- [x] Provision CARTESIA_API_KEY — validated (200 OK)
+- [x] Provision OPENAI_API_KEY — present (platform-injected proxy key)
+- [x] Run credential check — 8/8 tests passing, all providers ready
