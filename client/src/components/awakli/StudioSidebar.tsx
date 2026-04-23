@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, LayoutDashboard, Upload,
   Film, Settings, Layers, Users, Zap, FileText, PlusCircle,
   ArrowLeft, FolderOpen, Palette, Grid3X3, BookOpen, Clapperboard, PenTool, DollarSign,
-  ListVideo, BarChart3,
+  ListVideo, BarChart3, MapPin, Activity,
 } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
@@ -23,6 +23,8 @@ const MAIN_NAV: NavItem[] = [
   { href: "/studio/upload",   label: "Upload",     icon: <Upload size={18} /> },
   { href: "/studio/byo-upload", label: "BYO Manga", icon: <BookOpen size={18} /> },
   { href: "/studio/batch-assembly", label: "Batch Assembly", icon: <ListVideo size={18} /> },
+  { href: "/studio/locations", label: "Locations", icon: <MapPin size={18} /> },
+  { href: "/studio/generation", label: "Generation", icon: <Activity size={18} /> },
   { href: "/analytics", label: "Analytics",  icon: <BarChart3 size={18} /> },
 ];
 

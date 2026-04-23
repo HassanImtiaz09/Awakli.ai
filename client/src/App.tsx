@@ -57,6 +57,9 @@ import BatchAssemblyQueue from "./pages/BatchAssemblyQueue";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import DebugTokens from "./pages/DebugTokens";
+import LoraMarketplace from "./pages/LoraMarketplace";
+import LocationLibrary from "./pages/LocationLibrary";
+import GenerationDashboard from "./pages/GenerationDashboard";
 import MangaReader from "./pages/MangaReader";
 import WizardInput from "./pages/create/input";
 import WizardSetup from "./pages/create/setup";
@@ -99,6 +102,7 @@ function Router() {
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/trending" component={Trending} />
+        <Route path="/marketplace" component={LoraMarketplace} />
         <Route path="/onboarding" component={Onboarding} />
 
         {/* Creation wizard (7-stage pipeline) */}
@@ -137,6 +141,8 @@ function Router() {
         <Route path="/characters/:id/consistency" component={ConsistencyReport} />
         <Route path="/batch-training" component={BatchTraining} />
         <Route path="/studio/batch-assembly" component={BatchAssemblyQueue} />
+        <Route path="/studio/locations" component={LocationLibrary} />
+        <Route path="/studio/generation" component={GenerationDashboard} />
 
         {/* Account / billing */}
         <Route path="/usage" component={UsageDashboard} />

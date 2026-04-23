@@ -12,6 +12,7 @@ import CreateWizardLayout from "@/layouts/CreateWizardLayout";
 import { useAdvanceStage } from "@/hooks/useAdvanceStage";
 import { ScriptEditor } from "@/components/awakli/ScriptEditor";
 import { StageHeader } from "@/components/awakli/StageHeader";
+import ScriptCostAdvisor from "@/components/awakli/ScriptCostAdvisor";
 import { qaSceneData } from "@/fixtures/qaFixtures";
 
 // ─── Analytics helper ──────────────────────────────────────────────────────────────────────
@@ -287,6 +288,13 @@ export default function WizardScript() {
                 locked={primaryEpisode.status === "locked"}
                 onScenesChange={handleScenesChange}
                 onAllApproved={handleAllApproved}
+              />
+            )}
+            {/* Cost Advisor — analyzes script text and shows per-scene cost heatmap */}
+            {scenes.length > 0 && (
+              <ScriptCostAdvisor
+                scriptText={scenes.map((s: any) => s.content || s.text || "").join("\n\n")}
+                className="mt-4"
               />
             )}
           </>

@@ -12,6 +12,7 @@ import PageBackground from "@/components/awakli/PageBackground";
 import { UpgradeModalBus } from "@/components/awakli/UpgradeModal";
 import { useProjectCreditForecast } from "@/hooks/useProjectCreditForecast";
 import { STAGE_DISPLAY_LABELS } from "@shared/creditMath";
+import BudgetModeToggle from "@/components/awakli/BudgetModeToggle";
 
 /* ─── Stage definitions ──────────────────────────────────────────────── */
 export const STAGES = [
@@ -433,6 +434,9 @@ function CreditMeter({ projectId }: { projectId?: number | null }) {
           </p>
         </div>
       )}
+
+      {/* Budget Mode Toggle */}
+      <BudgetModeToggle baseCost={totalProjectCost} className="mt-2" />
 
       {/* Upgrade CTA */}
       <button

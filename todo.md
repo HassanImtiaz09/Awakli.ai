@@ -5022,3 +5022,46 @@
 - [x] Add getSchedulerStatus and getGraphForVisualization endpoints for progress UI
 - [x] In-memory graph store with start/markStarted/markComplete/markFailed/cancel lifecycle
 - [x] Add tRPC endpoints: parallelSlice.start, parallelSlice.getStatus, parallelSlice.getReady, parallelSlice.markStarted, parallelSlice.markComplete, parallelSlice.markFailed, parallelSlice.cancel, parallelSlice.getGraph, parallelSlice.cleanup, parallelSlice.activeEpisodes
+
+## Frontend UI Pages for Cost Optimization Features
+
+### LoRA Marketplace Browse Page (/marketplace)
+- [x] Create MarketplacePage.tsx with grid layout for LoRA cards
+- [x] Add search bar, category filter tabs, sort dropdown (newest/popular/rating/downloads)
+- [x] LoRA card component: preview image, name, creator, rating stars, download count, price badge
+- [x] LoRA detail modal/page: full description, preview gallery, reviews, "Use as Base" button
+- [x] "Publish LoRA" button for creators with publish form modal
+- [x] Training savings callout ("Save 75% by starting from this base")
+- [x] Register /marketplace route in App.tsx and add to TopNav
+
+### Location Library Page (/studio/locations)
+- [x] Create LocationLibraryPage.tsx with grid of background asset cards
+- [x] Background card: thumbnail, location name, tags, usage count
+- [x] Search/filter by location name and tags
+- [x] Delete and edit actions per background
+- [x] Empty state with explanation of how backgrounds are auto-collected
+- [x] Register /studio/locations route in App.tsx and add to StudioSidebar
+
+### Script Cost Advisor Panel
+- [x] Create ScriptCostAdvisor.tsx component for the script editor
+- [x] Cost heatmap: color-coded scene list (green/yellow/red)
+- [x] Per-scene breakdown: scene type, panel count, estimated cost
+- [x] Total episode cost summary with breakdown by category
+- [x] Budget suggestions panel with "Apply" buttons for each suggestion
+- [x] Integrate ScriptCostAdvisor into script editor page (create/script.tsx)
+
+### Real-time Generation Dashboard
+- [x] Create GenerationDashboard.tsx page at /studio/generation
+- [x] DAG graph visualization with nodes (slices) and edges (dependencies)
+- [x] Node colors by status: pending=gray, generating=cyan pulse, complete=green, failed=red
+- [x] Progress bar with percentage and ETA
+- [x] Parallel lanes visualization showing concurrent generation slots
+- [x] Cancel button and slice-level status details
+- [x] Register /studio/generation route and add to StudioSidebar
+
+### Budget Mode Toggle
+- [x] Create BudgetModeToggle.tsx component
+- [x] Toggle switch with before/after cost comparison display
+- [x] Show savings breakdown: RIFE strategy, importance routing, background reuse, voice cache
+- [x] Integrate BudgetModeToggle into CreateWizardLayout CreditMeter panel
+- [x] BudgetModeToggle integrated with local state (per-session)
