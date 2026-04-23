@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Pen, Settings2, BookOpen, LayoutGrid, Shield, Film, Send,
   Lock, Check, ChevronLeft, HelpCircle, Loader2, AlertCircle,
-  Home, ChevronRight, CreditCard, Zap, ChevronDown,
+  Home, ChevronRight, CreditCard, Zap, ChevronDown, Grid3X3,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -18,6 +18,7 @@ export const STAGES = [
   { key: "input",      label: "Input",      icon: Pen,        path: "input" },
   { key: "script",     label: "Script",     icon: BookOpen,   path: "script" },
   { key: "panels",     label: "Panels",     icon: LayoutGrid, path: "panels" },
+  { key: "storyboard", label: "Storyboard", icon: Grid3X3,    path: "storyboard" },
   { key: "publish",    label: "Publish",    icon: Send,       path: "publish" },
   { key: "anime-gate", label: "Gate",       icon: Shield,     path: "anime-gate" },
   { key: "setup",      label: "Setup",      icon: Settings2,  path: "setup" },

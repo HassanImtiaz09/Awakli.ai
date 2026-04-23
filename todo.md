@@ -4536,3 +4536,39 @@
 - [x] Unit: character element integration in prompts
 - [x] Unit: approve/reject state transitions
 - [x] Integration: generate → approve flow
+
+## Milestone 3: Slice Approval UI (Storyboard)
+
+### Frontend — StoryboardView Component
+- [x] Create `StoryboardView.tsx` — main storyboard grid showing all slices as visual timeline cards
+- [x] Each slice card shows: preview image (or placeholder), slice number, duration, character names, complexity tier badge, cost estimate
+- [x] Status indicators: pending (gray), generating (pulse animation), generated (blue), approved (green), rejected (red)
+- [x] Batch actions toolbar: "Generate All Previews", "Approve All", cost summary
+- [x] Responsive grid layout: 3 columns on desktop, 2 on tablet, 1 on mobile
+
+### Frontend — SliceDetailModal Component
+- [x] Create `SliceDetailModal.tsx` — full detail view when user clicks a slice card
+- [x] Shows large preview image, action description, camera angle, mood, characters involved, dialogue lines
+- [x] Approve/Reject buttons with confirmation
+- [x] Regenerate button with optional feedback text input
+- [x] Prompt preview display (what AI will use to generate the image)
+- [x] Tier override dropdown with cost delta display
+
+### Frontend — Cost Summary Panel
+- [x] Create `StoryboardCostBar.tsx` — sticky bottom bar showing total estimated credits
+- [x] Breakdown: X slices × tier costs = total credits
+- [x] Real-time update when user overrides tiers
+- [x] "Proceed to Video Generation" button (enabled only when all slices approved)
+- [x] Credit balance check with warning if insufficient
+
+### Frontend — Integration
+- [x] Wire StoryboardView into the creation wizard as a new step after script approval
+- [x] Add route for storyboard view (/create/:projectId/storyboard/:episodeId)
+- [x] Connect all tRPC hooks: coreScene.getStoryboard, coreScene.generate, coreScene.approve, etc.
+- [x] Loading states, error handling, and toast notifications
+
+### Tests
+- [x] Unit: StoryboardView renders correct number of slice cards (39 tests in storyboard-ui.test.ts)
+- [x] Unit: SliceDetailModal shows correct slice data
+- [x] Unit: CostSummaryPanel calculates totals correctly
+- [x] Unit: Status badge rendering for all 5 states

@@ -65,6 +65,7 @@ import WizardAnimeGate from "./pages/create/anime-gate";
 import WizardVideo from "./pages/create/video";
 import WizardCharacterSetup from "./pages/create/character-setup";
 import WizardPublish from "./pages/create/publish";
+import WizardStoryboard from "./pages/create/storyboard";
 import TierSampler from "./pages/TierSampler";
 import CostDashboard from "./pages/CostDashboard";
 import Terms from "./pages/Terms";
@@ -103,6 +104,7 @@ function Router() {
         <Route path="/create/setup" component={WizardSetup} />
         <Route path="/create/script" component={WizardScript} />
         <Route path="/create/panels" component={WizardPanels} />
+        <Route path="/create/storyboard" component={WizardStoryboard} />
         <Route path="/create/anime-gate" component={WizardAnimeGate} />
         <Route path="/create/character-setup" component={WizardCharacterSetup} />
         <Route path="/create/video" component={WizardVideo} />
