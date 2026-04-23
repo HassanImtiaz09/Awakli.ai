@@ -81,6 +81,7 @@ import { abTestingRouter } from "./routers-ab-testing";
 import { characterBibleRouter } from "./routers-character-bible";
 import { sliceRouter } from "./routers-slices";
 import { coreSceneRouter } from "./routers-core-scene";
+import { sliceVideoRouter } from "./routers-slice-video";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2366,6 +2367,7 @@ export const appRouter = router({
   // Guided Pipeline: 10-Second Slice Decomposition
   slices: sliceRouter,
   coreScene: coreSceneRouter,
+  sliceVideo: sliceVideoRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

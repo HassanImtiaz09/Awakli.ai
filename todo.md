@@ -4572,3 +4572,37 @@
 - [x] Unit: SliceDetailModal shows correct slice data
 - [x] Unit: CostSummaryPanel calculates totals correctly
 - [x] Unit: Status badge rendering for all 5 states
+
+## Milestone 4: Slice-Aware Video Generation
+
+### Service Module — slice-video-generator.ts
+- [x] Create `server/slice-video-generator.ts` module
+- [x] Build video generation prompt from approved core scene, slice metadata, and character Elements
+- [x] Implement intra-Kling routing: map complexity tier to Kling model version and Standard/Professional mode
+- [x] Lip sync integration: attach audio track for dialogue slices, configure sound_start_time and sound_end_time
+- [x] Element binding: attach character Element IDs from project characters to maintain consistency
+- [x] Generate single 10-second clip via Kling API with proper parameters (duration, resolution, mode)
+- [x] Batch generation: generate all approved slices for an episode sequentially or with controlled concurrency
+- [x] Poll Kling task status until completion, handle timeouts and failures
+- [x] Upload completed video clips to S3 storage, update slice records with videoClipUrl
+- [x] Credit gateway integration: hold credits before generation, commit on success, release on failure
+- [x] Retry logic with exponential backoff (max 2 retries per slice)
+- [x] Error classification: transient (retry) vs permanent (mark failed, notify user)
+
+### tRPC Endpoints — routers-slice-video.ts
+- [x] Add `sliceVideo.generateClip` endpoint — generate video for a single approved slice
+- [x] Add `sliceVideo.generateAll` endpoint — batch generate all approved slices for an episode
+- [x] Add `sliceVideo.getStatus` endpoint — poll generation status for a slice or episode
+- [x] Add `sliceVideo.retryFailed` endpoint — retry failed slices with optional parameter adjustments
+- [x] Add `sliceVideo.cancelGeneration` endpoint — cancel in-progress generation
+- [x] Add `sliceVideo.getClipPreview` endpoint — return video clip URL for preview playback
+- [x] Register sliceVideo router in appRouter
+
+### Tests
+- [x] Unit: buildVideoPrompt (prompt composition from slice + core scene + characters)
+- [x] Unit: mapTierToKlingParams (tier → model version, mode, resolution mapping)
+- [x] Unit: lip sync audio configuration (timing, padding, format validation)
+- [x] Unit: credit calculation per slice based on tier and duration
+- [x] Integration: generateClip flow (hold credits → call Kling → poll → upload → commit)
+- [x] Integration: batch generation with mixed tiers
+- [x] Unit: error classification and retry logic
