@@ -2135,3 +2135,57 @@ export const voiceCache = mysqlTable("voice_cache", {
 
 export type VoiceCacheEntry = typeof voiceCache.$inferSelect;
 export type InsertVoiceCacheEntry = typeof voiceCache.$inferInsert;
+
+// ─── LoRA Marketplace ───────────────────────────────────────────────────
+
+export const loraMarketplaceLicenseEnum = mysqlEnum("lora_license", [
+  "free",
+  "attribution",
+  "commercial",
+  "exclusive",
+]);
+
+export const loraMarketplaceCategoryEnum = mysqlEnum("lora_category", [
+  "character",
+  "style",
+  "background",
+  "effect",
+  "general",
+]);
+
+export const loraMarketplace = mysqlTable("lora_marketplace", {
+  id: int("id").autoincrement().primaryKey(),
+  creatorId: int("creatorId").notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  description: text("description"),
+  previewImages: text("previewImages"), // JSON array of URLs
+  downloads: int("downloads").default(0).notNull(),
+  ratingSum: int("ratingSum").default(0).notNull(),
+  ratingCount: int("ratingCount").default(0).notNull(),
+  license: loraMarketplaceLicenseEnum.default("free").notNull(),
+  priceCents: int("priceCents").default(0).notNull(), // 0 = free
+  tags: text("tags"), // JSON array of strings
+  category: loraMarketplaceCategoryEnum.default("character").notNull(),
+  loraFileKey: text("loraFileKey"), // S3 key for the LoRA weights
+  loraFileUrl: text("loraFileUrl"), // S3 URL for the LoRA weights
+  baseModelId: varchar("baseModelId", { length: 64 }), // which base model this LoRA targets
+  trainingCreditsUsed: int("trainingCreditsUsed"),
+  isPublished: int("isPublished").default(0).notNull(), // MySQL boolean: 0=false, 1=true
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type LoraMarketplaceEntry = typeof loraMarketplace.$inferSelect;
+export type InsertLoraMarketplaceEntry = typeof loraMarketplace.$inferInsert;
+
+export const loraMarketplaceReviews = mysqlTable("lora_marketplace_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  loraId: int("loraId").notNull(),
+  userId: int("userId").notNull(),
+  rating: int("rating").notNull(), // 1-5
+  comment: text("comment"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LoraReview = typeof loraMarketplaceReviews.$inferSelect;
+export type InsertLoraReview = typeof loraMarketplaceReviews.$inferInsert;

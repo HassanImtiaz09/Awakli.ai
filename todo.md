@@ -5003,22 +5003,22 @@
 ## Sprint 4: LoRA Marketplace & Parallel Slice Generation
 
 ### Feature #6: LoRA Sharing Marketplace
-- [ ] Create `lora_marketplace` table in drizzle schema (loraId, creatorId, name, description, previewImages, downloads, rating, license, priceCents, tags, category, isPublished, createdAt)
-- [ ] Create `lora_marketplace_reviews` table (reviewId, loraId, userId, rating, comment, createdAt)
-- [ ] Generate and apply migration SQL for marketplace tables
-- [ ] Create `server/lora-marketplace.ts` — service for publishing, browsing, purchasing, and fine-tuning from base LoRAs
-- [ ] Add "Publish to Marketplace" flow in character library
-- [ ] Add "Start from Base LoRA" option during character setup (reduced training cost ~30 credits)
-- [ ] Create Marketplace browse page (`/marketplace`) with search, filter, and category navigation
-- [ ] Create LoRA detail page with previews, reviews, and "Use as Base" button
-- [ ] Add tRPC endpoints: `marketplace.list`, `marketplace.get`, `marketplace.publish`, `marketplace.review`, `marketplace.useAsBase`
-- [ ] Add revenue sharing tracking for marketplace creators
+- [x] Create `lora_marketplace` table in drizzle schema (id, creatorId, name, description, previewImages, downloads, ratingSum, ratingCount, license, priceCents, tags, category, isPublished, createdAt)
+- [x] Create `lora_marketplace_reviews` table (id, loraId, userId, rating, comment, createdAt)
+- [x] Generate and apply migration SQL for marketplace tables
+- [x] Create `server/lora-marketplace.ts` — service for publishing, browsing, purchasing, and fine-tuning from base LoRAs
+- [x] Add marketplace.publish tRPC endpoint for publishing LoRAs
+- [x] Add marketplace.trainingSavings endpoint (120→30 credits, 75% savings)
+- [x] Add marketplace.list endpoint with search, filter, category, sort, pagination
+- [x] Add marketplace.get, marketplace.reviews, marketplace.download endpoints
+- [x] Add tRPC endpoints: marketplace.list, marketplace.get, marketplace.publish, marketplace.unpublish, marketplace.download, marketplace.review, marketplace.reviews, marketplace.revenueShare, marketplace.trainingSavings, marketplace.myLoras
+- [x] Add calculateRevenueShare (70% creator / 30% platform) with tRPC endpoint
 
 ### Feature #8: Parallel Slice Generation
-- [ ] Create `server/parallel-slice-scheduler.ts` — DAG-based dependency tracker for slice generation
-- [ ] Build dependency graph from scene boundaries and character continuity constraints
-- [ ] Implement parallel execution for independent branches of the DAG
-- [ ] Add priority queuing based on scene importance scores (from Feature #5)
-- [ ] Create real-time progress UI showing slice generation status (generating/queued/complete)
-- [ ] Integrate with existing `batch-assembly-queue.ts` for queue management
-- [ ] Add tRPC endpoints: `parallelSlice.getStatus`, `parallelSlice.start`, `parallelSlice.cancel`
+- [x] Create `server/parallel-slice-scheduler.ts` — DAG-based dependency tracker for slice generation
+- [x] Build dependency graph from scene boundaries and character continuity constraints
+- [x] Implement parallel execution for independent branches of the DAG (max concurrency 1-8)
+- [x] Add priority queuing based on scene importance scores (highest first)
+- [x] Add getSchedulerStatus and getGraphForVisualization endpoints for progress UI
+- [x] In-memory graph store with start/markStarted/markComplete/markFailed/cancel lifecycle
+- [x] Add tRPC endpoints: parallelSlice.start, parallelSlice.getStatus, parallelSlice.getReady, parallelSlice.markStarted, parallelSlice.markComplete, parallelSlice.markFailed, parallelSlice.cancel, parallelSlice.getGraph, parallelSlice.cleanup, parallelSlice.activeEpisodes

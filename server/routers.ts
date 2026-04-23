@@ -92,6 +92,8 @@ import { backgroundsRouter } from "./routers-backgrounds";
 import { inpaintingRouter } from "./routers-inpainting";
 import { voiceCacheRouter } from "./routers-voice-cache";
 import { costOptimizerRouter } from "./routers-cost-optimizer";
+import { marketplaceRouter as loraMarketplaceRouter } from "./routers-marketplace";
+import { parallelSliceRouter } from "./routers-parallel-slice";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2427,6 +2429,12 @@ export const appRouter = router({
 
   // Script Cost Optimizer & Scene-Type Optimization
   costOptimizer: costOptimizerRouter,
+
+  // LoRA Marketplace
+  loraMarketplace: loraMarketplaceRouter,
+
+  // Parallel Slice Scheduler
+  parallelSlice: parallelSliceRouter,
 });
 
 export type AppRouter = typeof appRouter;
