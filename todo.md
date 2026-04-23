@@ -5124,3 +5124,12 @@
 - [x] Write V4 assembly script (assemble-v4.sh) and produce final video
 - [x] Upload final V4 demo video to webdev static assets
 - [x] Write V4 final documentation (v4-final-documentation.md)
+
+## Demo Video V4 Puppeteer Re-recording
+- [x] Install Puppeteer and screen recording dependencies
+- [x] Write Puppeteer recording script for /demo-recording?autoplay=true
+- [x] Record the full ~90s demo sequence at 1920x1080 30fps (2854 frames, 95s)
+- [x] Post-process: trim, add narration (9 beats) + BGM, encode to 84.5s final
+- [x] Upload final video to Cloudflare Stream (uid: 79cb9d515bde1ada76d3ead7db8629a1)
+- [x] Update platform_config with new stream ID, embed URL, and poster URL
+- [x] Verify homepage plays the new V4 video (confirmed playing in browser)

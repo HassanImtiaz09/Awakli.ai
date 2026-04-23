@@ -897,15 +897,26 @@ export default function DemoRecording() {
     fallbackUrls: configData?.fallbackUrls || [],
   }), [configData]);
 
-  // Preload images
+  // Preload all images (hardcoded shot assets + admin config assets)
   useEffect(() => {
-    if (!assets.panelUrls.length && !configData) return;
+    // Always preload the hardcoded shot images
+    const hardcodedUrls = [
+      MANGA_SOURCE_URL,
+      ANIME_RESULT_URL,
+      WS_DASHBOARD_URL,
+      LORA_DETAIL_URL,
+    ];
 
-    const allUrls = [
+    const configUrls = [
       ...assets.panelUrls,
       ...Object.values(assets.characterUrls),
       ...assets.fallbackUrls,
     ].filter(Boolean);
+
+    // If user is not admin, only preload hardcoded assets
+    const allUrls = (!user || user.role !== "admin")
+      ? hardcodedUrls
+      : [...hardcodedUrls, ...configUrls];
 
     if (allUrls.length === 0) {
       setIsReady(true);
@@ -917,6 +928,7 @@ export default function DemoRecording() {
 
     allUrls.forEach((url) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = img.onerror = () => {
         loaded++;
         if (loaded >= total) setIsReady(true);
@@ -927,7 +939,7 @@ export default function DemoRecording() {
     // Timeout fallback
     const timeout = setTimeout(() => setIsReady(true), 15000);
     return () => clearTimeout(timeout);
-  }, [assets]);
+  }, [assets, user, configData]);
 
   // Auto-start if ?autoplay=true
   useEffect(() => {
