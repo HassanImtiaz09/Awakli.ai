@@ -4684,3 +4684,48 @@
 - [x] Unit: assembly router stream delivery endpoints (input validation, auth)
 - [x] Integration: full pipeline flow (assemble → stream → preview URL available)
 - [x] Unit: AssemblySettingsPanel rewiring to assembly.* endpoints
+
+## Milestone 7: SRT Subtitle Generation + Anime Episode Publish & Player
+
+### SRT Subtitle Generation Service
+- [x] Create `server/subtitle-generator.ts` — generates SRT from slice dialogue timecodes
+- [x] `generateSrt(episodeId)` — fetch slices, extract dialogue with timing offsets, format as SRT
+- [x] Support multi-speaker dialogue (character name prefix in subtitle text)
+- [x] Calculate subtitle timestamps from slice timeline (buildSliceTimeline offsets + dialogue startOffset/endOffset)
+- [x] Handle edge cases: empty dialogue slices, overlapping dialogue, long lines (auto-wrap at 42 chars)
+- [x] Upload generated SRT to S3, return URL
+- [x] Add `srtUrl` field to episodes table for storing generated subtitle URL
+- [x] Generate and apply migration SQL (0041_srt_subtitles.sql)
+
+### Anime Episode Publish tRPC Endpoints
+- [x] Add `animePublish.publish` endpoint — publish anime episode (set status, generate share link, notify)
+- [x] Add `animePublish.unpublish` endpoint — unpublish anime episode
+- [x] Add `animePublish.getPublishStatus` endpoint — check publish readiness (assembled? stream ready? subtitles?)
+- [x] Add `animePublish.generateSubtitles` endpoint — trigger SRT generation for an episode
+- [x] Add `animePublish.getEpisodePlayer` endpoint — public endpoint returning stream embed URL, SRT URL, metadata for player
+
+### Frontend — Anime Episode Player Page
+- [x] Create `/anime/:projectId/:episodeId` public route for anime episode viewing
+- [x] Cloudflare Stream iframe embed with poster thumbnail
+- [x] SRT subtitle track loaded via `<track>` element for native video player
+- [x] Episode metadata sidebar: title, synopsis, character list, episode number, view count, duration
+- [x] Navigation: previous/next episode buttons with episode number labels
+- [x] Social sharing: copy link, share to X/Twitter
+- [x] Creator attribution with link to profile
+- [x] View count tracking via getEpisodePlayer endpoint (increments on load)
+- [x] Responsive layout: full-width video on mobile, sidebar on desktop
+
+### Frontend — Anime Publish Flow (extend video.tsx)
+- [x] Add "Publish Anime" button in video.tsx review state when stream is ready
+- [x] Pre-publish checklist: assembled video ✓, stream ready ✓, subtitles generated ✓, tier eligible ✓
+- [x] Publish flow with visibility selector (public/unlisted/private) inline in review state
+- [x] Post-publish success state with share link copy, "Watch Your Anime" CTA, and "Browse Discover" link
+
+### Tests
+- [x] Unit: generateSrt produces valid SRT format with correct timestamps
+- [x] Unit: multi-speaker dialogue formatting (character name prefix)
+- [x] Unit: auto-wrap long subtitle lines at 42 characters
+- [x] Unit: empty dialogue slices produce no subtitle entries
+- [x] Unit: subtitle timestamps align with slice timeline offsets
+- [x] Unit: animePublish router endpoint validation and auth
+- [x] Integration: full flow (generate subtitles → publish → player URL available) — 51 tests passing

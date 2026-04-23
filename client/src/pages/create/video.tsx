@@ -24,6 +24,14 @@ import {
   ExternalLink,
   Settings2,
   Layers,
+  Rocket,
+  Copy,
+  Subtitles,
+  CheckCircle2,
+  XCircle,
+  Globe,
+  Lock,
+  EyeOff,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
@@ -123,7 +131,9 @@ type VideoState =
   | "rendering"
   | "review"
   | "error"
-  | "exporting";
+  | "exporting"
+  | "publishing"
+  | "published";
 
 const RENDER_PHASES = [
   VIDEO_COPY.renderPhase1,
@@ -197,6 +207,15 @@ export default function WizardVideo() {
   // ── Assembly integration ──────────────────────────────────────────
   const assemblyMut = trpc.assembly.assemble.useMutation();
   const deliverToStreamMut = trpc.assembly.deliverToStream.useMutation();
+
+  // ── Publish integration ──────────────────────────────────────────
+  const publishStatusQuery = trpc.animePublish.getPublishStatus.useQuery(
+    { episodeId: firstEpisodeId! },
+    { enabled: !!firstEpisodeId }
+  );
+  const generateSubtitlesMut = trpc.animePublish.generateSubtitles.useMutation();
+  const publishMut = trpc.animePublish.publish.useMutation();
+  const unpublishMut = trpc.animePublish.unpublish.useMutation();
 
   // Assembly status polling
   const [assemblyPolling, setAssemblyPolling] = useState(false);
@@ -272,6 +291,9 @@ export default function WizardVideo() {
   const [assemblyPhaseIdx, setAssemblyPhaseIdx] = useState(0);
   const [streamPhaseIdx, setStreamPhaseIdx] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [publishVisibility, setPublishVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [publishShareUrl, setPublishShareUrl] = useState<string | null>(null);
+  const [publishCopied, setPublishCopied] = useState(false);
 
   // ── Panel timings ─────────────────────────────────────────────────
   const panelCount = (realPanels as any[]).length || (project as any)?.panelCount || 12;
@@ -623,6 +645,62 @@ export default function WizardVideo() {
       window.open(renderResult.videoUrl, "_blank");
     }
   }, [renderResult, studioMode, hasStreamDelivery, previewData]);
+
+  // ── Publish handlers ─────────────────────────────────────────────
+  const handleGenerateSubtitles = useCallback(async () => {
+    if (!firstEpisodeId) return;
+    try {
+      const result = await generateSubtitlesMut.mutateAsync({ episodeId: firstEpisodeId });
+      toast.success(result.message || "Subtitles generated");
+      publishStatusQuery.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate subtitles");
+    }
+  }, [firstEpisodeId, generateSubtitlesMut, publishStatusQuery]);
+
+  const handlePublish = useCallback(async () => {
+    if (!firstEpisodeId) return;
+    setState("publishing");
+    try {
+      const result = await publishMut.mutateAsync({
+        episodeId: firstEpisodeId,
+        visibility: publishVisibility,
+      });
+      setPublishShareUrl(`${window.location.origin}${result.shareUrl}`);
+      setState("published");
+      toast.success("Your anime episode is live!");
+      trackEvent("stage6_anime_published", {
+        projectId,
+        episodeId: firstEpisodeId,
+        visibility: publishVisibility,
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to publish");
+      setState("review");
+    }
+  }, [firstEpisodeId, publishMut, publishVisibility, projectId]);
+
+  const handleUnpublish = useCallback(async () => {
+    if (!firstEpisodeId) return;
+    try {
+      await unpublishMut.mutateAsync({ episodeId: firstEpisodeId });
+      toast.success("Episode unpublished");
+      setPublishShareUrl(null);
+      setState("review");
+      publishStatusQuery.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to unpublish");
+    }
+  }, [firstEpisodeId, unpublishMut, publishStatusQuery]);
+
+  const handleCopyShareLink = useCallback(() => {
+    if (!publishShareUrl) return;
+    navigator.clipboard.writeText(publishShareUrl).then(() => {
+      setPublishCopied(true);
+      toast.success("Link copied!");
+      setTimeout(() => setPublishCopied(false), 2000);
+    });
+  }, [publishShareUrl]);
 
   const handleExport = useCallback(
     (config: ExportConfig) => {
@@ -1299,6 +1377,208 @@ export default function WizardVideo() {
                   onApprove={handleApprove}
                   onRedo={handleRedo}
                 />
+
+                {/* Anime Publish Section */}
+                {hasStreamDelivery && (
+                  <div className="bg-bg-ink rounded-2xl border border-white/5 p-6 space-y-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Rocket className="w-5 h-5 text-token-violet" />
+                      <h3 className="text-lg font-display font-bold text-text-primary">Publish Your Anime</h3>
+                    </div>
+
+                    {/* Pre-publish checklist */}
+                    <div className="space-y-2">
+                      <ChecklistItem
+                        ready={!!publishStatusQuery.data?.checklist.assembledVideo.ready}
+                        label="Video assembled"
+                      />
+                      <ChecklistItem
+                        ready={!!publishStatusQuery.data?.checklist.streamReady.ready}
+                        label="CDN stream ready"
+                      />
+                      <ChecklistItem
+                        ready={!!publishStatusQuery.data?.checklist.subtitles.ready}
+                        label="Subtitles generated"
+                        optional
+                        onGenerate={!publishStatusQuery.data?.checklist.subtitles.ready ? handleGenerateSubtitles : undefined}
+                        generating={generateSubtitlesMut.isPending}
+                      />
+                      <ChecklistItem
+                        ready={!!publishStatusQuery.data?.checklist.tierEligible.ready}
+                        label={publishStatusQuery.data?.checklist.tierEligible.label || "Tier eligible"}
+                      />
+                    </div>
+
+                    {/* Visibility selector */}
+                    <div className="space-y-2">
+                      <label className="text-sm text-text-secondary">Visibility</label>
+                      <div className="flex gap-2">
+                        {(["public", "unlisted", "private"] as const).map((vis) => (
+                          <button
+                            key={vis}
+                            onClick={() => setPublishVisibility(vis)}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                              publishVisibility === vis
+                                ? "bg-token-violet/20 text-token-violet border border-token-violet/30"
+                                : "bg-bg-twilight text-text-secondary hover:bg-bg-overlay border border-transparent"
+                            }`}
+                          >
+                            {vis === "public" && <Globe className="w-3.5 h-3.5" />}
+                            {vis === "unlisted" && <EyeOff className="w-3.5 h-3.5" />}
+                            {vis === "private" && <Lock className="w-3.5 h-3.5" />}
+                            <span className="capitalize">{vis}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Publish button */}
+                    {publishStatusQuery.data?.isAlreadyPublished ? (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-token-mint flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Published
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleUnpublish}
+                          disabled={unpublishMut.isPending}
+                          className="border-white/10 text-text-secondary"
+                        >
+                          Unpublish
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const url = `${window.location.origin}/anime/${numId}/${firstEpisodeId}`;
+                            window.open(url, "_blank");
+                          }}
+                          className="gap-1.5 border-white/10 text-text-secondary"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Watch
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handlePublish}
+                        disabled={!publishStatusQuery.data?.allReady || publishMut.isPending}
+                        className="gap-2 bg-gradient-to-r from-token-violet to-token-cyan text-white hover:opacity-90 disabled:opacity-40"
+                      >
+                        {publishMut.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Rocket className="w-4 h-4" />
+                        )}
+                        Publish Anime Episode
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ── Publishing state ─────────────────────────────────── */}
+            {state === "publishing" && (
+              <motion.div
+                key="publishing"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-16 space-y-6"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                >
+                  <Loader2 className="w-12 h-12 text-token-violet" />
+                </motion.div>
+                <p className="text-lg text-text-primary">Publishing your anime...</p>
+                <p className="text-sm text-text-secondary">Setting up CDN delivery and share links</p>
+              </motion.div>
+            )}
+
+            {/* ── Published success state ─────────────────────────── */}
+            {state === "published" && (
+              <motion.div
+                key="published"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-12 space-y-8"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="w-20 h-20 rounded-full bg-token-mint/10 flex items-center justify-center"
+                >
+                  <CheckCircle2 className="w-10 h-10 text-token-mint" />
+                </motion.div>
+
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-display font-bold text-text-primary">
+                    Your Anime is Live!
+                  </h2>
+                  <p className="text-text-secondary">
+                    Share it with the world or keep refining.
+                  </p>
+                </div>
+
+                {/* Share link */}
+                {publishShareUrl && (
+                  <div className="w-full max-w-md">
+                    <div className="flex items-center gap-2 bg-bg-ink rounded-xl border border-white/10 p-3">
+                      <input
+                        type="text"
+                        readOnly
+                        value={publishShareUrl}
+                        className="flex-1 bg-transparent text-sm text-text-primary outline-none truncate"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCopyShareLink}
+                        className="gap-1.5 border-white/10 shrink-0"
+                      >
+                        {publishCopied ? <Check className="w-3.5 h-3.5 text-token-mint" /> : <Copy className="w-3.5 h-3.5" />}
+                        {publishCopied ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <Button
+                    onClick={() => {
+                      if (publishShareUrl) window.open(publishShareUrl, "_blank");
+                      else if (firstEpisodeId) window.open(`/anime/${numId}/${firstEpisodeId}`, "_blank");
+                    }}
+                    className="gap-2 bg-gradient-to-r from-token-violet to-token-cyan text-white"
+                  >
+                    <Play className="w-4 h-4" />
+                    Watch Your Anime
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/discover")}
+                    className="gap-2 border-white/10 text-text-secondary"
+                  >
+                    <Globe className="w-4 h-4" />
+                    Browse Discover
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setState("review")}
+                    className="gap-2 border-white/10 text-text-secondary"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Review
+                  </Button>
+                </div>
               </motion.div>
             )}
 
@@ -1371,6 +1651,51 @@ export default function WizardVideo() {
         </div>
       </WithTier>
     </CreateWizardLayout>
+  );
+}
+
+// ─── Stream Preview Card ────────────────────────────────────────────
+
+// ─── Publish Checklist Item ─────────────────────────────────────────
+
+function ChecklistItem({
+  ready,
+  label,
+  optional,
+  onGenerate,
+  generating,
+}: {
+  ready: boolean;
+  label: string;
+  optional?: boolean;
+  onGenerate?: () => void;
+  generating?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {ready ? (
+        <CheckCircle2 className="w-4 h-4 text-token-mint shrink-0" />
+      ) : (
+        <XCircle className={`w-4 h-4 shrink-0 ${optional ? 'text-amber-400' : 'text-red-400'}`} />
+      )}
+      <span className={`text-sm ${ready ? 'text-text-primary' : 'text-text-secondary'}`}>
+        {label}
+        {optional && !ready && <span className="text-text-muted ml-1">(optional)</span>}
+      </span>
+      {onGenerate && !ready && (
+        <button
+          onClick={onGenerate}
+          disabled={generating}
+          className="ml-auto text-xs text-token-violet hover:text-token-violet/80 flex items-center gap-1 disabled:opacity-50"
+        >
+          {generating ? (
+            <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</>
+          ) : (
+            <><Subtitles className="w-3 h-3" /> Generate</>
+          )}
+        </button>
+      )}
+    </div>
   );
 }
 

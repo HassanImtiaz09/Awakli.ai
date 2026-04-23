@@ -67,6 +67,7 @@ import WizardCharacterSetup from "./pages/create/character-setup";
 import WizardPublish from "./pages/create/publish";
 import WizardStoryboard from "./pages/create/storyboard";
 import TierSampler from "./pages/TierSampler";
+import AnimeWatchPage from "./pages/AnimeWatchPage";
 import CostDashboard from "./pages/CostDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -122,6 +123,9 @@ function Router() {
         {/* Watch / community */}
         <Route path="/watch/:slug" component={WatchProject} />
         <Route path="/watch/:slug/:episodeNumber" component={EpisodePlayer} />
+
+        {/* Anime episode player (Cloudflare Stream) */}
+        <Route path="/anime/:projectId/:episodeId" component={AnimeWatchPage} />
 
         {/* User profiles */}
         <Route path="/profile/:userId" component={UserProfile} />

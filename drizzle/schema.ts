@@ -170,6 +170,8 @@ export const episodes = mysqlTable("episodes", {
   streamHlsUrl: text("stream_hls_url"),  // Cloudflare Stream HLS playback URL
   streamThumbnailUrl: text("stream_thumbnail_url"),  // Cloudflare Stream auto-generated thumbnail
   streamStatus: mysqlEnum("stream_status", ["none", "uploading", "processing", "ready", "error"]).default("none"),
+  srtUrl: text("srt_url"),  // Generated SRT subtitle file URL
+  srtGeneratedAt: timestamp("srt_generated_at"),  // When subtitles were last generated
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
