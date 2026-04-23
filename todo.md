@@ -4847,3 +4847,84 @@
 - [x] Unit: getCaptionStatus, deleteCaptionFromStream, retryCaptionDelivery — 12 tests
 - [x] Integration: end-to-end caption delivery pipeline — 50 tests total passing
 - [x] All 228 tests passing across all milestones (178 existing + 50 new)
+
+## Milestone 11: Multi-Language Subtitle Support
+
+### Service Module
+- [x] Create `server/subtitle-translator.ts` — LLM-powered translation of English SRT to other languages
+- [x] `translateSrt(episodeId, targetLanguage)` — fetch English SRT, translate via invokeLLM, generate new SRT
+- [x] Support languages: Japanese (ja), Spanish (es), French (fr), German (de), Portuguese (pt), Korean (ko), Chinese (zh)
+- [x] Preserve SRT timing/formatting, only translate dialogue text
+- [x] Upload translated SRT to S3, auto-trigger VTT conversion + Cloudflare caption upload
+- [x] Store translated subtitle records (episodeId, language, srtUrl, vttUrl, status)
+
+### Database
+- [x] Create `episode_subtitles` table — id, episodeId, language, srtUrl, vttUrl, captionStatus, createdAt, updatedAt
+- [x] Generate and apply migration SQL
+
+### tRPC Endpoints
+- [x] Add `captions.translateSubtitle` — trigger LLM translation for a specific language
+- [x] Add `captions.listLanguages` — list available and generated subtitle languages for an episode
+- [x] Add `captions.deleteLanguage` — remove a specific language subtitle
+
+### Frontend
+- [x] Add language selector dropdown to AnimeWatchPage video player area
+- [x] Show available languages with status badges (ready/generating)
+- [x] Add "Add Language" button in video.tsx publish flow for creators
+- [x] Language selector switches subtitle track on Cloudflare Stream iframe or native video
+
+### Tests
+- [x] Unit: translateSrt preserves timing and formats translated text correctly
+- [x] Unit: LLM translation prompt structure and response parsing
+- [x] Unit: multi-language caption delivery pipeline
+- [x] Integration: translate → upload → language selector shows new language
+
+## Milestone 12: Batch Assembly Navigation & Studio Sidebar
+
+### Frontend
+- [x] Add "Batch Assembly" nav item to StudioSidebar.tsx MAIN_NAV array
+- [x] Add batch assembly icon (Layers or ListVideo) with route `/studio/batch-assembly`
+- [x] Add "Analytics" shortcut to StudioSidebar if not already present
+- [x] Add batch assembly link to TopNav.tsx creator dropdown menu
+- [x] Verify navigation works from both sidebar and dropdown
+
+### Tests
+- [x] Verify navigation links render correctly
+
+## Milestone 13: Watch Page Engagement Features
+
+### Service Module
+- [x] Create `server/engagement.ts` — engagement service for likes, comments, related episodes
+- [x] `toggleLike(userId, episodeId)` — toggle like/unlike using existing votes table
+- [x] `getLikeStatus(userId, episodeId)` — check if user has liked
+- [x] `getLikeCount(episodeId)` — get total likes
+- [x] `addComment(userId, episodeId, text, parentId?)` — add comment with optional reply threading
+- [x] `getComments(episodeId, sort, page)` — paginated comments with user info
+- [x] `deleteComment(userId, commentId)` — delete own comment
+- [x] `getRelatedEpisodes(episodeId, projectId)` — same-project episodes + similar-genre episodes
+
+### tRPC Endpoints
+- [x] Add `engagement.toggleLike` — like/unlike an episode
+- [x] Add `engagement.getLikeStatus` — check like status for current user
+- [x] Add `engagement.getLikeCount` — public like count
+- [x] Add `engagement.addComment` — add comment (auth required)
+- [x] Add `engagement.getComments` — paginated comments (public)
+- [x] Add `engagement.deleteComment` — delete own comment (auth required)
+- [x] Add `engagement.getRelatedEpisodes` — related episodes for carousel
+- [x] Register engagement router in appRouter
+
+### Frontend
+- [x] Add like/heart button with animated toggle and count to AnimeWatchPage
+- [x] Add comments section below video with threaded replies
+- [x] Add comment input with character count and submit button
+- [x] Add sort selector (newest/oldest/popular) for comments
+- [x] Add related episodes carousel below comments
+- [x] Related episode cards: thumbnail, title, episode number, view count
+- [x] Sign-up prompts for unauthenticated users trying to like/comment (redirects to login)
+
+### Tests
+- [x] Unit: toggleLike creates/removes vote correctly
+- [x] Unit: addComment creates comment with correct fields
+- [x] Unit: getComments returns paginated results with user info
+- [x] Unit: getRelatedEpisodes returns same-project + similar-genre episodes
+- [x] Integration: like → unlike → verify count changes

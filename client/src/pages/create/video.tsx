@@ -224,6 +224,15 @@ export default function WizardVideo() {
   );
   const deliverCaptionsMut = trpc.captions.deliver.useMutation();
 
+  // Multi-language subtitle management
+  const languagesQuery = trpc.captions.listLanguages.useQuery(
+    { episodeId: firstEpisodeId! },
+    { enabled: !!firstEpisodeId }
+  );
+  const translateMut = trpc.captions.translateSubtitle.useMutation();
+  const deleteLanguageMut = trpc.captions.deleteLanguage.useMutation();
+  const [translatingLang, setTranslatingLang] = useState<string | null>(null);
+
   // Assembly status polling
   const [assemblyPolling, setAssemblyPolling] = useState(false);
   const { data: assemblyStatus, refetch: refetchAssemblyStatus } =
@@ -1440,6 +1449,90 @@ export default function WizardVideo() {
                         }
                         generating={deliverCaptionsMut?.isPending || captionStatusQuery?.data?.captionStatus === "uploading" || captionStatusQuery?.data?.captionStatus === "converting"}
                       />
+
+                      {/* Multi-language subtitle section */}
+                      {publishStatusQuery.data?.checklist.subtitles.ready && (
+                        <div className="mt-3 p-3 rounded-lg bg-bg-twilight border border-white/5">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                              <Subtitles className="w-3.5 h-3.5" />
+                              Multi-Language Subtitles
+                            </span>
+                          </div>
+
+                          {/* Existing languages */}
+                          {languagesQuery.data?.existing && languagesQuery.data.existing.length > 0 && (
+                            <div className="space-y-1 mb-2">
+                              {languagesQuery.data.existing.map((lang) => (
+                                <div key={lang.language} className="flex items-center justify-between py-1 px-2 rounded bg-bg-overlay text-xs">
+                                  <span className="text-text-primary">{lang.label}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                      lang.status === "ready" ? "bg-emerald-500/15 text-emerald-400" :
+                                      lang.status === "error" ? "bg-red-500/15 text-red-400" :
+                                      "bg-amber-500/15 text-amber-400"
+                                    }`}>
+                                      {lang.status === "ready" ? "Ready" : lang.status === "error" ? "Error" : "Processing"}
+                                    </span>
+                                    {lang.language !== "en" && lang.status !== "translating" && (
+                                      <button
+                                        onClick={async () => {
+                                          await deleteLanguageMut.mutateAsync({ episodeId: firstEpisodeId!, language: lang.language });
+                                          languagesQuery.refetch();
+                                          toast.success(`${lang.label} subtitles removed`);
+                                        }}
+                                        className="text-text-muted hover:text-red-400 transition-colors"
+                                        title="Remove"
+                                      >
+                                        <XCircle className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add language buttons */}
+                          {languagesQuery.data?.available && languagesQuery.data.available.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {languagesQuery.data.available.map((lang) => (
+                                <button
+                                  key={lang.language}
+                                  disabled={translateMut.isPending}
+                                  onClick={async () => {
+                                    setTranslatingLang(lang.language);
+                                    try {
+                                      const result = await translateMut.mutateAsync({
+                                        episodeId: firstEpisodeId!,
+                                        language: lang.language,
+                                      });
+                                      if (result.success) {
+                                        toast.success(`${lang.label} subtitles generated`);
+                                      } else {
+                                        toast.error(result.error || "Translation failed");
+                                      }
+                                      languagesQuery.refetch();
+                                    } catch (err: any) {
+                                      toast.error(err.message || "Translation failed");
+                                    } finally {
+                                      setTranslatingLang(null);
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-token-violet/10 text-token-violet hover:bg-token-violet/20 border border-token-violet/20 transition-all disabled:opacity-50"
+                                >
+                                  {translatingLang === lang.language ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <span>+</span>
+                                  )}
+                                  {lang.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <ChecklistItem
                         ready={!!publishStatusQuery.data?.checklist.tierEligible.ready}
                         label={publishStatusQuery.data?.checklist.tierEligible.label || "Tier eligible"}

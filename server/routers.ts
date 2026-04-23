@@ -87,6 +87,7 @@ import { animePublishRouter } from "./routers-anime-publish";
 import { batchAssemblyRouter } from "./routers-batch-assembly";
 import { episodeAnalyticsRouter } from "./routers-episode-analytics";
 import { captionsRouter } from "./routers-captions";
+import { engagementRouter } from "./routers-engagement";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2378,6 +2379,7 @@ export const appRouter = router({
   batchAssembly: batchAssemblyRouter,
   episodeAnalytics: episodeAnalyticsRouter,
   captions: captionsRouter,
+  engagement: engagementRouter,
   creditGateway: router({
     // Check if user can afford an action (no hold placed)
     canAfford: protectedProcedure

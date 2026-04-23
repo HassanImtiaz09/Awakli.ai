@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, Search, X, LogOut, User, LayoutDashboard, Trophy,
   PenTool, Wand2, Upload, Compass, BookOpen, Swords, Settings,
-  CreditCard, BarChart3, Crown, Play, Vote, Users, Tag
+  CreditCard, BarChart3, Crown, Play, Vote, Users, Tag, ListVideo
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
@@ -330,6 +330,12 @@ export function TopNav() {
                             icon={<Upload size={15} />}
                           >
                             Upload Manga
+                          </DropdownItem>
+                          <DropdownItem
+                            href="/studio/batch-assembly"
+                            icon={<ListVideo size={15} />}
+                          >
+                            Batch Assembly
                           </DropdownItem>
                           <div className="border-t border-white/5 my-1" />
                           <DropdownItem

@@ -276,6 +276,27 @@ export const animePublishRouter = router({
         } as any);
       } catch {} // non-critical
 
+      // Get multi-language subtitle tracks
+      const { episodeSubtitles } = await import("../drizzle/schema");
+      const subtitleRows = await db.select().from(episodeSubtitles).where(eq(episodeSubtitles.episodeId, input.episodeId));
+      const subtitleTracks = subtitleRows
+        .filter((s) => s.status === "ready" && s.vttUrl)
+        .map((s) => ({
+          language: s.language,
+          label: s.label,
+          vttUrl: s.vttUrl!,
+          srtUrl: s.srtUrl,
+        }));
+      // Add English from episode record if not in subtitleTracks
+      if ((episode as any).vttUrl && !subtitleTracks.find((t) => t.language === "en")) {
+        subtitleTracks.unshift({
+          language: "en",
+          label: "English",
+          vttUrl: (episode as any).vttUrl,
+          srtUrl: (episode as any).srtUrl || null,
+        });
+      }
+
       return {
         episode: {
           id: episode.id,
@@ -310,6 +331,7 @@ export const animePublishRouter = router({
           role: c.role,
           visualTraits: c.visualTraits,
         })),
+        subtitleTracks,
         navigation: {
           prevEpisode: prevEpisode ? { id: prevEpisode.id, title: prevEpisode.title, episodeNumber: prevEpisode.episodeNumber } : null,
           nextEpisode: nextEpisode ? { id: nextEpisode.id, title: nextEpisode.title, episodeNumber: nextEpisode.episodeNumber } : null,

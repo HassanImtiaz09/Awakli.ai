@@ -17,6 +17,13 @@ import {
   retryCaptionDelivery,
   deleteCaptionFromStream,
 } from "./caption-delivery";
+import {
+  translateSrt,
+  listSubtitleLanguages,
+  deleteSubtitleLanguage,
+  SUPPORTED_LANGUAGES,
+  isLanguageSupported,
+} from "./subtitle-translator";
 import { listCaptions } from "./cloudflare-stream";
 import { getEpisodeById } from "./db";
 
@@ -97,6 +104,51 @@ export const captionsRouter = router({
       }
 
       return deleteCaptionFromStream(input.episodeId, input.language);
+    }),
+
+  /**
+   * Translate subtitles to a new language using LLM.
+   * Requires episode to have English SRT subtitles.
+   */
+  translateSubtitle: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number().int().positive(),
+        language: z.string().min(2).max(10),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      if (!isLanguageSupported(input.language)) {
+        throw new Error(`Unsupported language: ${input.language}. Supported: ${Object.keys(SUPPORTED_LANGUAGES).join(", ")}`);
+      }
+      return translateSrt(input.episodeId, input.language);
+    }),
+
+  /**
+   * List all subtitle languages for an episode (existing + available).
+   */
+  listLanguages: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return listSubtitleLanguages(input.episodeId);
+    }),
+
+  /**
+   * Delete a specific language subtitle.
+   */
+  deleteLanguage: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number().int().positive(),
+        language: z.string().min(2).max(10),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return deleteSubtitleLanguage(input.episodeId, input.language);
     }),
 
   /**

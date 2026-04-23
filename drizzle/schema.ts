@@ -2076,3 +2076,21 @@ export const episodeViews = mysqlTable("episode_views", {
 
 export type EpisodeView = typeof episodeViews.$inferSelect;
 export type InsertEpisodeView = typeof episodeViews.$inferInsert;
+
+// ─── Episode Subtitles (Multi-Language) ─────────────────────────────────
+
+export const episodeSubtitles = mysqlTable("episode_subtitles", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  language: varchar("language", { length: 10 }).notNull(),  // ISO 639-1 code: en, ja, es, fr, de, pt, ko, zh
+  label: varchar("label", { length: 64 }).notNull(),  // Human-readable: "English", "Japanese", etc.
+  srtUrl: text("srtUrl"),
+  vttUrl: text("vttUrl"),
+  status: mysqlEnum("status", ["pending", "translating", "converting", "uploading", "ready", "error"]).default("pending").notNull(),
+  error: text("error"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EpisodeSubtitle = typeof episodeSubtitles.$inferSelect;
+export type InsertEpisodeSubtitle = typeof episodeSubtitles.$inferInsert;
