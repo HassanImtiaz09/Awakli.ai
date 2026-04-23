@@ -4928,3 +4928,97 @@
 - [x] Unit: getComments returns paginated results with user info
 - [x] Unit: getRelatedEpisodes returns same-project + similar-genre episodes
 - [x] Integration: like → unlike → verify count changes
+
+## Sprint 1: Keyframe + RIFE Default & Adaptive Provider Routing
+
+### Feature #3: Keyframe + RIFE Default for Non-Action Scenes
+- [x] Create `server/rife-upsampling-strategy.ts` — strategy module that decides when to use 8fps+RIFE vs full-rate generation
+- [x] Define scene-type → generation-strategy mapping (action=full-rate, dialogue/establishing/reaction/transition/montage=8fps+RIFE)
+- [x] Add `generationStrategy` field to PipelineExecutionConfig (full_rate | keyframe_rife | skip)
+- [x] Integrate strategy into `scene-type-router/router-integration.ts` so non-action slices default to local_animatediff + local_rife
+- [x] Add creator override: "Premium Motion" toggle via premiumMotion param in getPipelineExecutionConfig
+- [x] Cost multipliers per strategy integrated into getPipelineExecutionConfig and calculateEpisodeSavings
+- [x] Strategy configs exported via scene-type-router/index.ts for UI consumption
+
+### Feature #5: Adaptive Provider Routing by Scene Importance
+- [x] Created `server/scene-importance-scorer.ts` with 1-10 importance scoring model
+- [x] Weighted scoring: sceneType(0.20), motionIntensity(0.15), narrativePosition(0.20), dialogueDensity(0.10), characterCount(0.10), panelSize(0.10), narrativeTag(0.15)
+- [x] Tier mapping: 8-10→flagship, 5-7→standard, 1-4→budget with cost multipliers
+- [x] Creator premium override flag forces score ≥8 (flagship tier)
+- [x] scoreEpisodeScenes batch scorer with tier distribution + savings estimate
+- [x] tRPC endpoints: scoreImportance, scoreEpisodeImportance, getAdaptiveConfig, calculateSavings, getStrategies
+
+## Sprint 2: Background Asset Library & Smart Regeneration
+
+### Feature #1: Background Asset Library
+- [ ] Create `background_assets` table in drizzle schema (projectId, locationName, imageUrl, styleTag, resolution, clipEmbedding, tags, usageCount, createdAt)
+- [ ] Generate and apply migration SQL for background_assets table
+- [ ] Create `server/background-library.ts` — service for storing, retrieving, and matching backgrounds
+- [ ] Add CLIP similarity matching for background retrieval (>0.85 threshold)
+- [ ] Integrate background lookup into panel generation pipeline — check library before generating
+- [ ] Add location tagging to script analysis LLM prompt
+- [ ] Create Location Library UI page in Studio (`/studio/locations`)
+- [ ] Add background preview, edit, regenerate, and delete actions in Location Library
+- [ ] Add tRPC endpoints: `backgrounds.list`, `backgrounds.get`, `backgrounds.delete`, `backgrounds.regenerate`
+
+### Feature #2: Smart Regeneration with Targeted Inpainting
+- [ ] Create `server/targeted-inpainting.ts` — service for region-specific panel regeneration
+- [ ] Accept mask coordinates (bounding box or polygon) and original panel image
+- [ ] Use local_controlnet inpainting to regenerate only the masked region
+- [ ] Add "Fix Region" button to panel review UI alongside existing "Regenerate" button
+- [ ] Implement canvas-based mask drawing tool in frontend (rectangle + freeform)
+- [ ] Add tRPC endpoint: `panels.inpaintRegion` (accepts panelId, mask, optional prompt override)
+- [ ] Charge reduced credit cost (~0.5 credits vs 3 for full regen)
+- [ ] Update credit gateway to support `panel_inpaint` action with lower cost
+
+## Sprint 3: Voice Caching, Script Cost Optimizer, Scene-Type Optimization
+
+### Feature #4: Voice Line Caching
+- [ ] Create `voice_cache` table in drizzle schema (voiceId, textHash, emotion, audioUrl, durationMs, usageCount, createdAt)
+- [ ] Generate and apply migration SQL for voice_cache table
+- [ ] Create `server/voice-cache.ts` — service for caching and retrieving voice lines
+- [ ] Add cache lookup before voice generation in voice synthesis pipeline
+- [ ] Pre-generate 20-30 common interjections during voice clone setup
+- [ ] Add Voice Clip Library UI in Studio for browsing/previewing cached clips
+- [ ] Add tRPC endpoints: `voiceCache.list`, `voiceCache.preview`, `voiceCache.delete`
+
+### Feature #9: Script-Level Cost Optimizer
+- [ ] Create `server/script-cost-advisor.ts` — real-time cost estimation per scene during script editing
+- [ ] Run lightweight scene classification on each scene as creator writes
+- [ ] Generate cost heatmap data (green=cheap, yellow=moderate, red=expensive) per scene
+- [ ] Add "Budget Mode" suggestions via LLM that rewrite expensive scenes using cheaper scene types
+- [ ] Create CostAdvisor panel component for script editor UI
+- [ ] Add tRPC endpoint: `scriptCost.analyze` (accepts script text, returns per-scene cost breakdown)
+- [ ] Add tRPC endpoint: `scriptCost.suggest` (accepts expensive scene, returns budget-friendly alternatives)
+
+### Feature #11: Automatic Scene-Type Optimization
+- [ ] Create `server/scene-type-optimizer.ts` — secondary pass after scene classification to suggest downgrades
+- [ ] For each scene classified as action/montage, check if it could work as reaction/dialogue
+- [ ] Generate quick preview comparison data for suggested downgrades
+- [ ] Create SceneOptimizer UI component showing side-by-side cost comparison
+- [ ] Add one-click accept/reject for each optimization suggestion
+- [ ] Track acceptance rates per suggestion type for future classifier improvement
+- [ ] Add tRPC endpoint: `sceneOptimizer.getSuggestions` and `sceneOptimizer.applySuggestion`
+
+## Sprint 4: LoRA Marketplace & Parallel Slice Generation
+
+### Feature #6: LoRA Sharing Marketplace
+- [ ] Create `lora_marketplace` table in drizzle schema (loraId, creatorId, name, description, previewImages, downloads, rating, license, priceCents, tags, category, isPublished, createdAt)
+- [ ] Create `lora_marketplace_reviews` table (reviewId, loraId, userId, rating, comment, createdAt)
+- [ ] Generate and apply migration SQL for marketplace tables
+- [ ] Create `server/lora-marketplace.ts` — service for publishing, browsing, purchasing, and fine-tuning from base LoRAs
+- [ ] Add "Publish to Marketplace" flow in character library
+- [ ] Add "Start from Base LoRA" option during character setup (reduced training cost ~30 credits)
+- [ ] Create Marketplace browse page (`/marketplace`) with search, filter, and category navigation
+- [ ] Create LoRA detail page with previews, reviews, and "Use as Base" button
+- [ ] Add tRPC endpoints: `marketplace.list`, `marketplace.get`, `marketplace.publish`, `marketplace.review`, `marketplace.useAsBase`
+- [ ] Add revenue sharing tracking for marketplace creators
+
+### Feature #8: Parallel Slice Generation
+- [ ] Create `server/parallel-slice-scheduler.ts` — DAG-based dependency tracker for slice generation
+- [ ] Build dependency graph from scene boundaries and character continuity constraints
+- [ ] Implement parallel execution for independent branches of the DAG
+- [ ] Add priority queuing based on scene importance scores (from Feature #5)
+- [ ] Create real-time progress UI showing slice generation status (generating/queued/complete)
+- [ ] Integrate with existing `batch-assembly-queue.ts` for queue management
+- [ ] Add tRPC endpoints: `parallelSlice.getStatus`, `parallelSlice.start`, `parallelSlice.cancel`

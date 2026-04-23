@@ -20,6 +20,7 @@ import {
   CREDITS_PER_10S,
   generateCostForecast,
   getAllPipelineConfigs,
+  getPipelineExecutionConfig,
 } from "./scene-type-router/router-integration";
 import type { SceneTypeDistribution } from "./scene-type-router/router-integration";
 import {
@@ -40,6 +41,17 @@ import { getDb } from "./db";
 import { sceneClassifications, sceneTypeOverrides, pipelineTemplates } from "../drizzle/schema";
 import type { SceneType } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import {
+  scoreSceneImportance,
+  scoreEpisodeScenes,
+  type ImportanceInput,
+} from "./scene-importance-scorer";
+import {
+  getEffectiveStrategy,
+  getAllStrategies,
+  calculateEpisodeSavings,
+} from "./rife-upsampling-strategy";
+
 
 const SCENE_TYPES = ["dialogue", "action", "establishing", "transition", "reaction", "montage"] as const;
 
@@ -848,5 +860,107 @@ export const sceneTypeRouter = router({
       }
 
       return { success: true, seeded, total: ALL_PIPELINE_TEMPLATES.length };
+    }),
+
+  // ─── Scene Importance Scoring ────────────────────────────────────────
+
+  /**
+   * Score a single scene's importance for adaptive provider routing.
+   */
+  scoreImportance: protectedProcedure
+    .input(z.object({
+      sceneType: z.enum(SCENE_TYPES),
+      dialogueLineCount: z.number().min(0).default(0),
+      characterCount: z.number().min(0).default(0),
+      motionIntensity: z.enum(["none", "low", "medium", "high"]).default("low"),
+      narrativePosition: z.number().min(0).max(1).default(0.5),
+      totalScenes: z.number().min(1).default(10),
+      sceneIndex: z.number().min(0).default(0),
+      panelSizePct: z.number().min(0).max(100).default(50),
+      isFullPageSpread: z.boolean().optional(),
+      creatorPremiumFlag: z.boolean().optional(),
+      narrativeTag: z.string().optional(),
+      panelCount: z.number().min(0).default(1),
+    }))
+    .mutation(async ({ input }) => {
+      const result = scoreSceneImportance(input as ImportanceInput);
+      return result;
+    }),
+
+  /**
+   * Batch score all scenes in an episode for adaptive routing.
+   * Returns per-scene scores + episode-level savings estimate.
+   */
+  scoreEpisodeImportance: protectedProcedure
+    .input(z.object({
+      scenes: z.array(z.object({
+        sceneType: z.enum(SCENE_TYPES),
+        dialogueLineCount: z.number().min(0).default(0),
+        characterCount: z.number().min(0).default(0),
+        motionIntensity: z.enum(["none", "low", "medium", "high"]).default("low"),
+        narrativePosition: z.number().min(0).max(1).default(0.5),
+        totalScenes: z.number().min(1).default(10),
+        sceneIndex: z.number().min(0).default(0),
+        panelSizePct: z.number().min(0).max(100).default(50),
+        isFullPageSpread: z.boolean().optional(),
+        creatorPremiumFlag: z.boolean().optional(),
+        narrativeTag: z.string().optional(),
+        panelCount: z.number().min(0).default(1),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const result = scoreEpisodeScenes(input.scenes as ImportanceInput[]);
+      return result;
+    }),
+
+  /**
+   * Get all generation strategies (RIFE upsampling configs) for display.
+   */
+  getStrategies: protectedProcedure
+    .query(async () => {
+      return getAllStrategies();
+    }),
+
+  /**
+   * Get the effective pipeline config for a scene with strategy + importance.
+   * Combines scene type, premium motion flag, and importance scoring.
+   */
+  getAdaptiveConfig: protectedProcedure
+    .input(z.object({
+      sceneType: z.enum(SCENE_TYPES),
+      durationS: z.number().min(1).default(10),
+      premiumMotion: z.boolean().default(false),
+    }))
+    .query(async ({ input }) => {
+      const config = getPipelineExecutionConfig(
+        input.sceneType as SceneType,
+        input.durationS,
+        input.premiumMotion,
+      );
+      return config;
+    }),
+
+  /**
+   * Calculate episode-level savings from adaptive routing.
+   */
+  calculateSavings: protectedProcedure
+    .input(z.object({
+      sceneDistribution: z.array(z.object({
+        sceneType: z.enum(SCENE_TYPES),
+        count: z.number().min(0),
+        avgDurationS: z.number().min(0).default(10),
+        premiumMotionOverrides: z.number().min(0).optional(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const result = calculateEpisodeSavings(
+        input.sceneDistribution as Array<{
+          sceneType: SceneType;
+          count: number;
+          avgDurationS: number;
+          premiumMotionOverrides?: number;
+        }>,
+      );
+      return result;
     }),
 });

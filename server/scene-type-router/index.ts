@@ -85,6 +85,36 @@ export type {
   PipelineExecutionConfig,
 } from "./router-integration";
 
+// RIFE upsampling strategy
+export {
+  getStrategyForSceneType,
+  getEffectiveStrategy,
+  usesRifeInterpolation,
+  skipsVideoGeneration,
+  estimateStrategyCost,
+  calculateEpisodeSavings,
+  getAllStrategies,
+  getKeyframeRifeProviderHint,
+} from "../rife-upsampling-strategy";
+export type {
+  GenerationStrategy,
+  StrategyConfig,
+  StrategyOverride,
+} from "../rife-upsampling-strategy";
+
+// Scene importance scorer
+export {
+  scoreSceneImportance,
+  scoreEpisodeScenes,
+  getTierForScore,
+  getCostMultiplierForScore,
+} from "../scene-importance-scorer";
+export type {
+  ImportanceInput,
+  ImportanceScore,
+  ImportanceSignal,
+} from "../scene-importance-scorer";
+
 // Dialogue inpainting sub-pipeline
 export {
   ALL_VISEMES,

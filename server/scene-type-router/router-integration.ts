@@ -7,6 +7,12 @@
  */
 
 import type { SceneType } from "../../drizzle/schema";
+import {
+  getStrategyForSceneType,
+  getEffectiveStrategy,
+  type GenerationStrategy,
+  type StrategyConfig,
+} from "../rife-upsampling-strategy";
 
 // ─── Provider Hint Types ────────────────────────────────────────────────
 
@@ -336,19 +342,31 @@ export interface PipelineExecutionConfig {
   pipelineTemplate: string;
   /** Motion LoRA hints for this scene type */
   motionLoraHint: MotionLoraHint;
+  /** Generation strategy (full_rate, keyframe_rife, or skip) */
+  generationStrategy: GenerationStrategy;
+  /** Full strategy configuration */
+  strategyConfig: StrategyConfig;
 }
 
 /**
  * Get the full pipeline execution config for a classified scene.
  * This is the main entry point for the pipeline executor.
+ * Now includes generation strategy (keyframe_rife vs full_rate) for cost optimization.
  */
 export function getPipelineExecutionConfig(
   sceneType: SceneType,
   durationS: number,
+  premiumMotion: boolean = false,
 ): PipelineExecutionConfig {
   const hints = getProviderHintForSceneType(sceneType);
   const skips = getPipelineStageSkips(sceneType);
-  const estimatedCredits = (durationS / 10) * CREDITS_PER_10S[sceneType];
+  const strategyConfig = getEffectiveStrategy(sceneType, premiumMotion);
+
+  // Apply strategy cost multiplier to the base credits
+  const baseCredits = (durationS / 10) * CREDITS_PER_10S[sceneType];
+  const estimatedCredits = premiumMotion
+    ? (durationS / 10) * CREDITS_PER_10S.action  // Premium motion uses action rate
+    : baseCredits;
 
   const templateNames: Record<SceneType, string> = {
     dialogue: "dialogue_inpaint",
@@ -359,13 +377,20 @@ export function getPipelineExecutionConfig(
     montage: "montage_image_seq",
   };
 
+  // If premium motion override, use action provider hints for video
+  const effectiveHints = premiumMotion && sceneType !== "action"
+    ? { ...hints, videoHints: PROVIDER_HINT_MAP.action.videoHints, videoStageReplaced: false, replacementPipeline: null }
+    : hints;
+
   return {
     sceneType,
-    providerHints: hints,
+    providerHints: effectiveHints,
     stageSkips: skips,
     estimatedCredits: Math.round(estimatedCredits * 10000) / 10000,
     pipelineTemplate: templateNames[sceneType],
     motionLoraHint: getMotionLoraHint(sceneType),
+    generationStrategy: strategyConfig.strategy,
+    strategyConfig,
   };
 }
 
