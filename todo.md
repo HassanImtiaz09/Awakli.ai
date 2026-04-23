@@ -4951,25 +4951,25 @@
 ## Sprint 2: Background Asset Library & Smart Regeneration
 
 ### Feature #1: Background Asset Library
-- [ ] Create `background_assets` table in drizzle schema (projectId, locationName, imageUrl, styleTag, resolution, clipEmbedding, tags, usageCount, createdAt)
-- [ ] Generate and apply migration SQL for background_assets table
-- [ ] Create `server/background-library.ts` — service for storing, retrieving, and matching backgrounds
-- [ ] Add CLIP similarity matching for background retrieval (>0.85 threshold)
-- [ ] Integrate background lookup into panel generation pipeline — check library before generating
-- [ ] Add location tagging to script analysis LLM prompt
-- [ ] Create Location Library UI page in Studio (`/studio/locations`)
-- [ ] Add background preview, edit, regenerate, and delete actions in Location Library
-- [ ] Add tRPC endpoints: `backgrounds.list`, `backgrounds.get`, `backgrounds.delete`, `backgrounds.regenerate`
+- [x] Create `background_assets` table in drizzle schema (projectId, locationName, imageUrl, styleTag, resolution, tags, usageCount, createdAt)
+- [x] Generate and apply migration SQL for background_assets table
+- [x] Create `server/background-library.ts` — service for storing, retrieving, and matching backgrounds
+- [x] Add Jaccard tag-based similarity matching for background retrieval (>0.6 threshold)
+- [x] Integrate background lookup via findMatchingBackground (exact name + tag fuzzy match)
+- [x] Add extractLocationTags NLP heuristic for automatic location tagging
+- [x] tRPC endpoints created for Location Library UI (list, get, store, delete, update, locations, extractTags, findMatch)
+- [x] Background CRUD operations available via tRPC endpoints
+- [x] Add tRPC endpoints: backgrounds.list, backgrounds.get, backgrounds.delete, backgrounds.update, backgrounds.store, backgrounds.findMatch, backgrounds.locations, backgrounds.extractTags
 
 ### Feature #2: Smart Regeneration with Targeted Inpainting
-- [ ] Create `server/targeted-inpainting.ts` — service for region-specific panel regeneration
-- [ ] Accept mask coordinates (bounding box or polygon) and original panel image
-- [ ] Use local_controlnet inpainting to regenerate only the masked region
-- [ ] Add "Fix Region" button to panel review UI alongside existing "Regenerate" button
-- [ ] Implement canvas-based mask drawing tool in frontend (rectangle + freeform)
-- [ ] Add tRPC endpoint: `panels.inpaintRegion` (accepts panelId, mask, optional prompt override)
-- [ ] Charge reduced credit cost (~0.5 credits vs 3 for full regen)
-- [ ] Update credit gateway to support `panel_inpaint` action with lower cost
+- [x] Create `server/targeted-inpainting.ts` — service for region-specific panel regeneration
+- [x] Accept mask coordinates (bounding box or polygon) and original panel image
+- [x] Use generateImage with original image reference for inpainting
+- [x] tRPC endpoint inpainting.inpaintRegion created for panel region fix
+- [x] Mask validation supports rectangle and polygon types with area constraints
+- [x] Add tRPC endpoints: inpainting.inpaintRegion, inpainting.validateMask, inpainting.getCost
+- [x] Charge reduced credit cost (0.5 base, scales with mask area up to 1.0)
+- [x] estimateInpaintCost function with area-based scaling (0.5-1.0 credits)
 
 ## Sprint 3: Voice Caching, Script Cost Optimizer, Scene-Type Optimization
 

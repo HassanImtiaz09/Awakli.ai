@@ -88,6 +88,8 @@ import { batchAssemblyRouter } from "./routers-batch-assembly";
 import { episodeAnalyticsRouter } from "./routers-episode-analytics";
 import { captionsRouter } from "./routers-captions";
 import { engagementRouter } from "./routers-engagement";
+import { backgroundsRouter } from "./routers-backgrounds";
+import { inpaintingRouter } from "./routers-inpainting";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2411,6 +2413,12 @@ export const appRouter = router({
         return { action: input.action, cost: getCreditCost(input.action as GenerationAction) };
       }),
   }),
+
+  // Background Asset Library
+  backgrounds: backgroundsRouter,
+
+  // Targeted Inpainting
+  inpainting: inpaintingRouter,
 });
 
 export type AppRouter = typeof appRouter;

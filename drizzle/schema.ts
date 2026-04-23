@@ -2094,3 +2094,25 @@ export const episodeSubtitles = mysqlTable("episode_subtitles", {
 
 export type EpisodeSubtitle = typeof episodeSubtitles.$inferSelect;
 export type InsertEpisodeSubtitle = typeof episodeSubtitles.$inferInsert;
+
+// ─── Background Asset Library ───────────────────────────────────────────
+
+export const backgroundAssets = mysqlTable("background_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  locationName: varchar("locationName", { length: 256 }).notNull(),
+  imageUrl: text("imageUrl").notNull(),
+  fileKey: text("fileKey"),
+  styleTag: varchar("styleTag", { length: 64 }),  // e.g., "shonen", "seinen", "shoujo"
+  resolution: varchar("resolution", { length: 32 }),  // e.g., "1024x576"
+  tags: json("tags").$type<string[]>(),  // searchable tags: ["city", "night", "rain"]
+  usageCount: int("usageCount").default(0).notNull(),
+  sourceEpisodeId: int("sourceEpisodeId"),  // which episode first generated this bg
+  sourcePanelId: int("sourcePanelId"),  // which panel first generated this bg
+  promptUsed: text("promptUsed"),  // the generation prompt for reproducibility
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BackgroundAsset = typeof backgroundAssets.$inferSelect;
+export type InsertBackgroundAsset = typeof backgroundAssets.$inferInsert;
