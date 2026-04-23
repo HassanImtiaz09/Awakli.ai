@@ -114,18 +114,20 @@ export const DEMO_CHARACTER_VIEWS = [
   "expression_sheet",
 ] as const;
 
-/** Shot timing for the 75-second demo video */
+/** Shot timing for the ~90-second demo video (V4) */
 export const DEMO_SHOTS = {
   prompt: { start: 0, duration: 8000, label: "Step 1: Describe your story" },
   script: { start: 8000, duration: 7000, label: "AI writes the script in real-time" },
   panels: { start: 15000, duration: 13000, label: "AI generates manga panels from your story" },
   customize: { start: 28000, duration: 12000, label: "Customize every detail" },
-  pipeline: { start: 40000, duration: 15000, label: "Your story. Now an anime." },
-  community: { start: 55000, duration: 10000, label: "Share with the community" },
-  cta: { start: 65000, duration: 10000, label: "" },
+  transform: { start: 40000, duration: 10000, label: "Manga to anime — same scene, brought to life" },
+  liveDag: { start: 50000, duration: 10000, label: "Real-time generation dashboard" },
+  loraMarket: { start: 60000, duration: 10000, label: "LoRA Marketplace — fork & fine-tune" },
+  community: { start: 70000, duration: 10000, label: "Join the anime community" },
+  cta: { start: 80000, duration: 10000, label: "" },
 } as const;
 
-export const DEMO_TOTAL_DURATION_MS = 75000;
+export const DEMO_TOTAL_DURATION_MS = 90000;
 
 /** Platform config keys for demo video */
 export const DEMO_CONFIG_KEYS = {

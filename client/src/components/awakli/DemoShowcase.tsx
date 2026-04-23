@@ -41,14 +41,19 @@ const STATIC_SLIDES = [
     label: "Generate",
   },
   {
-    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/demo-slide-3-customize-PWTGJeYCJcN9UDKMQQfEuy.webp",
-    caption: "Choose your art style and customize every detail",
-    label: "Customize",
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat5-anime-result-iL44imGnqqkTNjeLVbBgnC.webp",
+    caption: "Watch manga transform into full anime — same characters, same scenes",
+    label: "Transform",
   },
   {
-    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/demo-slide-4-pipeline-n5eVDS8UjQur4nvN7Ryjwp.webp",
-    caption: "AI production pipeline brings your story to life",
-    label: "Produce",
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat6-ws-dashboard-WhHV4ovRF9zbYJKjLp6Ve9.webp",
+    caption: "Track every frame in real time with the live generation dashboard",
+    label: "Track",
+  },
+  {
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat7-lora-detail-FymtiH3tSnHM6XDzhb2jo4.webp",
+    caption: "Browse the LoRA marketplace — fork models and save 75% on training",
+    label: "Marketplace",
   },
   {
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/demo-slide-5-anime-TJqsKZtSuiuHsADcGiRCK4.webp",
@@ -57,7 +62,7 @@ const STATIC_SLIDES = [
   },
 ];
 
-const STEP_ICONS = [PenLine, Sparkles, Palette, Clapperboard, Play];
+const STEP_ICONS = [PenLine, Sparkles, Clapperboard, Layers, Palette, Play];
 const AUTO_ADVANCE_MS = 5000;
 
 // ─── Video Player Component ──────────────────────────────────────────────

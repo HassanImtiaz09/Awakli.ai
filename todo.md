@@ -5105,3 +5105,22 @@
 - [x] Vitest: WebSocket generation module (getConnectionStats, broadcastToEpisode, convenience emitters)
 - [x] Vitest: LoRA detail page backend (getLoraById, getReviews, calculateRevenueShare, calculateTrainingSavings)
 - [x] All 22 new tests passing (ws-lora-detail.test.ts)
+
+## Demo Video Script & Assets Update
+- [x] Audit existing demo video script and identify outdated sections
+- [x] Fix 0:32 manga-to-anime transition slide (now crossfades manga→anime of same scene)
+- [x] Remove "15 minute" duration claim from script
+- [x] Add WebSocket real-time generation dashboard section (Beat 6)
+- [x] Add LoRA Marketplace detail page and Fork & Fine-tune workflow (Beat 7)
+- [x] Update pipeline overview to reflect full 7-stage workflow
+- [x] Generate new visual panels for manga-to-anime transition (matched source/output)
+- [x] Generate new visual panels for WebSocket dashboard live updates
+- [x] Generate new visual panels for LoRA marketplace detail page
+- [x] Assemble final V4 video (74s, 1920x1080) with narration + BGM + all 9 beats
+- [x] Update DemoRecording.tsx: replace PipelineShot with TransformShot, LiveDagShot, LoraMarketShot
+- [x] Update DemoShowcase.tsx: 6 slides (Write, Generate, Transform, Track, Marketplace, Watch)
+- [x] Update shared/demo-scenario.ts: V4 shot timings (9 beats, 90s total)
+- [x] Generate narration audio for beats 4-9 (masculine voice)
+- [x] Write V4 assembly script (assemble-v4.sh) and produce final video
+- [x] Upload final V4 demo video to webdev static assets
+- [x] Write V4 final documentation (v4-final-documentation.md)

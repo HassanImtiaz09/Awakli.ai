@@ -1,9 +1,9 @@
 /**
  * Demo Recording Page — /demo-recording
- * Admin-only page that plays the entire 75-second demo sequence automatically.
+ * Admin-only page that plays the entire ~90-second demo sequence automatically.
  * Used by Puppeteer to capture the screen recording for the landing page video.
  *
- * Shots: Prompt → Script → Panels → Customize → Pipeline → Community → CTA
+ * Shots: Prompt → Script → Panels → Customize → Transform → LiveDag → LoraMarket → Community → CTA
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -477,176 +477,225 @@ function MusicSub({ elapsed }: { elapsed: number }) {
   );
 }
 
-// ─── Shot 5: Pipeline (40–55s) ──────────────────────────────────────────
+// ─── Shot 5: Transform (40–50s) ─ Manga-to-Anime side-by-side morph ────────
 
-function PipelineShot({ elapsed, assets }: ShotProps) {
-  const morphStart = 5000; // Part B starts at 5s into this shot
+const MANGA_SOURCE_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat5-manga-source-aebNjZw6s8gRzS76UH8sYx.webp";
+const ANIME_RESULT_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat5-anime-result-iL44imGnqqkTNjeLVbBgnC.webp";
+const WS_DASHBOARD_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat6-ws-dashboard-WhHV4ovRF9zbYJKjLp6Ve9.webp";
+const LORA_DETAIL_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/beat7-lora-detail-FymtiH3tSnHM6XDzhb2jo4.webp";
 
-  if (elapsed < morphStart) {
-    return <PipelinePartA elapsed={elapsed} />;
-  }
-  return <PipelinePartB elapsed={elapsed - morphStart} assets={assets} />;
-}
-
-function PipelinePartA({ elapsed }: { elapsed: number }) {
-  const nodes = [
-    { name: "Video Gen", icon: "🎬", activateAt: 0 },
-    { name: "Voice Gen", icon: "🎙️", activateAt: 1000 },
-    { name: "Lip Sync", icon: "👄", activateAt: 2000 },
-    { name: "Music", icon: "🎵", activateAt: 3000 },
-    { name: "Assembly", icon: "🔧", activateAt: 4000 },
-  ];
-
-  const progress = Math.min(elapsed / 5000, 1);
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full bg-[#0a0a0f]">
-      <h2 className="text-3xl font-bold text-white mb-8">Anime Production Pipeline</h2>
-
-      {/* Pipeline nodes */}
-      <div className="flex items-center gap-4 mb-8">
-        {nodes.map((node, i) => {
-          const isActive = elapsed >= node.activateAt;
-          const isComplete = elapsed >= node.activateAt + 800;
-
-          return (
-            <div key={node.name} className="flex items-center gap-4">
-              <div
-                className="flex flex-col items-center gap-2 transition-all duration-500"
-                style={{
-                  opacity: isActive ? 1 : 0.3,
-                  transform: isActive ? "scale(1)" : "scale(0.9)",
-                }}
-              >
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl transition-all duration-500"
-                  style={{
-                    backgroundColor: isComplete
-                      ? "rgba(34, 197, 94, 0.2)"
-                      : isActive
-                      ? "rgba(56, 189, 248, 0.2)"
-                      : "rgba(255,255,255,0.05)",
-                    border: `2px solid ${
-                      isComplete ? "rgb(34, 197, 94)" : isActive ? "rgb(56, 189, 248)" : "rgba(255,255,255,0.1)"
-                    }`,
-                    boxShadow: isActive ? `0 0 20px ${isComplete ? "rgba(34,197,94,0.3)" : "rgba(56,189,248,0.3)"}` : "none",
-                    animation: isActive && !isComplete ? "pulse 1s infinite" : "none",
-                  }}
-                >
-                  {node.icon}
-                </div>
-                <span className="text-xs text-gray-400">{node.name}</span>
-              </div>
-
-              {/* Connection line */}
-              {i < nodes.length - 1 && (
-                <div className="w-8 h-0.5 relative overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-gray-700"
-                  />
-                  <div
-                    className="absolute inset-y-0 left-0 bg-cyan-400 transition-all duration-500"
-                    style={{ width: isComplete ? "100%" : "0%" }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-96 h-2 bg-gray-800 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{
-            width: `${progress * 100}%`,
-            background: "linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899)",
-          }}
-        />
-      </div>
-      <div className="text-gray-400 text-sm mt-2">{Math.round(progress * 100)}% Complete</div>
-
-      <ShotLabel text={DEMO_SHOTS.pipeline.label} />
-    </div>
-  );
-}
-
-function PipelinePartB({ elapsed, assets }: { elapsed: number; assets: DemoAssets }) {
-  // The manga-to-anime morph sequence
-  const splashPanel = assets.panelUrls[5]; // Panel 6 (splash)
-  const morphProgress = Math.min(Math.max((elapsed - 1000) / 1000, 0), 1); // 1-2s: crossfade
-  const kenBurns = 1 + Math.min(elapsed / 10000, 0.03);
-  const isAnimePlaying = elapsed > 2000;
+function TransformShot({ elapsed }: ShotProps) {
+  // Phase 1 (0-3s): Manga full screen
+  // Phase 2 (3-5s): Crossfade to anime
+  // Phase 3 (5-8s): Anime full screen
+  // Phase 4 (8-10s): Text overlay
+  const crossfadeProgress = Math.min(Math.max((elapsed - 3000) / 2000, 0), 1);
+  const kenBurns = 1 + Math.min(elapsed / 50000, 0.06);
+  const showText = elapsed > 7500;
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden">
       {/* Manga panel (fading out) */}
-      {splashPanel && (
-        <img
-          src={splashPanel}
-          alt="Splash panel"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{
-            opacity: 1 - morphProgress,
-            transform: `scale(${kenBurns})`,
-            filter: elapsed > 1000 ? `hue-rotate(${(elapsed - 1000) * 0.02}deg)` : "none",
-          }}
-        />
-      )}
+      <img
+        src={MANGA_SOURCE_URL}
+        alt="Manga panel"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: 1 - crossfadeProgress,
+          transform: `scale(${kenBurns})`,
+          transition: "opacity 0.3s",
+        }}
+      />
 
-      {/* Anime clip placeholder (fading in) */}
-      {isAnimePlaying && (
-        <div
-          className="absolute inset-0 flex items-center justify-center"
+      {/* Anime version (fading in) */}
+      <img
+        src={ANIME_RESULT_URL}
+        alt="Anime version"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: crossfadeProgress,
+          transform: `scale(${kenBurns})`,
+          transition: "opacity 0.3s",
+        }}
+      />
+
+      {/* Label: MANGA → ANIME */}
+      <div className="absolute top-8 left-0 right-0 flex justify-center gap-8 pointer-events-none">
+        <span
+          className="px-4 py-2 rounded-full text-sm font-bold border"
           style={{
-            opacity: morphProgress,
-            background: "linear-gradient(135deg, #0f0f1a, #1a0a2e)",
+            opacity: 1 - crossfadeProgress * 0.7,
+            borderColor: "rgba(255,255,255,0.3)",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            color: "white",
           }}
         >
-          {/* Animated "anime" effect - particles and glow */}
-          <div className="relative">
-            {splashPanel && (
-              <img
-                src={splashPanel}
-                alt="Anime frame"
-                className="w-full h-auto max-h-[80vh] object-contain"
-                style={{
-                  filter: "saturate(1.4) contrast(1.1) brightness(1.1)",
-                  animation: "subtleFloat 3s ease-in-out infinite",
-                }}
-              />
-            )}
-            {/* Glow overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.2), transparent 70%)",
-                animation: "pulseGlow 2s ease-in-out infinite",
-              }}
-            />
-          </div>
-        </div>
-      )}
+          MANGA
+        </span>
+        <span
+          className="text-2xl text-white"
+          style={{ opacity: crossfadeProgress > 0.1 && crossfadeProgress < 0.9 ? 1 : 0, transition: "opacity 0.3s" }}
+        >
+          →
+        </span>
+        <span
+          className="px-4 py-2 rounded-full text-sm font-bold border"
+          style={{
+            opacity: crossfadeProgress * 0.7 + 0.3,
+            borderColor: "rgb(236, 72, 153)",
+            backgroundColor: "rgba(236, 72, 153, 0.2)",
+            color: "rgb(236, 72, 153)",
+          }}
+        >
+          ANIME
+        </span>
+      </div>
 
-      {/* "Your story. Now an anime." overlay text */}
-      {elapsed > 3000 && (
+      {/* Text overlay */}
+      {showText && (
         <div
           className="absolute bottom-16 left-0 right-0 text-center"
-          style={{
-            opacity: Math.min((elapsed - 3000) / 1000, 1),
-          }}
+          style={{ opacity: Math.min((elapsed - 7500) / 500, 1) }}
         >
           <p className="text-4xl font-bold text-white drop-shadow-2xl">
-            Your story. <span className="text-pink-400">Now an anime.</span>
+            Same characters. Same scenes. <span className="text-pink-400">Brought to life.</span>
           </p>
         </div>
       )}
+
+      <ShotLabel text={DEMO_SHOTS.transform.label} />
     </div>
   );
 }
 
-// ─── Shot 6: Community (55–65s) ─────────────────────────────────────────
+// ─── Shot 6: Live DAG Dashboard (50–60s) ─────────────────────────────
+
+function LiveDagShot({ elapsed }: ShotProps) {
+  const kenBurns = 1 + Math.min(elapsed / 50000, 0.04);
+  const showSubtitle = elapsed > 3500;
+
+  // Simulate DAG node progression
+  const dagNodes = [
+    { name: "Script", completeAt: 0 },
+    { name: "Panels", completeAt: 0 },
+    { name: "Characters", completeAt: 0 },
+    { name: "Video Gen", completeAt: 2000 },
+    { name: "Voice Sync", completeAt: 5000 },
+    { name: "Music", completeAt: 7000 },
+    { name: "Assembly", completeAt: 9000 },
+  ];
+
+  const completedCount = dagNodes.filter(n => elapsed >= n.completeAt + 1500).length;
+  const progress = Math.min(completedCount / dagNodes.length, 1);
+
+  return (
+    <div className="relative w-full h-full bg-[#0a0a0f] overflow-hidden">
+      {/* Dashboard mockup background */}
+      <img
+        src={WS_DASHBOARD_URL}
+        alt="Generation Dashboard"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: `scale(${kenBurns})`, transformOrigin: "center center" }}
+      />
+
+      {/* Overlay with animated elements */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
+        {/* Animated progress overlay */}
+        <div className="absolute bottom-24 left-0 right-0 flex flex-col items-center">
+          <div
+            className="text-cyan-400 text-lg font-semibold mb-2"
+            style={{ opacity: showSubtitle ? 1 : 0, transition: "opacity 0.5s" }}
+          >
+            Every slice. Every frame. Live.
+          </div>
+
+          {/* Simulated toast notifications */}
+          {elapsed > 4000 && elapsed < 7000 && (
+            <div
+              className="px-4 py-2 rounded-lg text-sm font-medium"
+              style={{
+                backgroundColor: "rgba(34, 197, 94, 0.2)",
+                border: "1px solid rgb(34, 197, 94)",
+                color: "rgb(34, 197, 94)",
+                opacity: Math.min((elapsed - 4000) / 300, 1),
+                animation: "subtleFloat 2s ease-in-out infinite",
+              }}
+            >
+              ✓ Slice 4 of 12 complete
+            </div>
+          )}
+          {elapsed > 7000 && (
+            <div
+              className="px-4 py-2 rounded-lg text-sm font-medium"
+              style={{
+                backgroundColor: "rgba(34, 197, 94, 0.2)",
+                border: "1px solid rgb(34, 197, 94)",
+                color: "rgb(34, 197, 94)",
+                opacity: Math.min((elapsed - 7000) / 300, 1),
+                animation: "subtleFloat 2s ease-in-out infinite",
+              }}
+            >
+              ✓ Slice 8 of 12 complete
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ShotLabel text={DEMO_SHOTS.liveDag.label} />
+    </div>
+  );
+}
+
+// ─── Shot 7: LoRA Marketplace (60–70s) ──────────────────────────────
+
+function LoraMarketShot({ elapsed }: ShotProps) {
+  const kenBurns = 1 + Math.min(elapsed / 50000, 0.04);
+  const showSubtitle = elapsed > 3500;
+  const showForkHighlight = elapsed > 5000;
+
+  return (
+    <div className="relative w-full h-full bg-[#0a0a0f] overflow-hidden">
+      {/* LoRA detail mockup background */}
+      <img
+        src={LORA_DETAIL_URL}
+        alt="LoRA Marketplace"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: `scale(${kenBurns})`, transformOrigin: "center center" }}
+      />
+
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
+        <div className="absolute bottom-24 left-0 right-0 flex flex-col items-center">
+          <div
+            className="text-pink-400 text-lg font-semibold mb-2"
+            style={{ opacity: showSubtitle ? 1 : 0, transition: "opacity 0.5s" }}
+          >
+            Fork. Fine-tune. Save 75% on training.
+          </div>
+
+          {/* Fork highlight pulse */}
+          {showForkHighlight && (
+            <div
+              className="px-6 py-3 rounded-xl text-white font-semibold text-sm"
+              style={{
+                background: "linear-gradient(135deg, #ec4899, #8b5cf6)",
+                boxShadow: "0 0 30px rgba(236, 72, 153, 0.5)",
+                animation: "pulseGlow 1.5s ease-in-out infinite",
+                opacity: Math.min((elapsed - 5000) / 500, 1),
+              }}
+            >
+              ✨ Fork & Fine-tune
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ShotLabel text={DEMO_SHOTS.loraMarket.label} />
+    </div>
+  );
+}
+
+// ─── Shot 8: Community (70–80s) ───────────────────────────────────────
 
 function CommunityShot({ elapsed, assets }: ShotProps) {
   const slides = assets.fallbackUrls.length > 0 ? assets.fallbackUrls : assets.panelUrls;
@@ -695,7 +744,7 @@ function StatBadge({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Shot 7: CTA (65–75s) ───────────────────────────────────────────────
+// ─── Shot 9: CTA (80–90s) ───────────────────────────────────────────────
 
 function CTAShot({ elapsed }: ShotProps) {
   const logoVisible = elapsed > 500;
@@ -968,7 +1017,7 @@ export default function DemoRecording() {
       <div className="flex flex-col items-center justify-center h-screen bg-[#0a0a0f] text-white">
         <style>{DEMO_STYLES}</style>
         <h1 className="text-4xl font-bold mb-4">Demo Recording</h1>
-        <p className="text-gray-400 mb-8">75-second scripted demo sequence</p>
+        <p className="text-gray-400 mb-8">90-second scripted demo sequence</p>
         <button
           onClick={startPlayback}
           className="px-8 py-4 rounded-xl text-lg font-semibold text-white"
@@ -1000,7 +1049,9 @@ export default function DemoRecording() {
         {currentShot === "script" && <ScriptShot {...shotProps} />}
         {currentShot === "panels" && <PanelsShot {...shotProps} />}
         {currentShot === "customize" && <CustomizeShot {...shotProps} />}
-        {currentShot === "pipeline" && <PipelineShot {...shotProps} />}
+        {currentShot === "transform" && <TransformShot {...shotProps} />}
+        {currentShot === "liveDag" && <LiveDagShot {...shotProps} />}
+        {currentShot === "loraMarket" && <LoraMarketShot {...shotProps} />}
         {currentShot === "community" && <CommunityShot {...shotProps} />}
         {currentShot === "cta" && <CTAShot {...shotProps} />}
       </div>
