@@ -1965,3 +1965,56 @@ export const projectCheckpoints = mysqlTable("project_checkpoints", {
 });
 export type ProjectCheckpoint = typeof projectCheckpoints.$inferSelect;
 export type InsertProjectCheckpoint = typeof projectCheckpoints.$inferInsert;
+
+// ─── Video Slices (10-second clip decomposition) ─────────────────────────
+
+export const videoSlices = mysqlTable("video_slices", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sceneId: int("sceneId"),  // Reference to the source scene from the script
+  sliceNumber: int("sliceNumber").notNull(),  // Sequential order within the episode (1-based)
+  durationSeconds: float("durationSeconds").default(10).notNull(),  // Target duration (typically 10s, min 5, max 15)
+
+  // Content metadata
+  characters: json("characters"),  // [{characterId, name, role, elementId?, loraId?}]
+  dialogue: json("dialogue"),  // [{characterId, text, emotion, startOffset, endOffset}]
+  actionDescription: text("actionDescription"),  // What happens visually in this slice
+  cameraAngle: mysqlEnum("cameraAngle", ["wide", "medium", "close-up", "extreme-close-up", "birds-eye", "panning", "tracking"]).default("medium"),
+  mood: varchar("mood", { length: 100 }),  // e.g. "tense", "calm", "dramatic", "comedic"
+  panelIds: json("panelIds"),  // Array of panel IDs that map to this slice
+
+  // Complexity & routing
+  complexityTier: int("complexityTier").default(1).notNull(),  // 1 (highest/V3 Omni) to 4 (lowest/V1.6)
+  complexityReason: text("complexityReason"),  // Why this tier was assigned
+  klingModel: mysqlEnum("klingModel", ["v3_omni", "v2_6", "v2_1", "v1_6"]).default("v3_omni").notNull(),
+  klingMode: mysqlEnum("klingMode", ["professional", "standard"]).default("professional").notNull(),
+  lipSyncRequired: int("lipSyncRequired").default(0).notNull(),  // 1 if dialogue present → forces V3 Omni
+  userOverrideTier: int("userOverrideTier"),  // User can override the auto-assigned tier
+
+  // Core scene preview
+  coreScenePrompt: text("coreScenePrompt"),  // The prompt used to generate the core scene image
+  coreSceneImageUrl: text("coreSceneImageUrl"),
+  coreSceneStatus: mysqlEnum("coreSceneStatus", ["pending", "generating", "generated", "approved", "rejected"]).default("pending").notNull(),
+  coreSceneAttempts: int("coreSceneAttempts").default(0),
+
+  // Video clip
+  videoClipUrl: text("videoClipUrl"),
+  videoClipStatus: mysqlEnum("videoClipStatus", ["pending", "generating", "generated", "approved", "rejected", "failed"]).default("pending").notNull(),
+  videoClipAttempts: int("videoClipAttempts").default(0),
+  videoClipDurationMs: int("videoClipDurationMs"),  // Actual duration after generation
+
+  // Voice & audio
+  voiceAudioUrl: text("voiceAudioUrl"),  // Pre-generated voice audio for this slice
+  voiceAudioDurationMs: int("voiceAudioDurationMs"),
+
+  // Credits
+  estimatedCredits: int("estimatedCredits").default(0),  // Pre-calculated cost estimate
+  actualCredits: int("actualCredits"),  // Actual credits spent after generation
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VideoSlice = typeof videoSlices.$inferSelect;
+export type InsertVideoSlice = typeof videoSlices.$inferInsert;

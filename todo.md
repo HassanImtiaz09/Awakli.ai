@@ -4478,3 +4478,38 @@
 - [x] Beats 7-8: Enlarge Awakli logo (400x400px)
 - [x] Beats 7-8: Ensure backgrounds are exactly 50% translucency
 - [x] Reassemble, upload, update website, test, checkpoint
+
+## Milestone 1: Slice Decomposition Engine
+### Database
+- [x] Add `video_slices` table: id, episodeId, projectId, sceneId, sliceNumber, durationSeconds, characters (JSON), dialogue, actionDescription, cameraAngle, mood, complexityTier, klingModel, lipSyncRequired, coreSceneImageUrl, coreSceneStatus, videoClipUrl, videoClipStatus, userOverrideTier, estimatedCredits, actualCredits, createdAt, updatedAt
+- [x] Generate and apply migration SQL via drizzle-kit (0039_video_slices.sql)
+
+### Backend — Slice Decomposition Service
+- [x] Create `server/slice-decomposer.ts` module with: decomposeScript (script → slices), estimateSliceTiming (panels → seconds), groupPanelsIntoSlices (10s boundaries), extractSliceCharacters, extractSliceDialogue, buildSliceMetadata
+- [x] LLM-powered timing estimation: use invokeLLM to estimate per-panel duration based on action complexity and dialogue length
+- [x] Deterministic fallback: if LLM fails, use rule-based timing (dialogue panels: 3-5s based on word count, action panels: 2-4s, establishing shots: 2s, transitions: 1.5s)
+- [x] Slice boundary logic: accumulate panel durations until ≥10s, then split; never split mid-dialogue
+
+### Backend — Slice Complexity Classifier
+- [x] Create `server/slice-classifier.ts` module with: classifySliceComplexity, determineklingModel, computeRoutingSavings
+- [x] Deterministic classification rules: dialogue + close-up → Tier 1 (V3 Omni), multi-character action → Tier 2 (V2.6), single character static → Tier 3 (V2.1), establishing shot → Tier 3 (V2.1), transition/still → Tier 4 (V1.6)
+- [x] Lip sync detection: mark slices with dialogue as lipSyncRequired = true, auto-assign V3 Omni
+- [x] Cost estimation per slice based on assigned tier and duration
+
+### Backend — tRPC Endpoints
+- [x] Add `slices.decompose` endpoint — accepts episodeId, runs decomposition, stores slices in DB, returns slice array
+- [x] Add `slices.listByEpisode` endpoint — returns all slices for an episode, ordered by sliceNumber
+- [x] Add `slices.updateSlice` endpoint — update individual slice fields (dialogue, action, camera, mood)
+- [x] Add `slices.overrideTier` endpoint — user overrides complexity tier with cost recalculation
+- [x] Add `slices.getDecompositionPreview` endpoint — dry-run decomposition without persisting, returns preview with cost estimates
+
+### Backend — DB Helpers
+- [x] Add slice CRUD helpers in db.ts: createSlice, createSlicesBulk, getSlicesByEpisode, getSliceById, updateSlice, deleteSlicesByEpisode, getSliceCountByEpisode
+
+### Tests
+- [x] Unit: decomposeScript (timing estimation, slice boundary detection, character assignment, dialogue extraction)
+- [x] Unit: classifySliceComplexity (tier assignment rules, lip sync detection, cost estimation)
+- [x] Unit: groupPanelsIntoSlices (boundary logic, never split mid-dialogue, edge cases)
+- [x] Unit: determineklingModel (tier-to-model mapping, user override handling)
+- [x] Integration: slices.decompose endpoint contract test
+- [x] Integration: slices.overrideTier with cost recalculation

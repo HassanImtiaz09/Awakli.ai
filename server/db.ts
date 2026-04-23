@@ -1329,3 +1329,94 @@ export async function getPlatformStats() {
     activeCreators: Number(creatorRow?.cnt ?? 0),
   };
 }
+
+// ─── Video Slices (10-second clip decomposition) ──────────────────────────
+
+import { videoSlices, InsertVideoSlice } from "../drizzle/schema";
+
+export async function createSlice(data: InsertVideoSlice) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(videoSlices).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function createSlicesBulk(data: InsertVideoSlice[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (data.length === 0) return [];
+  await db.insert(videoSlices).values(data);
+  // Return the IDs of the inserted slices
+  const inserted = await db.select({ id: videoSlices.id })
+    .from(videoSlices)
+    .where(and(
+      eq(videoSlices.episodeId, data[0].episodeId),
+      eq(videoSlices.projectId, data[0].projectId),
+    ))
+    .orderBy(videoSlices.sliceNumber);
+  return inserted.map(r => r.id);
+}
+
+export async function getSlicesByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(videoSlices)
+    .where(eq(videoSlices.episodeId, episodeId))
+    .orderBy(videoSlices.sliceNumber);
+}
+
+export async function getSliceById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(videoSlices)
+    .where(eq(videoSlices.id, id))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateSlice(id: number, data: Partial<InsertVideoSlice>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(videoSlices).set(data).where(eq(videoSlices.id, id));
+}
+
+export async function deleteSlicesByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(videoSlices).where(eq(videoSlices.episodeId, episodeId));
+}
+
+export async function getSliceCountByEpisode(episodeId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ cnt: count() }).from(videoSlices)
+    .where(eq(videoSlices.episodeId, episodeId));
+  return result[0]?.cnt ?? 0;
+}
+
+export async function getSlicesByStatus(episodeId: number, status: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(videoSlices)
+    .where(and(
+      eq(videoSlices.episodeId, episodeId),
+      eq(videoSlices.coreSceneStatus, status as any),
+    ))
+    .orderBy(videoSlices.sliceNumber);
+}
+
+export async function getSliceCostSummary(episodeId: number) {
+  const db = await getDb();
+  if (!db) return { totalEstimated: 0, totalActual: 0, sliceCount: 0 };
+  const result = await db.select({
+    totalEstimated: sql<number>`COALESCE(SUM(${videoSlices.estimatedCredits}), 0)`,
+    totalActual: sql<number>`COALESCE(SUM(${videoSlices.actualCredits}), 0)`,
+    sliceCount: count(),
+  }).from(videoSlices)
+    .where(eq(videoSlices.episodeId, episodeId));
+  return {
+    totalEstimated: Number(result[0]?.totalEstimated ?? 0),
+    totalActual: Number(result[0]?.totalActual ?? 0),
+    sliceCount: Number(result[0]?.sliceCount ?? 0),
+  };
+}
