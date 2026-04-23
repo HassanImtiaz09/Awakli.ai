@@ -165,6 +165,11 @@ export const episodes = mysqlTable("episodes", {
   estimatedReadTime: int("estimated_read_time"),  // in seconds
   moodArc: json("mood_arc"),  // string[] e.g. ["tense", "calm", "building", "climax", "cliffhanger"]
   assemblySettings: json("assembly_settings"),  // {enableLipSync, enableFoley, enableAmbient, voiceLufs, musicLufs, foleyLufs, ambientLufs, enableVoiceValidation}
+  streamUid: varchar("stream_uid", { length: 255 }),  // Cloudflare Stream video UID
+  streamEmbedUrl: text("stream_embed_url"),  // Cloudflare Stream iframe embed URL
+  streamHlsUrl: text("stream_hls_url"),  // Cloudflare Stream HLS playback URL
+  streamThumbnailUrl: text("stream_thumbnail_url"),  // Cloudflare Stream auto-generated thumbnail
+  streamStatus: mysqlEnum("stream_status", ["none", "uploading", "processing", "ready", "error"]).default("none"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

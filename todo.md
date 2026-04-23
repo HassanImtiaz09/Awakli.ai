@@ -4642,3 +4642,45 @@
 - [x] Integration: assembleEpisodeFromSlices flow (fetch → download → normalize → concat → voice → music → upload)
 - [x] Integration: retry logic for failed assembly
 - [x] Unit: credit calculation for assembly action
+
+## Milestone 6: Cloudflare Stream Delivery & Assembly UI Integration
+
+### Database Schema — Stream delivery fields on episodes
+- [x] Add `streamUid` (varchar) — Cloudflare Stream video UID
+- [x] Add `streamEmbedUrl` (text) — iframe embed URL
+- [x] Add `streamHlsUrl` (text) — HLS playback URL for custom players
+- [x] Add `streamThumbnailUrl` (text) — auto-generated thumbnail from Cloudflare
+- [x] Add `streamStatus` enum (none, uploading, processing, ready, error) — delivery pipeline state
+- [x] Generate and apply migration SQL (0040_stream_delivery.sql)
+
+### Service Module — stream-delivery.ts (assembly → stream bridge)
+- [x] Create `server/stream-delivery.ts` — bridges video-assembler output to Cloudflare Stream
+- [x] `deliverToStream(episodeId)` — takes assembled videoUrl, uploads to Cloudflare Stream, polls until ready, updates episode with stream fields
+- [x] `getDeliveryStatus(episodeId)` — returns current stream delivery state with progress
+- [x] `retryDelivery(episodeId)` — re-upload failed stream delivery
+- [x] Auto-trigger stream upload after successful assembly (triggerStreamDeliveryAsync hook)
+- [x] Error handling: retry on transient Cloudflare errors (MAX_TRANSIENT_RETRIES=3), mark episode streamStatus=error on permanent failures
+
+### tRPC Endpoints — extend assembly router with stream delivery
+- [x] Add `assembly.deliverToStream` endpoint — manually trigger Cloudflare Stream upload for assembled episode
+- [x] Add `assembly.getDeliveryStatus` endpoint — poll stream processing status
+- [x] Add `assembly.retryDelivery` endpoint — retry failed stream upload
+- [x] Extend `assembly.getPreview` to return stream embed/HLS URLs when available
+
+### Frontend — Stage 6 Video page integration
+- [x] Wire `assembly.getStatus` into video.tsx for real-time assembly progress
+- [x] Add AssemblySettingsPanel to video.tsx timing state (rewire from episodes.* to assembly.* endpoints)
+- [x] Add assembly progress UI: slice validation → downloading → normalizing → concatenating → voice overlay → music mix → loudness normalization → uploading
+- [x] Add stream delivery progress after assembly: uploading to CDN → processing → ready
+- [x] Add video preview player using Cloudflare Stream embed URL (iframe) or HLS (video.js/native)
+- [x] Add "Assemble Video" CTA button that triggers assembly.assemble
+- [x] Show assembly timeline visualization from assembly.getTimeline
+- [x] Handle error states with retry buttons for both assembly and stream delivery
+
+### Tests
+- [x] Unit: stream-delivery.ts deliverToStream flow (upload → poll → update episode) — 27 tests passing
+- [x] Unit: getDeliveryStatus returns correct state based on episode fields
+- [x] Unit: retryDelivery clears error state and re-uploads
+- [x] Unit: assembly router stream delivery endpoints (input validation, auth)
+- [x] Integration: full pipeline flow (assemble → stream → preview URL available)
+- [x] Unit: AssemblySettingsPanel rewiring to assembly.* endpoints

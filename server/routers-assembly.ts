@@ -22,6 +22,12 @@ import {
   getEpisodeById,
   updateEpisode,
 } from "./db";
+import {
+  deliverToStream,
+  getDeliveryStatus,
+  retryDelivery,
+  triggerStreamDeliveryAsync,
+} from "./stream-delivery";
 
 export const assemblyRouter = router({
   /**
@@ -161,11 +167,18 @@ export const assemblyRouter = router({
         };
       }
 
+      const ep = episode as any;
       return {
         available: true,
         videoUrl: episode.videoUrl,
         duration: episode.duration || 0,
         status: episode.status,
+        // Stream delivery fields (if available)
+        streamUid: ep.streamUid || null,
+        streamEmbedUrl: ep.streamEmbedUrl || null,
+        streamHlsUrl: ep.streamHlsUrl || null,
+        streamThumbnailUrl: ep.streamThumbnailUrl || null,
+        streamStatus: ep.streamStatus || "none",
       };
     }),
 
@@ -268,5 +281,70 @@ export const assemblyRouter = router({
         config.transitionDuration,
         config.transitionType,
       );
+    }),
+
+  /**
+   * Manually trigger Cloudflare Stream upload for an assembled episode.
+   * Uploads the assembled video to Cloudflare Stream for CDN-backed HLS playback.
+   */
+  deliverToStream: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number(),
+        projectId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) {
+        throw new Error(`Episode ${input.episodeId} not found`);
+      }
+      if (episode.projectId !== input.projectId) {
+        throw new Error("Episode does not belong to the specified project");
+      }
+      if (!episode.videoUrl) {
+        throw new Error("Episode has no assembled video \u2014 run assembly first");
+      }
+
+      const result = await deliverToStream(input.episodeId);
+      return result;
+    }),
+
+  /**
+   * Get the current stream delivery status for an episode.
+   * If processing, also checks Cloudflare for live progress.
+   */
+  getDeliveryStatus: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number(),
+      })
+    )
+    .query(async ({ input }) => {
+      return getDeliveryStatus(input.episodeId);
+    }),
+
+  /**
+   * Retry a failed stream delivery.
+   * Clears the error state and re-uploads the assembled video to Cloudflare Stream.
+   */
+  retryDelivery: protectedProcedure
+    .input(
+      z.object({
+        episodeId: z.number(),
+        projectId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const episode = await getEpisodeById(input.episodeId);
+      if (!episode) {
+        throw new Error(`Episode ${input.episodeId} not found`);
+      }
+      if (episode.projectId !== input.projectId) {
+        throw new Error("Episode does not belong to the specified project");
+      }
+
+      const result = await retryDelivery(input.episodeId);
+      return result;
     }),
 });

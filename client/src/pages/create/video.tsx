@@ -1,8 +1,12 @@
 /**
  * Stage 6 · Video — Short-form Render (Mangaka) + Long-form + Master Export (Studio/Studio Pro)
  *
- * States: timing → confirming → rendering → review → error
- * Studio+ adds: chapter-compose, music-bed, export-format dialog on approve
+ * States: timing → confirming → assembling → streaming → review → error → exporting
+ * Now integrated with:
+ *   - assembly.* tRPC endpoints for real assembly pipeline
+ *   - AssemblySettingsPanel for audio bus / lip sync / motion LoRA config
+ *   - Cloudflare Stream delivery for CDN-backed HLS playback
+ *   - Real-time progress tracking through assembly + stream phases
  */
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -15,6 +19,11 @@ import {
   RotateCcw,
   Check,
   Coins,
+  Cloud,
+  Play,
+  ExternalLink,
+  Settings2,
+  Layers,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import CreateWizardLayout from "@/layouts/CreateWizardLayout";
@@ -55,6 +64,8 @@ import MasterExport, {
   calculateExportCredits,
   EXPORT_COPY,
 } from "@/components/awakli/MasterExport";
+import { AssemblySettingsPanel } from "@/components/awakli/AssemblySettingsPanel";
+import { toast } from "sonner";
 
 // ─── Exported copy strings (exact spec) ─────────────────────────────
 export const VIDEO_COPY = {
@@ -66,6 +77,24 @@ export const VIDEO_COPY = {
   errorRetry: "Retry render",
   errorRefund: "Credits auto-refunded",
 } as const;
+
+// ─── Assembly pipeline phases ───────────────────────────────────────
+const ASSEMBLY_PHASES = [
+  { key: "validating", label: "Validating slices…", icon: "🔍" },
+  { key: "downloading", label: "Downloading clips…", icon: "⬇️" },
+  { key: "normalizing", label: "Normalizing video…", icon: "🎬" },
+  { key: "concatenating", label: "Joining clips…", icon: "🔗" },
+  { key: "voice_overlay", label: "Overlaying voices…", icon: "🎤" },
+  { key: "music_mix", label: "Mixing music…", icon: "🎵" },
+  { key: "loudness", label: "Loudness normalization…", icon: "📊" },
+  { key: "uploading", label: "Uploading to S3…", icon: "☁️" },
+] as const;
+
+const STREAM_PHASES = [
+  { key: "uploading", label: "Uploading to CDN…", icon: "🌐" },
+  { key: "processing", label: "Processing for streaming…", icon: "⚡" },
+  { key: "ready", label: "Ready to stream!", icon: "✅" },
+] as const;
 
 // ─── Studio tier limits ─────────────────────────────────────────────
 export const STUDIO_LIMITS = {
@@ -89,6 +118,8 @@ export const STUDIO_PRO_LIMITS = {
 type VideoState =
   | "timing"
   | "confirming"
+  | "assembling"
+  | "streaming"
   | "rendering"
   | "review"
   | "error"
@@ -163,6 +194,45 @@ export default function WizardVideo() {
     }
   );
 
+  // ── Assembly integration ──────────────────────────────────────────
+  const assemblyMut = trpc.assembly.assemble.useMutation();
+  const deliverToStreamMut = trpc.assembly.deliverToStream.useMutation();
+
+  // Assembly status polling
+  const [assemblyPolling, setAssemblyPolling] = useState(false);
+  const { data: assemblyStatus, refetch: refetchAssemblyStatus } =
+    trpc.assembly.getStatus.useQuery(
+      { episodeId: firstEpisodeId! },
+      {
+        enabled: !!firstEpisodeId,
+        refetchInterval: assemblyPolling ? 3000 : false,
+      }
+    );
+
+  // Stream delivery status polling
+  const [streamPolling, setStreamPolling] = useState(false);
+  const { data: deliveryStatus, refetch: refetchDeliveryStatus } =
+    trpc.assembly.getDeliveryStatus.useQuery(
+      { episodeId: firstEpisodeId! },
+      {
+        enabled: !!firstEpisodeId,
+        refetchInterval: streamPolling ? 4000 : false,
+      }
+    );
+
+  // Assembly preview (includes stream URLs)
+  const { data: previewData, refetch: refetchPreview } =
+    trpc.assembly.getPreview.useQuery(
+      { episodeId: firstEpisodeId! },
+      { enabled: !!firstEpisodeId }
+    );
+
+  // Assembly timeline
+  const { data: timelineData } = trpc.assembly.getTimeline.useQuery(
+    { episodeId: firstEpisodeId! },
+    { enabled: !!firstEpisodeId }
+  );
+
   // Get the first locked/approved episode for pipeline
   const pipelineEpisode = useMemo(() => {
     const eligible = (episodes as any[]).filter(
@@ -199,6 +269,9 @@ export default function WizardVideo() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rendersUsed, setRendersUsed] = useState(0);
   const [exportConfig, setExportConfig] = useState<ExportConfig | null>(null);
+  const [assemblyPhaseIdx, setAssemblyPhaseIdx] = useState(0);
+  const [streamPhaseIdx, setStreamPhaseIdx] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
 
   // ── Panel timings ─────────────────────────────────────────────────
   const panelCount = (realPanels as any[]).length || (project as any)?.panelCount || 12;
@@ -275,6 +348,15 @@ export default function WizardVideo() {
   const rendersRemaining = maxRenders - rendersUsed;
   const availableCredits = balanceData?.balance ?? 0;
 
+  // ── Assembly readiness ────────────────────────────────────────────
+  const assemblyReady = assemblyStatus
+    ? assemblyStatus.readySlices > 0 &&
+      assemblyStatus.readySlices >= assemblyStatus.totalSlices
+    : false;
+
+  const hasAssembledVideo = !!previewData?.available;
+  const hasStreamDelivery = previewData?.streamStatus === "ready";
+
   // ── Handlers ──────────────────────────────────────────────────────
   const handleTimingsChange = useCallback(
     (updated: PanelTiming[]) => {
@@ -324,7 +406,91 @@ export default function WizardVideo() {
     setState("confirming");
   }, []);
 
+  // ── Assembly-first render ─────────────────────────────────────────
+  const handleStartAssembly = useCallback(async () => {
+    if (!firstEpisodeId || !numId) {
+      toast.error("No episode available for assembly");
+      return;
+    }
+
+    setState("assembling");
+    setAssemblyPhaseIdx(0);
+    setAssemblyPolling(true);
+
+    trackEvent("stage6_assembly_start", {
+      projectId,
+      episodeId: firstEpisodeId,
+    });
+
+    try {
+      await assemblyMut.mutateAsync({
+        episodeId: firstEpisodeId,
+        projectId: numId,
+      });
+
+      // Assembly completed — move to stream delivery
+      setAssemblyPolling(false);
+      setState("streaming");
+      setStreamPhaseIdx(0);
+      setStreamPolling(true);
+
+      // Trigger stream delivery
+      await deliverToStreamMut.mutateAsync({
+        episodeId: firstEpisodeId,
+        projectId: numId,
+      });
+
+      // Stream delivery complete
+      setStreamPolling(false);
+      await refetchPreview();
+
+      const result: RenderResult = {
+        videoUrl: previewData?.videoUrl || "",
+        duration: forecast.totalRuntime,
+        resolution: studioMode
+          ? tierLimits.maxResolution
+          : MANGAKA_LIMITS.maxResolution,
+        format:
+          studioMode && "exportFormats" in tierLimits
+            ? tierLimits.exportFormats[0]
+            : MANGAKA_LIMITS.exportFormat,
+        fileSize: `${Math.round(forecast.totalRuntime * 2.5)} MB`,
+      };
+      setRenderResult(result);
+      setRendersUsed((prev) => prev + 1);
+      setState("review");
+
+      trackEvent("stage6_assembly_complete", {
+        projectId,
+        episodeId: firstEpisodeId,
+      });
+    } catch (err: any) {
+      setAssemblyPolling(false);
+      setStreamPolling(false);
+      setErrorMessage(err?.message || "Assembly failed — credits auto-refunded");
+      setState("error");
+    }
+  }, [
+    firstEpisodeId,
+    numId,
+    projectId,
+    assemblyMut,
+    deliverToStreamMut,
+    forecast,
+    studioMode,
+    tierLimits,
+    previewData,
+    refetchPreview,
+  ]);
+
+  // ── Legacy pipeline render (fallback) ─────────────────────────────
   const handleStartRender = useCallback(async () => {
+    // If assembly is ready, use the new assembly pipeline
+    if (assemblyReady && firstEpisodeId) {
+      return handleStartAssembly();
+    }
+
+    // Legacy pipeline fallback
     setState("rendering");
     setRenderPhaseIdx(0);
     setRenderProgress(0);
@@ -342,17 +508,25 @@ export default function WizardVideo() {
           projectId: numId,
         });
         setPipelineRunId(runId);
-        // Pipeline polling will drive UI updates via useEffect below
       } catch (err: any) {
-        // Fallback to simulated render if pipeline fails (e.g. episode not locked)
         console.warn("[Video] Pipeline start failed, using simulated render:", err?.message);
         await runSimulatedRender();
       }
     } else {
-      // No eligible episode — run simulated render
       await runSimulatedRender();
     }
-  }, [forecast, projectId, studioMode, tierLimits, pipelineEpisode, numId, startPipelineMut]);
+  }, [
+    assemblyReady,
+    firstEpisodeId,
+    handleStartAssembly,
+    forecast,
+    projectId,
+    studioMode,
+    tierLimits,
+    pipelineEpisode,
+    numId,
+    startPipelineMut,
+  ]);
 
   // Simulated render fallback (used when no pipeline episode is available)
   const runSimulatedRender = useCallback(async () => {
@@ -371,9 +545,10 @@ export default function WizardVideo() {
         resolution: studioMode
           ? tierLimits.maxResolution
           : MANGAKA_LIMITS.maxResolution,
-        format: studioMode && 'exportFormats' in tierLimits
-          ? tierLimits.exportFormats[0]
-          : MANGAKA_LIMITS.exportFormat,
+        format:
+          studioMode && "exportFormats" in tierLimits
+            ? tierLimits.exportFormats[0]
+            : MANGAKA_LIMITS.exportFormat,
         fileSize: `${Math.round(forecast.totalRuntime * 2.5)} MB`,
       };
       setRenderResult(result);
@@ -391,7 +566,7 @@ export default function WizardVideo() {
     }
   }, [forecast, projectId, studioMode, tierLimits]);
 
-  // Drive UI from pipeline status polling
+  // Drive UI from pipeline status polling (legacy)
   useEffect(() => {
     if (!pipelineStatus || state !== "rendering") return;
 
@@ -411,16 +586,16 @@ export default function WizardVideo() {
     setRenderProgress(pipelineStatus.progress ?? 0);
 
     if (pipelineStatus.status === "completed") {
-      // Pipeline done — build result from pipeline data
       const result: RenderResult = {
         videoUrl: (pipelineStatus as any).finalVideoUrl || "",
         duration: forecast.totalRuntime,
         resolution: studioMode
           ? tierLimits.maxResolution
           : MANGAKA_LIMITS.maxResolution,
-        format: studioMode && 'exportFormats' in tierLimits
-          ? tierLimits.exportFormats[0]
-          : MANGAKA_LIMITS.exportFormat,
+        format:
+          studioMode && "exportFormats" in tierLimits
+            ? tierLimits.exportFormats[0]
+            : MANGAKA_LIMITS.exportFormat,
         fileSize: `${Math.round(forecast.totalRuntime * 2.5)} MB`,
       };
       setRenderResult(result);
@@ -432,7 +607,8 @@ export default function WizardVideo() {
       });
     } else if (pipelineStatus.status === "failed") {
       setErrorMessage(
-        (pipelineStatus as any).errorMessage || "Render failed — your credits have been refunded."
+        (pipelineStatus as any).errorMessage ||
+          "Render failed — your credits have been refunded."
       );
       setState("error");
     }
@@ -440,12 +616,13 @@ export default function WizardVideo() {
 
   const handleApprove = useCallback(() => {
     if (studioMode) {
-      // Studio+ gets export dialog
       setState("exporting");
+    } else if (hasStreamDelivery && previewData?.streamEmbedUrl) {
+      window.open(previewData.streamEmbedUrl, "_blank");
     } else if (renderResult?.videoUrl) {
       window.open(renderResult.videoUrl, "_blank");
     }
-  }, [renderResult, studioMode]);
+  }, [renderResult, studioMode, hasStreamDelivery, previewData]);
 
   const handleExport = useCallback(
     (config: ExportConfig) => {
@@ -517,15 +694,111 @@ export default function WizardVideo() {
         <div className="max-w-3xl mx-auto space-y-8">
           {/* Header */}
           <div className="space-y-2">
-            <StageHeader stageKey="video" label="Video Production" icon={Film} className="text-token-magenta" />
+            <StageHeader
+              stageKey="video"
+              label="Video Production"
+              icon={Film}
+              className="text-token-magenta"
+            />
             <h1 className="text-3xl lg:text-4xl font-bold text-white/90">
               {VIDEO_COPY.pageTitle}
             </h1>
             <p className="text-white/50 text-sm">{VIDEO_COPY.subhead}</p>
           </div>
 
-          {/* ── Timing state ─────────────────────────────────────── */}
+          {/* ── Assembly readiness indicator ─────────────────────── */}
+          {assemblyStatus && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl bg-[hsl(240,6%,10%)] border border-white/5 p-4"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-medium text-white/70">
+                    Slice Assembly
+                  </span>
+                </div>
+                <span
+                  className={`text-xs font-mono px-2 py-0.5 rounded ${
+                    assemblyReady
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-amber-500/20 text-amber-300"
+                  }`}
+                >
+                  {assemblyStatus.readySlices}/{assemblyStatus.totalSlices}{" "}
+                  slices ready
+                </span>
+              </div>
+
+              {/* Slice progress bar */}
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${
+                    assemblyReady
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500"
+                  }`}
+                  animate={{
+                    width: `${
+                      assemblyStatus.totalSlices > 0
+                        ? (assemblyStatus.readySlices /
+                            assemblyStatus.totalSlices) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+
+              {/* Timeline summary */}
+              {timelineData && timelineData.slices?.length > 0 && (
+                <div className="mt-3 flex items-center gap-4 text-[10px] text-white/30">
+                  <span>
+                    {timelineData.slices.length} slices ·{" "}
+                    {timelineData.totalDurationSeconds?.toFixed(1)}s total
+                  </span>
+                  {timelineData.transitionOverlapTotal > 0 && (
+                    <span>
+                      {timelineData.transitionOverlapTotal.toFixed(1)}s
+                      transition overlap
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Stream delivery status */}
+              {deliveryStatus && deliveryStatus.streamStatus !== "none" && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Cloud className="w-3.5 h-3.5 text-blue-400" />
+                  <span
+                    className={`text-[10px] font-medium ${
+                      deliveryStatus.streamStatus === "ready"
+                        ? "text-emerald-400"
+                        : deliveryStatus.streamStatus === "error"
+                          ? "text-red-400"
+                          : "text-blue-400"
+                    }`}
+                  >
+                    CDN:{" "}
+                    {deliveryStatus.streamStatus === "ready"
+                      ? "Ready to stream"
+                      : deliveryStatus.streamStatus === "error"
+                        ? "Delivery failed"
+                        : deliveryStatus.streamStatus === "processing"
+                          ? `Processing${deliveryStatus.cloudflareProgress ? ` (${deliveryStatus.cloudflareProgress})` : "…"}`
+                          : "Uploading…"}
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── States ──────────────────────────────────────────── */}
           <AnimatePresence mode="wait">
+            {/* ── Timing state ─────────────────────────────────────── */}
             {state === "timing" && (
               <motion.div
                 key="timing"
@@ -539,6 +812,17 @@ export default function WizardVideo() {
                   onTimingsChange={handleTimingsChange}
                   maxRuntime={maxRuntime}
                 />
+
+                {/* Assembly Settings Panel */}
+                {firstEpisodeId && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                  >
+                    <AssemblySettingsPanel episodeId={firstEpisodeId} />
+                  </motion.div>
+                )}
 
                 {/* Studio: Chapter Composer */}
                 {studioMode && (
@@ -579,6 +863,57 @@ export default function WizardVideo() {
                   onRender={handleConfirm}
                   disabled={overBudget || rendersRemaining <= 0}
                 />
+
+                {/* Assembly-ready CTA */}
+                {assemblyReady && firstEpisodeId && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-xl bg-gradient-to-r from-violet-600/10 to-fuchsia-600/10 border border-violet-500/20 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                          <Film className="w-5 h-5 text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white/80">
+                            All slices ready for assembly
+                          </p>
+                          <p className="text-[10px] text-white/40">
+                            {assemblyStatus?.totalSlices} slices ·{" "}
+                            {assemblyStatus?.hasVoiceClips
+                              ? "Voice ready"
+                              : "No voice"}{" "}
+                            · 2 credits
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleStartAssembly}
+                        disabled={assemblyMut.isPending}
+                        className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-none text-sm"
+                      >
+                        {assemblyMut.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <Film className="w-4 h-4 mr-1" />
+                        )}
+                        Assemble Video
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Existing stream preview */}
+                {hasStreamDelivery && previewData?.streamEmbedUrl && (
+                  <StreamPreviewCard
+                    embedUrl={previewData.streamEmbedUrl}
+                    hlsUrl={previewData.streamHlsUrl}
+                    thumbnailUrl={previewData.streamThumbnailUrl}
+                    duration={previewData.duration}
+                  />
+                )}
 
                 {overBudget && (
                   <p className="text-xs text-red-400 text-center">
@@ -628,7 +963,7 @@ export default function WizardVideo() {
                     <div className="space-y-1">
                       <div className="text-white/40 text-xs">Format</div>
                       <div className="font-mono text-white/80">
-                        {studioMode && 'exportFormats' in tierLimits
+                        {studioMode && "exportFormats" in tierLimits
                           ? tierLimits.exportFormats[0]
                           : MANGAKA_LIMITS.exportFormat}
                       </div>
@@ -653,6 +988,14 @@ export default function WizardVideo() {
                         </div>
                       </div>
                     )}
+                    {assemblyReady && (
+                      <div className="space-y-1">
+                        <div className="text-white/40 text-xs">Pipeline</div>
+                        <div className="font-mono text-emerald-400 text-xs">
+                          Slice Assembly
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-white/5 pt-4">
@@ -662,14 +1005,16 @@ export default function WizardVideo() {
                         <span className="text-sm">Total cost</span>
                       </div>
                       <span className="text-xl font-bold font-mono text-white/90">
-                        {forecast.totalCredits} credits
+                        {assemblyReady ? 2 : forecast.totalCredits} credits
                       </span>
                     </div>
-                    <div className="text-[11px] text-white/30 mt-1">
-                      Motion: {forecast.motionCredits}c + Voice:{" "}
-                      {forecast.voiceCredits}c + Compose:{" "}
-                      {forecast.composeCredits}c
-                    </div>
+                    {!assemblyReady && (
+                      <div className="text-[11px] text-white/30 mt-1">
+                        Motion: {forecast.motionCredits}c + Voice:{" "}
+                        {forecast.voiceCredits}c + Compose:{" "}
+                        {forecast.composeCredits}c
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-2">
@@ -685,17 +1030,184 @@ export default function WizardVideo() {
                       onClick={handleStartRender}
                       className="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-none"
                     >
-                      {FORECAST_COPY.renderCta(
-                        Math.round(forecast.totalRuntime),
-                        forecast.totalCredits
-                      )}
+                      {assemblyReady
+                        ? "Assemble & Deliver"
+                        : FORECAST_COPY.renderCta(
+                            Math.round(forecast.totalRuntime),
+                            forecast.totalCredits
+                          )}
                     </Button>
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* ── Rendering state ──────────────────────────────────── */}
+            {/* ── Assembling state ────────────────────────────────── */}
+            {state === "assembling" && (
+              <motion.div
+                key="assembling"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="flex flex-col items-center justify-center py-16 space-y-8"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 2,
+                    ease: "linear",
+                  }}
+                >
+                  <Loader2 className="w-12 h-12 text-violet-400" />
+                </motion.div>
+
+                <div className="text-center space-y-2">
+                  <p className="text-lg text-white/80">
+                    Assembling your anime…
+                  </p>
+                  <p className="text-xs text-white/30">
+                    Joining {assemblyStatus?.totalSlices || "?"} slices into
+                    the final video
+                  </p>
+                </div>
+
+                {/* Assembly phase indicators */}
+                <div className="w-full max-w-md space-y-2">
+                  {ASSEMBLY_PHASES.map((phase, i) => (
+                    <div
+                      key={phase.key}
+                      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all ${
+                        i === assemblyPhaseIdx
+                          ? "bg-violet-500/10 border border-violet-500/20"
+                          : i < assemblyPhaseIdx
+                            ? "opacity-50"
+                            : "opacity-20"
+                      }`}
+                    >
+                      <span className="text-sm">{phase.icon}</span>
+                      <span
+                        className={`text-xs ${
+                          i === assemblyPhaseIdx
+                            ? "text-violet-300 font-medium"
+                            : i < assemblyPhaseIdx
+                              ? "text-white/40 line-through"
+                              : "text-white/20"
+                        }`}
+                      >
+                        {phase.label}
+                      </span>
+                      {i === assemblyPhaseIdx && (
+                        <Loader2 className="w-3 h-3 text-violet-400 animate-spin ml-auto" />
+                      )}
+                      {i < assemblyPhaseIdx && (
+                        <Check className="w-3 h-3 text-emerald-400 ml-auto" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Overall progress bar */}
+                <div className="w-full max-w-md">
+                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
+                      animate={{
+                        width: `${((assemblyPhaseIdx + 1) / ASSEMBLY_PHASES.length) * 100}%`,
+                      }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── Streaming state (CDN delivery) ──────────────────── */}
+            {state === "streaming" && (
+              <motion.div
+                key="streaming"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="flex flex-col items-center justify-center py-16 space-y-8"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.5,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <Cloud className="w-12 h-12 text-blue-400" />
+                </motion.div>
+
+                <div className="text-center space-y-2">
+                  <p className="text-lg text-white/80">
+                    Delivering to CDN…
+                  </p>
+                  <p className="text-xs text-white/30">
+                    Uploading to Cloudflare Stream for global playback
+                  </p>
+                </div>
+
+                {/* Stream phase indicators */}
+                <div className="w-full max-w-md space-y-2">
+                  {STREAM_PHASES.map((phase, i) => (
+                    <div
+                      key={phase.key}
+                      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all ${
+                        i === streamPhaseIdx
+                          ? "bg-blue-500/10 border border-blue-500/20"
+                          : i < streamPhaseIdx
+                            ? "opacity-50"
+                            : "opacity-20"
+                      }`}
+                    >
+                      <span className="text-sm">{phase.icon}</span>
+                      <span
+                        className={`text-xs ${
+                          i === streamPhaseIdx
+                            ? "text-blue-300 font-medium"
+                            : i < streamPhaseIdx
+                              ? "text-white/40 line-through"
+                              : "text-white/20"
+                        }`}
+                      >
+                        {phase.label}
+                      </span>
+                      {i === streamPhaseIdx && (
+                        <Loader2 className="w-3 h-3 text-blue-400 animate-spin ml-auto" />
+                      )}
+                      {i < streamPhaseIdx && (
+                        <Check className="w-3 h-3 text-emerald-400 ml-auto" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Stream progress */}
+                {deliveryStatus?.cloudflareProgress && (
+                  <p className="text-xs text-blue-400 font-mono">
+                    {deliveryStatus.cloudflareProgress}
+                  </p>
+                )}
+
+                <div className="w-full max-w-md">
+                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
+                      animate={{
+                        width: `${((streamPhaseIdx + 1) / STREAM_PHASES.length) * 100}%`,
+                      }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── Rendering state (legacy pipeline) ───────────────── */}
             {state === "rendering" && (
               <motion.div
                 key="rendering"
@@ -769,7 +1281,18 @@ export default function WizardVideo() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
+                className="space-y-6"
               >
+                {/* Stream video preview */}
+                {hasStreamDelivery && previewData?.streamEmbedUrl && (
+                  <StreamPreviewCard
+                    embedUrl={previewData.streamEmbedUrl}
+                    hlsUrl={previewData.streamHlsUrl}
+                    thumbnailUrl={previewData.streamThumbnailUrl}
+                    duration={previewData.duration}
+                  />
+                )}
+
                 <RenderReview
                   result={renderResult}
                   panels={reviewPanels}
@@ -848,5 +1371,84 @@ export default function WizardVideo() {
         </div>
       </WithTier>
     </CreateWizardLayout>
+  );
+}
+
+// ─── Stream Preview Card ────────────────────────────────────────────
+
+function StreamPreviewCard({
+  embedUrl,
+  hlsUrl,
+  thumbnailUrl,
+  duration,
+}: {
+  embedUrl: string | null;
+  hlsUrl?: string | null;
+  thumbnailUrl?: string | null;
+  duration?: number;
+}) {
+  const [showEmbed, setShowEmbed] = useState(false);
+
+  if (!embedUrl) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl bg-[hsl(240,6%,10%)] border border-emerald-500/20 overflow-hidden"
+    >
+      {/* Thumbnail / Player */}
+      {showEmbed ? (
+        <div className="relative w-full aspect-video bg-black">
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      ) : (
+        <div
+          className="relative w-full aspect-video bg-black/50 cursor-pointer group"
+          onClick={() => setShowEmbed(true)}
+        >
+          {thumbnailUrl && (
+            <img
+              src={thumbnailUrl}
+              alt="Video preview"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Play className="w-8 h-8 text-white ml-1" />
+            </div>
+          </div>
+          {duration && (
+            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/60 text-[10px] text-white/80 font-mono">
+              {Math.floor(duration / 60)}:
+              {String(Math.floor(duration % 60)).padStart(2, "0")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info bar */}
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-medium text-emerald-300">
+            Streaming via Cloudflare CDN
+          </span>
+        </div>
+        <button
+          onClick={() => window.open(embedUrl, "_blank")}
+          className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/60 transition-colors"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Open
+        </button>
+      </div>
+    </motion.div>
   );
 }
