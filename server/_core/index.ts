@@ -13,6 +13,7 @@ import { registerImageWebhookRoutes } from "../image-router/webhooks";
 import { rateLimitMiddleware } from "./rate-limit";
 import { requestTimingMiddleware, healthHandler } from "../observability";
 import { startCanaryScheduler, startIdempotencyCleanupScheduler } from "../image-router/canary-probes";
+import { setupGenerationWebSocket } from "../ws-generation";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -191,6 +192,9 @@ async function startServer() {
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
+
+  // Attach WebSocket server for real-time generation events
+  setupGenerationWebSocket(server);
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);

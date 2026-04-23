@@ -2,6 +2,7 @@
  * LoRA Marketplace — Browse, search, and download community LoRA models.
  */
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -501,11 +502,10 @@ function PublishLoraModal({ open, onClose }: { open: boolean; onClose: () => voi
 // ─── Main Page ──────────────────────────────────────────────────────────
 export default function LoraMarketplace() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState<string>("popular");
-  const [selectedLoraId, setSelectedLoraId] = useState<number | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -637,10 +637,7 @@ export default function LoraMarketplace() {
                     <LoraCard
                       key={lora.id}
                       lora={lora}
-                      onSelect={(id) => {
-                        setSelectedLoraId(id);
-                        setDetailOpen(true);
-                      }}
+                      onSelect={(id) => navigate(`/marketplace/${id}`)}
                     />
                   ))}
                 </AnimatePresence>
@@ -675,13 +672,6 @@ export default function LoraMarketplace() {
             </>
           )}
         </div>
-
-        {/* Detail modal */}
-        <LoraDetailModal
-          loraId={selectedLoraId}
-          open={detailOpen}
-          onClose={() => setDetailOpen(false)}
-        />
 
         {/* Publish modal */}
         <PublishLoraModal

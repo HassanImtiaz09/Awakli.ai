@@ -58,6 +58,7 @@ import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import DebugTokens from "./pages/DebugTokens";
 import LoraMarketplace from "./pages/LoraMarketplace";
+import LoraMarketplaceDetail from "./pages/LoraMarketplaceDetail";
 import LocationLibrary from "./pages/LocationLibrary";
 import GenerationDashboard from "./pages/GenerationDashboard";
 import MangaReader from "./pages/MangaReader";
@@ -103,6 +104,7 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/trending" component={Trending} />
         <Route path="/marketplace" component={LoraMarketplace} />
+        <Route path="/marketplace/:id" component={LoraMarketplaceDetail} />
         <Route path="/onboarding" component={Onboarding} />
 
         {/* Creation wizard (7-stage pipeline) */}

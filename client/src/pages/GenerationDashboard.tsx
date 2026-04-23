@@ -1,21 +1,27 @@
 /**
  * GenerationDashboard — Real-time DAG visualization for parallel slice generation.
- * Shows slice nodes, dependency edges, status, progress, and parallel lanes.
+ * Uses WebSocket for live updates with animated node transitions, event log, and connection status.
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   Activity, Layers, Clock, Zap, CheckCircle2, XCircle,
   Loader2, Circle, ArrowRight, Ban, ChevronDown, ChevronUp,
-  RefreshCw, Trash2, AlertTriangle, Timer, Cpu,
+  RefreshCw, Trash2, AlertTriangle, Timer, Cpu, Wifi, WifiOff,
+  Radio, ScrollText, Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import {
+  useGenerationWebSocket,
+  type ConnectionStatus,
+  type GenerationEvent,
+  type SliceStatus as WsSliceStatus,
+} from "@/hooks/useGenerationWebSocket";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 type SliceStatus = "pending" | "queued" | "generating" | "complete" | "failed" | "cancelled";
@@ -50,15 +56,44 @@ const STATUS_CONFIG: Record<SliceStatus, {
   cancelled: { color: "text-white/20", bg: "bg-white/[0.02]", border: "border-white/5", icon: Ban, label: "Cancelled" },
 };
 
+// ─── Connection Status Indicator ────────────────────────────────────────
+function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
+  const config: Record<ConnectionStatus, { icon: typeof Wifi; color: string; label: string; pulse?: boolean }> = {
+    connected: { icon: Wifi, color: "text-emerald-400", label: "Live", pulse: true },
+    connecting: { icon: Radio, color: "text-token-cyan", label: "Connecting", pulse: true },
+    reconnecting: { icon: RefreshCw, color: "text-amber-400", label: "Reconnecting", pulse: true },
+    disconnected: { icon: WifiOff, color: "text-white/20", label: "Offline" },
+  };
+  const c = config[status];
+  const Icon = c.icon;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="relative">
+        <Icon size={12} className={cn(c.color, status === "reconnecting" && "animate-spin")} />
+        {c.pulse && (
+          <span className={cn(
+            "absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-ping",
+            status === "connected" ? "bg-emerald-400/60" : "bg-token-cyan/60",
+          )} />
+        )}
+      </div>
+      <span className={cn("text-[9px] font-semibold", c.color)}>{c.label}</span>
+    </div>
+  );
+}
+
 // ─── Slice Node Component ───────────────────────────────────────────────
 function SliceNodeCard({
   node,
   isSelected,
   onClick,
+  isRecentlyUpdated,
 }: {
   node: GraphNode;
   isSelected: boolean;
   onClick: () => void;
+  isRecentlyUpdated: boolean;
 }) {
   const config = STATUS_CONFIG[node.status];
   const Icon = config.icon;
@@ -75,6 +110,14 @@ function SliceNodeCard({
       )}
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.95 }}
+      animate={isRecentlyUpdated ? {
+        boxShadow: [
+          "0 0 0 0 rgba(0,255,200,0)",
+          "0 0 20px 4px rgba(0,255,200,0.3)",
+          "0 0 0 0 rgba(0,255,200,0)",
+        ],
+      } : {}}
+      transition={isRecentlyUpdated ? { duration: 1.2, ease: "easeOut" } : {}}
     >
       {/* Importance indicator */}
       <div className={cn(
@@ -85,6 +128,16 @@ function SliceNodeCard({
       )}>
         {node.importance}
       </div>
+
+      {/* Completion flash overlay */}
+      {isRecentlyUpdated && node.status === "complete" && (
+        <motion.div
+          className="absolute inset-0 rounded-xl bg-emerald-400/20"
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 1.5 }}
+        />
+      )}
 
       <Icon size={14} className={cn(config.color, node.status === "generating" && "animate-spin")} />
       <span className="text-[9px] font-mono text-white/50">S{node.id}</span>
@@ -99,11 +152,13 @@ function ParallelLanesView({
   nodes,
   selectedNode,
   onSelectNode,
+  recentlyUpdated,
 }: {
   lanes: number[][];
   nodes: GraphNode[];
   selectedNode: number | null;
   onSelectNode: (id: number) => void;
+  recentlyUpdated: Set<number>;
 }) {
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
@@ -125,11 +180,9 @@ function ParallelLanesView({
       <div className="space-y-2">
         {lanes.map((lane, laneIdx) => (
           <div key={laneIdx} className="flex items-center gap-2">
-            {/* Lane label */}
             <div className="w-12 flex-shrink-0 text-right">
               <span className="text-[9px] font-mono text-white/20">Lane {laneIdx + 1}</span>
             </div>
-            {/* Lane nodes */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {lane.map((sliceId) => {
                 const node = nodeMap.get(sliceId);
@@ -140,6 +193,7 @@ function ParallelLanesView({
                     node={node}
                     isSelected={selectedNode === sliceId}
                     onClick={() => onSelectNode(sliceId)}
+                    isRecentlyUpdated={recentlyUpdated.has(sliceId)}
                   />
                 );
               })}
@@ -157,13 +211,14 @@ function DAGGraphView({
   edges,
   selectedNode,
   onSelectNode,
+  recentlyUpdated,
 }: {
   nodes: GraphNode[];
   edges: GraphEdge[];
   selectedNode: number | null;
   onSelectNode: (id: number) => void;
+  recentlyUpdated: Set<number>;
 }) {
-  // Group nodes by scene index for layered layout
   const sceneGroups = useMemo(() => {
     const groups = new Map<number, GraphNode[]>();
     for (const node of nodes) {
@@ -179,7 +234,6 @@ function DAGGraphView({
       <div className="flex items-start gap-6 min-w-max px-2">
         {sceneGroups.map(([sceneIdx, groupNodes], groupIdx) => (
           <div key={sceneIdx} className="flex items-center gap-6">
-            {/* Scene column */}
             <div className="flex flex-col items-center gap-2">
               <span className="text-[9px] font-semibold text-white/25 mb-1">
                 Scene {sceneIdx + 1}
@@ -190,10 +244,10 @@ function DAGGraphView({
                   node={node}
                   isSelected={selectedNode === node.id}
                   onClick={() => onSelectNode(node.id)}
+                  isRecentlyUpdated={recentlyUpdated.has(node.id)}
                 />
               ))}
             </div>
-            {/* Arrow between scene groups */}
             {groupIdx < sceneGroups.length - 1 && (
               <ArrowRight size={14} className="text-white/10 mt-6" />
             )}
@@ -205,17 +259,17 @@ function DAGGraphView({
 }
 
 // ─── Status Summary Bar ─────────────────────────────────────────────────
-function StatusSummaryBar({ status }: { status: any }) {
-  const total = status.totalSlices;
+function StatusSummaryBar({ status }: { status: { totalSlices?: number; complete?: number; generating?: number; queued?: number; failed?: number; cancelled?: number; pending?: number; progressPercent?: number; estimatedTimeRemainingSec?: number } }) {
+  const total = status.totalSlices || 0;
   if (total === 0) return null;
 
   const segments = [
-    { count: status.complete, color: "bg-emerald-500/60", label: "Complete" },
-    { count: status.generating, color: "bg-token-cyan/60", label: "Generating" },
-    { count: status.queued, color: "bg-sky-500/40", label: "Queued" },
-    { count: status.failed, color: "bg-red-500/60", label: "Failed" },
-    { count: status.cancelled, color: "bg-white/10", label: "Cancelled" },
-    { count: status.pending, color: "bg-white/5", label: "Pending" },
+    { count: status.complete || 0, color: "bg-emerald-500/60", label: "Complete" },
+    { count: status.generating || 0, color: "bg-token-cyan/60", label: "Generating" },
+    { count: status.queued || 0, color: "bg-sky-500/40", label: "Queued" },
+    { count: status.failed || 0, color: "bg-red-500/60", label: "Failed" },
+    { count: status.cancelled || 0, color: "bg-white/10", label: "Cancelled" },
+    { count: status.pending || 0, color: "bg-white/5", label: "Pending" },
   ];
 
   return (
@@ -223,10 +277,12 @@ function StatusSummaryBar({ status }: { status: any }) {
       <div className="flex h-3 rounded-full overflow-hidden bg-white/5">
         {segments.map((seg, i) =>
           seg.count > 0 ? (
-            <div
+            <motion.div
               key={i}
-              className={cn(seg.color, "transition-all duration-700")}
-              style={{ width: `${(seg.count / total) * 100}%` }}
+              className={cn(seg.color)}
+              initial={false}
+              animate={{ width: `${(seg.count / total) * 100}%` }}
+              transition={{ duration: 0.7, ease: "easeInOut" }}
             />
           ) : null,
         )}
@@ -248,7 +304,7 @@ function StatusSummaryBar({ status }: { status: any }) {
 }
 
 // ─── Node Detail Panel ──────────────────────────────────────────────────
-function NodeDetailPanel({ node, nodes }: { node: GraphNode; nodes: GraphNode[] }) {
+function NodeDetailPanel({ node, nodes, wsStatus }: { node: GraphNode; nodes: GraphNode[]; wsStatus?: WsSliceStatus }) {
   const config = STATUS_CONFIG[node.status];
   const Icon = config.icon;
   const deps = node.dependsOn.map((id) => nodes.find((n) => n.id === id)).filter(Boolean);
@@ -278,7 +334,7 @@ function NodeDetailPanel({ node, nodes }: { node: GraphNode; nodes: GraphNode[] 
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
           <div className="text-[9px] text-white/25">Scene</div>
           <div className="text-xs font-medium text-white/60">{node.sceneIndex + 1}</div>
@@ -287,6 +343,24 @@ function NodeDetailPanel({ node, nodes }: { node: GraphNode; nodes: GraphNode[] 
           <div className="text-[9px] text-white/25">Dependencies</div>
           <div className="text-xs font-medium text-white/60">{node.dependsOn.length}</div>
         </div>
+        {wsStatus?.durationMs && (
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+            <div className="text-[9px] text-white/25">Duration</div>
+            <div className="text-xs font-medium text-white/60">{(wsStatus.durationMs / 1000).toFixed(1)}s</div>
+          </div>
+        )}
+        {wsStatus?.provider && (
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+            <div className="text-[9px] text-white/25">Provider</div>
+            <div className="text-xs font-medium text-token-cyan/70">{wsStatus.provider}</div>
+          </div>
+        )}
+        {wsStatus?.error && (
+          <div className="col-span-3 p-2 rounded-lg bg-red-500/5 border border-red-500/10">
+            <div className="text-[9px] text-red-400/60">Error</div>
+            <div className="text-xs font-medium text-red-300/80">{wsStatus.error}</div>
+          </div>
+        )}
       </div>
 
       {deps.length > 0 && (
@@ -310,6 +384,98 @@ function NodeDetailPanel({ node, nodes }: { node: GraphNode; nodes: GraphNode[] 
         </div>
       )}
     </motion.div>
+  );
+}
+
+// ─── Live Event Log ─────────────────────────────────────────────────────
+function EventLog({ events }: { events: GenerationEvent[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const logRef = useRef<HTMLDivElement>(null);
+  const visibleEvents = expanded ? events.slice(-50) : events.slice(-5);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [visibleEvents.length]);
+
+  const eventIcon = (type: string) => {
+    switch (type) {
+      case "slice_started": return <Zap size={9} className="text-token-cyan" />;
+      case "slice_complete": return <CheckCircle2 size={9} className="text-emerald-400" />;
+      case "slice_failed": return <XCircle size={9} className="text-red-400" />;
+      case "episode_complete": return <Sparkles size={9} className="text-token-gold" />;
+      case "progress_update": return <Activity size={9} className="text-white/20" />;
+      default: return <Circle size={9} className="text-white/10" />;
+    }
+  };
+
+  const formatTimestamp = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  };
+
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-3 hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ScrollText size={12} className="text-white/30" />
+          <span className="text-[10px] font-semibold text-white/40">Live Event Log</span>
+          <Badge variant="outline" className="text-[8px] border-white/10 text-white/20">
+            {events.length} events
+          </Badge>
+        </div>
+        {expanded ? <ChevronUp size={12} className="text-white/20" /> : <ChevronDown size={12} className="text-white/20" />}
+      </button>
+
+      <AnimatePresence>
+        {(expanded || events.length > 0) && (
+          <motion.div
+            initial={false}
+            animate={{ height: expanded ? 240 : 120 }}
+            className="overflow-hidden"
+          >
+            <div
+              ref={logRef}
+              className="px-3 pb-3 space-y-1 overflow-y-auto"
+              style={{ maxHeight: expanded ? 240 : 120 }}
+            >
+              {visibleEvents.map((event, i) => (
+                <motion.div
+                  key={`${event.timestamp}-${i}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2 py-0.5"
+                >
+                  {eventIcon(event.type)}
+                  <span className="text-[8px] font-mono text-white/15 w-16 flex-shrink-0">
+                    {formatTimestamp(event.timestamp)}
+                  </span>
+                  <span className="text-[9px] text-white/40 truncate">
+                    {event.type === "slice_started" && `Slice #${event.data.sliceId} started${event.data.provider ? ` (${event.data.provider})` : ""}`}
+                    {event.type === "slice_complete" && `Slice #${event.data.sliceId} complete${event.data.durationMs ? ` (${((event.data.durationMs as number) / 1000).toFixed(1)}s)` : ""}`}
+                    {event.type === "slice_failed" && `Slice #${event.data.sliceId} failed: ${event.data.error || "Unknown error"}`}
+                    {event.type === "episode_complete" && `Episode generation complete!`}
+                    {event.type === "progress_update" && `Progress: ${event.data.complete}/${event.data.totalSlices} slices`}
+                    {event.type === "connection_ack" && `Connected to episode #${event.episodeId}`}
+                  </span>
+                </motion.div>
+              ))}
+              {events.length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-[9px] text-white/15">Waiting for events...</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -365,11 +531,12 @@ export default function GenerationDashboard() {
   const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
   const [selectedNode, setSelectedNode] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"dag" | "lanes">("lanes");
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Set<number>>(new Set());
 
-  // Fetch active episodes
+  // Fetch active episodes (slow poll as fallback)
   const { data: activeEpisodes } = trpc.parallelSlice.activeEpisodes.useQuery(
     undefined,
-    { refetchInterval: 5000 },
+    { refetchInterval: 10000 },
   );
 
   // Auto-select first episode
@@ -379,17 +546,84 @@ export default function GenerationDashboard() {
     }
   }, [activeEpisodes, selectedEpisode]);
 
-  // Fetch status for selected episode
-  const { data: status } = trpc.parallelSlice.getStatus.useQuery(
-    { episodeId: selectedEpisode! },
-    { enabled: !!selectedEpisode, refetchInterval: 3000 },
-  );
+  // WebSocket connection for live updates
+  const ws = useGenerationWebSocket({
+    episodeId: selectedEpisode,
+    enabled: !!selectedEpisode,
+    onSliceStarted: useCallback((data: Record<string, unknown>) => {
+      const sliceId = data.sliceId as number;
+      setRecentlyUpdated((prev) => new Set([...Array.from(prev), sliceId]));
+      setTimeout(() => {
+        setRecentlyUpdated((prev) => {
+          const next = new Set(Array.from(prev));
+          next.delete(sliceId);
+          return next;
+        });
+      }, 2000);
+    }, []),
+    onSliceComplete: useCallback((data: Record<string, unknown>) => {
+      const sliceId = data.sliceId as number;
+      setRecentlyUpdated((prev) => new Set([...Array.from(prev), sliceId]));
+      setTimeout(() => {
+        setRecentlyUpdated((prev) => {
+          const next = new Set(Array.from(prev));
+          next.delete(sliceId);
+          return next;
+        });
+      }, 2000);
+    }, []),
+    onSliceFailed: useCallback((data: Record<string, unknown>) => {
+      toast.error(`Slice #${data.sliceId} failed: ${data.error || "Unknown error"}`);
+    }, []),
+    onEpisodeComplete: useCallback(() => {
+      toast.success("Episode generation complete!", { icon: "🎉" });
+    }, []),
+  });
 
-  // Fetch graph for selected episode
+  // Fetch graph for selected episode (fallback + initial load)
   const { data: graph } = trpc.parallelSlice.getGraph.useQuery(
     { episodeId: selectedEpisode! },
-    { enabled: !!selectedEpisode, refetchInterval: 3000 },
+    { enabled: !!selectedEpisode, refetchInterval: ws.connectionStatus === "connected" ? 15000 : 3000 },
   );
+
+  // Fetch status (fallback when WS disconnected)
+  const { data: polledStatus } = trpc.parallelSlice.getStatus.useQuery(
+    { episodeId: selectedEpisode! },
+    { enabled: !!selectedEpisode && ws.connectionStatus !== "connected", refetchInterval: 3000 },
+  );
+
+  // Merge WS progress with polled status — prefer WS when connected
+  const status = useMemo(() => {
+    if (ws.connectionStatus === "connected" && ws.progress) {
+      return {
+        totalSlices: ws.progress.totalSlices,
+        pending: ws.progress.pending,
+        generating: ws.progress.generating,
+        complete: ws.progress.complete,
+        failed: ws.progress.failed,
+        queued: 0,
+        cancelled: 0,
+        progressPercent: ws.progress.percentage,
+        estimatedTimeRemainingSec: ws.progress.estimatedTimeRemainingSec,
+      };
+    }
+    return polledStatus;
+  }, [ws.connectionStatus, ws.progress, polledStatus]);
+
+  // Merge WS slice statuses into graph nodes for live updates
+  const liveGraph = useMemo(() => {
+    if (!graph) return null;
+    if (ws.connectionStatus !== "connected" || ws.sliceStatuses.size === 0) return graph;
+
+    const updatedNodes = graph.nodes.map((node: GraphNode) => {
+      const wsSlice = ws.sliceStatuses.get(node.id);
+      if (wsSlice) {
+        return { ...node, status: wsSlice.status as SliceStatus };
+      }
+      return node;
+    });
+    return { ...graph, nodes: updatedNodes };
+  }, [graph, ws.connectionStatus, ws.sliceStatuses]);
 
   const cancelMut = trpc.parallelSlice.cancel.useMutation({
     onSuccess: () => toast.success("Generation cancelled"),
@@ -403,8 +637,13 @@ export default function GenerationDashboard() {
   });
 
   const selectedNodeData = useMemo(
-    () => graph?.nodes.find((n: GraphNode) => n.id === selectedNode) ?? null,
-    [graph, selectedNode],
+    () => liveGraph?.nodes.find((n: GraphNode) => n.id === selectedNode) ?? null,
+    [liveGraph, selectedNode],
+  );
+
+  const selectedWsStatus = useMemo(
+    () => selectedNode ? ws.sliceStatuses.get(selectedNode) : undefined,
+    [selectedNode, ws.sliceStatuses],
   );
 
   const formatTime = (seconds: number) => {
@@ -427,35 +666,52 @@ export default function GenerationDashboard() {
             Real-time visualization of parallel slice generation
           </p>
         </div>
-        {selectedEpisode && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <ConnectionIndicator status={ws.connectionStatus} />
+          {ws.connectionStatus === "disconnected" && selectedEpisode && (
             <Button
               size="sm"
               variant="outline"
-              onClick={() => cancelMut.mutate({ episodeId: selectedEpisode })}
-              className="h-7 text-[10px] bg-transparent text-red-300/60 border-red-500/20 hover:bg-red-500/10"
-              disabled={cancelMut.isPending}
+              onClick={ws.reconnect}
+              className="h-6 text-[9px] bg-transparent text-white/30 border-white/10 hover:bg-white/5"
             >
-              <Ban size={10} className="mr-1" /> Cancel
+              <RefreshCw size={9} className="mr-1" /> Reconnect
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => cleanupMut.mutate({ episodeId: selectedEpisode })}
-              className="h-7 text-[10px] bg-transparent text-white/30 border-white/10 hover:bg-white/5"
-              disabled={cleanupMut.isPending}
-            >
-              <Trash2 size={10} className="mr-1" /> Cleanup
-            </Button>
-          </div>
-        )}
+          )}
+          {selectedEpisode && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => cancelMut.mutate({ episodeId: selectedEpisode })}
+                className="h-7 text-[10px] bg-transparent text-red-300/60 border-red-500/20 hover:bg-red-500/10"
+                disabled={cancelMut.isPending}
+              >
+                <Ban size={10} className="mr-1" /> Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => cleanupMut.mutate({ episodeId: selectedEpisode })}
+                className="h-7 text-[10px] bg-transparent text-white/30 border-white/10 hover:bg-white/5"
+                disabled={cleanupMut.isPending}
+              >
+                <Trash2 size={10} className="mr-1" /> Cleanup
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Episode selector */}
       <EpisodeSelector
         activeEpisodes={activeEpisodes?.episodes ?? []}
         selectedEpisode={selectedEpisode}
-        onSelect={setSelectedEpisode}
+        onSelect={(id) => {
+          setSelectedEpisode(id);
+          setSelectedNode(null);
+          setRecentlyUpdated(new Set());
+        }}
       />
 
       {selectedEpisode && status && (
@@ -464,29 +720,50 @@ export default function GenerationDashboard() {
           <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-white/50">Overall Progress</span>
-              <span className="text-sm font-bold text-token-cyan tabular-nums">
-                {status.progressPercent.toFixed(1)}%
-              </span>
+              <div className="flex items-center gap-2">
+                {ws.connectionStatus === "connected" && (
+                  <Badge variant="outline" className="text-[8px] border-emerald-500/20 text-emerald-400/60">
+                    <Radio size={7} className="mr-1" /> LIVE
+                  </Badge>
+                )}
+                <span className="text-sm font-bold text-token-cyan tabular-nums">
+                  {(status.progressPercent || 0).toFixed(1)}%
+                </span>
+              </div>
             </div>
-            <Progress value={status.progressPercent} className="h-2" />
+            <Progress value={status.progressPercent || 0} className="h-2" />
             <div className="grid grid-cols-4 gap-3">
               <div className="text-center">
                 <div className="text-lg font-bold text-white/70">{status.totalSlices}</div>
                 <div className="text-[9px] text-white/25">Total</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-emerald-400">{status.complete}</div>
+                <motion.div
+                  key={status.complete}
+                  initial={{ scale: 1.3 }}
+                  animate={{ scale: 1 }}
+                  className="text-lg font-bold text-emerald-400"
+                >
+                  {status.complete}
+                </motion.div>
                 <div className="text-[9px] text-white/25">Complete</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-token-cyan">{status.generating}</div>
+                <motion.div
+                  key={status.generating}
+                  initial={{ scale: 1.3 }}
+                  animate={{ scale: 1 }}
+                  className="text-lg font-bold text-token-cyan"
+                >
+                  {status.generating}
+                </motion.div>
                 <div className="text-[9px] text-white/25">Active</div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Timer size={12} className="text-white/30" />
                   <span className="text-lg font-bold text-white/50">
-                    {formatTime(status.estimatedTimeRemainingSec)}
+                    {formatTime(status.estimatedTimeRemainingSec || 0)}
                   </span>
                 </div>
                 <div className="text-[9px] text-white/25">ETA</div>
@@ -494,6 +771,22 @@ export default function GenerationDashboard() {
             </div>
             <StatusSummaryBar status={status} />
           </div>
+
+          {/* Episode complete celebration */}
+          <AnimatePresence>
+            {ws.isEpisodeComplete && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-token-cyan/10 to-token-gold/10 border border-emerald-500/20 text-center"
+              >
+                <Sparkles size={24} className="mx-auto text-token-gold mb-2" />
+                <h3 className="text-sm font-bold text-white/80">Episode Generation Complete!</h3>
+                <p className="text-xs text-white/40 mt-1">All slices have been processed. Your episode is ready for assembly.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* View mode toggle */}
           <div className="flex items-center gap-2">
@@ -526,21 +819,23 @@ export default function GenerationDashboard() {
           </div>
 
           {/* Graph visualization */}
-          {graph ? (
+          {liveGraph ? (
             <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02]">
               {viewMode === "lanes" ? (
                 <ParallelLanesView
-                  lanes={graph.parallelLanes}
-                  nodes={graph.nodes}
+                  lanes={liveGraph.parallelLanes}
+                  nodes={liveGraph.nodes}
                   selectedNode={selectedNode}
                   onSelectNode={setSelectedNode}
+                  recentlyUpdated={recentlyUpdated}
                 />
               ) : (
                 <DAGGraphView
-                  nodes={graph.nodes}
-                  edges={graph.edges}
+                  nodes={liveGraph.nodes}
+                  edges={liveGraph.edges}
                   selectedNode={selectedNode}
                   onSelectNode={setSelectedNode}
+                  recentlyUpdated={recentlyUpdated}
                 />
               )}
             </div>
@@ -553,13 +848,18 @@ export default function GenerationDashboard() {
 
           {/* Node detail panel */}
           <AnimatePresence>
-            {selectedNodeData && graph && (
-              <NodeDetailPanel node={selectedNodeData} nodes={graph.nodes} />
+            {selectedNodeData && liveGraph && (
+              <NodeDetailPanel node={selectedNodeData} nodes={liveGraph.nodes} wsStatus={selectedWsStatus} />
             )}
           </AnimatePresence>
 
+          {/* Live Event Log */}
+          {ws.connectionStatus === "connected" && (
+            <EventLog events={ws.events} />
+          )}
+
           {/* Failed slices alert */}
-          {status.failed > 0 && (
+          {(status.failed || 0) > 0 && (
             <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/10 flex items-start gap-2">
               <AlertTriangle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
               <div>

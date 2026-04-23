@@ -5065,3 +5065,43 @@
 - [x] Show savings breakdown: RIFE strategy, importance routing, background reuse, voice cache
 - [x] Integrate BudgetModeToggle into CreateWizardLayout CreditMeter panel
 - [x] BudgetModeToggle integrated with local state (per-session)
+
+## WebSocket Real-Time Generation Dashboard Updates
+
+### Server-Side WebSocket
+- [x] Create `server/ws-generation.ts` — WebSocket server for generation events
+- [x] Event types: slice_started, slice_complete, slice_failed, episode_complete, progress_update
+- [x] Convenience emitters: emitSliceStarted, emitSliceComplete, emitSliceFailed, emitProgressUpdate, emitEpisodeComplete
+- [x] Room-based subscriptions per episodeId so clients only get relevant events
+- [x] Heartbeat/ping-pong for connection health (30s interval)
+
+### Client-Side WebSocket Integration
+- [x] Create `client/src/hooks/useGenerationWebSocket.ts` — custom hook for WS connection
+- [x] Auto-reconnect with exponential backoff
+- [x] Update GenerationDashboard.tsx to use WebSocket instead of polling
+- [x] Animate DAG node transitions (pending → generating pulse → complete glow → failed shake)
+- [x] Add real-time progress bar updates and ETA recalculation
+- [x] Toast notifications for slice completion and failures
+
+## LoRA Detail Page (/marketplace/:id)
+
+### Backend Endpoints
+- [x] Reuse existing `loraMarketplace.get` endpoint for full LoRA detail (already includes preview images, rating, category)
+- [x] Reuse existing `loraMarketplace.reviews` paginated endpoint with star ratings
+- [x] Reuse existing `loraMarketplace.review` endpoint with rating (1-5) and comment
+- [x] Fork & Fine-tune navigates to /create/setup with baseLoraId query param (no separate endpoint needed)
+
+### Frontend Page
+- [x] Create LoraMarketplaceDetail.tsx at /marketplace/:id
+- [x] Preview gallery with image carousel/lightbox
+- [x] Star rating display with aggregate rating and count
+- [x] Review list with user avatars, ratings, and comments
+- [x] Submit review form with interactive star selector and text input
+- [x] "Fork & Fine-tune" button that navigates to character setup with pre-filled base LoRA
+- [x] Training savings callout showing cost reduction from using base (animated progress bar)
+- [x] Owner controls (unpublish) and license info card
+- [x] Register /marketplace/:id route in App.tsx
+### Tests
+- [x] Vitest: WebSocket generation module (getConnectionStats, broadcastToEpisode, convenience emitters)
+- [x] Vitest: LoRA detail page backend (getLoraById, getReviews, calculateRevenueShare, calculateTrainingSavings)
+- [x] All 22 new tests passing (ws-lora-detail.test.ts)
