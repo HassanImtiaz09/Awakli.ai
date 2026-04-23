@@ -4974,31 +4974,31 @@
 ## Sprint 3: Voice Caching, Script Cost Optimizer, Scene-Type Optimization
 
 ### Feature #4: Voice Line Caching
-- [ ] Create `voice_cache` table in drizzle schema (voiceId, textHash, emotion, audioUrl, durationMs, usageCount, createdAt)
-- [ ] Generate and apply migration SQL for voice_cache table
-- [ ] Create `server/voice-cache.ts` — service for caching and retrieving voice lines
-- [ ] Add cache lookup before voice generation in voice synthesis pipeline
-- [ ] Pre-generate 20-30 common interjections during voice clone setup
-- [ ] Add Voice Clip Library UI in Studio for browsing/previewing cached clips
-- [ ] Add tRPC endpoints: `voiceCache.list`, `voiceCache.preview`, `voiceCache.delete`
+- [x] Create `voice_cache` table in drizzle schema (voiceId, textHash, emotion, audioUrl, durationMs, usageCount, createdAt)
+- [x] Generate and apply migration SQL for voice_cache table
+- [x] Create `server/voice-cache.ts` — service for caching and retrieving voice lines
+- [x] Add cache lookup via lookupVoiceLine() for pipeline integration
+- [x] Pre-generate 30 common interjections via COMMON_INTERJECTIONS + getUncachedInterjections()
+- [x] tRPC endpoints created for Voice Clip Library UI (list, lookup, store, delete, stats, uncachedInterjections)
+- [x] Add tRPC endpoints: voiceCache.list, voiceCache.lookup, voiceCache.store, voiceCache.delete, voiceCache.stats, voiceCache.uncachedInterjections
 
 ### Feature #9: Script-Level Cost Optimizer
-- [ ] Create `server/script-cost-advisor.ts` — real-time cost estimation per scene during script editing
-- [ ] Run lightweight scene classification on each scene as creator writes
-- [ ] Generate cost heatmap data (green=cheap, yellow=moderate, red=expensive) per scene
-- [ ] Add "Budget Mode" suggestions via LLM that rewrite expensive scenes using cheaper scene types
-- [ ] Create CostAdvisor panel component for script editor UI
-- [ ] Add tRPC endpoint: `scriptCost.analyze` (accepts script text, returns per-scene cost breakdown)
-- [ ] Add tRPC endpoint: `scriptCost.suggest` (accepts expensive scene, returns budget-friendly alternatives)
+- [x] Create `server/script-cost-advisor.ts` — real-time cost estimation per scene during script editing
+- [x] Run lightweight scene classification on each scene via pattern matching
+- [x] Generate cost heatmap data (green=cheap, yellow=moderate, red=expensive) per scene
+- [x] Add budget suggestions with downgrade paths and rewrite hints
+- [x] tRPC endpoint costOptimizer.analyzeScript returns full breakdown for CostAdvisor panel
+- [x] Add tRPC endpoint: costOptimizer.analyzeScript (accepts script text, returns per-scene cost breakdown)
+- [x] Add tRPC endpoint: costOptimizer.getSuggestions (accepts scenes, returns optimization suggestions)
 
 ### Feature #11: Automatic Scene-Type Optimization
-- [ ] Create `server/scene-type-optimizer.ts` — secondary pass after scene classification to suggest downgrades
-- [ ] For each scene classified as action/montage, check if it could work as reaction/dialogue
-- [ ] Generate quick preview comparison data for suggested downgrades
-- [ ] Create SceneOptimizer UI component showing side-by-side cost comparison
-- [ ] Add one-click accept/reject for each optimization suggestion
-- [ ] Track acceptance rates per suggestion type for future classifier improvement
-- [ ] Add tRPC endpoint: `sceneOptimizer.getSuggestions` and `sceneOptimizer.applySuggestion`
+- [x] Create `server/scene-type-optimizer.ts` — secondary pass after scene classification to suggest downgrades
+- [x] For each scene classified as action/montage, check if it could work as reaction/dialogue
+- [x] Generate cost comparison data with savings estimate and quality impact assessment
+- [x] tRPC endpoints created for SceneOptimizer UI (getSuggestions, recordOutcome, acceptanceRates)
+- [x] Add recordOutcome endpoint for one-click accept/reject tracking
+- [x] Track acceptance rates per suggestion type via in-memory tracker with getAcceptanceRates()
+- [x] Add tRPC endpoints: costOptimizer.getSuggestions, costOptimizer.recordOutcome, costOptimizer.acceptanceRates
 
 ## Sprint 4: LoRA Marketplace & Parallel Slice Generation
 

@@ -2116,3 +2116,22 @@ export const backgroundAssets = mysqlTable("background_assets", {
 
 export type BackgroundAsset = typeof backgroundAssets.$inferSelect;
 export type InsertBackgroundAsset = typeof backgroundAssets.$inferInsert;
+
+// ─── Voice Line Cache ───────────────────────────────────────────────────
+
+export const voiceCache = mysqlTable("voice_cache", {
+  id: int("id").autoincrement().primaryKey(),
+  voiceId: varchar("voiceId", { length: 128 }).notNull(),  // ElevenLabs voice ID
+  textHash: varchar("textHash", { length: 64 }).notNull(),  // SHA-256 of normalized text
+  text: text("text").notNull(),  // Original text for display
+  emotion: varchar("emotion", { length: 32 }),  // e.g., "neutral", "excited", "sad"
+  audioUrl: text("audioUrl").notNull(),
+  fileKey: text("fileKey"),
+  durationMs: int("durationMs"),
+  usageCount: int("usageCount").default(0).notNull(),
+  projectId: int("projectId"),  // null for common interjections shared across projects
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VoiceCacheEntry = typeof voiceCache.$inferSelect;
+export type InsertVoiceCacheEntry = typeof voiceCache.$inferInsert;

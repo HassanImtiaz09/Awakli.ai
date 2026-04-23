@@ -90,6 +90,8 @@ import { captionsRouter } from "./routers-captions";
 import { engagementRouter } from "./routers-engagement";
 import { backgroundsRouter } from "./routers-backgrounds";
 import { inpaintingRouter } from "./routers-inpainting";
+import { voiceCacheRouter } from "./routers-voice-cache";
+import { costOptimizerRouter } from "./routers-cost-optimizer";
 import { tierSamplerRouter } from "./routers-tier-sampler";
 import {
   gateReviewRouter, pipelineStageRouter, batchReviewRouter,
@@ -2419,6 +2421,12 @@ export const appRouter = router({
 
   // Targeted Inpainting
   inpainting: inpaintingRouter,
+
+  // Voice Line Caching
+  voiceCache: voiceCacheRouter,
+
+  // Script Cost Optimizer & Scene-Type Optimization
+  costOptimizer: costOptimizerRouter,
 });
 
 export type AppRouter = typeof appRouter;
