@@ -53,6 +53,7 @@ import CreatorAnalytics from "./pages/CreatorAnalytics";
 import CharacterLibrary from "./pages/CharacterLibrary";
 import CharacterDetail from "./pages/CharacterDetail";
 import BatchTraining from "./pages/BatchTraining";
+import BatchAssemblyQueue from "./pages/BatchAssemblyQueue";
 import ConsistencyReport from "./pages/ConsistencyReport";
 import LineartPipeline from "./pages/LineartPipeline";
 import DebugTokens from "./pages/DebugTokens";
@@ -135,6 +136,7 @@ function Router() {
         <Route path="/characters/:id" component={CharacterDetail} />
         <Route path="/characters/:id/consistency" component={ConsistencyReport} />
         <Route path="/batch-training" component={BatchTraining} />
+        <Route path="/studio/batch-assembly" component={BatchAssemblyQueue} />
 
         {/* Account / billing */}
         <Route path="/usage" component={UsageDashboard} />

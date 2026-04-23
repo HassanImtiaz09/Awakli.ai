@@ -283,10 +283,10 @@ export default function AnimeWatchPage() {
                   className="absolute inset-0 w-full h-full object-contain bg-black"
                   poster={player.streamThumbnailUrl || undefined}
                 >
-                  {player.srtUrl && (
+                  {(player.vttUrl || player.srtUrl) && (
                     <track
                       kind="subtitles"
-                      src={player.srtUrl}
+                      src={(player.vttUrl || player.srtUrl) ?? undefined}
                       srcLang="en"
                       label="English"
                       default
@@ -328,10 +328,13 @@ export default function AnimeWatchPage() {
                     {formatDate(episode.publishedAt)}
                   </span>
                 )}
-                {player?.srtUrl && (
-                  <span className="flex items-center gap-1.5 text-token-mint">
-                    <Subtitles className="w-4 h-4" />
-                    Subtitles
+                {(player?.srtUrl || player?.vttUrl) && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-token-mint/15 text-token-mint text-xs font-semibold">
+                      <Subtitles className="w-3.5 h-3.5" />
+                      CC
+                    </span>
+                    <span className="text-text-secondary">Subtitles</span>
                   </span>
                 )}
               </div>

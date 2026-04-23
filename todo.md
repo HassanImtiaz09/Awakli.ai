@@ -4729,3 +4729,121 @@
 - [x] Unit: subtitle timestamps align with slice timeline offsets
 - [x] Unit: animePublish router endpoint validation and auth
 - [x] Integration: full flow (generate subtitles → publish → player URL available) — 51 tests passing
+
+## Milestone 8: Batch Assembly Queue
+
+### Database
+- [x] Create `assembly_queue` table — id, userId, episodeId, projectId, status (queued/assembling/streaming/completed/failed), priority, queuedAt, startedAt, completedAt, error, retryCount
+- [x] Generate and apply migration SQL (0042_batch_assembly_analytics.sql)
+
+### Service Module
+- [x] Create `server/batch-assembly-queue.ts` — orchestrates sequential assembly + stream delivery for multiple episodes
+- [x] `enqueueBatchAssembly(userId, episodeIds)` — validate episodes, check tier eligibility, create queue entries
+- [x] `processNextInQueue(userId)` — pick highest-priority queued item, run assembleEpisodeWithCredits → deliverToStream
+- [x] `getQueueDashboard(userId)` — return queue items with status, position, ETA estimates
+- [x] `cancelQueueItem(userId, queueItemId)` — cancel a queued (not yet started) item
+- [x] `retryFailedItem(userId, queueItemId)` — re-queue a failed item
+- [x] Tier gating: free_trial=1, creator=3, creator_pro=5, studio=8, studio_pro=10, enterprise=20
+- [x] Auto-advance: after one episode completes, automatically start the next queued item
+- [x] Concurrency: max 1 assembly running per user at a time
+
+### tRPC Endpoints
+- [x] Add `batchAssembly.enqueue` — submit episodes for batch assembly
+- [x] Add `batchAssembly.getQueue` — get user's assembly queue with status and positions
+- [x] Add `batchAssembly.cancel` — cancel a queued item
+- [x] Add `batchAssembly.retry` — retry a failed item
+- [x] Add `batchAssembly.getEstimate` — estimate time and credit cost for batch assembly
+- [x] Add `batchAssembly.getLimits` — get tier-based batch limits
+- [x] Register batchAssembly router in appRouter
+
+### Frontend
+- [x] Create BatchAssemblyQueue page at `/studio/batch-assembly`
+- [x] Queue dashboard: list of queued/running/completed/failed episodes with status badges
+- [x] Episode selector: multi-select episodes from a project for batch assembly
+- [x] Progress indicators: current assembly phase for active item, position in queue for waiting items
+- [x] Cancel/retry action buttons per queue item
+- [x] Credit cost estimate before submission
+- [x] Register route in App.tsx
+
+### Tests
+- [x] Unit: enqueueBatchAssembly validates episodes and tier limits
+- [x] Unit: processNextInQueue picks correct item and runs assembly pipeline
+- [x] Unit: cancelQueueItem only cancels queued (not running) items
+- [x] Unit: tier gating enforces correct limits per subscription tier
+- [x] Integration: full batch flow (enqueue → process → complete → auto-advance) — 26 tests passing
+
+## Milestone 9: Episode Analytics Dashboard
+
+### Database
+- [x] Create `episode_views` table — id, episodeId, projectId, viewerUserId (nullable), viewerIp (hashed), watchDurationSeconds, completionPercent, country, device, referrer, createdAt
+- [x] Generate and apply migration SQL (included in 0042_batch_assembly_analytics.sql)
+
+### Service Module
+- [x] Create `server/episode-analytics.ts` — aggregation service for episode-level analytics
+- [x] `recordEpisodeView(input)` — insert view record with device detection, IP hashing, geo/referrer data
+- [x] `updateViewProgress(viewId, duration, completion)` — heartbeat for watch progress
+- [x] `getEpisodeViewStats(userId)` — per-episode stats: total views, unique viewers, avg watch time, avg completion, today/week counts
+- [x] `getEpisodeAnalyticsDashboard(userId, days)` — combined dashboard query with all aggregations
+- [x] `getViewsTimeSeries(userId, days)` — daily view counts with gap-filling for time-series chart
+- [x] `getTopCountries(userId)` — top 10 countries by view count
+- [x] `getDeviceBreakdown(userId)` — views by device type (desktop/mobile/tablet/unknown)
+
+### tRPC Endpoints
+- [x] Add `episodeAnalytics.recordView` — public endpoint to record a view event
+- [x] Add `episodeAnalytics.updateProgress` — heartbeat for watch duration/completion
+- [x] Add `episodeAnalytics.episodeStats` — per-episode stats for creator
+- [x] Add `episodeAnalytics.viewsTimeSeries` — time-series data with configurable days
+- [x] Add `episodeAnalytics.deviceBreakdown` — device distribution
+- [x] Add `episodeAnalytics.topCountries` — geographic distribution
+- [x] Add `episodeAnalytics.dashboard` — combined dashboard endpoint
+- [x] Register episodeAnalytics router in appRouter
+
+### Frontend
+- [x] Enhanced CreatorAnalytics page with "Episode Analytics" tab (reused existing /studio/analytics route)
+- [x] Episode stats cards: total episode views, unique viewers, avg watch time, avg completion %
+- [x] Views time-series bar chart with date range selector (7d/14d/30d/60d/90d)
+- [x] Per-episode performance table with expandable rows showing detailed stats
+- [x] Top countries leaderboard
+- [x] Device breakdown with progress bars and icons
+- [x] "Today" and "This Week" badges on episode rows
+
+### Tests
+- [x] Unit: recordEpisodeView creates correct view record with hashed IP and device detection
+- [x] Unit: getEpisodeViewStats aggregates correctly
+- [x] Unit: getViewsTimeSeries returns correct daily buckets with gap-filling
+- [x] Unit: getDeviceBreakdown and getTopCountries return correct distributions
+- [x] Integration: record views → query analytics → verify aggregations — 39 tests passing
+
+## Milestone 10: VTT Caption Upload to Cloudflare Stream
+
+### Service Module
+- [x] Add `uploadCaption(videoUid, language, vttContent)` to `server/cloudflare-stream.ts`
+- [x] Add `deleteCaption(videoUid, language)` to `server/cloudflare-stream.ts`
+- [x] Add `listCaptions(videoUid)` to `server/cloudflare-stream.ts`
+- [x] Create `server/srt-to-vtt.ts` — converts SRT format to WebVTT format
+- [x] Create `server/caption-delivery.ts` — orchestrates SRT→VTT conversion and Cloudflare upload
+- [x] `deliverCaptions(episodeId)` — fetch SRT, convert to VTT, upload VTT to S3 + Cloudflare Stream
+- [x] Auto-trigger after stream delivery completes (hook in stream-delivery.ts triggerCaptionDeliveryAsync)
+- [x] Add `vttUrl`, `captionLanguage`, and `captionStatus` fields to episodes table (migration 0043_caption_delivery.sql)
+
+### tRPC Endpoints
+- [x] Add `captions.deliver` — manually trigger caption upload for an episode
+- [x] Add `captions.getStatus` — check caption delivery status
+- [x] Add `captions.retry` — retry failed caption delivery
+- [x] Add `captions.delete` — remove captions from a stream video
+- [x] Add `captions.listStreamCaptions` — list all captions on a stream video
+- [x] Register captions router in appRouter
+
+### Frontend
+- [x] Add CC badge to AnimeWatchPage (shows green CC pill when vttUrl or srtUrl available)
+- [x] Add VTT track support to native video player (prefers vttUrl over srtUrl)
+- [x] Add caption delivery checklist item to video.tsx pre-publish flow
+- [x] Add vttUrl to getEpisodePlayer return type
+
+### Tests
+- [x] Unit: SRT to VTT conversion (timestamps, formatting, BOM handling) — 15 tests
+- [x] Unit: uploadCaption API call format and error handling
+- [x] Unit: deliverCaptions full flow (fetch SRT → convert → upload → update episode) — 11 tests
+- [x] Unit: getCaptionStatus, deleteCaptionFromStream, retryCaptionDelivery — 12 tests
+- [x] Integration: end-to-end caption delivery pipeline — 50 tests total passing
+- [x] All 228 tests passing across all milestones (178 existing + 50 new)

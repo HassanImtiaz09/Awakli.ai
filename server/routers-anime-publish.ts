@@ -302,6 +302,7 @@ export const animePublishRouter = router({
           streamThumbnailUrl: episode.streamThumbnailUrl,
           videoUrl: episode.videoUrl,
           srtUrl: episode.srtUrl,
+          vttUrl: episode.vttUrl,
         },
         characters: (characters || []).map((c) => ({
           id: c.id,

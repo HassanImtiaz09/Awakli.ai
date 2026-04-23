@@ -217,6 +217,13 @@ export default function WizardVideo() {
   const publishMut = trpc.animePublish.publish.useMutation();
   const unpublishMut = trpc.animePublish.unpublish.useMutation();
 
+  // Caption delivery integration
+  const captionStatusQuery = trpc.captions.getStatus.useQuery(
+    { episodeId: firstEpisodeId! },
+    { enabled: !!firstEpisodeId }
+  );
+  const deliverCaptionsMut = trpc.captions.deliver.useMutation();
+
   // Assembly status polling
   const [assemblyPolling, setAssemblyPolling] = useState(false);
   const { data: assemblyStatus, refetch: refetchAssemblyStatus } =
@@ -657,6 +664,21 @@ export default function WizardVideo() {
       toast.error(err.message || "Failed to generate subtitles");
     }
   }, [firstEpisodeId, generateSubtitlesMut, publishStatusQuery]);
+
+  const handleDeliverCaptions = useCallback(async () => {
+    if (!firstEpisodeId) return;
+    try {
+      const result = await deliverCaptionsMut.mutateAsync({ episodeId: firstEpisodeId });
+      if (result.success) {
+        toast.success(`Captions uploaded (${result.cueCount} cues)`);
+      } else {
+        toast.error(result.error || "Caption delivery failed");
+      }
+      captionStatusQuery.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to deliver captions");
+    }
+  }, [firstEpisodeId, deliverCaptionsMut, captionStatusQuery]);
 
   const handlePublish = useCallback(async () => {
     if (!firstEpisodeId) return;
@@ -1402,6 +1424,21 @@ export default function WizardVideo() {
                         optional
                         onGenerate={!publishStatusQuery.data?.checklist.subtitles.ready ? handleGenerateSubtitles : undefined}
                         generating={generateSubtitlesMut.isPending}
+                      />
+                      <ChecklistItem
+                        ready={captionStatusQuery?.data?.captionStatus === "ready"}
+                        label="Captions uploaded to CDN"
+                        optional
+                        onGenerate={
+                          publishStatusQuery.data?.checklist.subtitles.ready &&
+                          publishStatusQuery.data?.checklist.streamReady.ready &&
+                          captionStatusQuery?.data?.captionStatus !== "ready" &&
+                          captionStatusQuery?.data?.captionStatus !== "uploading" &&
+                          captionStatusQuery?.data?.captionStatus !== "converting"
+                            ? handleDeliverCaptions
+                            : undefined
+                        }
+                        generating={deliverCaptionsMut?.isPending || captionStatusQuery?.data?.captionStatus === "uploading" || captionStatusQuery?.data?.captionStatus === "converting"}
                       />
                       <ChecklistItem
                         ready={!!publishStatusQuery.data?.checklist.tierEligible.ready}

@@ -20,6 +20,7 @@ import {
   type StreamVideoMeta,
 } from "./cloudflare-stream";
 import { getEpisodeById, updateEpisode } from "./db";
+import { triggerCaptionDeliveryAsync } from "./caption-delivery";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -228,6 +229,13 @@ export async function deliverToStream(
     console.log(
       `[StreamDelivery] Episode ${episodeId} stream delivery complete: uid=${ready.uid}`,
     );
+
+    // Auto-trigger caption delivery if SRT subtitles are available
+    const freshEpisode = await getEpisodeById(episodeId);
+    if (freshEpisode && (freshEpisode as any).srtUrl) {
+      console.log(`[StreamDelivery] Auto-triggering caption delivery for episode ${episodeId}`);
+      triggerCaptionDeliveryAsync(episodeId);
+    }
 
     return {
       success: true,

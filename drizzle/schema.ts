@@ -172,6 +172,9 @@ export const episodes = mysqlTable("episodes", {
   streamStatus: mysqlEnum("stream_status", ["none", "uploading", "processing", "ready", "error"]).default("none"),
   srtUrl: text("srt_url"),  // Generated SRT subtitle file URL
   srtGeneratedAt: timestamp("srt_generated_at"),  // When subtitles were last generated
+  vttUrl: text("vtt_url"),  // Generated WebVTT subtitle file URL
+  captionLanguage: varchar("caption_language", { length: 10 }).default("en"),  // Caption language code (ISO 639-1)
+  captionStatus: mysqlEnum("caption_status", ["none", "converting", "uploading", "ready", "error"]).default("none"),  // Cloudflare Stream caption delivery status
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -2025,3 +2028,51 @@ export const videoSlices = mysqlTable("video_slices", {
 
 export type VideoSlice = typeof videoSlices.$inferSelect;
 export type InsertVideoSlice = typeof videoSlices.$inferInsert;
+
+// ─── Assembly Queue (Milestone 8: Batch Assembly) ───────────────────────
+
+export const assemblyQueue = mysqlTable("assembly_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  batchId: varchar("batchId", { length: 64 }).notNull(),  // Groups episodes submitted together
+  status: mysqlEnum("assemblyQueueStatus", [
+    "queued",
+    "assembling",
+    "streaming",    // Assembly done, now uploading to Cloudflare Stream
+    "completed",
+    "failed",
+  ]).default("queued").notNull(),
+  priority: int("priority").default(5).notNull(),  // 1=highest, 10=lowest
+  position: int("position").notNull(),  // Order within the batch (1-based)
+  error: text("error"),
+  retryCount: int("retryCount").default(0).notNull(),
+  estimatedCredits: int("estimatedCredits").default(0),
+  actualCredits: int("actualCredits"),
+  queuedAt: timestamp("queuedAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+});
+
+export type AssemblyQueueItem = typeof assemblyQueue.$inferSelect;
+export type InsertAssemblyQueueItem = typeof assemblyQueue.$inferInsert;
+
+// ─── Episode Views (Milestone 9: Analytics) ─────────────────────────────
+
+export const episodeViews = mysqlTable("episode_views", {
+  id: int("id").autoincrement().primaryKey(),
+  episodeId: int("episodeId").notNull().references(() => episodes.id, { onDelete: "cascade" }),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  viewerUserId: int("viewerUserId"),  // Nullable for anonymous viewers
+  viewerIpHash: varchar("viewerIpHash", { length: 64 }),  // SHA-256 hashed IP for privacy
+  watchDurationSeconds: int("watchDurationSeconds").default(0),
+  completionPercent: int("completionPercent").default(0),  // 0-100
+  country: varchar("country", { length: 2 }),  // ISO 3166-1 alpha-2
+  device: mysqlEnum("deviceType", ["desktop", "mobile", "tablet", "unknown"]).default("unknown"),
+  referrer: varchar("referrer", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EpisodeView = typeof episodeViews.$inferSelect;
+export type InsertEpisodeView = typeof episodeViews.$inferInsert;

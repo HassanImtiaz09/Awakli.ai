@@ -216,7 +216,80 @@ export async function deleteVideo(videoUid: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Full upload pipeline: upload from URL → wait → return embed info
+// Captions (WebVTT)
+// ---------------------------------------------------------------------------
+
+export interface StreamCaption {
+  label: string;
+  language: string;
+  generated?: boolean;
+}
+
+/**
+ * Upload a WebVTT caption file to a Cloudflare Stream video.
+ */
+export async function uploadCaption(
+  videoUid: string,
+  language: string,
+  vttContent: string,
+): Promise<void> {
+  const url = `${BASE_URL()}/${videoUid}/captions/${language}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${ENV.cloudflareStreamToken}`,
+      "Content-Type": "text/vtt",
+    },
+    body: vttContent,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudflare Stream caption upload failed (${res.status}): ${text}`);
+  }
+
+  const json = (await res.json()) as any;
+  if (!json.success) {
+    const errMsg = json.errors?.map((e: any) => e.message).join(", ") ?? "Unknown error";
+    throw new Error(`Cloudflare Stream caption upload error: ${errMsg}`);
+  }
+
+  console.log(`[Cloudflare Stream] Caption uploaded for video ${videoUid}, language=${language}`);
+}
+
+/**
+ * List all captions for a Cloudflare Stream video.
+ */
+export async function listCaptions(videoUid: string): Promise<StreamCaption[]> {
+  const data = await cfFetch<{ result: StreamCaption[] }>(
+    `${BASE_URL()}/${videoUid}/captions`,
+  );
+  return data.result;
+}
+
+/**
+ * Delete a caption from a Cloudflare Stream video.
+ */
+export async function deleteCaption(
+  videoUid: string,
+  language: string,
+): Promise<void> {
+  const url = `${BASE_URL()}/${videoUid}/captions/${language}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: headers(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudflare Stream caption delete failed (${res.status}): ${text}`);
+  }
+
+  console.log(`[Cloudflare Stream] Caption deleted for video ${videoUid}, language=${language}`);
+}
+
+// ---------------------------------------------------------------------------
+// Full upload pipeline: upload from URL \u2192 wait \u2192 return embed info
 // ---------------------------------------------------------------------------
 
 /**
