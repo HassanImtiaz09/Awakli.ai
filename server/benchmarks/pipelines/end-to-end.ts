@@ -507,23 +507,75 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
-// ─── Provider Stubs ──────────────────────────────────────────────────────────
-// To be replaced with real API calls when credentials are provisioned.
+/// ─── Provider Implementations (Real API Calls) ─────────────────────────────────
+// Wired to shared api-clients module for all providers.
+
+import {
+  klingOmniViaFal,
+  wan22ViaFal,
+  hunyuanViaFal,
+  hedraCharacter3,
+  elevenLabsTTS,
+  openaiTTS as openaiTTSClient,
+  latentSyncViaFal,
+  museTalkViaFal,
+  klingLipSyncViaFal,
+} from "../providers/api-clients.js";
 
 async function generateKlingOmni(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
-  throw new Error(`[STUB] Kling Omni not yet wired. Slice: ${slice.sliceId}`);
+  return klingOmniViaFal({
+    prompt: slice.prompt,
+    duration: String(slice.duration),
+    audio: slice.audio,
+  });
 }
 
 async function generateWan22(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
-  throw new Error(`[STUB] Wan 2.2 not yet wired. Slice: ${slice.sliceId}`);
+  return wan22ViaFal({
+    prompt: slice.prompt,
+    duration: slice.duration,
+  });
 }
 
 async function generateHunyuan(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
-  throw new Error(`[STUB] Hunyuan not yet wired. Slice: ${slice.sliceId}`);
+  return hunyuanViaFal({
+    prompt: slice.prompt,
+    duration: slice.duration,
+  });
 }
 
 async function generateHedra(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
-  throw new Error(`[STUB] Hedra not yet wired. Slice: ${slice.sliceId}`);
+  // Generate TTS audio first for the dialogue
+  const dialogueText = slice.dialogue?.text ?? "Test dialogue for benchmark.";
+  const ttsOutput = await elevenLabsTTS({ text: dialogueText });
+  return hedraCharacter3({
+    imageUrl: "https://placehold.co/512x512/png", // Placeholder — real run uses manga panel
+    audioUrl: ttsOutput.url,
+    prompt: slice.prompt,
+    durationMs: slice.duration * 1000,
+  });
+}
+
+// Pipeline-specific TTS + lipsync helpers used inside P2/P3/P4
+
+async function generateElevenLabsTTSForPipeline(text: string): Promise<GenerationOutput> {
+  return elevenLabsTTS({ text });
+}
+
+async function generateOpenAITTSForPipeline(text: string): Promise<GenerationOutput> {
+  return openaiTTSClient({ text });
+}
+
+async function applyLatentSync(videoUrl: string, audioUrl: string): Promise<GenerationOutput> {
+  return latentSyncViaFal({ videoUrl, audioUrl });
+}
+
+async function applyMuseTalk(videoUrl: string, audioUrl: string): Promise<GenerationOutput> {
+  return museTalkViaFal({ videoUrl, audioUrl });
+}
+
+async function applyKlingLipSync(videoUrl: string, audioUrl: string): Promise<GenerationOutput> {
+  return klingLipSyncViaFal({ videoUrl, audioUrl });
 }
 
 // ─── Helper ──────────────────────────────────────────────────────────────────

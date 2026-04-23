@@ -487,32 +487,60 @@ export async function runB7(
   return { ticketId: "B7", clips, totalCost, summary: `B7 complete: ${clips.filter((c) => c.status === "success").length}/${clips.length} clips, $${totalCost.toFixed(2)}` };
 }
 
-// ─── Provider-Specific Generation Stubs ──────────────────────────────────────
-// These will be replaced with real API calls when credentials are provisioned.
+// ─── Provider-Specific Generation (Real API Calls) ──────────────────────────
+// Wired to shared api-clients module for all providers.
 
-interface GenerationOutput {
-  url: string;
-  queueTimeMs?: number;
-  generationTimeMs?: number;
-}
+import {
+  type GenerationOutput,
+  klingOmniViaFal,
+  klingOmniViaAtlas,
+  klingOmniViaDirect,
+  klingStandardViaFal,
+  wan22ViaFal,
+  wan22ViaReplicate,
+  hunyuanViaFal,
+  hedraCharacter3,
+  elevenLabsTTS,
+  cartesiaTTS,
+  openaiTTS,
+  latentSyncViaFal,
+  museTalkViaFal,
+  klingLipSyncViaFal,
+} from "../providers/api-clients.js";
 
 async function generateKlingOmniClip(
   providerId: string,
   _apiKey: string,
   shot: Shot
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real fal.ai / Atlas Cloud / Kling Direct API calls
-  throw new Error(
-    `[STUB] Kling Omni generation not yet wired for provider ${providerId}. Shot: ${shot.id}`
-  );
+  const params = {
+    imageUrl: shot.referenceImage ?? undefined,
+    prompt: shot.prompt,
+    duration: String(shot.duration),
+    audio: shot.audio,
+  };
+
+  switch (providerId) {
+    case "fal_ai":
+      return klingOmniViaFal(params);
+    case "atlas_cloud":
+      return klingOmniViaAtlas(params);
+    case "kling_direct":
+      return klingOmniViaDirect(params);
+    default:
+      throw new Error(`Unknown Kling Omni provider: ${providerId}`);
+  }
 }
 
 async function generateKlingStandardClip(
   _apiKey: string,
   shot: Shot
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real fal.ai Kling V3 Standard API call
-  throw new Error(`[STUB] Kling Standard generation not yet wired. Shot: ${shot.id}`);
+  return klingStandardViaFal({
+    imageUrl: shot.referenceImage ?? undefined,
+    prompt: shot.prompt,
+    duration: String(shot.duration),
+  });
 }
 
 async function generateWan22Clip(
@@ -520,48 +548,81 @@ async function generateWan22Clip(
   _apiKey: string,
   shot: Shot
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real fal.ai / Replicate Wan 2.2 API calls
-  throw new Error(
-    `[STUB] Wan 2.2 generation not yet wired for provider ${providerId}. Shot: ${shot.id}`
-  );
+  const params = {
+    imageUrl: shot.referenceImage ?? undefined,
+    prompt: shot.prompt,
+    duration: shot.duration,
+  };
+
+  switch (providerId) {
+    case "fal_ai":
+      return wan22ViaFal(params);
+    case "replicate":
+      return wan22ViaReplicate(params);
+    default:
+      throw new Error(`Unknown Wan 2.2 provider: ${providerId}`);
+  }
 }
 
 async function generateHunyuanClip(
   _apiKey: string,
   shot: Shot
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real fal.ai Hunyuan V1.5 API call
-  throw new Error(`[STUB] Hunyuan generation not yet wired. Shot: ${shot.id}`);
+  return hunyuanViaFal({
+    imageUrl: shot.referenceImage ?? undefined,
+    prompt: shot.prompt,
+    duration: shot.duration,
+  });
 }
 
 async function generateHedraClip(
   _apiKey: string,
   shot: Shot
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real Hedra Character-3 API call
-  throw new Error(`[STUB] Hedra Character-3 generation not yet wired. Shot: ${shot.id}`);
+  // Hedra requires an audio URL — for B5 single-layer test we generate a quick TTS first
+  const ttsOutput = await elevenLabsTTS({ text: "This is a test dialogue for the benchmark." });
+  return hedraCharacter3({
+    imageUrl: shot.referenceImage ?? "https://placehold.co/512x512/png",
+    audioUrl: ttsOutput.url,
+    prompt: shot.prompt,
+    durationMs: shot.duration * 1000,
+  });
 }
 
 async function generateTTS(
   providerId: string,
   _apiKey: string,
-  _text: string
+  text: string
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real ElevenLabs / Cartesia / OpenAI TTS API calls
-  throw new Error(`[STUB] TTS generation not yet wired for provider ${providerId}.`);
+  switch (providerId) {
+    case "elevenlabs":
+      return elevenLabsTTS({ text });
+    case "cartesia":
+      return cartesiaTTS({ text });
+    case "openai_tts":
+      return openaiTTS({ text });
+    default:
+      throw new Error(`Unknown TTS provider: ${providerId}`);
+  }
 }
 
 async function generateLipsync(
-  providerId: string,
+  _providerId: string,
   model: string,
   _apiKey: string,
-  _videoUrl: string,
-  _audioUrl: string
+  videoUrl: string,
+  audioUrl: string
 ): Promise<GenerationOutput> {
-  // TODO: Replace with real LatentSync / MuseTalk / Kling Lip Sync API calls
-  throw new Error(
-    `[STUB] Lipsync generation not yet wired for ${model} on ${providerId}.`
-  );
+  switch (model) {
+    case "latentsync":
+      return latentSyncViaFal({ videoUrl, audioUrl });
+    case "musetalk":
+      return museTalkViaFal({ videoUrl, audioUrl });
+    case "kling_lipsync":
+      return klingLipSyncViaFal({ videoUrl, audioUrl });
+    default:
+      throw new Error(`Unknown lipsync model: ${model}`);
+  }
 }
 
 // ─── Helper ──────────────────────────────────────────────────────────────────

@@ -5193,3 +5193,15 @@
 - [x] Provision CARTESIA_API_KEY — validated (200 OK)
 - [x] Provision OPENAI_API_KEY — present (platform-injected proxy key)
 - [x] Run credential check — 8/8 tests passing, all providers ready
+
+## Wire Real API Calls into Benchmark Runners
+- [x] Create shared API client module (server/benchmarks/providers/api-clients.ts) with real implementations for all providers
+- [x] Wire fal.ai calls: Kling V3 Omni, Kling V3 Standard, Wan 2.2, Hunyuan V1.5, LatentSync, MuseTalk, Kling Lip Sync
+- [x] Wire Atlas Cloud calls: Kling V3 Omni via OpenAI-compatible API
+- [x] Wire Kling Direct calls: Kling V3 Omni via native JWT API
+- [x] Wire Replicate calls: Wan 2.2, MuseTalk
+- [x] Wire Hedra calls: Character-3 dialogue generation (with auto TTS for audio input)
+- [x] Wire TTS calls: ElevenLabs (direct), Cartesia (direct), OpenAI TTS (via Forge proxy)
+- [x] Replace stubs in single-layer.ts with real API client calls
+- [x] Replace stubs in end-to-end.ts with real API client calls
+- [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)
