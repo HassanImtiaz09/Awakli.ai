@@ -7,7 +7,7 @@
  *
  * P1 — Kling V3 Omni Control (all 18 clips via Kling Omni with audio)
  * P2 — Decomposed Balanced (Wan 2.2 + ElevenLabs + Hedra + LatentSync)
- * P3 — Decomposed Cheap (Wan 2.2 + OpenAI TTS + MuseTalk)
+ * P3 — Decomposed Cheap (Wan 2.2 + Cartesia TTS + MuseTalk)
  * P4 — Decomposed Premium (Hunyuan + ElevenLabs + Hedra + Kling Lip Sync)
  */
 
@@ -188,22 +188,45 @@ export async function runP2(script: PilotScript): Promise<PipelineResult> {
     }
   }
 
-  // --- Step 2: Generate TTS with ElevenLabs ---
+  // --- Step 2: Generate TTS audio with ElevenLabs for each dialogue slice ---
   const ttsPricing = pricingData.tts.elevenlabs;
-  const elevenKey = getProviderKey("elevenlabs");
-  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
-  const ttsCost = calculateTTSCost(allDialogueText.length, ttsPricing.perKChars);
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
 
-  // --- Step 3: Generate dialogue clips with Hedra Character-3 ---
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const timer = startTimer();
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateElevenLabsTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P2] TTS for slice ${slice.sliceId}: ${ttsOutput.url} ($${cost.toFixed(4)})`);
+    } catch (err) {
+      console.error(`  [P2] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Step 3: Generate dialogue clips with Hedra Character-3 (uses TTS audio) ---
   const hedraPricing = pricingData.video.hedra_char3;
-  const hedraKey = getProviderKey("hedra");
   let dialogueCost = 0;
 
   for (const slice of dialogueSlices) {
     const timer = startTimer();
     try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
       const { result: output, retryCount } = await withRetry(async () => {
-        return await generateHedra(hedraKey, slice);
+        return await hedraCharacter3({
+          imageUrl: "https://placehold.co/512x512/png",
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
       });
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
@@ -234,12 +257,40 @@ export async function runP2(script: PilotScript): Promise<PipelineResult> {
     }
   }
 
-  // --- Step 4: Lipsync with LatentSync (for any remaining clips needing sync) ---
+  // --- Step 4: Lipsync with LatentSync on silent clips that have dialogue audio ---
+  // For clips where we generated silent video (Wan) but have TTS audio, apply lipsync
   const lipsyncPricing = pricingData.video.latentsync_fal;
-  const lipsyncClipCount = Math.ceil(dialogueSlices.length * 0.5); // ~50% need extra lipsync
-  const lipsyncCost = lipsyncClipCount * (lipsyncPricing.perClip ?? 0.20);
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  // In P2, silent clips don't need lipsync (they have no dialogue).
+  // Hedra already produces lip-synced output. But we apply LatentSync as a quality
+  // refinement pass on ~50% of Hedra clips for benchmark comparison.
+  const lipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  ).slice(0, Math.ceil(dialogueSlices.length * 0.5));
+
+  for (const clip of lipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    const timer = startTimer();
+    try {
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyLatentSync(clip.outputUrl!, ttsOutput.url);
+      });
+      const cost = lipsyncPricing.perClip ?? 0.20;
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      console.log(`  [P2] LatentSync on slice ${sliceId}: ${lsOutput.url} ($${cost.toFixed(2)})`);
+    } catch (err) {
+      console.error(`  [P2] LatentSync failed on slice ${sliceId}:`, err);
+    }
+  }
 
   // --- Assembly (FFmpeg, free) ---
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
   const totalCost = silentCost + ttsCost + dialogueCost + lipsyncCost;
   const totalWallClockMs = pipelineTimer();
 
@@ -272,16 +323,15 @@ export async function runP2(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
-// ─── P3: Decomposed Cheap (Wan 2.2 + OpenAI TTS + MuseTalk) ─────────────────
+// ─── P3: Decomposed Cheap (Wan 2.2 + Cartesia TTS + MuseTalk) ──────────────
 
 export async function runP3(script: PilotScript): Promise<PipelineResult> {
   const pipelineTimer = startTimer();
   const clips: ClipResult[] = [];
 
-  const silentSlices = script.slices.filter((s) => !s.audio);
   const dialogueSlices = script.slices.filter((s) => s.audio);
 
-  // --- Step 1: ALL clips via Wan 2.2 (dialogue clips also start as silent) ---
+  // --- Step 1: ALL 18 clips via Wan 2.2 (dialogue clips start as silent video) ---
   const wanPricing = pricingData.video.wan22_fal;
   const falKey = getProviderKey("fal_ai");
   let videoCost = 0;
@@ -321,23 +371,68 @@ export async function runP3(script: PilotScript): Promise<PipelineResult> {
     }
   }
 
-  // --- Step 2: TTS with OpenAI (cheapest) ---
-  const ttsPricing = pricingData.tts.openai_tts;
-  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
-  const ttsCost = calculateTTSCost(allDialogueText.length, ttsPricing.perKChars);
+  // --- Step 2: TTS with Cartesia (substituted for OpenAI TTS — Forge proxy 404) ---
+  const ttsPricing = pricingData.tts.cartesia;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
 
-  // --- Step 3: Lipsync with MuseTalk (all dialogue clips) ---
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const timer = startTimer();
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateCartesiaTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P3] Cartesia TTS for slice ${slice.sliceId}: ${ttsOutput.url} ($${cost.toFixed(4)})`);
+    } catch (err) {
+      console.error(`  [P3] Cartesia TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Step 3: Lipsync with MuseTalk on dialogue clips ---
   const musetalkPricing = pricingData.video.musetalk_replicate;
-  const lipsyncCost = dialogueSlices.length * (musetalkPricing.perRun ?? 0.42);
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  for (const slice of dialogueSlices) {
+    const ttsOutput = ttsOutputs.get(slice.sliceId);
+    const videoClip = clips.find(
+      (c) => c.shotId === `slice_${slice.sliceId}` && c.status === "success"
+    );
+    if (!ttsOutput || !videoClip?.outputUrl) {
+      console.warn(`  [P3] Skipping MuseTalk for slice ${slice.sliceId}: missing TTS or video`);
+      continue;
+    }
+
+    const timer = startTimer();
+    try {
+      const { result: mtOutput } = await withRetry(async () => {
+        return await applyMuseTalk(videoClip.outputUrl!, ttsOutput.url);
+      });
+      const cost = musetalkPricing.perRun ?? 0.42;
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      // Update the clip's output URL to the lip-synced version
+      videoClip.outputUrl = mtOutput.url;
+      console.log(`  [P3] MuseTalk on slice ${slice.sliceId}: ${mtOutput.url} ($${cost.toFixed(2)})`);
+    } catch (err) {
+      console.error(`  [P3] MuseTalk failed on slice ${slice.sliceId}:`, err);
+    }
+  }
 
   // --- Assembly ---
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
   const totalCost = videoCost + ttsCost + lipsyncCost;
   const totalWallClockMs = pipelineTimer();
 
   const components = buildComponentBreakdown([
     { component: "video", provider: "fal_ai", model: "Wan 2.2", units: script._meta.totalDuration, unitType: "seconds", costUsd: videoCost },
-    { component: "tts", provider: "openai", model: "tts-1", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
-    { component: "lipsync", provider: "replicate", model: "MuseTalk", units: dialogueSlices.length, unitType: "runs", costUsd: lipsyncCost },
+    { component: "tts", provider: "cartesia", model: "sonic-2", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "lipsync", provider: "fal_ai", model: "MuseTalk", units: lipsyncClipCount, unitType: "runs", costUsd: lipsyncCost },
     { component: "assembly", provider: "local", model: "FFmpeg", units: 1, unitType: "runs", costUsd: 0 },
   ]);
 
@@ -419,21 +514,45 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
     loraCost += loraPricing.perVideo ?? 0.30;
   }
 
-  // --- Step 3: TTS with ElevenLabs ---
+  // --- Step 3: Generate TTS audio with ElevenLabs for each dialogue slice ---
   const ttsPricing = pricingData.tts.elevenlabs;
-  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
-  const ttsCost = calculateTTSCost(allDialogueText.length, ttsPricing.perKChars);
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
 
-  // --- Step 4: Dialogue clips via Hedra Character-3 ---
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const timer = startTimer();
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateElevenLabsTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P4] ElevenLabs TTS for slice ${slice.sliceId}: ${ttsOutput.url} ($${cost.toFixed(4)})`);
+    } catch (err) {
+      console.error(`  [P4] ElevenLabs TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Step 4: Dialogue clips via Hedra Character-3 (uses TTS audio) ---
   const hedraPricing = pricingData.video.hedra_char3;
-  const hedraKey = getProviderKey("hedra");
   let dialogueCost = 0;
 
   for (const slice of dialogueSlices) {
     const timer = startTimer();
     try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
       const { result: output, retryCount } = await withRetry(async () => {
-        return await generateHedra(hedraKey, slice);
+        return await hedraCharacter3({
+          imageUrl: "https://placehold.co/512x512/png",
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
       });
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
@@ -464,15 +583,39 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
     }
   }
 
-  // --- Step 5: Kling Lip Sync for remaining clips ---
+  // --- Step 5: Kling Lip Sync on Hedra dialogue clips for quality refinement ---
   const klingLipsyncPricing = pricingData.video.kling_lipsync_fal;
-  const lipsyncClipCount = Math.ceil(dialogueSlices.length * 0.5);
-  const lipsyncCost = lipsyncClipCount * calculateClipCost(10, klingLipsyncPricing.perSecond, null, null);
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  const p4LipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  ).slice(0, Math.ceil(dialogueSlices.length * 0.5));
+
+  for (const clip of p4LipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    const timer = startTimer();
+    try {
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyKlingLipSync(clip.outputUrl!, ttsOutput.url);
+      });
+      const cost = calculateClipCost(10, klingLipsyncPricing.perSecond, null, null);
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      console.log(`  [P4] Kling Lip Sync on slice ${sliceId}: ${lsOutput.url} ($${cost.toFixed(2)})`);
+    } catch (err) {
+      console.error(`  [P4] Kling Lip Sync failed on slice ${sliceId}:`, err);
+    }
+  }
 
   // --- Step 6: LoRA training (amortised) ---
   const loraTrainingAmortised = (pricingData.training.hunyuan_lora_training.estimatedCost.low + pricingData.training.hunyuan_lora_training.estimatedCost.high) / 2 / 10;
 
   // --- Assembly ---
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
   const totalCost = silentCost + loraCost + ttsCost + dialogueCost + lipsyncCost + loraTrainingAmortised;
   const totalWallClockMs = pipelineTimer();
 
@@ -516,7 +659,7 @@ import {
   hunyuanViaFal,
   hedraCharacter3,
   elevenLabsTTS,
-  openaiTTS as openaiTTSClient,
+  cartesiaTTS,
   latentSyncViaFal,
   museTalkViaFal,
   klingLipSyncViaFal,
@@ -562,8 +705,8 @@ async function generateElevenLabsTTSForPipeline(text: string): Promise<Generatio
   return elevenLabsTTS({ text });
 }
 
-async function generateOpenAITTSForPipeline(text: string): Promise<GenerationOutput> {
-  return openaiTTSClient({ text });
+async function generateCartesiaTTSForPipeline(text: string): Promise<GenerationOutput> {
+  return cartesiaTTS({ text });
 }
 
 async function applyLatentSync(videoUrl: string, audioUrl: string): Promise<GenerationOutput> {

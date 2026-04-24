@@ -5205,3 +5205,13 @@
 - [x] Replace stubs in single-layer.ts with real API client calls
 - [x] Replace stubs in end-to-end.ts with real API client calls
 - [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)
+
+## B6 TTS Dry-Run & Pipeline TTS/Lipsync Wiring
+- [x] Run B6 TTS dry-run — 2/3 providers succeeded (ElevenLabs ✓, Cartesia ✓, OpenAI TTS ✗ Forge proxy 404)
+- [x] Verify B6 output: ElevenLabs and Cartesia audio URLs confirmed working, OpenAI TTS unavailable via Forge proxy
+- [x] Substitute Cartesia for OpenAI TTS in P3 (Cheap) pipeline
+- [x] Wire TTS + lipsync steps into P2 (Balanced): Wan 2.2 → ElevenLabs TTS → Hedra → LatentSync lipsync
+- [x] Wire TTS + lipsync steps into P3 (Cheap): Wan 2.2 → Cartesia TTS → MuseTalk lipsync
+- [x] Wire TTS + lipsync steps into P4 (Premium): Hunyuan → ElevenLabs TTS → Hedra → Kling Lip Sync
+- [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)
+- [x] Run all benchmark tests to confirm no regressions (35/35 + 8/8 all passing)

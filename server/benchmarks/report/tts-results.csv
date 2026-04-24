@@ -1,0 +1,4 @@
+ticket_id,provider,model,input_chars,cost_usd,wall_clock_ms,output_url,status,error,timestamp
+B6,elevenlabs,turbo-v2.5,91,0.0091,2420,https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/benchmark/tts/elevenlabs-1777000627416-s9zdnd3g3w_d0747ab8.mp3,success,,2026-04-24T03:17:07.576Z
+B6,cartesia,sonic,91,0.0091,2428,https://d2xsxph8kpxj0f.cloudfront.net/310519663430072618/4V9sAd2k2m2djZEsU8bXCJ/benchmark/tts/cartesia-1777000629897-sbkz39yqlm_508ca782.mp3,success,,2026-04-24T03:17:10.005Z
+B6,openai_tts,tts-1,91,0,9042,,failed,OpenAI TTS failed: 404 — 404 page not found,2026-04-24T03:17:19.047Z
