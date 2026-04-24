@@ -5241,3 +5241,8 @@
 - [x] Add P5 to benchmark runner CLI
 - [x] Run P5 benchmark (18 slices, 3 min pilot)
 - [x] Compile P5 full video and compare cost/quality vs P1 and P2b
+- [x] Diagnose P5 video flaws: missing dialogue narration, 1:13 glitch transition, duplicated action sequences
+- [x] Trace each flaw to pipeline code root cause
+- [x] Regenerate reference images at native 16:9 (not 1:1) to fix Wan 2.5 422 errors
+- [x] Implement P6 pipeline (all Wan 2.5 + Hedra + LatentSync, no Kling) with fixes
+- [x] Run P6 benchmark and compile full video

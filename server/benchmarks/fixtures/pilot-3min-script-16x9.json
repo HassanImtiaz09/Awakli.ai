@@ -1,0 +1,246 @@
+{
+  "_meta": {
+    "version": "1.1.0",
+    "description": "18-slice pilot script for 3-minute (180s) end-to-end benchmark using Awakli characters (Ren + Mira) in Neo-Kyoto setting. Same script used by all pipeline variants.",
+    "totalSlices": 18,
+    "totalDuration": 180,
+    "sliceDuration": 10,
+    "shotDistribution": {
+      "silent_establishing": 5,
+      "silent_action": 2,
+      "dialogue_closeup": 10,
+      "stylised_action": 1,
+      "total": 18
+    },
+    "dialogueCharacters": 5000,
+    "referenceImages": {
+      "establishing": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "dialogue": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "action": "https://v3b.fal.media/files/b/0a97979d/HmWILzW2sq0-ep0H_R_0b.jpg"
+    },
+    "generatedBy": "Awakli Stage 1 Pipeline (Forge ImageService / Flux)",
+    "generatedAt": "2026-04-24"
+  },
+  "slices": [
+    {
+      "sliceId": 1,
+      "type": "silent_establishing",
+      "prompt": "Wide aerial view of Neo-Kyoto bay at sunrise, neon-lit skyscrapers reflected in dark harbour water, traditional pagoda silhouette among towers, cargo drones crossing the sky. Heavy morning mist, pink and amber light. Cinematic 2D anime style.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "cameraAngle": "wide_aerial"
+    },
+    {
+      "sliceId": 2,
+      "type": "dialogue_closeup",
+      "prompt": "Medium shot of Mira standing at a window in her navy sailor uniform, morning light on her face. Silver-white hair with cerulean blue tips, mechanical left arm resting on the windowsill. She speaks with quiet determination. Cinematic 2D anime style, soft backlight.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Today is the day everything changes. I can feel it.",
+        "character": "Mira",
+        "emotion": "determined"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "close_up"
+    },
+    {
+      "sliceId": 3,
+      "type": "silent_establishing",
+      "prompt": "Neo-Kyoto school hallway, students walking, holographic notice boards flickering, cherry blossom petals drifting through open windows. Cinematic 2D anime style, bright and airy.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "cameraAngle": "medium_wide"
+    },
+    {
+      "sliceId": 4,
+      "type": "dialogue_closeup",
+      "prompt": "Ren leans against a wall in his black gakuran with cyan circuit embroidery, katana at his hip. Black undercut hair with crimson streaks, emerald green eyes, scar on left cheek. He speaks with a smirk. Cinematic 2D anime style, cool blue shadows.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "You really think you can change anything? That's what they all say.",
+        "character": "Ren",
+        "emotion": "sarcastic"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 5,
+      "type": "silent_establishing",
+      "prompt": "Rooftop at lunch, two bento boxes open, Neo-Kyoto cyberpunk skyline with pagoda in background. Wind rustles across the scene. Cinematic 2D anime style, warm midday light.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "cameraAngle": "over_shoulder"
+    },
+    {
+      "sliceId": 6,
+      "type": "dialogue_closeup",
+      "prompt": "Mira sits on rooftop edge, looking at the Neo-Kyoto skyline. Silver-white hair with blue tips blowing in the wind, mechanical left arm resting on her knee. She speaks softly. Cinematic 2D anime style, golden hour.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "My grandmother used to say the city remembers everyone who ever loved it.",
+        "character": "Mira",
+        "emotion": "nostalgic"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "profile_close"
+    },
+    {
+      "sliceId": 7,
+      "type": "dialogue_closeup",
+      "prompt": "Ren looks away, expression softening. Black undercut with crimson streaks, emerald green eyes, scar on left cheek. He speaks quietly. Cinematic 2D anime style, warm light catching his eyes.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "That's a nice thought. I wish I could believe it.",
+        "character": "Ren",
+        "emotion": "vulnerable"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "close_up"
+    },
+    {
+      "sliceId": 8,
+      "type": "silent_establishing",
+      "prompt": "Time-lapse of clouds moving over Neo-Kyoto, shadows shifting across neon-lit buildings, pagoda silhouette against changing sky. Cinematic 2D anime style, dramatic lighting transition from day to dusk.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "cameraAngle": "wide_timelapse"
+    },
+    {
+      "sliceId": 9,
+      "type": "dialogue_closeup",
+      "prompt": "Mira in a dimly lit archive room, surrounded by holographic data screens. Her mechanical left arm interfaces with a terminal, amber light-lines pulsing. Her eyes widen. Cinematic 2D anime style, dramatic spotlight.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "This can't be real. These are the coordinates my grandmother left behind.",
+        "character": "Mira",
+        "emotion": "shocked"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "close_up_low_angle"
+    },
+    {
+      "sliceId": 10,
+      "type": "silent_establishing",
+      "prompt": "Underground passage beneath Neo-Kyoto, flickering fluorescent lights mixed with cyan neon, water dripping from pipes, old circuit boards on walls. Mysterious atmosphere. Cinematic 2D anime style, green-tinted shadows.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/E9aHKLDnuuvq1jeVat1tD.jpg",
+      "cameraAngle": "tracking_forward"
+    },
+    {
+      "sliceId": 11,
+      "type": "silent_action",
+      "prompt": "Mira runs through the underground passage, her mechanical left arm glowing amber, silver-white hair streaming behind her. Camera follows from behind. Speed lines, motion blur. Cinematic 2D anime style.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979d/HmWILzW2sq0-ep0H_R_0b.jpg",
+      "cameraAngle": "tracking_behind"
+    },
+    {
+      "sliceId": 12,
+      "type": "dialogue_closeup",
+      "prompt": "Ren blocks Mira's path at a junction, hand on his katana hilt. Black gakuran with cyan circuit embroidery glowing in the dim light. He speaks urgently. Cinematic 2D anime style, dramatic red emergency lighting.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Stop! You don't know what's down there. I've seen what happens to people who go too deep.",
+        "character": "Ren",
+        "emotion": "urgent"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 13,
+      "type": "stylised_action",
+      "prompt": "Ren swings his katana with ice-blue glowing blade in a diagonal slash. Mira's mechanical left arm hardens into a rectangular shield with amber glow, blocking the strike. Cyan and amber sparks explode at impact. Radial manga speed lines, shockwave ring. Near-monochrome cyberpunk background. Cinematic 2D anime style, extreme dynamic composition.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979d/HmWILzW2sq0-ep0H_R_0b.jpg",
+      "cameraAngle": "dynamic_rotating"
+    },
+    {
+      "sliceId": 14,
+      "type": "silent_action",
+      "prompt": "Mira emerges into a vast underground chamber with a glowing crystal structure at its centre, pulsing with amber and cyan light. She stops, awestruck. Camera pulls back to reveal scale. Cinematic 2D anime style, ethereal blue glow.",
+      "duration": 10,
+      "audio": false,
+      "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979d/HmWILzW2sq0-ep0H_R_0b.jpg",
+      "cameraAngle": "wide_reveal"
+    },
+    {
+      "sliceId": 15,
+      "type": "dialogue_closeup",
+      "prompt": "Mira's face illuminated by the crystal's amber and cyan glow, tears forming. Silver-white hair with blue tips glowing in the light, mechanical left arm reaching toward the crystal. She whispers. Cinematic 2D anime style, ethereal light on skin.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Grandmother... you were right all along. The city does remember.",
+        "character": "Mira",
+        "emotion": "emotional"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "extreme_close_up"
+    },
+    {
+      "sliceId": 16,
+      "type": "dialogue_closeup",
+      "prompt": "Ren catches up, breathing hard. Black gakuran with cyan circuits, katana at hip. He sees the crystal and his expression transforms from anger to wonder. Cinematic 2D anime style, blue glow reflecting in his emerald green eyes.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "What... what is this place? I've lived in this city my whole life and never knew.",
+        "character": "Ren",
+        "emotion": "awestruck"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "medium_close"
+    },
+    {
+      "sliceId": 17,
+      "type": "dialogue_closeup",
+      "prompt": "Both Ren and Mira stand before the crystal, side by side. Ren in black gakuran with cyan circuits, Mira in navy sailor uniform with mechanical left arm. Mira speaks with resolve. Cinematic 2D anime style, warm and cool light mixing on their faces.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "This is just the beginning. There are more coordinates. Will you help me find them?",
+        "character": "Mira",
+        "emotion": "resolute"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "two_shot_medium"
+    },
+    {
+      "sliceId": 18,
+      "type": "dialogue_closeup",
+      "prompt": "Ren looks at Mira, then at the crystal, then back. A slow smile crosses his scarred face. Emerald green eyes warm. He nods. Cinematic 2D anime style, warm golden light breaking through.",
+      "duration": 10,
+      "audio": true,
+      "dialogue": {
+        "text": "Someone has to keep you from getting yourself killed. Let's go.",
+        "character": "Ren",
+        "emotion": "warm_sarcastic"
+      },
+      "referenceImage": "https://v3b.fal.media/files/b/0a97979c/GSxYn68gkCzZS2hnJCabw.jpg",
+      "cameraAngle": "close_up"
+    }
+  ]
+}
