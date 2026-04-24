@@ -650,12 +650,322 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
+// ─── P2b: Wan 2.5 Balanced (Wan 2.5 + ElevenLabs + Hedra + LatentSync) ──────
+
+export async function runP2b(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+
+  const silentSlices = script.slices.filter((s) => !s.audio);
+  const dialogueSlices = script.slices.filter((s) => s.audio);
+
+  // --- Step 1: Silent clips with Wan 2.5 (1080p, cheaper) ---
+  const wanPricing = pricingData.video.wan25_fal;
+  const falKey = getProviderKey("fal_ai");
+  let silentCost = 0;
+
+  for (const slice of silentSlices) {
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan25(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
+      silentCost += cost;
+
+      clips.push({
+        ticketId: "P2b",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wanPricing.model,
+        mode: "standard",
+        resolution: wanPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P2b", component: "silent_video", variant: "wan25" },
+      });
+    } catch (err) {
+      const wallClockMs = timer();
+      clips.push(makeFailedPipelineClip("P2b", slice, "fal_ai", wanPricing.model, wallClockMs, err));
+    }
+  }
+
+  // --- Step 2: TTS with ElevenLabs ---
+  const ttsPricing = pricingData.tts.elevenlabs;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateElevenLabsTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P2b] TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P2b] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Step 3: Dialogue clips with Hedra Character-3 ---
+  const hedraPricing = pricingData.video.hedra_char3;
+  let dialogueCost = 0;
+
+  for (const slice of dialogueSlices) {
+    const timer = startTimer();
+    try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await hedraCharacter3({
+          imageUrl: "https://placehold.co/512x512/png",
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
+      dialogueCost += cost;
+
+      clips.push({
+        ticketId: "P2b",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "hedra",
+        model: hedraPricing.model,
+        mode: "dialogue",
+        resolution: hedraPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P2b", component: "dialogue_video" },
+      });
+    } catch (err) {
+      const wallClockMs = timer();
+      clips.push(makeFailedPipelineClip("P2b", slice, "hedra", hedraPricing.model, wallClockMs, err));
+    }
+  }
+
+  // --- Step 4: LatentSync refinement on ~50% of dialogue clips ---
+  const lipsyncPricing = pricingData.video.latentsync_fal;
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  const lipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  ).slice(0, Math.ceil(dialogueSlices.length * 0.5));
+
+  for (const clip of lipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    try {
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyLatentSync(clip.outputUrl!, ttsOutput.url);
+      });
+      const cost = lipsyncPricing.perClip ?? 0.20;
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      console.log(`  [P2b] LatentSync on slice ${sliceId}: $${cost.toFixed(2)}`);
+    } catch (err) {
+      console.error(`  [P2b] LatentSync failed on slice ${sliceId}:`, err);
+    }
+  }
+
+  // --- Assembly ---
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = silentCost + ttsCost + dialogueCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: "Wan 2.5", units: silentSlices.length * 10, unitType: "seconds", costUsd: silentCost },
+    { component: "tts", provider: "elevenlabs", model: "turbo-v2.5", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "video", provider: "hedra", model: "Character-3", units: dialogueSlices.length * 10, unitType: "seconds", costUsd: dialogueCost },
+    { component: "lipsync", provider: "fal_ai", model: "LatentSync", units: lipsyncClipCount, unitType: "clips", costUsd: lipsyncCost },
+    { component: "assembly", provider: "local", model: "FFmpeg", units: 1, unitType: "runs", costUsd: 0 },
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P2b_${Date.now()}`,
+    variant: "P2b_balanced_wan25",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
+// ─── P3b: Wan 2.5 Cheap (Wan 2.5 + Cartesia TTS + MuseTalk) ───────────────
+
+export async function runP3b(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+
+  const dialogueSlices = script.slices.filter((s) => s.audio);
+
+  // --- Step 1: ALL 18 clips via Wan 2.5 (1080p, $0.05/sec) ---
+  const wanPricing = pricingData.video.wan25_fal;
+  const falKey = getProviderKey("fal_ai");
+  let videoCost = 0;
+
+  for (const slice of script.slices) {
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan25(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
+      videoCost += cost;
+
+      clips.push({
+        ticketId: "P3b",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wanPricing.model,
+        mode: "standard",
+        resolution: wanPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P3b", component: "video", variant: "wan25" },
+      });
+    } catch (err) {
+      const wallClockMs = timer();
+      clips.push(makeFailedPipelineClip("P3b", slice, "fal_ai", wanPricing.model, wallClockMs, err));
+    }
+  }
+
+  // --- Step 2: TTS with Cartesia ---
+  const ttsPricing = pricingData.tts.cartesia;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateCartesiaTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P3b] Cartesia TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P3b] Cartesia TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Step 3: MuseTalk lipsync on dialogue clips ---
+  const musetalkPricing = pricingData.video.musetalk_replicate;
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  for (const slice of dialogueSlices) {
+    const ttsOutput = ttsOutputs.get(slice.sliceId);
+    const videoClip = clips.find(
+      (c) => c.shotId === `slice_${slice.sliceId}` && c.status === "success"
+    );
+    if (!ttsOutput || !videoClip?.outputUrl) {
+      console.warn(`  [P3b] Skipping MuseTalk for slice ${slice.sliceId}: missing TTS or video`);
+      continue;
+    }
+
+    try {
+      const { result: mtOutput } = await withRetry(async () => {
+        return await applyMuseTalk(videoClip.outputUrl!, ttsOutput.url);
+      });
+      const cost = musetalkPricing.perRun ?? 0.42;
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      videoClip.outputUrl = mtOutput.url;
+      console.log(`  [P3b] MuseTalk on slice ${slice.sliceId}: $${cost.toFixed(2)}`);
+    } catch (err) {
+      console.error(`  [P3b] MuseTalk failed on slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // --- Assembly ---
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = videoCost + ttsCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: "Wan 2.5", units: script._meta.totalDuration, unitType: "seconds", costUsd: videoCost },
+    { component: "tts", provider: "cartesia", model: "sonic-2", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "lipsync", provider: "fal_ai", model: "MuseTalk", units: lipsyncClipCount, unitType: "runs", costUsd: lipsyncCost },
+    { component: "assembly", provider: "local", model: "FFmpeg", units: 1, unitType: "runs", costUsd: 0 },
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P3b_${Date.now()}`,
+    variant: "P3b_cheap_wan25",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
 /// ─── Provider Implementations (Real API Calls) ─────────────────────────────────
 // Wired to shared api-clients module for all providers.
 
 import {
   klingOmniViaFal,
   wan22ViaFal,
+  wan25ViaFal,
   hunyuanViaFal,
   hedraCharacter3,
   elevenLabsTTS,
@@ -677,6 +987,14 @@ async function generateWan22(_apiKey: string, slice: Slice): Promise<GenerationO
   return wan22ViaFal({
     prompt: slice.prompt,
     duration: slice.duration,
+  });
+}
+
+async function generateWan25(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  return wan25ViaFal({
+    prompt: slice.prompt,
+    duration: slice.duration,
+    resolution: "1080p",
   });
 }
 

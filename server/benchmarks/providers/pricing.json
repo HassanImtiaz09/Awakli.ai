@@ -96,14 +96,14 @@
     },
     "wan25_fal": {
       "provider": "fal.ai",
-      "model": "fal-ai/wan/v2.5",
+      "model": "fal-ai/wan-25-preview/text-to-video",
       "mode": "standard",
-      "resolution": "720p",
+      "resolution": "1080p",
       "audio": false,
       "lipsync": false,
       "perSecond": 0.050,
       "per10sClip": 0.50,
-      "notes": "Newer model, 37.5% cheaper than Wan 2.2 on fal.ai. Recommended variant."
+      "notes": "Wan 2.5 Preview. Supports 1080p (upgrade from 2.2 720p). 37.5% cheaper than Wan 2.2 on fal.ai."
     },
     "hunyuan_v15_fal": {
       "provider": "fal.ai",

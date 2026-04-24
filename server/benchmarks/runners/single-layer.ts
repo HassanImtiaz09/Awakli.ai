@@ -236,6 +236,58 @@ export async function runB3(shots: Shot[]): Promise<RunnerResult> {
   return { ticketId: "B3", clips, totalCost, summary: `B3 complete: ${clips.filter((c) => c.status === "success").length}/${clips.length} clips, $${totalCost.toFixed(2)}` };
 }
 
+// ─── B3b: Wan 2.5 Silent — 2 shots via fal.ai ────────────────────────────────
+
+export async function runB3b(shots: Shot[]): Promise<RunnerResult> {
+  const silentShots = shots.filter((s) => !s.audio);
+  const pricing = pricingData.video.wan25_fal;
+  const clips: ClipResult[] = [];
+
+  for (const shot of silentShots) {
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await wan25ViaFal({
+          imageUrl: shot.referenceImage ?? undefined,
+          prompt: shot.prompt,
+          duration: shot.duration,
+          resolution: "1080p",
+        });
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(shot.duration, pricing.perSecond, null, null);
+
+      const clip: ClipResult = {
+        ticketId: "B3b",
+        shotId: shot.id,
+        provider: "fal_ai",
+        model: pricing.model,
+        mode: "standard",
+        resolution: pricing.resolution,
+        durationSec: shot.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { provider: "fal_ai", audio: false, variant: "wan25" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err) {
+      const wallClockMs = timer();
+      clips.push(makeFailedClip("B3b", shot, "fal_ai", pricing, wallClockMs, err));
+    }
+  }
+
+  const totalCost = clips.reduce((sum, c) => sum + c.costUsd, 0);
+  return { ticketId: "B3b", clips, totalCost, summary: `B3b complete: ${clips.filter((c) => c.status === "success").length}/${clips.length} clips (Wan 2.5 @ 1080p), $${totalCost.toFixed(2)}` };
+}
+
 // ─── B4: Hunyuan Video Silent + LoRA Training ────────────────────────────────
 
 export async function runB4(shots: Shot[]): Promise<RunnerResult> {
@@ -498,6 +550,7 @@ import {
   klingStandardViaFal,
   wan22ViaFal,
   wan22ViaReplicate,
+  wan25ViaFal,
   hunyuanViaFal,
   hedraCharacter3,
   elevenLabsTTS,

@@ -14,8 +14,8 @@
  */
 
 import { checkProviderCredentials } from "./providers/registry.js";
-import { runB1, runB2, runB3, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP3, runP4 } from "./pipelines/end-to-end.js";
+import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
@@ -56,6 +56,13 @@ async function main() {
     case "B3": {
       console.log("Running B3: Wan 2.2 silent — 2 shots × 2 providers...\n");
       const result = await runB3(shotsFixture.shots as any);
+      console.log(result.summary);
+      break;
+    }
+
+    case "B3B": {
+      console.log("Running B3b: Wan 2.5 silent — 2 shots via fal.ai (1080p)...\n");
+      const result = await runB3b(shotsFixture.shots as any);
       console.log(result.summary);
       break;
     }
@@ -110,16 +117,30 @@ async function main() {
     }
 
     case "P2": {
-      console.log("Running P2: Decomposed Balanced (Wan + Hedra + LatentSync)...\n");
+      console.log("Running P2: Decomposed Balanced (Wan 2.2 + Hedra + LatentSync)...\n");
       const result = await runP2(pilotScript as any);
       console.log(`P2 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
       break;
     }
 
+    case "P2B": {
+      console.log("Running P2b: Wan 2.5 Balanced (Wan 2.5 + Hedra + LatentSync)...\n");
+      const result = await runP2b(pilotScript as any);
+      console.log(`P2b complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      break;
+    }
+
     case "P3": {
-      console.log("Running P3: Decomposed Cheap (Wan + OpenAI TTS + MuseTalk)...\n");
+      console.log("Running P3: Decomposed Cheap (Wan 2.2 + Cartesia + MuseTalk)...\n");
       const result = await runP3(pilotScript as any);
       console.log(`P3 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      break;
+    }
+
+    case "P3B": {
+      console.log("Running P3b: Wan 2.5 Cheap (Wan 2.5 + Cartesia + MuseTalk)...\n");
+      const result = await runP3b(pilotScript as any);
+      console.log(`P3b complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
       break;
     }
 
@@ -141,11 +162,12 @@ async function main() {
         console.log(`  ${b6.results.filter((r) => r.status === "success").length}/${b6.results.length} providers OK\n`);
       } catch (e) { console.error("  B6 failed:", e); }
 
-      // B1-B5 in sequence
+      // B1-B5 + B3b in sequence
       for (const [ticket, runner] of [
         ["B1", () => runB1(shotsFixture.shots as any)],
         ["B2", () => runB2(shotsFixture.shots as any)],
         ["B3", () => runB3(shotsFixture.shots as any)],
+        ["B3b", () => runB3b(shotsFixture.shots as any)],
         ["B4", () => runB4(shotsFixture.shots as any)],
         ["B5", () => runB5(shotsFixture.shots as any)],
       ] as const) {
@@ -160,7 +182,9 @@ async function main() {
       for (const [ticket, runner] of [
         ["P1", () => runP1(pilotScript as any)],
         ["P2", () => runP2(pilotScript as any)],
+        ["P2b", () => runP2b(pilotScript as any)],
         ["P3", () => runP3(pilotScript as any)],
+        ["P3b", () => runP3b(pilotScript as any)],
         ["P4", () => runP4(pilotScript as any)],
       ] as const) {
         try {
@@ -191,13 +215,16 @@ async function main() {
       console.log("  B1      — Kling V3 Omni (3 shots × 3 providers)");
       console.log("  B2      — Kling V3 Standard silent (2 shots)");
       console.log("  B3      — Wan 2.2 silent (2 shots × 2 providers)");
+      console.log("  B3b     — Wan 2.5 silent (2 shots via fal.ai, 1080p)");
       console.log("  B4      — Hunyuan Video silent + LoRA training");
       console.log("  B5      — Hedra Character-3 dialogue");
       console.log("  B6      — TTS benchmark (ElevenLabs, Cartesia, OpenAI)");
       console.log("  B7      — Lipsync comparison (LatentSync, MuseTalk, Kling)");
       console.log("  P1      — Kling V3 Omni end-to-end (18 slices, 3 min)");
-      console.log("  P2      — Decomposed Balanced (Wan + Hedra + LatentSync)");
-      console.log("  P3      — Decomposed Cheap (Wan + OpenAI TTS + MuseTalk)");
+      console.log("  P2      — Decomposed Balanced (Wan 2.2 + Hedra + LatentSync)");
+      console.log("  P2b     — Wan 2.5 Balanced (Wan 2.5 + Hedra + LatentSync)");
+      console.log("  P3      — Decomposed Cheap (Wan 2.2 + Cartesia + MuseTalk)");
+      console.log("  P3b     — Wan 2.5 Cheap (Wan 2.5 + Cartesia + MuseTalk)");
       console.log("  P4      — Decomposed Premium (Hunyuan + Hedra + Kling Lip Sync)");
       console.log("  all     — Run full benchmark suite");
       console.log("  report  — Generate report from existing data");

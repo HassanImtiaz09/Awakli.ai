@@ -5215,3 +5215,12 @@
 - [x] Wire TTS + lipsync steps into P4 (Premium): Hunyuan → ElevenLabs TTS → Hedra → Kling Lip Sync
 - [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)
 - [x] Run all benchmark tests to confirm no regressions (35/35 + 8/8 all passing)
+
+## Wan 2.5 Variant (B3b + P2b/P3b)
+- [x] Add Wan 2.5 API client function (wan25ViaFal) to api-clients.ts
+- [x] Add B3b runner (Wan 2.5 silent, 2 shots via fal.ai, 1080p) to single-layer.ts
+- [x] Add P2b pipeline variant (Wan 2.5 + ElevenLabs + Hedra + LatentSync) to end-to-end.ts
+- [x] Add P3b pipeline variant (Wan 2.5 + Cartesia + MuseTalk) to end-to-end.ts
+- [x] Update run_all.ts CLI to support B3b, P2b, P3b tickets
+- [x] Update pricing registry with Wan 2.5 fal.ai entry (wan25_fal: $0.05/sec, 1080p)
+- [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)

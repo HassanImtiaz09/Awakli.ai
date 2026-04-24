@@ -340,6 +340,45 @@ export async function wan22ViaReplicate(params: {
   return { url: videoUrl, generationTimeMs: Date.now() - start };
 }
 
+// ─── Wan 2.5 via fal.ai ────────────────────────────────────────────────────
+
+export async function wan25ViaFal(params: {
+  imageUrl?: string;
+  prompt: string;
+  duration: number;
+  resolution?: string;
+}): Promise<GenerationOutput> {
+  ensureFalConfigured();
+  const start = Date.now();
+
+  const input: Record<string, unknown> = {
+    prompt: params.prompt,
+    resolution: params.resolution ?? "1080p",
+    duration: String(Math.min(10, Math.max(5, params.duration))), // "5" or "10"
+    aspect_ratio: "16:9",
+    negative_prompt: "low resolution, error, worst quality, low quality, defects, blurry",
+    enable_prompt_expansion: false,
+    enable_safety_checker: false,
+  };
+  if (params.imageUrl) input.image_url = params.imageUrl;
+
+  // Use text-to-video or image-to-video based on whether an image is provided
+  const modelId = params.imageUrl
+    ? "fal-ai/wan-25-preview/image-to-video"
+    : "fal-ai/wan-25-preview/text-to-video";
+
+  const result = await fal.subscribe(modelId as any, {
+    input: input as any,
+    logs: true,
+    pollInterval: 5000,
+  });
+
+  const video = (result.data as any)?.video;
+  if (!video?.url) throw new Error("fal.ai Wan 2.5 returned no video");
+
+  return { url: video.url, generationTimeMs: Date.now() - start };
+}
+
 // ─── Hunyuan V1.5 via fal.ai ───────────────────────────────────────────────
 
 export async function hunyuanViaFal(params: {
