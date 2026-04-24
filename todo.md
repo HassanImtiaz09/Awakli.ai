@@ -5237,3 +5237,7 @@
 - [x] Analyze quality critique report against benchmark data and pipeline code
 - [x] Identify root causes for each pitfall (letterboxing, style drift, action shot failures, prosthetic consistency)
 - [x] Produce comprehensive action plan for optimized hybrid P2b+P1 generation pipeline
+- [x] Implement runHybrid() (P5) that routes action slices to Kling Omni, non-action to Wan 2.5 + Hedra + LatentSync
+- [x] Add P5 to benchmark runner CLI
+- [x] Run P5 benchmark (18 slices, 3 min pilot)
+- [x] Compile P5 full video and compare cost/quality vs P1 and P2b

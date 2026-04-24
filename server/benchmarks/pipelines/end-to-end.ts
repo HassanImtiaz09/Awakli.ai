@@ -1079,6 +1079,267 @@ export async function runP3b(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
+// ─── P5: Hybrid (Kling Omni for action + Wan 2.5 + ElevenLabs + Hedra + LatentSync for rest) ──
+
+/**
+ * P5 — Hybrid Pipeline
+ *
+ * Routes action-tagged slices (silent_action, stylised_action, dialogue_action)
+ * to Kling V3 Omni for reliable action rendering, and routes all non-action
+ * slices through the P2b decomposed path:
+ *   - Silent establishing → Wan 2.5 (image-to-video)
+ *   - Dialogue closeup → ElevenLabs TTS + Hedra Character-3 + LatentSync
+ *
+ * This captures P2b's cost efficiency on 83% of clips and P1's action quality
+ * on the 17% that need it.
+ */
+export async function runP5(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+  const falKey = getProviderKey("fal_ai");
+
+  // Classify slices by routing target
+  const isActionSlice = (s: Slice) =>
+    s.type.includes("action") || s.type === "stylised_action";
+
+  const actionSlices = script.slices.filter(isActionSlice);
+  const nonActionSlices = script.slices.filter((s) => !isActionSlice(s));
+  const silentSlices = nonActionSlices.filter((s) => !s.audio);
+  const dialogueSlices = nonActionSlices.filter((s) => s.audio);
+
+  console.log(`  [P5] Hybrid routing: ${actionSlices.length} action → Kling Omni, ${silentSlices.length} silent → Wan 2.5, ${dialogueSlices.length} dialogue → Hedra`);
+
+  // ─── Step 1: Action slices via Kling V3 Omni ───────────────────────────────
+  const klingPricing = pricingData.video.kling_v3_omni_fal;
+  let actionCost = 0;
+
+  for (let ai = 0; ai < actionSlices.length; ai++) {
+    const slice = actionSlices[ai];
+    console.log(`  [P5] Action ${ai + 1}/${actionSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Kling Omni...`);
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateKlingOmni(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, klingPricing.perSecond, null, null);
+      actionCost += cost;
+      console.log(`  [P5] Action ${ai + 1}/${actionSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P5",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: klingPricing.model,
+        mode: "omni",
+        resolution: klingPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P5", component: "action_video", router: "kling_omni" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P5] Action ${ai + 1}/${actionSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P5", slice, "fal_ai", klingPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 2: Silent establishing slices via Wan 2.5 ────────────────────────
+  const wanPricing = pricingData.video.wan25_fal;
+  let silentCost = 0;
+
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    console.log(`  [P5] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.5...`);
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan25(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
+      silentCost += cost;
+      console.log(`  [P5] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P5",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wanPricing.model,
+        mode: "standard",
+        resolution: wanPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P5", component: "silent_video", router: "wan25" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P5] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P5", slice, "fal_ai", wanPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 3: TTS with ElevenLabs for dialogue slices ───────────────────────
+  const ttsPricing = pricingData.tts.elevenlabs;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await generateElevenLabsTTSForPipeline(dialogueText);
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P5] TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P5] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // ─── Step 4: Dialogue clips via Hedra Character-3 ─────────────────────────
+  const hedraPricing = pricingData.video.hedra_char3;
+  let dialogueCost = 0;
+
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    console.log(`  [P5] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}) — generating via Hedra...`);
+    const timer = startTimer();
+    try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await hedraCharacter3({
+          imageUrl: hedraImageUrl,
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
+      dialogueCost += cost;
+      console.log(`  [P5] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P5",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "hedra",
+        model: hedraPricing.model,
+        mode: "dialogue",
+        resolution: hedraPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P5", component: "dialogue_video", router: "hedra" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P5] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P5", slice, "hedra", hedraPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 5: LatentSync refinement on ~50% of dialogue clips ───────────────
+  const lipsyncPricing = pricingData.video.latentsync_fal;
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+
+  const lipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  ).slice(0, Math.ceil(dialogueSlices.length * 0.5));
+
+  for (const clip of lipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    try {
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyLatentSync(clip.outputUrl!, ttsOutput.url);
+      });
+      const cost = lipsyncPricing.perClip ?? 0.20;
+      lipsyncCost += cost;
+      lipsyncClipCount++;
+      console.log(`  [P5] LatentSync on slice ${sliceId}: $${cost.toFixed(2)}`);
+    } catch (err) {
+      console.error(`  [P5] LatentSync failed on slice ${sliceId}:`, err);
+    }
+  }
+
+  // ─── Assembly ──────────────────────────────────────────────────────────────
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = actionCost + silentCost + ttsCost + dialogueCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const actionDurationSec = actionSlices.reduce((sum, s) => sum + s.duration, 0);
+  const silentDurationSec = silentSlices.reduce((sum, s) => sum + s.duration, 0);
+  const dialogueDurationSec = dialogueSlices.reduce((sum, s) => sum + s.duration, 0);
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: "Kling V3 Omni (action)", units: actionDurationSec, unitType: "seconds", costUsd: actionCost },
+    { component: "video", provider: "fal_ai", model: "Wan 2.5 (silent)", units: silentDurationSec, unitType: "seconds", costUsd: silentCost },
+    { component: "tts", provider: "elevenlabs", model: "turbo-v2.5", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "video", provider: "hedra", model: "Character-3 (dialogue)", units: dialogueDurationSec, unitType: "seconds", costUsd: dialogueCost },
+    { component: "lipsync", provider: "fal_ai", model: "LatentSync", units: lipsyncClipCount, unitType: "clips", costUsd: lipsyncCost },
+    { component: "assembly", provider: "local", model: "FFmpeg", units: 1, unitType: "runs", costUsd: 0 },
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P5_${Date.now()}`,
+    variant: "P5_hybrid",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
 /// ─── Provider Implementations (Real API Calls) ─────────────────────────────────
 // Wired to shared api-clients module for all providers.
 

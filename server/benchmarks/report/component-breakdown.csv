@@ -16,3 +16,9 @@ P4_1777027488368,video,hedra,Character-3,100,seconds,2.97,24.3
 P4_1777027488368,lipsync,fal_ai,Kling Lip Sync,5,clips,8.4,68.6
 P4_1777027488368,lora_training,fal_ai,Hunyuan LoRA Training,1,runs,0.5,4.1
 P4_1777027488368,assembly,local,FFmpeg,1,runs,0,0
+P5_1777053564786,video,fal_ai,Kling V3 Omni (action),30,seconds,4.2,41.7
+P5_1777053564786,video,fal_ai,Wan 2.5 (silent),50,seconds,1.5,14.9
+P5_1777053564786,tts,elevenlabs,turbo-v2.5,702,characters,0.0693,0.7
+P5_1777053564786,video,hedra,Character-3 (dialogue),100,seconds,3.3000000000000003,32.8
+P5_1777053564786,lipsync,fal_ai,LatentSync,5,clips,1,9.9
+P5_1777053564786,assembly,local,FFmpeg,1,runs,0,0
