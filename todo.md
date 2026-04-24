@@ -5224,3 +5224,12 @@
 - [x] Update run_all.ts CLI to support B3b, P2b, P3b tickets
 - [x] Update pricing registry with Wan 2.5 fal.ai entry (wan25_fal: $0.05/sec, 1080p)
 - [x] Verify TypeScript compilation (0 errors) and all tests passing (35/35 + 8/8)
+
+## Fixture Panel Generation & 4-Pipeline Benchmark Run
+- [x] Generate Shot 1 (establishing cityscape) via Stage 1 pipeline — 4 variations, V4 selected
+- [x] Generate Shot 2 (dialogue, Ren + Mira) via Stage 1 pipeline — 4 variations, V2 selected
+- [x] Generate Shot 3 (action) using Shot 2 V2 as character reference — 4 variations, V2 selected
+- [x] Review all panels against consistency markers and approve best matches
+- [x] Wire approved panel URLs into shots.json (v1.1.0) + pilot-3min-script.json (v1.1.0 with Ren + Mira)
+- [x] Run 4-pipeline benchmark: P1, P2b, P3b, P4 (18 slices each, 3 min)
+- [x] Compile cost assessment report with all video URLs for review

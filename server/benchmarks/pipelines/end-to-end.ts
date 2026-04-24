@@ -11,6 +11,8 @@
  * P4 — Decomposed Premium (Hunyuan + ElevenLabs + Hedra + Kling Lip Sync)
  */
 
+import fs from "fs";
+import path from "path";
 import {
   type ClipResult,
   type PipelineResult,
@@ -41,7 +43,44 @@ interface Slice {
     character: string;
     emotion: string;
   } | null;
+  referenceImage: string | null;
   cameraAngle: string;
+}
+
+// ─── URL Accessibility Helper ──────────────────────────────────────────────
+// CloudFront URLs from our S3 bucket are not publicly accessible to external
+// providers (fal.ai, Replicate, Hedra). This helper uploads the image to
+// fal.ai's temporary storage to get a publicly accessible URL.
+
+const falUrlCache = new Map<string, string>();
+
+async function ensurePublicUrl(url: string | null): Promise<string | null> {
+  if (!url) return null;
+  // fal.ai media URLs are already accessible
+  if (url.includes('fal.media') || url.includes('fal.run')) return url;
+  // placehold.co is public
+  if (url.includes('placehold.co')) return url;
+  // Check cache first
+  if (falUrlCache.has(url)) return falUrlCache.get(url)!;
+
+  try {
+    const { fal } = await import('@fal-ai/client');
+    const key = process.env.FAL_API_KEY;
+    if (key) fal.config({ credentials: key });
+
+    // Download the image first, then upload to fal storage
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Failed to download: ${resp.status}`);
+    const blob = await resp.blob();
+    const file = new File([blob], 'reference.png', { type: blob.type || 'image/png' });
+    const falUrl = await fal.storage.upload(file);
+    console.log(`  [URL] Re-uploaded to fal.ai: ${url.slice(-40)} → ${falUrl.slice(-40)}`);
+    falUrlCache.set(url, falUrl);
+    return falUrl;
+  } catch (err) {
+    console.warn(`  [URL] Failed to re-upload ${url.slice(-40)}, using original:`, err);
+    return url;
+  }
 }
 
 interface PilotScript {
@@ -66,10 +105,56 @@ export async function runP1(script: PilotScript): Promise<PipelineResult> {
   const pricing = pricingData.video.kling_v3_omni_fal;
   const apiKey = getProviderKey("fal_ai");
 
-  const clips: ClipResult[] = [];
-  let totalCost = 0;
+  // Resume support: read existing clip-results.csv to skip already-completed slices
+  const completedSliceIds = new Set<number>();
+  const resumedClips: ClipResult[] = [];
+  const csvPath = path.join(process.cwd(), "server/benchmarks/report/clip-results.csv");
+  try {
+    if (fs.existsSync(csvPath)) {
+      const csvContent = fs.readFileSync(csvPath, "utf-8");
+      for (const line of csvContent.split("\n").slice(1)) {
+        if (!line.trim()) continue;
+        const cols = line.split(",");
+        if (cols[0] === "P1" && cols[12] === "success") {
+          const sliceId = parseInt(cols[1].replace("slice_", ""));
+          completedSliceIds.add(sliceId);
+          resumedClips.push({
+            ticketId: "P1",
+            shotId: cols[1],
+            provider: cols[2],
+            model: cols[3],
+            mode: cols[4],
+            resolution: cols[5],
+            durationSec: parseFloat(cols[6]),
+            costUsd: parseFloat(cols[7]),
+            wallClockMs: parseFloat(cols[8]),
+            queueTimeMs: parseFloat(cols[9]),
+            generationTimeMs: parseFloat(cols[10]),
+            outputUrl: cols[11],
+            status: "success",
+            error: null,
+            retryCount: parseInt(cols[14]) || 0,
+            timestamp: cols[15],
+            metadata: { pipelineVariant: "P1", sliceType: "resumed" },
+          });
+        }
+      }
+    }
+  } catch { /* ignore CSV parse errors */ }
+  if (completedSliceIds.size > 0) {
+    console.log(`  [P1] Resuming — ${completedSliceIds.size} slices already completed, skipping them.`);
+  }
 
-  for (const slice of script.slices) {
+  const clips: ClipResult[] = [...resumedClips];
+  let totalCost = resumedClips.reduce((sum, c) => sum + c.costUsd, 0);
+
+  for (let i = 0; i < script.slices.length; i++) {
+    const slice = script.slices[i];
+    if (completedSliceIds.has(slice.sliceId)) {
+      console.log(`  [P1] Slice ${i + 1}/${script.slices.length} (id=${slice.sliceId}) — already done, skipping.`);
+      continue;
+    }
+    console.log(`  [P1] Slice ${i + 1}/${script.slices.length} (id=${slice.sliceId}, type=${slice.type}) — generating...`);
     const timer = startTimer();
     try {
       const { result: output, retryCount } = await withRetry(async () => {
@@ -78,6 +163,7 @@ export async function runP1(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, pricing.perSecond, null, null);
       totalCost += cost;
+      console.log(`  [P1] Slice ${i + 1}/${script.slices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — cost: $${cost.toFixed(4)} — url: ${output.url.slice(0, 80)}...`);
 
       const clip: ClipResult = {
         ticketId: "P1",
@@ -100,8 +186,9 @@ export async function runP1(script: PilotScript): Promise<PipelineResult> {
       };
       clips.push(clip);
       appendClipResult(clip);
-    } catch (err) {
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P1] Slice ${i + 1}/${script.slices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P1", slice, "fal_ai", pricing.model, wallClockMs, err));
     }
   }
@@ -220,9 +307,10 @@ export async function runP2(script: PilotScript): Promise<PipelineResult> {
       const ttsOutput = ttsOutputs.get(slice.sliceId);
       if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
 
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
       const { result: output, retryCount } = await withRetry(async () => {
         return await hedraCharacter3({
-          imageUrl: "https://placehold.co/512x512/png",
+          imageUrl: hedraImageUrl,
           audioUrl: ttsOutput.url,
           prompt: slice.prompt,
           durationMs: slice.duration * 1000,
@@ -472,7 +560,9 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
   const falKey = getProviderKey("fal_ai");
   let silentCost = 0;
 
-  for (const slice of silentSlices) {
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    console.log(`  [P4] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Hunyuan V1.5...`);
     const timer = startTimer();
     try {
       const { result: output, retryCount } = await withRetry(async () => {
@@ -481,8 +571,9 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, hunyuanPricing.perSecond, null, null);
       silentCost += cost;
+      console.log(`  [P4] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
 
-      clips.push({
+      const clip: ClipResult = {
         ticketId: "P4",
         shotId: `slice_${slice.sliceId}`,
         provider: "fal_ai",
@@ -500,9 +591,12 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
         retryCount,
         timestamp: new Date().toISOString(),
         metadata: { pipelineVariant: "P4", component: "silent_video" },
-      });
-    } catch (err) {
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P4] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P4", slice, "fal_ai", hunyuanPricing.model, wallClockMs, err));
     }
   }
@@ -540,15 +634,18 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
   const hedraPricing = pricingData.video.hedra_char3;
   let dialogueCost = 0;
 
-  for (const slice of dialogueSlices) {
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    console.log(`  [P4] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}) — generating via Hedra...`);
     const timer = startTimer();
     try {
       const ttsOutput = ttsOutputs.get(slice.sliceId);
       if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
 
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
       const { result: output, retryCount } = await withRetry(async () => {
         return await hedraCharacter3({
-          imageUrl: "https://placehold.co/512x512/png",
+          imageUrl: hedraImageUrl,
           audioUrl: ttsOutput.url,
           prompt: slice.prompt,
           durationMs: slice.duration * 1000,
@@ -557,8 +654,9 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
       dialogueCost += cost;
+      console.log(`  [P4] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
 
-      clips.push({
+      const clip: ClipResult = {
         ticketId: "P4",
         shotId: `slice_${slice.sliceId}`,
         provider: "hedra",
@@ -576,9 +674,12 @@ export async function runP4(script: PilotScript): Promise<PipelineResult> {
         retryCount,
         timestamp: new Date().toISOString(),
         metadata: { pipelineVariant: "P4", component: "dialogue_video" },
-      });
-    } catch (err) {
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P4] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P4", slice, "hedra", hedraPricing.model, wallClockMs, err));
     }
   }
@@ -664,7 +765,9 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
   const falKey = getProviderKey("fal_ai");
   let silentCost = 0;
 
-  for (const slice of silentSlices) {
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    console.log(`  [P2b] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.5...`);
     const timer = startTimer();
     try {
       const { result: output, retryCount } = await withRetry(async () => {
@@ -673,8 +776,9 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
       silentCost += cost;
+      console.log(`  [P2b] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
 
-      clips.push({
+      const clip: ClipResult = {
         ticketId: "P2b",
         shotId: `slice_${slice.sliceId}`,
         provider: "fal_ai",
@@ -692,9 +796,12 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
         retryCount,
         timestamp: new Date().toISOString(),
         metadata: { pipelineVariant: "P2b", component: "silent_video", variant: "wan25" },
-      });
-    } catch (err) {
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P2b] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P2b", slice, "fal_ai", wanPricing.model, wallClockMs, err));
     }
   }
@@ -724,15 +831,18 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
   const hedraPricing = pricingData.video.hedra_char3;
   let dialogueCost = 0;
 
-  for (const slice of dialogueSlices) {
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    console.log(`  [P2b] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}) — generating via Hedra...`);
     const timer = startTimer();
     try {
       const ttsOutput = ttsOutputs.get(slice.sliceId);
       if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
 
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
       const { result: output, retryCount } = await withRetry(async () => {
         return await hedraCharacter3({
-          imageUrl: "https://placehold.co/512x512/png",
+          imageUrl: hedraImageUrl,
           audioUrl: ttsOutput.url,
           prompt: slice.prompt,
           durationMs: slice.duration * 1000,
@@ -741,8 +851,9 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
       dialogueCost += cost;
+      console.log(`  [P2b] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
 
-      clips.push({
+      const clip: ClipResult = {
         ticketId: "P2b",
         shotId: `slice_${slice.sliceId}`,
         provider: "hedra",
@@ -760,9 +871,12 @@ export async function runP2b(script: PilotScript): Promise<PipelineResult> {
         retryCount,
         timestamp: new Date().toISOString(),
         metadata: { pipelineVariant: "P2b", component: "dialogue_video" },
-      });
-    } catch (err) {
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P2b] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P2b", slice, "hedra", hedraPricing.model, wallClockMs, err));
     }
   }
@@ -841,7 +955,9 @@ export async function runP3b(script: PilotScript): Promise<PipelineResult> {
   const falKey = getProviderKey("fal_ai");
   let videoCost = 0;
 
-  for (const slice of script.slices) {
+  for (let vi = 0; vi < script.slices.length; vi++) {
+    const slice = script.slices[vi];
+    console.log(`  [P3b] Video ${vi + 1}/${script.slices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.5...`);
     const timer = startTimer();
     try {
       const { result: output, retryCount } = await withRetry(async () => {
@@ -850,8 +966,9 @@ export async function runP3b(script: PilotScript): Promise<PipelineResult> {
       const wallClockMs = timer();
       const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
       videoCost += cost;
+      console.log(`  [P3b] Video ${vi + 1}/${script.slices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
 
-      clips.push({
+      const clip: ClipResult = {
         ticketId: "P3b",
         shotId: `slice_${slice.sliceId}`,
         provider: "fal_ai",
@@ -869,9 +986,12 @@ export async function runP3b(script: PilotScript): Promise<PipelineResult> {
         retryCount,
         timestamp: new Date().toISOString(),
         metadata: { pipelineVariant: "P3b", component: "video", variant: "wan25" },
-      });
-    } catch (err) {
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
       const wallClockMs = timer();
+      console.log(`  [P3b] Video ${vi + 1}/${script.slices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
       clips.push(makeFailedPipelineClip("P3b", slice, "fal_ai", wanPricing.model, wallClockMs, err));
     }
   }
@@ -976,7 +1096,9 @@ import {
 } from "../providers/api-clients.js";
 
 async function generateKlingOmni(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
   return klingOmniViaFal({
+    imageUrl: imageUrl ?? undefined,
     prompt: slice.prompt,
     duration: String(slice.duration),
     audio: slice.audio,
@@ -984,14 +1106,18 @@ async function generateKlingOmni(_apiKey: string, slice: Slice): Promise<Generat
 }
 
 async function generateWan22(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
   return wan22ViaFal({
+    imageUrl: imageUrl ?? undefined,
     prompt: slice.prompt,
     duration: slice.duration,
   });
 }
 
 async function generateWan25(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
   return wan25ViaFal({
+    imageUrl: imageUrl ?? undefined,
     prompt: slice.prompt,
     duration: slice.duration,
     resolution: "1080p",
@@ -999,7 +1125,9 @@ async function generateWan25(_apiKey: string, slice: Slice): Promise<GenerationO
 }
 
 async function generateHunyuan(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
   return hunyuanViaFal({
+    imageUrl: imageUrl ?? undefined,
     prompt: slice.prompt,
     duration: slice.duration,
   });
@@ -1009,8 +1137,10 @@ async function generateHedra(_apiKey: string, slice: Slice): Promise<GenerationO
   // Generate TTS audio first for the dialogue
   const dialogueText = slice.dialogue?.text ?? "Test dialogue for benchmark.";
   const ttsOutput = await elevenLabsTTS({ text: dialogueText });
+  // Use the slice's reference image (Hedra downloads from URL directly)
+  const imageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
   return hedraCharacter3({
-    imageUrl: "https://placehold.co/512x512/png", // Placeholder — real run uses manga panel
+    imageUrl,
     audioUrl: ttsOutput.url,
     prompt: slice.prompt,
     durationMs: slice.duration * 1000,

@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "version": "1.0.0",
-    "description": "18-slice pilot script for 3-minute (180s) end-to-end benchmark. Same script used by all four pipeline variants (P1-P4).",
+    "version": "1.1.0",
+    "description": "18-slice pilot script for 3-minute (180s) end-to-end benchmark using Awakli characters (Ren + Mira) in Neo-Kyoto setting. Same script used by all pipeline variants.",
     "totalSlices": 18,
     "totalDuration": 180,
     "sliceDuration": 10,
@@ -13,44 +13,53 @@
       "total": 18
     },
     "dialogueCharacters": 5000,
-    "notes": "Distribution: 11 silent + 6 dialogue + 1 stylised action. Mirrors realistic anime episode composition."
+    "referenceImages": {
+      "establishing": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
+      "dialogue": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
+      "action": "https://v3b.fal.media/files/b/0a977f42/d-B6Quj2YVLjykmKkKuQQ_shot3_action_v2.png"
+    },
+    "generatedBy": "Awakli Stage 1 Pipeline (Forge ImageService / Flux)",
+    "generatedAt": "2026-04-24"
   },
   "slices": [
     {
       "sliceId": 1,
       "type": "silent_establishing",
-      "prompt": "Aerial view of a futuristic coastal city at sunrise, waves crashing against neon-lit seawalls, birds in formation. 2D anime style, warm golden lighting.",
+      "prompt": "Wide aerial view of Neo-Kyoto bay at sunrise, neon-lit skyscrapers reflected in dark harbour water, traditional pagoda silhouette among towers, cargo drones crossing the sky. Heavy morning mist, pink and amber light. Cinematic 2D anime style.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
       "cameraAngle": "wide_aerial"
     },
     {
       "sliceId": 2,
       "type": "dialogue_closeup",
-      "prompt": "Teenage girl with black hair and school uniform stands at a window, morning light on her face. She speaks with quiet determination. 2D anime style, soft backlight.",
+      "prompt": "Medium shot of Mira standing at a window in her navy sailor uniform, morning light on her face. Silver-white hair with cerulean blue tips, mechanical left arm resting on the windowsill. She speaks with quiet determination. Cinematic 2D anime style, soft backlight.",
       "duration": 10,
       "audio": true,
       "dialogue": {
         "text": "Today is the day everything changes. I can feel it.",
-        "character": "Yuki",
+        "character": "Mira",
         "emotion": "determined"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "close_up"
     },
     {
       "sliceId": 3,
       "type": "silent_establishing",
-      "prompt": "School hallway, students walking, cherry blossom petals drifting through open windows. 2D anime style, bright and airy.",
+      "prompt": "Neo-Kyoto school hallway, students walking, holographic notice boards flickering, cherry blossom petals drifting through open windows. Cinematic 2D anime style, bright and airy.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
       "cameraAngle": "medium_wide"
     },
     {
       "sliceId": 4,
       "type": "dialogue_closeup",
-      "prompt": "Young man with silver hair and a dark jacket leans against a wall, arms crossed. He speaks with a smirk. 2D anime style, cool blue shadows.",
+      "prompt": "Ren leans against a wall in his black gakuran with cyan circuit embroidery, katana at his hip. Black undercut hair with crimson streaks, emerald green eyes, scar on left cheek. He speaks with a smirk. Cinematic 2D anime style, cool blue shadows.",
       "duration": 10,
       "audio": true,
       "dialogue": {
@@ -58,34 +67,37 @@
         "character": "Ren",
         "emotion": "sarcastic"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "medium_close"
     },
     {
       "sliceId": 5,
       "type": "silent_establishing",
-      "prompt": "Rooftop at lunch, two bento boxes open, city skyline in background. Wind rustles hair. 2D anime style, warm midday light.",
+      "prompt": "Rooftop at lunch, two bento boxes open, Neo-Kyoto cyberpunk skyline with pagoda in background. Wind rustles across the scene. Cinematic 2D anime style, warm midday light.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
       "cameraAngle": "over_shoulder"
     },
     {
       "sliceId": 6,
       "type": "dialogue_closeup",
-      "prompt": "Yuki sits on rooftop edge, looking at the city. She speaks softly, wind in her hair. 2D anime style, golden hour.",
+      "prompt": "Mira sits on rooftop edge, looking at the Neo-Kyoto skyline. Silver-white hair with blue tips blowing in the wind, mechanical left arm resting on her knee. She speaks softly. Cinematic 2D anime style, golden hour.",
       "duration": 10,
       "audio": true,
       "dialogue": {
         "text": "My grandmother used to say the city remembers everyone who ever loved it.",
-        "character": "Yuki",
+        "character": "Mira",
         "emotion": "nostalgic"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "profile_close"
     },
     {
       "sliceId": 7,
       "type": "dialogue_closeup",
-      "prompt": "Ren looks away, expression softening. He speaks quietly. 2D anime style, warm light catching his eyes.",
+      "prompt": "Ren looks away, expression softening. Black undercut with crimson streaks, emerald green eyes, scar on left cheek. He speaks quietly. Cinematic 2D anime style, warm light catching his eyes.",
       "duration": 10,
       "audio": true,
       "dialogue": {
@@ -93,52 +105,57 @@
         "character": "Ren",
         "emotion": "vulnerable"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "close_up"
     },
     {
       "sliceId": 8,
       "type": "silent_establishing",
-      "prompt": "Time-lapse of clouds moving over the city, shadows shifting across buildings. 2D anime style, dramatic lighting transition from day to dusk.",
+      "prompt": "Time-lapse of clouds moving over Neo-Kyoto, shadows shifting across neon-lit buildings, pagoda silhouette against changing sky. Cinematic 2D anime style, dramatic lighting transition from day to dusk.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
       "cameraAngle": "wide_timelapse"
     },
     {
       "sliceId": 9,
       "type": "dialogue_closeup",
-      "prompt": "Yuki in a dimly lit library, surrounded by old books. She discovers a glowing page. Her eyes widen. 2D anime style, dramatic spotlight.",
+      "prompt": "Mira in a dimly lit archive room, surrounded by holographic data screens. Her mechanical left arm interfaces with a terminal, amber light-lines pulsing. Her eyes widen. Cinematic 2D anime style, dramatic spotlight.",
       "duration": 10,
       "audio": true,
       "dialogue": {
         "text": "This can't be real. These are the coordinates my grandmother left behind.",
-        "character": "Yuki",
+        "character": "Mira",
         "emotion": "shocked"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "close_up_low_angle"
     },
     {
       "sliceId": 10,
       "type": "silent_establishing",
-      "prompt": "Underground passage, flickering fluorescent lights, water dripping from pipes. Mysterious atmosphere. 2D anime style, green-tinted shadows.",
+      "prompt": "Underground passage beneath Neo-Kyoto, flickering fluorescent lights mixed with cyan neon, water dripping from pipes, old circuit boards on walls. Mysterious atmosphere. Cinematic 2D anime style, green-tinted shadows.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
       "cameraAngle": "tracking_forward"
     },
     {
       "sliceId": 11,
       "type": "silent_action",
-      "prompt": "Yuki runs through the underground passage, her footsteps echoing. Camera follows from behind. Speed lines, motion blur. 2D anime style.",
+      "prompt": "Mira runs through the underground passage, her mechanical left arm glowing amber, silver-white hair streaming behind her. Camera follows from behind. Speed lines, motion blur. Cinematic 2D anime style.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/d-B6Quj2YVLjykmKkKuQQ_shot3_action_v2.png",
       "cameraAngle": "tracking_behind"
     },
     {
       "sliceId": 12,
       "type": "dialogue_closeup",
-      "prompt": "Ren blocks Yuki's path at a junction, hand raised. He speaks urgently. 2D anime style, dramatic red emergency lighting.",
+      "prompt": "Ren blocks Mira's path at a junction, hand on his katana hilt. Black gakuran with cyan circuit embroidery glowing in the dim light. He speaks urgently. Cinematic 2D anime style, dramatic red emergency lighting.",
       "duration": 10,
       "audio": true,
       "dialogue": {
@@ -146,43 +163,47 @@
         "character": "Ren",
         "emotion": "urgent"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "medium_close"
     },
     {
       "sliceId": 13,
       "type": "stylised_action",
-      "prompt": "Yuki pushes past Ren, they struggle briefly, she breaks free and dashes forward. Dynamic camera rotation, speed lines, dramatic poses. 2D anime style, high energy.",
+      "prompt": "Ren swings his katana with ice-blue glowing blade in a diagonal slash. Mira's mechanical left arm hardens into a rectangular shield with amber glow, blocking the strike. Cyan and amber sparks explode at impact. Radial manga speed lines, shockwave ring. Near-monochrome cyberpunk background. Cinematic 2D anime style, extreme dynamic composition.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/d-B6Quj2YVLjykmKkKuQQ_shot3_action_v2.png",
       "cameraAngle": "dynamic_rotating"
     },
     {
       "sliceId": 14,
       "type": "silent_action",
-      "prompt": "Yuki emerges into a vast underground chamber with a glowing crystal structure at its centre. She stops, awestruck. Camera pulls back to reveal scale. 2D anime style, ethereal blue glow.",
+      "prompt": "Mira emerges into a vast underground chamber with a glowing crystal structure at its centre, pulsing with amber and cyan light. She stops, awestruck. Camera pulls back to reveal scale. Cinematic 2D anime style, ethereal blue glow.",
       "duration": 10,
       "audio": false,
       "dialogue": null,
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/d-B6Quj2YVLjykmKkKuQQ_shot3_action_v2.png",
       "cameraAngle": "wide_reveal"
     },
     {
       "sliceId": 15,
       "type": "dialogue_closeup",
-      "prompt": "Yuki's face illuminated by the crystal's glow, tears forming. She whispers. 2D anime style, ethereal blue light on skin.",
+      "prompt": "Mira's face illuminated by the crystal's amber and cyan glow, tears forming. Silver-white hair with blue tips glowing in the light, mechanical left arm reaching toward the crystal. She whispers. Cinematic 2D anime style, ethereal light on skin.",
       "duration": 10,
       "audio": true,
       "dialogue": {
         "text": "Grandmother... you were right all along. The city does remember.",
-        "character": "Yuki",
+        "character": "Mira",
         "emotion": "emotional"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "extreme_close_up"
     },
     {
       "sliceId": 16,
       "type": "dialogue_closeup",
-      "prompt": "Ren catches up, breathing hard. He sees the crystal and his expression transforms from anger to wonder. 2D anime style, blue glow reflecting in his eyes.",
+      "prompt": "Ren catches up, breathing hard. Black gakuran with cyan circuits, katana at hip. He sees the crystal and his expression transforms from anger to wonder. Cinematic 2D anime style, blue glow reflecting in his emerald green eyes.",
       "duration": 10,
       "audio": true,
       "dialogue": {
@@ -190,25 +211,27 @@
         "character": "Ren",
         "emotion": "awestruck"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "medium_close"
     },
     {
       "sliceId": 17,
       "type": "dialogue_closeup",
-      "prompt": "Both characters stand before the crystal, side by side. Yuki speaks with resolve. 2D anime style, warm and cool light mixing on their faces.",
+      "prompt": "Both Ren and Mira stand before the crystal, side by side. Ren in black gakuran with cyan circuits, Mira in navy sailor uniform with mechanical left arm. Mira speaks with resolve. Cinematic 2D anime style, warm and cool light mixing on their faces.",
       "duration": 10,
       "audio": true,
       "dialogue": {
         "text": "This is just the beginning. There are more coordinates. Will you help me find them?",
-        "character": "Yuki",
+        "character": "Mira",
         "emotion": "resolute"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "two_shot_medium"
     },
     {
       "sliceId": 18,
       "type": "dialogue_closeup",
-      "prompt": "Ren looks at Yuki, then at the crystal, then back. A slow smile. He nods. 2D anime style, warm golden light breaking through.",
+      "prompt": "Ren looks at Mira, then at the crystal, then back. A slow smile crosses his scarred face. Emerald green eyes warm. He nods. Cinematic 2D anime style, warm golden light breaking through.",
       "duration": 10,
       "audio": true,
       "dialogue": {
@@ -216,6 +239,7 @@
         "character": "Ren",
         "emotion": "warm_sarcastic"
       },
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "cameraAngle": "close_up"
     }
   ]

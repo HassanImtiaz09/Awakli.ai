@@ -1,60 +1,63 @@
 {
   "_meta": {
-    "version": "1.0.0",
-    "description": "Three standardised anime shot archetypes. Every provider generates these same three 10-second clips for apples-to-apples comparison.",
+    "version": "1.1.0",
+    "description": "Three standardised Awakli anime shot archetypes generated via Stage 1 pipeline (Flux). Every provider generates these same three 10-second clips for apples-to-apples comparison.",
     "resolution": "1080p (or provider max if lower)",
     "duration": 10,
     "fps": 24,
-    "seed": 42
+    "seed": 42,
+    "generatedBy": "Awakli Stage 1 Pipeline (Forge ImageService / Flux)",
+    "generatedAt": "2026-04-24"
   },
   "shots": [
     {
       "id": "shot_1_establishing",
-      "name": "Establishing Shot — Silent Wide Scene",
+      "name": "Establishing Shot — Neo-Kyoto Bayfront at Dusk",
       "type": "establishing",
-      "prompt": "Neon-lit Tokyo rooftop at dusk, distant city hum, a lone shadow walks across the frame. 2D anime style, soft lighting.",
+      "prompt": "Wide establishing shot of a futuristic cyberpunk Japanese bay city at dusk. A sweeping panoramic view shows a crescent-shaped harbour with glowing neon-lit skyscrapers reflected in dark water. Traditional three-tier pagoda silhouette visible among the towers. Heavy rain falls, creating streaks of light against holographic billboards. Wet streets reflect pink, cyan, and amber neon. A lone cargo drone crosses the sky trailing navigation lights. Cinematic 2D anime style, dramatic lighting, atmospheric perspective, no characters visible.",
       "duration": 10,
       "resolution": "1080p",
       "audio": false,
       "dialogue": null,
-      "referenceImage": null,
-      "tests": ["video_generation_cost", "aesthetic_quality", "motion_coherence"],
-      "notes": "Low complexity, ambient motion only. Tests baseline video generation quality and cost."
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f41/-UlETqlRvCmCgdZsuKIqR_shot1_establishing_v4.png",
+      "tests": ["video_generation_cost", "aesthetic_quality", "motion_coherence", "rain_particle_rendering"],
+      "notes": "Low complexity, ambient motion only (rain, neon flicker, drone). Tests baseline video generation quality and cost. Reference image is Awakli Stage 1 output."
     },
     {
       "id": "shot_2_dialogue",
-      "name": "Dialogue Close-Up — Character with Audible Line",
+      "name": "Dialogue Close-Up — Ren and Mira Rooftop Confrontation",
       "type": "dialogue",
-      "prompt": "Teenage girl with black hair and a school uniform. She speaks the line: \"I finally understand why you came back.\" Soft lighting, 2D anime style, tight close-up on face.",
+      "prompt": "Medium shot on a traditional Japanese rooftop at dusk. Two anime characters face each other in tense confrontation. Left: Ren, a 17-year-old male with black undercut hair with crimson red streaks on the right side, emerald green eyes, a thin scar on his left cheek, wearing a black gakuran school uniform with glowing cyan circuit embroidery and a katana at his left hip. Right: Mira, a 16-year-old female with long silver-white hair with cerulean blue tips, a small braid at her right temple, gold and amber eyes, wearing a navy sailor school uniform with a red neckerchief, her left arm is a mechanical prosthetic with amber light-lines. Cyberpunk city skyline in background with a pagoda visible over Mira's right shoulder. Cinematic 2D anime style, dramatic dusk lighting.",
       "duration": 10,
       "resolution": "1080p",
       "audio": true,
       "dialogue": {
         "text": "I finally understand why you came back.",
-        "characterId": "character-01",
+        "characterId": "mira",
+        "characterName": "Mira",
         "emotion": "reflective",
         "audioSpec": {
-          "format": "wav",
+          "format": "mp3",
           "sampleRate": 48000,
           "loudness": "-16 LUFS"
         }
       },
-      "referenceImage": "character-01.png",
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/WwhqUYCNKEbSkW9FS6Suo_shot2_dialogue_v2.png",
       "tests": ["lipsync_quality", "character_consistency", "mouth_artifacts", "voice_quality"],
-      "notes": "The critical test. Requires reference image + dialogue audio. Tests lipsync, character fidelity, and voice integration."
+      "notes": "The critical test. Requires reference image + dialogue audio. Tests lipsync, character fidelity, and voice integration. Reference image is Awakli Stage 1 output with both characters."
     },
     {
       "id": "shot_3_action",
-      "name": "Action / Multi-Character — Dynamic Two-Character Scene",
+      "name": "Action — Ren's Katana Strike vs Mira's Shield Block",
       "type": "action",
-      "prompt": "Samurai leaps from a moving train, sword drawn, his opponent blocks with a glowing staff. Rain, speed lines, 2D anime style.",
+      "prompt": "Close-up dynamic action shot on a rooftop at night. Ren swings his katana with an ice-blue glowing blade in a diagonal slash from upper-left. Mira's left mechanical arm has hardened into a rectangular shield with amber glow, blocking the strike. Cyan and amber sparks explode at the impact point. Radial manga speed lines emanate from the clash. A shockwave ring expands outward. Background is near-monochrome cyberpunk city, desaturated to emphasise the foreground action. Ren's crimson hair streaks trail behind him. Mira's silver-blue hair lifts from the shockwave. Cinematic 2D anime style, extreme dynamic composition.",
       "duration": 10,
       "resolution": "1080p",
       "audio": false,
       "dialogue": null,
-      "referenceImage": null,
-      "tests": ["motion_coherence", "multi_character_consistency", "stylised_camera", "action_dynamics"],
-      "notes": "High complexity, fast motion, two characters. Tests motion handling and multi-character scenes."
+      "referenceImage": "https://v3b.fal.media/files/b/0a977f42/d-B6Quj2YVLjykmKkKuQQ_shot3_action_v2.png",
+      "tests": ["motion_coherence", "multi_character_consistency", "stylised_camera", "action_dynamics", "vfx_rendering"],
+      "notes": "High complexity, fast motion, two characters, VFX. Tests motion handling, multi-character scenes, and particle effects. Reference image is Awakli Stage 1 output with Shot 2 as character reference."
     }
   ]
 }

@@ -1,0 +1,18 @@
+pipeline_id,component,provider,model,units,unit_type,cost_usd,percent_of_total
+P1_1777011747729,video,fal_ai,Kling V3 Omni,180,seconds,25.199999999999992,100
+P2b_1777017272566,video,fal_ai,Wan 2.5,80,seconds,2.5,36.4
+P2b_1777017272566,tts,elevenlabs,turbo-v2.5,702,characters,0.0693,1
+P2b_1777017272566,video,hedra,Character-3,100,seconds,3.3000000000000003,48
+P2b_1777017272566,lipsync,fal_ai,LatentSync,5,clips,1,14.6
+P2b_1777017272566,assembly,local,FFmpeg,1,runs,0,0
+P3b_1777022882411,video,fal_ai,Wan 2.5,180,seconds,7,99
+P3b_1777022882411,tts,cartesia,sonic-2,702,characters,0.0693,1
+P3b_1777022882411,lipsync,fal_ai,MuseTalk,0,runs,0,0
+P3b_1777022882411,assembly,local,FFmpeg,1,runs,0,0
+P4_1777027488368,video,fal_ai,Hunyuan V1.5,80,seconds,0,0
+P4_1777027488368,video,fal_ai,Hunyuan LoRA,1,clips,0.3,2.5
+P4_1777027488368,tts,elevenlabs,turbo-v2.5,702,characters,0.0693,0.6
+P4_1777027488368,video,hedra,Character-3,100,seconds,2.97,24.3
+P4_1777027488368,lipsync,fal_ai,Kling Lip Sync,5,clips,8.4,68.6
+P4_1777027488368,lora_training,fal_ai,Hunyuan LoRA Training,1,runs,0.5,4.1
+P4_1777027488368,assembly,local,FFmpeg,1,runs,0,0
