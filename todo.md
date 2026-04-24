@@ -5233,3 +5233,7 @@
 - [x] Wire approved panel URLs into shots.json (v1.1.0) + pilot-3min-script.json (v1.1.0 with Ren + Mira)
 - [x] Run 4-pipeline benchmark: P1, P2b, P3b, P4 (18 slices each, 3 min)
 - [x] Compile cost assessment report with all video URLs for review
+- [x] Compile individual benchmark clips into 4 full 3-minute videos (one per pipeline) for side-by-side comparison
+- [x] Analyze quality critique report against benchmark data and pipeline code
+- [x] Identify root causes for each pitfall (letterboxing, style drift, action shot failures, prosthetic consistency)
+- [x] Produce comprehensive action plan for optimized hybrid P2b+P1 generation pipeline
