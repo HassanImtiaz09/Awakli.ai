@@ -5301,6 +5301,6 @@
 - [x] A3: Title + end cards — FFmpeg drawtext with animated fade in/out + concat wrapper
 
 ### Full Benchmark
-- [ ] Run full P10 benchmark (18 slices, 3 min pilot)
-- [ ] Compile P10 full video with all assembly steps
-- [ ] Deliver P10 results with comparison to P9
+- [x] Run full P10 benchmark — 18/18 slices, $14.35 total, 29.0 min, 0 failures
+- [x] Compile P10 full video — 172.5s assembled, 43.9 MB, 720p, -16 LUFS mastered
+- [x] Deliver P10 results — 36.2% cost reduction ($22.49→$14.35), 62.1% time reduction (76.4→29.0 min)

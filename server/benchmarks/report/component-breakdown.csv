@@ -42,3 +42,7 @@ P9_1777115251318,video,fal_ai,"Wan 2.5 (all silent, v3 action ref)",80,seconds,4
 P9_1777115251318,tts,elevenlabs,turbo-v2.5 (char voices),702,characters,0.0693,0.3
 P9_1777115251318,video,hedra,Character-3 (dialogue + immediate S3),100,seconds,3.3000000000000003,14.7
 P9_1777115251318,lipsync,fal_ai,Kling Lip Sync (9/10 parallel),9,clips,15.12,67.2
+P10_1777127471790,video,fal_ai,"Wan 2.7 (8 silent, 720p)",80,seconds,8,55.8
+P10_1777127471790,tts,elevenlabs,"turbo-v2.5 (char voices: Mira=Sarah, Ren=Harry)",702,characters,0.0693,0.5
+P10_1777127471790,video,fal_ai,Veo 3.1 Lite (9 dialogue) + Wan 2.7 audio (1 fallback),100,seconds,4.6,32.1
+P10_1777127471790,lipsync,fal_ai,Kling Lip Sync (1/1 Wan 2.7 clips),1,clips,1.68,11.7
