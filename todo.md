@@ -5343,3 +5343,8 @@
 
 ### Phase D — Voice Director
 - [x] D4: Voice Director — voice-director.ts with 15 emotion tags, TTS overrides, Gemini Flash, batch + single modes
+
+### P12 Benchmark Results
+- [x] Full P12 benchmark run — 18/18 slices, $14.39 total, 43.3 min, 0 failures, 0 fallbacks
+- [x] LLM orchestration cost: $0.4652 (113 calls: D1 $0.05, D2 $0.38, D3 $0.03, D4 $0.002)
+- [x] P10 vs P12 comparison report delivered
