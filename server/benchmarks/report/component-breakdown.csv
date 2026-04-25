@@ -33,3 +33,8 @@ P7_1777100581606,video,hedra,Character-3 (dialogue),100,seconds,3.30000000000000
 P7_1777100581606,lipsync,fal_ai,LatentSync (S3 re-upload),0,clips,0,0
 P7_1777100581606,assembly,s3,Hedra clip re-upload,10,runs,0,0
 P7_1777100581606,assembly,local,FFmpeg,1,runs,0,0
+P8_1777110038969,video,fal_ai,"Wan 2.5 (all silent, v3 action ref)",80,seconds,4,20.9
+P8_1777110038969,tts,elevenlabs,turbo-v2.5 (char voices),702,characters,0.0693,0.4
+P8_1777110038969,video,hedra,Character-3 (dialogue + immediate S3),100,seconds,3.3000000000000003,17.3
+P8_1777110038969,lipsync,multi,LatentSync(0)+Kling(7)+MuseTalk(0),7,clips,11.76,61.5
+P8_1777110038969,assembly,local,FFmpeg preprocess + S3,10,runs,0,0

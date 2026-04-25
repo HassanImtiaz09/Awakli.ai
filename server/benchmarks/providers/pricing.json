@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "updatedAt": "2026-04-23",
     "currency": "USD",
-    "notes": "All rates are per-second of output video unless noted. Desk-research values — to be replaced with measured actuals during benchmark."
+    "notes": "All rates are per-second of output video unless noted. Desk-research values \u2014 to be replaced with measured actuals during benchmark."
   },
   "video": {
     "kling_v3_omni_fal": {
@@ -13,8 +13,8 @@
       "resolution": "1080p",
       "audio": true,
       "lipsync": true,
-      "perSecond": 0.140,
-      "per10sClip": 1.40,
+      "perSecond": 0.14,
+      "per10sClip": 1.4,
       "notes": "Pro mode + audio surcharge. Integrated lipsync."
     },
     "kling_v3_omni_atlas": {
@@ -79,8 +79,8 @@
       "resolution": "720p",
       "audio": false,
       "lipsync": false,
-      "perSecond": 0.080,
-      "per10sClip": 0.80,
+      "perSecond": 0.08,
+      "per10sClip": 0.8,
       "notes": "Max 720p on fal.ai. Open-weights model."
     },
     "wan22_replicate": {
@@ -91,7 +91,7 @@
       "audio": false,
       "lipsync": false,
       "perSecond": null,
-      "per10sClip": 0.60,
+      "per10sClip": 0.6,
       "notes": "Replicate bills by GPU time. ~$0.06/sec estimated. 720p max."
     },
     "wan25_fal": {
@@ -101,8 +101,8 @@
       "resolution": "1080p",
       "audio": false,
       "lipsync": false,
-      "perSecond": 0.050,
-      "per10sClip": 0.50,
+      "perSecond": 0.05,
+      "per10sClip": 0.5,
       "notes": "Wan 2.5 Preview. Supports 1080p (upgrade from 2.2 720p). 37.5% cheaper than Wan 2.2 on fal.ai."
     },
     "hunyuan_v15_fal": {
@@ -124,7 +124,7 @@
       "audio": false,
       "lipsync": false,
       "perSecond": null,
-      "perVideo": 0.30,
+      "perVideo": 0.3,
       "notes": "Fixed per-video price. LoRA inference."
     },
     "hedra_char3": {
@@ -146,7 +146,7 @@
       "audio": true,
       "lipsync": true,
       "perSecond": null,
-      "perClip": 0.20,
+      "perClip": 0.2,
       "notes": "Flat $0.20 per clip up to 40s. $0.005/sec beyond 40s."
     },
     "musetalk_replicate": {
@@ -159,20 +159,31 @@
       "perSecond": null,
       "perRun": 0.42,
       "notes": "~$0.42 per run on Replicate. Anime face detection failure risk 20-40%."
+    },
+    "musetalk_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/musetalk",
+      "mode": "lipsync",
+      "resolution": "input",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": null,
+      "perClip": 0.2,
+      "notes": "MuseTalk via fal.ai. ~$0.20 per clip. Anime face detection may fail."
     }
   },
   "tts": {
     "elevenlabs": {
       "provider": "elevenlabs",
       "model": "turbo-v2.5",
-      "perKChars": 0.10,
+      "perKChars": 0.1,
       "voiceClone": true,
       "notes": "Best voice quality. Voice cloning available."
     },
     "cartesia": {
       "provider": "cartesia",
       "model": "sonic",
-      "perKChars": 0.10,
+      "perKChars": 0.1,
       "voiceClone": false,
       "notes": "Lowest latency (~40ms TTFA). Same price as ElevenLabs."
     },
@@ -188,7 +199,10 @@
     "hunyuan_lora_training": {
       "provider": "fal.ai",
       "model": "fal-ai/hunyuan-video-lora-training",
-      "estimatedCost": { "low": 2.00, "high": 8.00 },
+      "estimatedCost": {
+        "low": 2.0,
+        "high": 8.0
+      },
       "notes": "20-image training set. Cost depends on steps and resolution. ~5-10 min wall-clock."
     }
   }

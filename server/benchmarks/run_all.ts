@@ -15,12 +15,13 @@
 
 import { checkProviderCredentials } from "./providers/registry.js";
 import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7 } from "./pipelines/end-to-end.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
 import pilotScript16x9 from "./fixtures/pilot-3min-script-16x9.json" with { type: "json" };
 import pilotScript16x9v2 from "./fixtures/pilot-3min-script-16x9-v2.json" with { type: "json" };
+import pilotScript16x9v3 from "./fixtures/pilot-3min-script-16x9-v3.json" with { type: "json" };
 
 const TICKET = process.argv[2]?.toUpperCase() ?? "HELP";
 
@@ -174,6 +175,13 @@ async function main() {
       break;
     }
 
+    case "P8": {
+      console.log("Running P8: Full Fix — immediate S3 re-upload + FFmpeg preprocessing + fallback lipsync + v3 action ref...\n");
+      const result = await runP8(pilotScript16x9v3 as any);
+      console.log(`P8 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      break;
+    }
+
     case "ALL": {
       console.log("Running FULL BENCHMARK SUITE...\n");
       console.log("Phase 1: Single-layer benchmarks (B1-B7)\n");
@@ -253,6 +261,7 @@ async function main() {
       console.log("  P5      — Hybrid (Kling Omni action + Wan 2.5 + Hedra + LatentSync)");
       console.log("  P6      — All Wan 2.5 + 16:9 panels (no Kling) + Hedra + LatentSync");
       console.log("  P7      — Improved Wan 2.5: char voices + LatentSync S3 fix + softened prompts");
+      console.log("  P8      — Full Fix: immediate S3 + FFmpeg preprocess + fallback lipsync + v3 action ref");
       console.log("  all     — Run full benchmark suite");
       console.log("  report  — Generate report from existing data");
       break;

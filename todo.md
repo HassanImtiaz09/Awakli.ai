@@ -5256,7 +5256,15 @@
 - [x] Run P7 benchmark (18 slices, 3 min pilot) — $6.87, 17/18 success
 - [x] Compile P7 partial video (silent clips only, Hedra URLs expired)
 - [x] Deliver P7 results with analysis report
-- [ ] P8: Move Hedra S3 re-upload into dialogue loop (fix URL expiry)
-- [ ] P8: Add FFmpeg preprocessing before LatentSync (fix 422 format error)
-- [ ] P8: Generate clean reference image for slice 13 (avoid content filter)
-- [ ] P8: Consider MuseTalk or Kling Lip Sync as LatentSync alternatives
+- [x] P8: Move Hedra S3 re-upload into dialogue loop (fix URL expiry)
+- [x] P8: Add FFmpeg preprocessing before LatentSync (fix 422 format error)
+- [x] P8: Generate clean reference image for slice 13 (avoid content filter)
+- [x] P8: Implement triple fallback lip sync (LatentSync → Kling → MuseTalk)
+- [x] P8: Run benchmark — $19.13, 18/18 success, 7/10 lip sync via Kling
+- [x] P8: Compile full video (3.0 min, 29.8 MB)
+- [x] P8: Deliver results with analysis report
+- [ ] P9: Upload normalized videos to fal.ai storage (fix LatentSync)
+- [ ] P9: Parallelize lip sync calls to reduce wall clock time
+- [ ] P9: Write lip sync results incrementally to prevent data loss
+- [ ] P9: Skip LatentSync and go directly to Kling Lip Sync
+- [ ] P9: Investigate Kling failure pattern on first 3 dialogue slices

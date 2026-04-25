@@ -1776,6 +1776,324 @@ export async function runP7(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
+// ─── P8: Full Fix — Immediate S3 Re-upload + FFmpeg Preprocessing + Fallback Lipsync ─────
+// Based on P7 but with:
+// 1. Immediate S3 re-upload after each Hedra clip (fixes URL expiry)
+// 2. FFmpeg preprocessing before LatentSync (scale to 512x512, H.264, strip audio)
+// 3. Fallback to Kling Lip Sync if LatentSync still fails
+// 4. Weapon-free action reference image for slice 13 (v3 script)
+// 5. Character-specific voices (Mira → Sarah, Ren → Harry) from P7
+
+import { execSync } from "child_process";
+import os from "os";
+
+async function preprocessVideoForLatentSync(videoBuffer: Buffer, sliceId: number): Promise<{ buffer: Buffer; path: string }> {
+  const tmpDir = os.tmpdir();
+  const inputPath = path.join(tmpDir, `hedra_raw_${sliceId}.mp4`);
+  const outputPath = path.join(tmpDir, `hedra_norm_${sliceId}.mp4`);
+
+  fs.writeFileSync(inputPath, videoBuffer);
+
+  // Scale to 512x512 (LatentSync training resolution), H.264, strip audio
+  execSync(
+    `ffmpeg -y -i "${inputPath}" -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:black" -r 25 -c:v libx264 -preset fast -crf 23 -an "${outputPath}"`,
+    { timeout: 60000 }
+  );
+
+  const outputBuffer = fs.readFileSync(outputPath);
+  // Cleanup
+  try { fs.unlinkSync(inputPath); } catch {}
+  try { fs.unlinkSync(outputPath); } catch {}
+
+  return { buffer: outputBuffer, path: outputPath };
+}
+
+export async function runP8(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+  const falKey = getProviderKey("fal_ai");
+
+  const silentSlices = script.slices.filter((s) => !s.audio);
+  const dialogueSlices = script.slices.filter((s) => s.audio);
+
+  console.log(`  [P8] Full Fix: ${silentSlices.length} silent → Wan 2.5, ${dialogueSlices.length} dialogue → Hedra (char voices + immediate S3 + FFmpeg + fallback lipsync)`);
+
+  // ─── Step 1: ALL silent slices via Wan 2.5 ───────────────────────────────────
+  const wanPricing = pricingData.video.wan25_fal;
+  let silentCost = 0;
+
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    console.log(`  [P8] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.5...`);
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan25(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
+      silentCost += cost;
+      console.log(`  [P8] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P8",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wanPricing.model,
+        mode: "standard",
+        resolution: wanPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P8", component: "silent_video", router: "wan25", sliceType: slice.type },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P8] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P8", slice, "fal_ai", wanPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 2: TTS with ElevenLabs — character-specific voices ──────────────────
+  const ttsPricing = pricingData.tts.elevenlabs;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const character = slice.dialogue?.character ?? "";
+    const voiceId = VOICE_MAP[character] ?? DEFAULT_VOICE;
+    console.log(`  [P8] TTS for slice ${slice.sliceId} (${character}) — voice: ${character === "Mira" ? "Sarah" : character === "Ren" ? "Harry" : "Rachel"}`);
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await elevenLabsTTS({ text: dialogueText, voiceId });
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P8] TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P8] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // ─── Step 3: Dialogue clips via Hedra + IMMEDIATE S3 re-upload ────────────────
+  const hedraPricing = pricingData.video.hedra_char3;
+  let dialogueCost = 0;
+  // Map: sliceId → persistent S3 URL (for LatentSync later)
+  const hedraS3Urls: Map<number, string> = new Map();
+
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    console.log(`  [P8] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}, char=${slice.dialogue?.character}) — generating via Hedra...`);
+    const timer = startTimer();
+    try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await hedraCharacter3({
+          imageUrl: hedraImageUrl,
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
+      dialogueCost += cost;
+
+      // IMMEDIATELY download and re-upload to S3 (fix for URL expiry)
+      let persistentUrl = output.url;
+      try {
+        console.log(`  [P8] Dialogue ${di + 1}: downloading Hedra clip for S3 re-upload...`);
+        const hedraResp = await fetch(output.url);
+        if (!hedraResp.ok) throw new Error(`Download failed: ${hedraResp.status}`);
+        const hedraBuffer = Buffer.from(await hedraResp.arrayBuffer());
+        const s3Key = `benchmarks/p8/hedra_slice_${slice.sliceId}_${Date.now()}.mp4`;
+        const { url: s3Url } = await storagePut(s3Key, hedraBuffer, "video/mp4");
+        persistentUrl = s3Url;
+        hedraS3Urls.set(slice.sliceId, s3Url);
+        console.log(`  [P8] Dialogue ${di + 1}: S3 re-upload ✓ (${(hedraBuffer.length / 1024 / 1024).toFixed(1)}MB)`);
+      } catch (reuploadErr: any) {
+        console.warn(`  [P8] Dialogue ${di + 1}: S3 re-upload failed — ${reuploadErr.message?.slice(0, 80)}`);
+        // Still use the original Hedra URL as fallback
+      }
+
+      console.log(`  [P8] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)}`);
+
+      const clip: ClipResult = {
+        ticketId: "P8",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "hedra",
+        model: hedraPricing.model,
+        mode: "dialogue",
+        resolution: hedraPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: persistentUrl,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P8", component: "dialogue_video", router: "hedra" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P8] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P8", slice, "hedra", hedraPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 4: Lip Sync — LatentSync with FFmpeg preprocessing + Kling fallback ─
+  const lipsyncPricing = pricingData.video.latentsync_fal;
+  const klingLsPricing = pricingData.video.kling_lipsync_fal;
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+  let latentsyncSuccessCount = 0;
+  let klingLsSuccessCount = 0;
+  let museTalkSuccessCount = 0;
+
+  const lipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  );
+
+  console.log(`  [P8] Lip Sync: processing ${lipsyncCandidates.length} dialogue clips (FFmpeg preprocess → LatentSync → Kling fallback)...`);
+
+  for (const clip of lipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    lipsyncClipCount++;
+    let lipsyncSuccess = false;
+
+    // --- Attempt 1: LatentSync with FFmpeg preprocessing ---
+    try {
+      console.log(`  [P8] LipSync slice ${sliceId}: downloading for FFmpeg preprocessing...`);
+      const videoResp = await fetch(clip.outputUrl);
+      if (!videoResp.ok) throw new Error(`Download failed: ${videoResp.status}`);
+      const videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+
+      // FFmpeg: scale to 512x512, H.264, strip audio
+      console.log(`  [P8] LipSync slice ${sliceId}: FFmpeg preprocessing (512x512, H.264, no audio)...`);
+      const { buffer: normalizedBuffer } = await preprocessVideoForLatentSync(videoBuffer, sliceId);
+
+      // Upload normalized video to S3
+      const normS3Key = `benchmarks/p8/hedra_norm_${sliceId}_${Date.now()}.mp4`;
+      const { url: normUrl } = await storagePut(normS3Key, normalizedBuffer, "video/mp4");
+      console.log(`  [P8] LipSync slice ${sliceId}: normalized video uploaded (${(normalizedBuffer.length / 1024 / 1024).toFixed(1)}MB)`);
+
+      // Try LatentSync with normalized video
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyLatentSync(normUrl, ttsOutput.url);
+      });
+      const cost = lipsyncPricing.perClip ?? 0.20;
+      lipsyncCost += cost;
+      latentsyncSuccessCount++;
+      lipsyncSuccess = true;
+      clip.outputUrl = lsOutput.url;
+      console.log(`  [P8] LipSync slice ${sliceId} ✓ LatentSync success — $${cost.toFixed(2)}`);
+    } catch (lsErr: any) {
+      console.warn(`  [P8] LipSync slice ${sliceId}: LatentSync failed — ${lsErr.message?.slice(0, 100)}`);
+    }
+
+    // --- Attempt 2: Kling Lip Sync as fallback ---
+    if (!lipsyncSuccess) {
+      try {
+        console.log(`  [P8] LipSync slice ${sliceId}: trying Kling Lip Sync fallback...`);
+        // Kling Lip Sync may handle Hedra's native format better
+        const s3Url = hedraS3Urls.get(sliceId) ?? clip.outputUrl;
+        const { result: klingOutput } = await withRetry(async () => {
+          return await applyKlingLipSync(s3Url, ttsOutput.url);
+        });
+        const cost = (klingLsPricing.per10sClip ?? 1.68);
+        lipsyncCost += cost;
+        klingLsSuccessCount++;
+        lipsyncSuccess = true;
+        clip.outputUrl = klingOutput.url;
+        console.log(`  [P8] LipSync slice ${sliceId} ✓ Kling fallback success — $${cost.toFixed(2)}`);
+      } catch (klingErr: any) {
+        console.warn(`  [P8] LipSync slice ${sliceId}: Kling fallback also failed — ${klingErr.message?.slice(0, 100)}`);
+      }
+    }
+
+    // --- Attempt 3: MuseTalk as last resort ---
+    if (!lipsyncSuccess) {
+      try {
+        console.log(`  [P8] LipSync slice ${sliceId}: trying MuseTalk last resort...`);
+        const s3Url = hedraS3Urls.get(sliceId) ?? clip.outputUrl;
+        const { result: mtOutput } = await withRetry(async () => {
+          return await applyMuseTalk(s3Url, ttsOutput.url);
+        });
+        const cost = 0.20; // MuseTalk fal.ai pricing
+        lipsyncCost += cost;
+        museTalkSuccessCount++;
+        lipsyncSuccess = true;
+        clip.outputUrl = mtOutput.url;
+        console.log(`  [P8] LipSync slice ${sliceId} ✓ MuseTalk success — $${cost.toFixed(2)}`);
+      } catch (mtErr: any) {
+        console.error(`  [P8] LipSync slice ${sliceId}: ALL lip sync methods failed — ${mtErr.message?.slice(0, 100)}`);
+      }
+    }
+  }
+
+  const totalLsSuccess = latentsyncSuccessCount + klingLsSuccessCount + museTalkSuccessCount;
+  console.log(`  [P8] Lip Sync: ${totalLsSuccess}/${lipsyncClipCount} clips refined (LatentSync: ${latentsyncSuccessCount}, Kling: ${klingLsSuccessCount}, MuseTalk: ${museTalkSuccessCount})`);
+
+  // ─── Assembly ──────────────────────────────────────────────────────────────────
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = silentCost + ttsCost + dialogueCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const silentDurationSec = silentSlices.reduce((sum, s) => sum + s.duration, 0);
+  const dialogueDurationSec = dialogueSlices.reduce((sum, s) => sum + s.duration, 0);
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: "Wan 2.5 (all silent, v3 action ref)", units: silentDurationSec, unitType: "seconds", costUsd: silentCost },
+    { component: "tts", provider: "elevenlabs", model: "turbo-v2.5 (char voices)", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "video", provider: "hedra", model: "Character-3 (dialogue + immediate S3)", units: dialogueDurationSec, unitType: "seconds", costUsd: dialogueCost },
+    { component: "lipsync", provider: "multi", model: `LatentSync(${latentsyncSuccessCount})+Kling(${klingLsSuccessCount})+MuseTalk(${museTalkSuccessCount})`, units: totalLsSuccess, unitType: "clips", costUsd: lipsyncCost },
+    { component: "assembly", provider: "local", model: "FFmpeg preprocess + S3", units: lipsyncClipCount, unitType: "runs", costUsd: 0 },
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P8_${Date.now()}`,
+    variant: "P8_fullfix_s3_ffmpeg_fallback_lipsync",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
 /// ─── Provider Implementations (Real API Calls) ─────────────────────────────────
 // Wired to shared api-clients module for all providers.
 
