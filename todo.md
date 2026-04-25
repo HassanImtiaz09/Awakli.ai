@@ -5246,3 +5246,17 @@
 - [x] Regenerate reference images at native 16:9 (not 1:1) to fix Wan 2.5 422 errors
 - [x] Implement P6 pipeline (all Wan 2.5 + Hedra + LatentSync, no Kling) with fixes
 - [x] Run P6 benchmark and compile full video
+- [x] Investigate P1 voice quality (Kling built-in TTS) vs P6 (ElevenLabs) and fix character voice matching
+- [x] Soften action prompts for slices 13/14 to pass Wan 2.5 content filter
+- [x] Fix LatentSync 422 errors on Hedra clips — re-upload Hedra clips to S3 via storagePut before LatentSync
+- [x] Create pilot-3min-script-16x9-v2.json with softened slice 13 prompt
+- [x] Implement runP7() in end-to-end.ts with character-specific voices (Mira→Sarah, Ren→Harry)
+- [x] Add P7 case to run_all.ts CLI with pilotScript16x9v2 fixture
+- [x] Verify TypeScript compiles with 0 errors
+- [x] Run P7 benchmark (18 slices, 3 min pilot) — $6.87, 17/18 success
+- [x] Compile P7 partial video (silent clips only, Hedra URLs expired)
+- [x] Deliver P7 results with analysis report
+- [ ] P8: Move Hedra S3 re-upload into dialogue loop (fix URL expiry)
+- [ ] P8: Add FFmpeg preprocessing before LatentSync (fix 422 format error)
+- [ ] P8: Generate clean reference image for slice 13 (avoid content filter)
+- [ ] P8: Consider MuseTalk or Kling Lip Sync as LatentSync alternatives

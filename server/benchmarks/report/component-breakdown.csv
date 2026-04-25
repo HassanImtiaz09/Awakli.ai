@@ -27,3 +27,9 @@ P6_1777074694895,tts,elevenlabs,turbo-v2.5,702,characters,0.0693,1.1
 P6_1777074694895,video,hedra,Character-3 (dialogue),100,seconds,3.3000000000000003,51.8
 P6_1777074694895,lipsync,fal_ai,LatentSync,0,clips,0,0
 P6_1777074694895,assembly,local,FFmpeg,1,runs,0,0
+P7_1777100581606,video,fal_ai,Wan 2.5 (all silent incl. action),80,seconds,3.5,51
+P7_1777100581606,tts,elevenlabs,turbo-v2.5 (char voices),702,characters,0.0693,1
+P7_1777100581606,video,hedra,Character-3 (dialogue),100,seconds,3.3000000000000003,48
+P7_1777100581606,lipsync,fal_ai,LatentSync (S3 re-upload),0,clips,0,0
+P7_1777100581606,assembly,s3,Hedra clip re-upload,10,runs,0,0
+P7_1777100581606,assembly,local,FFmpeg,1,runs,0,0

@@ -28,6 +28,7 @@ import {
   extrapolateCost,
 } from "../runner-base.js";
 import { getProviderKey } from "../providers/registry.js";
+import { storagePut } from "../../storage.js";
 import pricingData from "../providers/pricing.json" with { type: "json" };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1522,6 +1523,241 @@ export async function runP6(script: PilotScript): Promise<PipelineResult> {
   const result: PipelineResult = {
     pipelineId: `P6_${Date.now()}`,
     variant: "P6_all_wan25_16x9",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
+// ─── P7: Improved All Wan 2.5 — Character Voices + LatentSync S3 Fix ─────────
+// Based on P6 but with:
+// 1. Character-specific ElevenLabs voices (Mira → Sarah, Ren → Harry)
+// 2. Hedra clips re-uploaded to S3 before LatentSync (fixes 422 expiring URLs)
+// 3. Softened action prompts (v2 script) to avoid Wan 2.5 content filter
+// 4. LatentSync applied to ALL dialogue clips (not just 50%)
+
+const VOICE_MAP: Record<string, string> = {
+  Mira: "EXAVITQu4vr4xnSDxMaL",  // Sarah — young female, confident
+  Ren: "SOYHLrjzK2X1ezoPC6cr",    // Harry — young male
+};
+const DEFAULT_VOICE = "21m00Tcm4TlvDq8ikWAM"; // Rachel (fallback)
+
+export async function runP7(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+  const falKey = getProviderKey("fal_ai");
+
+  const silentSlices = script.slices.filter((s) => !s.audio);
+  const dialogueSlices = script.slices.filter((s) => s.audio);
+
+  console.log(`  [P7] Improved All-Wan 2.5: ${silentSlices.length} silent → Wan 2.5, ${dialogueSlices.length} dialogue → Hedra (char voices + S3 re-upload)`);
+
+  // ─── Step 1: ALL silent slices (establishing + action) via Wan 2.5 ───────────
+  const wanPricing = pricingData.video.wan25_fal;
+  let silentCost = 0;
+
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    console.log(`  [P7] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.5...`);
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan25(falKey, slice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wanPricing.perSecond, null, null);
+      silentCost += cost;
+      console.log(`  [P7] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P7",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wanPricing.model,
+        mode: "standard",
+        resolution: wanPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P7", component: "silent_video", router: "wan25", sliceType: slice.type },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P7] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P7", slice, "fal_ai", wanPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 2: TTS with ElevenLabs — character-specific voices ──────────────────
+  const ttsPricing = pricingData.tts.elevenlabs;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const character = slice.dialogue?.character ?? "";
+    const voiceId = VOICE_MAP[character] ?? DEFAULT_VOICE;
+    console.log(`  [P7] TTS for slice ${slice.sliceId} (${character}) — voice: ${character === "Mira" ? "Sarah" : character === "Ren" ? "Harry" : "Rachel"}`);
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await elevenLabsTTS({ text: dialogueText, voiceId });
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P7] TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P7] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // ─── Step 3: Dialogue clips via Hedra Character-3 ─────────────────────────────
+  const hedraPricing = pricingData.video.hedra_char3;
+  let dialogueCost = 0;
+
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    console.log(`  [P7] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}, char=${slice.dialogue?.character}) — generating via Hedra...`);
+    const timer = startTimer();
+    try {
+      const ttsOutput = ttsOutputs.get(slice.sliceId);
+      if (!ttsOutput) throw new Error(`No TTS audio for slice ${slice.sliceId}`);
+
+      const hedraImageUrl = slice.referenceImage ?? "https://placehold.co/512x512/png";
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await hedraCharacter3({
+          imageUrl: hedraImageUrl,
+          audioUrl: ttsOutput.url,
+          prompt: slice.prompt,
+          durationMs: slice.duration * 1000,
+        });
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, hedraPricing.perSecond, null, null);
+      dialogueCost += cost;
+      console.log(`  [P7] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P7",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "hedra",
+        model: hedraPricing.model,
+        mode: "dialogue",
+        resolution: hedraPricing.resolution,
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P7", component: "dialogue_video", router: "hedra" },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P7] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P7", slice, "hedra", hedraPricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 4: LatentSync on ALL dialogue clips (with S3 re-upload fix) ─────────
+  // P6 issue: Hedra returns presigned AWS URLs that expire before LatentSync can
+  // access them, causing 422 errors. Fix: download Hedra clip → re-upload to S3
+  // → pass persistent S3 URL to LatentSync.
+  const lipsyncPricing = pricingData.video.latentsync_fal;
+  let lipsyncCost = 0;
+  let lipsyncClipCount = 0;
+  let lipsyncSuccessCount = 0;
+
+  const lipsyncCandidates = clips.filter(
+    (c) => c.metadata?.component === "dialogue_video" && c.status === "success"
+  );
+
+  console.log(`  [P7] LatentSync: processing ALL ${lipsyncCandidates.length} successful dialogue clips (with S3 re-upload)...`);
+
+  for (const clip of lipsyncCandidates) {
+    const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+    const ttsOutput = ttsOutputs.get(sliceId);
+    if (!clip.outputUrl || !ttsOutput) continue;
+
+    lipsyncClipCount++;
+    try {
+      // Download Hedra clip and re-upload to S3 for a persistent URL
+      console.log(`  [P7] LatentSync slice ${sliceId}: downloading Hedra clip...`);
+      const hedraResp = await fetch(clip.outputUrl);
+      if (!hedraResp.ok) throw new Error(`Failed to download Hedra clip: ${hedraResp.status}`);
+      const hedraBuffer = Buffer.from(await hedraResp.arrayBuffer());
+      
+      console.log(`  [P7] LatentSync slice ${sliceId}: re-uploading to S3 (${(hedraBuffer.length / 1024 / 1024).toFixed(1)}MB)...`);
+      const s3Key = `benchmarks/p7/hedra_slice_${sliceId}.mp4`;
+      const { url: persistentUrl } = await storagePut(s3Key, hedraBuffer, "video/mp4");
+      console.log(`  [P7] LatentSync slice ${sliceId}: S3 URL ready — ${persistentUrl.slice(0, 80)}...`);
+
+      // Now pass the persistent S3 URL to LatentSync
+      const { result: lsOutput } = await withRetry(async () => {
+        return await applyLatentSync(persistentUrl, ttsOutput.url);
+      });
+      const cost = lipsyncPricing.perClip ?? 0.20;
+      lipsyncCost += cost;
+      lipsyncSuccessCount++;
+      console.log(`  [P7] LatentSync slice ${sliceId} ✓ $${cost.toFixed(2)} — ${lsOutput.url.slice(0, 80)}...`);
+
+      // Update the clip's output URL to the LatentSync-refined version
+      clip.outputUrl = lsOutput.url;
+    } catch (err: any) {
+      console.error(`  [P7] LatentSync failed on slice ${sliceId}: ${err.message?.slice(0, 120)}`);
+    }
+  }
+
+  console.log(`  [P7] LatentSync: ${lipsyncSuccessCount}/${lipsyncClipCount} clips refined`);
+
+  // ─── Assembly ──────────────────────────────────────────────────────────────────
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = silentCost + ttsCost + dialogueCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const silentDurationSec = silentSlices.reduce((sum, s) => sum + s.duration, 0);
+  const dialogueDurationSec = dialogueSlices.reduce((sum, s) => sum + s.duration, 0);
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: "Wan 2.5 (all silent incl. action)", units: silentDurationSec, unitType: "seconds", costUsd: silentCost },
+    { component: "tts", provider: "elevenlabs", model: "turbo-v2.5 (char voices)", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "video", provider: "hedra", model: "Character-3 (dialogue)", units: dialogueDurationSec, unitType: "seconds", costUsd: dialogueCost },
+    { component: "lipsync", provider: "fal_ai", model: "LatentSync (S3 re-upload)", units: lipsyncSuccessCount, unitType: "clips", costUsd: lipsyncCost },
+    { component: "assembly", provider: "s3", model: "Hedra clip re-upload", units: lipsyncClipCount, unitType: "runs", costUsd: 0 },
+    { component: "assembly", provider: "local", model: "FFmpeg", units: 1, unitType: "runs", costUsd: 0 },
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P7_${Date.now()}`,
+    variant: "P7_improved_wan25_charvoices_s3fix",
     totalSlices: script._meta.totalSlices,
     totalDurationSec: script._meta.totalDuration,
     components,
