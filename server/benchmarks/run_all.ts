@@ -15,13 +15,14 @@
 
 import { checkProviderCredentials } from "./providers/registry.js";
 import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9, runP10 } from "./pipelines/end-to-end.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9, runP10, runP11 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
 import pilotScript16x9 from "./fixtures/pilot-3min-script-16x9.json" with { type: "json" };
 import pilotScript16x9v2 from "./fixtures/pilot-3min-script-16x9-v2.json" with { type: "json" };
 import pilotScript16x9v3 from "./fixtures/pilot-3min-script-16x9-v3.json" with { type: "json" };
+import pilotScript16x9v5 from "./fixtures/pilot-3min-script-16x9-v5.json" with { type: "json" };
 
 const TICKET = process.argv[2]?.toUpperCase() ?? "HELP";
 
@@ -197,6 +198,14 @@ async function main() {
       break;
     }
 
+    case "P11": {
+      console.log("Running P11: Vidu Q3 silent + Veo 3.1 Lite dialogue + Critic LLM + v5 fixture...\n");
+      const result = await runP11(pilotScript16x9v5 as any);
+      console.log(`P11 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      console.log(`  Routing: Vidu Q3 primary silent (Wan 2.7 fallback), Veo 3.1 Lite dialogue, Critic LLM pre-validation`);
+      break;
+    }
+
     case "ALL": {
       console.log("Running FULL BENCHMARK SUITE...\n");
       console.log("Phase 1: Single-layer benchmarks (B1-B7)\n");
@@ -279,6 +288,7 @@ async function main() {
       console.log("  P8      — Full Fix: immediate S3 + FFmpeg preprocess + fallback lipsync + v3 action ref");
       console.log("  P9      — Optimized: Kling-only lipsync, parallel batches, incremental CSV");
       console.log("  P10     — Wan 2.7 Unified + Veo 3.1 Lite Dialogue (2-stage architecture)");
+      console.log("  P11     — Vidu Q3 silent + Veo 3.1 Lite dialogue + Critic LLM + v5 fixture");
       console.log("  all     — Run full benchmark suite");
       console.log("  report  — Generate report from existing data");
       break;

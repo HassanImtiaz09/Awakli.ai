@@ -835,3 +835,51 @@ export async function klingLipSyncViaFal(params: {
 
   return { url: video.url, generationTimeMs: Date.now() - start };
 }
+
+
+// ─── Vidu Q3 (via fal.ai) ──────────────────────────────────────────────────
+
+/**
+ * Generate video via Vidu Q3 image-to-video on fal.ai.
+ * Model: fal-ai/vidu/q3/image-to-video
+ *
+ * Pricing: $0.07/sec base, 2.2x at 720p = $0.154/sec
+ * Durations: 4s or 8s
+ * Resolutions: 360p, 480p, 720p
+ * Audio: boolean (default false)
+ */
+export async function viduQ3ViaFal(params: {
+  imageUrl: string;
+  prompt: string;
+  duration?: number;       // 4 or 8 (default 5 → maps to 4)
+  resolution?: string;     // "360p" | "480p" | "720p"
+  audio?: boolean;
+}): Promise<GenerationOutput> {
+  ensureFalConfigured();
+  const start = Date.now();
+
+  // Map duration to Vidu's supported values (4 or 8)
+  const viduDuration = (params.duration ?? 5) <= 5 ? 4 : 8;
+
+  const result = await fal.subscribe("fal-ai/vidu/q3/image-to-video" as any, {
+    input: {
+      prompt: params.prompt,
+      image_url: params.imageUrl,
+      duration: viduDuration,
+      resolution: params.resolution ?? "720p",
+      audio: params.audio ?? false,
+    } as any,
+    logs: true,
+    pollInterval: 5000,
+  });
+
+  const video = (result.data as any)?.video;
+  if (!video?.url) {
+    throw new Error(`fal.ai Vidu Q3 returned no video: ${JSON.stringify(result.data).slice(0, 200)}`);
+  }
+
+  return {
+    url: video.url,
+    generationTimeMs: Date.now() - start,
+  };
+}

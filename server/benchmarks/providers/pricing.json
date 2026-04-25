@@ -193,6 +193,17 @@
       "per10sClip": 1.0,
       "notes": "Wan 2.7 with audio_url for dialogue generation. Native audio integration."
     },
+    "vidu_q3_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/vidu/q3/image-to-video",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.154,
+      "per10sClip": 1.54,
+      "notes": "Vidu Q3 via fal.ai. $0.07/sec base, 2.2x at 720p = $0.154/sec. Durations: 4s or 8s. Silent only for P11."
+    },
     "veo31_lite_fal": {
       "provider": "fal.ai",
       "model": "fal-ai/veo3.1/lite/image-to-video",

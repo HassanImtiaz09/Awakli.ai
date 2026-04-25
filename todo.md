@@ -5304,3 +5304,24 @@
 - [x] Run full P10 benchmark — 18/18 slices, $14.35 total, 29.0 min, 0 failures
 - [x] Compile P10 full video — 172.5s assembled, 43.9 MB, 720p, -16 LUFS mastered
 - [x] Deliver P10 results — 36.2% cost reduction ($22.49→$14.35), 62.1% time reduction (76.4→29.0 min)
+
+## P11 — Pipeline Refinement (post-P10)
+
+### Validation
+- [x] V1: Vidu Q3 silent-slice style test — BOTH PASS (fal-ai/vidu/q3/image-to-video, 103s+121s, M1 GO)
+
+### Fixes
+- [x] F1: Mira action close-up references — 2 Flux Pro v1.1 images generated, v5 fixture created with slices 11/13/14 updated
+- [x] F2: Eye-colour CHARACTER_LOCK reinforcement — Mira (BLUE, NEVER green/amber) + Ren (AMBER, NEVER blue/green) + arm specificity
+
+### Wiring
+- [x] W1: Wire transitions.ts into assemble-p11.ts — generateTransitionPlan + applyTransition for all 17 boundaries
+- [x] W2: Wire music-bed.ts into assemble-p11.ts — MiniMax Music generation + mixMusicBed with side-chain ducking
+- [x] W3: Wire critic-llm.ts into runP11 — criticValidate() called before each silent + dialogue video dispatch
+
+### Migration
+- [x] M1: Vidu Q3 as primary silent-slice provider — viduQ3ViaFal() + circuit breaker → Wan 2.7 fallback in runP11
+
+### Pipeline
+- [x] Build runP11 pipeline function combining all P11 changes — Vidu Q3 silent + Veo 3.1 Lite dialogue + critic LLM + v5 fixture
+- [ ] Save checkpoint and report to user for benchmark approval
