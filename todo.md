@@ -5281,14 +5281,14 @@
 
 ### Foundation
 - [x] F2: Wan 2.7 registration — wan27ViaFal() added to api-clients.ts, pricing in pricing.json
-- [ ] F1: Google Vertex/Gemini credential — DEFERRED (fal.ai sufficient)
+- [x] F1: Google Vertex/Gemini credential — DEFERRED (fal.ai sufficient, not needed)
 
 ### Pipeline
 - [x] P1: Wan 2.7 unified path — runP10() implemented: Wan 2.7 silent + Veo 3.1 Lite dialogue + Wan 2.7+audio fallback
 - [x] P2: Veo 3.1 Lite — veo31LiteViaFal() added to api-clients.ts, pricing in pricing.json
-- [ ] P3: Single-character dialogue references (Ren closeup + Mira closeup)
+- [x] P3: Single-character dialogue references — generate-character-refs-p10.ts creates Mira/Ren closeups + v4 fixture
 - [x] P4: CHARACTER_LOCK strings injected into all video prompts (Mira + Ren descriptions)
-- [ ] P5: Critic LLM validation pass (pre-dispatch prompt/ref check)
+- [x] P5: Critic LLM validation pass — critic-llm.ts with structured JSON scoring (4 dimensions, pass/warn/fail)
 
 ### Quality
 - [x] Q1: Voice library — VOICE_LIBRARY with per-character stability/style/boost settings (voice-design.ts)

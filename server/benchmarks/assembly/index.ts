@@ -22,3 +22,4 @@ export {
 } from "./transitions.js";
 export { generateMusicBed, mixMusicBed, downloadAndMixMusic } from "./music-bed.js";
 export { generateTitleCard, generateEndCard, wrapWithCards } from "./title-cards.js";
+export { criticValidate, criticValidateAll, type CriticResult, type CriticInput } from "./critic-llm.js";
