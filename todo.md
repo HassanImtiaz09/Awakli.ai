@@ -5324,4 +5324,22 @@
 
 ### Pipeline
 - [x] Build runP11 pipeline function combining all P11 changes — Vidu Q3 silent + Veo 3.1 Lite dialogue + critic LLM + v5 fixture
-- [ ] Save checkpoint and report to user for benchmark approval
+- [x] Save checkpoint and report to user for benchmark approval — version 7b1eebca
+
+## Multi-LLM Orchestration — 8 tickets, 4 phases
+
+### Phase A — Infrastructure + Critic (ship first)
+- [x] I1: LLM Orchestrator — llmCall() with routing map, 3x exp backoff, per-role timeout, structured output, observability
+- [x] I2: Budget guard ($2.00/ep cap) + circuit breakers (5 failures → disable) + observability singleton
+- [x] D3: Expand Critic LLM — critic.ts with full schema, critic-system.md with character checklist, 4 dimensions, orchestrator-routed
+- [x] C1: Wire LLMs into pipeline — runP12 with D1→D2+D4→D3 call sequence, feature flags, budget guard, observability
+- [x] C2: Feature flags per role — Phase A/B/C/D presets, per-role toggle, graceful disabled result
+
+### Phase B — Director
+- [x] D1: Director LLM — director.ts with ProjectPlan schema, Claude Sonnet, director-system.md prompt, fallback plan builder
+
+### Phase C — Prompt Engineer
+- [x] D2: Visual Prompt Engineer — prompt-engineer.ts with per-model few-shot blocks, Claude Sonnet, fallback prompt builder
+
+### Phase D — Voice Director
+- [x] D4: Voice Director — voice-director.ts with 15 emotion tags, TTS overrides, Gemini Flash, batch + single modes

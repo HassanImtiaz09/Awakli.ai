@@ -15,7 +15,7 @@
 
 import { checkProviderCredentials } from "./providers/registry.js";
 import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9, runP10, runP11 } from "./pipelines/end-to-end.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9, runP10, runP11, runP12 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
@@ -206,6 +206,15 @@ async function main() {
       break;
     }
 
+    case "P12": {
+      console.log("Running P12: Multi-LLM Orchestrated (D1 Director + D2 Prompt Engineer + D3 Critic + D4 Voice Director)...\n");
+      const result = await runP12(pilotScript16x9v5 as any);
+      console.log(`P12 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      console.log(`  LLM stack: D1 Director → D2 Prompt Engineer → D3 Critic → D4 Voice Director`);
+      console.log(`  Routing: Vidu Q3 silent (Wan 2.7 fallback), Veo 3.1 Lite dialogue (Wan 2.7+audio fallback)`);
+      break;
+    }
+
     case "ALL": {
       console.log("Running FULL BENCHMARK SUITE...\n");
       console.log("Phase 1: Single-layer benchmarks (B1-B7)\n");
@@ -289,6 +298,7 @@ async function main() {
       console.log("  P9      — Optimized: Kling-only lipsync, parallel batches, incremental CSV");
       console.log("  P10     — Wan 2.7 Unified + Veo 3.1 Lite Dialogue (2-stage architecture)");
       console.log("  P11     — Vidu Q3 silent + Veo 3.1 Lite dialogue + Critic LLM + v5 fixture");
+      console.log("  P12     — Multi-LLM Orchestrated (Director + Prompt Engineer + Critic + Voice Director)");
       console.log("  all     — Run full benchmark suite");
       console.log("  report  — Generate report from existing data");
       break;
