@@ -38,3 +38,7 @@ P8_1777110038969,tts,elevenlabs,turbo-v2.5 (char voices),702,characters,0.0693,0
 P8_1777110038969,video,hedra,Character-3 (dialogue + immediate S3),100,seconds,3.3000000000000003,17.3
 P8_1777110038969,lipsync,multi,LatentSync(0)+Kling(7)+MuseTalk(0),7,clips,11.76,61.5
 P8_1777110038969,assembly,local,FFmpeg preprocess + S3,10,runs,0,0
+P9_1777115251318,video,fal_ai,"Wan 2.5 (all silent, v3 action ref)",80,seconds,4,17.8
+P9_1777115251318,tts,elevenlabs,turbo-v2.5 (char voices),702,characters,0.0693,0.3
+P9_1777115251318,video,hedra,Character-3 (dialogue + immediate S3),100,seconds,3.3000000000000003,14.7
+P9_1777115251318,lipsync,fal_ai,Kling Lip Sync (9/10 parallel),9,clips,15.12,67.2

@@ -15,7 +15,7 @@
 
 import { checkProviderCredentials } from "./providers/registry.js";
 import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8 } from "./pipelines/end-to-end.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
@@ -179,6 +179,13 @@ async function main() {
       console.log("Running P8: Full Fix — immediate S3 re-upload + FFmpeg preprocessing + fallback lipsync + v3 action ref...\n");
       const result = await runP8(pilotScript16x9v3 as any);
       console.log(`P8 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      break;
+    }
+
+    case "P9": {
+      console.log("Running P9: Optimized — Kling-only lipsync, parallel batches, incremental CSV, reversed order...\n");
+      const result = await runP9(pilotScript16x9v3 as any);
+      console.log(`P9 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
       break;
     }
 

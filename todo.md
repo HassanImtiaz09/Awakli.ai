@@ -5263,8 +5263,10 @@
 - [x] P8: Run benchmark — $19.13, 18/18 success, 7/10 lip sync via Kling
 - [x] P8: Compile full video (3.0 min, 29.8 MB)
 - [x] P8: Deliver results with analysis report
-- [ ] P9: Upload normalized videos to fal.ai storage (fix LatentSync)
-- [ ] P9: Parallelize lip sync calls to reduce wall clock time
-- [ ] P9: Write lip sync results incrementally to prevent data loss
-- [ ] P9: Skip LatentSync and go directly to Kling Lip Sync
-- [ ] P9: Investigate Kling failure pattern on first 3 dialogue slices
+- [x] P9: Skip LatentSync entirely (0% success rate)
+- [x] P9: Parallelize lip sync calls in batches of 3
+- [x] P9: Write lip sync results incrementally to CSV
+- [x] P9: Reverse dialogue order (18→2) to test order dependency
+- [x] P9: Run benchmark — $22.49, 18/18 success, 9/10 lip sync (90%)
+- [x] P9: Compile full video with lip-synced clips (3.0 min, 26.2 MB)
+- [x] P9: Deliver results with analysis report
