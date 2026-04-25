@@ -170,6 +170,39 @@
       "perSecond": null,
       "perClip": 0.2,
       "notes": "MuseTalk via fal.ai. ~$0.20 per clip. Anime face detection may fail."
+    },
+    "wan27_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/wan/v2.7/image-to-video",
+      "mode": "standard",
+      "resolution": "720p",
+      "audio": false,
+      "lipsync": false,
+      "perSecond": 0.10,
+      "per10sClip": 1.0,
+      "notes": "Wan 2.7 via fal.ai. Supports audio_url for dialogue. Duration 2-15s. 720p/1080p."
+    },
+    "wan27_audio_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/wan/v2.7/image-to-video",
+      "mode": "dialogue",
+      "resolution": "720p",
+      "audio": true,
+      "lipsync": false,
+      "perSecond": 0.10,
+      "per10sClip": 1.0,
+      "notes": "Wan 2.7 with audio_url for dialogue generation. Native audio integration."
+    },
+    "veo31_lite_fal": {
+      "provider": "fal.ai",
+      "model": "fal-ai/veo3.1/lite/image-to-video",
+      "mode": "dialogue",
+      "resolution": "720p",
+      "audio": true,
+      "lipsync": true,
+      "perSecond": 0.05,
+      "per10sClip": 0.5,
+      "notes": "Veo 3.1 Lite via fal.ai. Native audio generation. 4s/6s/8s durations. Image-conditioned."
     }
   },
   "tts": {

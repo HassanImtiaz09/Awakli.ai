@@ -5270,3 +5270,37 @@
 - [x] P9: Run benchmark — $22.49, 18/18 success, 9/10 lip sync (90%)
 - [x] P9: Compile full video with lip-synced clips (3.0 min, 26.2 MB)
 - [x] P9: Deliver results with analysis report
+
+## P10 Pipeline Migration (v1.1 Brief)
+
+### Phase 0: Validation (~$2, 30 min)
+- [x] V1: Wan 2.7 silent generation test — PASS (62.5s, 720p, $0.10/sec)
+- [x] V2: Wan 2.7 audio_url dialogue lipsync test — PASS (76.3s, audio_url works)
+- [x] V3: Wan 2.7 content filter on slice 13 — PASS (v3 prompt passes unchanged)
+- [x] V4: Veo 3.1 Lite anime quality test — PASS (native audio, 8s, 720p)
+
+### Foundation
+- [x] F2: Wan 2.7 registration — wan27ViaFal() added to api-clients.ts, pricing in pricing.json
+- [ ] F1: Google Vertex/Gemini credential — DEFERRED (fal.ai sufficient)
+
+### Pipeline
+- [x] P1: Wan 2.7 unified path — runP10() implemented: Wan 2.7 silent + Veo 3.1 Lite dialogue + Wan 2.7+audio fallback
+- [x] P2: Veo 3.1 Lite — veo31LiteViaFal() added to api-clients.ts, pricing in pricing.json
+- [ ] P3: Single-character dialogue references (Ren closeup + Mira closeup)
+- [x] P4: CHARACTER_LOCK strings injected into all video prompts (Mira + Ren descriptions)
+- [ ] P5: Critic LLM validation pass (pre-dispatch prompt/ref check)
+
+### Quality
+- [x] Q1: Voice library — VOICE_LIBRARY with per-character stability/style/boost settings (voice-design.ts)
+- [x] Q2: Emotion tags — injectEmotionTag() + EMOTION_TAG_MAP (20 emotions, bracketed + descriptive)
+- [x] Q3: Audio mastering — two-pass FFmpeg loudnorm (-16 LUFS, 8 LU, -1.5 dBTP, 192k AAC stereo)
+
+### Assembly
+- [x] A1: Transition layer — 4 types (crossfade, dip_to_black, soft_fade, audio_cross) + rule-based classifier
+- [x] A2: Background music bed — MiniMax Music generation + FFmpeg side-chain ducking (-22 LUFS)
+- [x] A3: Title + end cards — FFmpeg drawtext with animated fade in/out + concat wrapper
+
+### Full Benchmark
+- [ ] Run full P10 benchmark (18 slices, 3 min pilot)
+- [ ] Compile P10 full video with all assembly steps
+- [ ] Deliver P10 results with comparison to P9

@@ -15,7 +15,7 @@
 
 import { checkProviderCredentials } from "./providers/registry.js";
 import { runB1, runB2, runB3, runB3b, runB4, runB5, runB6, runB7 } from "./runners/single-layer.js";
-import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9 } from "./pipelines/end-to-end.js";
+import { runP1, runP2, runP2b, runP3, runP3b, runP4, runP5, runP6, runP7, runP8, runP9, runP10 } from "./pipelines/end-to-end.js";
 import { generateFullReport, printSummaryTable } from "./report/cost-assessment.js";
 import shotsFixture from "./fixtures/shots.json" with { type: "json" };
 import pilotScript from "./fixtures/pilot-3min-script.json" with { type: "json" };
@@ -189,6 +189,14 @@ async function main() {
       break;
     }
 
+    case "P10": {
+      console.log("Running P10: Wan 2.7 Unified + Veo 3.1 Lite Dialogue (2-stage architecture)...\n");
+      const result = await runP10(pilotScript16x9v3 as any);
+      console.log(`P10 complete: $${result.totalCostUsd.toFixed(2)} total, ${result.failedSlices} failed slices`);
+      console.log(`  Routing: Veo 3.1 Lite primary dialogue, Wan 2.7+audio_url fallback, Wan 2.7 silent`);
+      break;
+    }
+
     case "ALL": {
       console.log("Running FULL BENCHMARK SUITE...\n");
       console.log("Phase 1: Single-layer benchmarks (B1-B7)\n");
@@ -269,6 +277,8 @@ async function main() {
       console.log("  P6      — All Wan 2.5 + 16:9 panels (no Kling) + Hedra + LatentSync");
       console.log("  P7      — Improved Wan 2.5: char voices + LatentSync S3 fix + softened prompts");
       console.log("  P8      — Full Fix: immediate S3 + FFmpeg preprocess + fallback lipsync + v3 action ref");
+      console.log("  P9      — Optimized: Kling-only lipsync, parallel batches, incremental CSV");
+      console.log("  P10     — Wan 2.7 Unified + Veo 3.1 Lite Dialogue (2-stage architecture)");
       console.log("  all     — Run full benchmark suite");
       console.log("  report  — Generate report from existing data");
       break;

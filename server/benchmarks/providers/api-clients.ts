@@ -379,6 +379,81 @@ export async function wan25ViaFal(params: {
   return { url: video.url, generationTimeMs: Date.now() - start };
 }
 
+// ─── Wan 2.7 via fal.ai ───────────────────────────────────────────────────
+
+export async function wan27ViaFal(params: {
+  imageUrl?: string;
+  prompt: string;
+  duration: number;
+  resolution?: string;
+  audioUrl?: string;
+}): Promise<GenerationOutput> {
+  ensureFalConfigured();
+  const start = Date.now();
+
+  const input: Record<string, unknown> = {
+    prompt: params.prompt,
+    resolution: params.resolution ?? "720p",
+    duration: Math.min(15, Math.max(2, params.duration)), // number 2-15
+    aspect_ratio: "16:9",
+    negative_prompt: "low resolution, error, worst quality, low quality, defects, blurry",
+    enable_prompt_expansion: false,
+    enable_safety_checker: false,
+  };
+  if (params.imageUrl) input.image_url = params.imageUrl;
+  if (params.audioUrl) input.audio_url = params.audioUrl;
+
+  const modelId = params.imageUrl
+    ? "fal-ai/wan/v2.7/image-to-video"
+    : "fal-ai/wan/v2.7/text-to-video";
+
+  const result = await fal.subscribe(modelId as any, {
+    input: input as any,
+    logs: true,
+    pollInterval: 5000,
+  });
+
+  const video = (result.data as any)?.video;
+  if (!video?.url) throw new Error("fal.ai Wan 2.7 returned no video");
+
+  return { url: video.url, generationTimeMs: Date.now() - start };
+}
+
+// ─── Veo 3.1 Lite via fal.ai ──────────────────────────────────────────────
+
+export async function veo31LiteViaFal(params: {
+  imageUrl: string;
+  prompt: string;
+  duration?: "4s" | "6s" | "8s";
+  resolution?: "720p" | "1080p";
+  generateAudio?: boolean;
+  safetyTolerance?: string;
+}): Promise<GenerationOutput> {
+  ensureFalConfigured();
+  const start = Date.now();
+
+  const input: Record<string, unknown> = {
+    prompt: params.prompt,
+    image_url: params.imageUrl,
+    duration: params.duration ?? "8s",
+    aspect_ratio: "16:9",
+    resolution: params.resolution ?? "720p",
+    generate_audio: params.generateAudio ?? true,
+    safety_tolerance: params.safetyTolerance ?? "4",
+  };
+
+  const result = await fal.subscribe("fal-ai/veo3.1/lite/image-to-video" as any, {
+    input: input as any,
+    logs: true,
+    pollInterval: 5000,
+  });
+
+  const video = (result.data as any)?.video;
+  if (!video?.url) throw new Error("fal.ai Veo 3.1 Lite returned no video");
+
+  return { url: video.url, generationTimeMs: Date.now() - start };
+}
+
 // ─── Hunyuan V1.5 via fal.ai ───────────────────────────────────────────────
 
 export async function hunyuanViaFal(params: {

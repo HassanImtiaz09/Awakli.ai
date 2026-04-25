@@ -2389,13 +2389,387 @@ export async function runP9(script: PilotScript): Promise<PipelineResult> {
   return result;
 }
 
-/// ─── Provider Implementations (Real API Calls) ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// P10: Wan 2.7 Unified + Veo 3.1 Lite Dialogue
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Architecture: 2-stage pipeline replacing P9's 4-stage chain.
+//   Silent slices  → Wan 2.7 (no audio_url)
+//   Dialogue slices → Veo 3.1 Lite (native audio, image-conditioned)
+//                     Fallback: Wan 2.7 with audio_url if Veo fails
+//   Lip sync       → Kling Lip Sync as optional refinement pass
+//
+// Key changes from P9:
+//   - Hedra Character-3 removed entirely
+//   - Veo 3.1 Lite as primary dialogue provider ($0.05/sec vs Hedra $0.033/sec + Kling $1.68/clip)
+//   - Wan 2.7 with audio_url as fallback dialogue provider ($0.10/sec)
+//   - Character-specific voices retained (Mira=Sarah, Ren=Harry)
+//   - Kling Lip Sync as optional refinement for Wan 2.7 fallback clips
+// ═══════════════════════════════════════════════════════════════════════════
+
+// CHARACTER_LOCK strings — injected into every video generation prompt
+const CHARACTER_LOCK: Record<string, string> = {
+  Mira: "Young woman, silver-white hair with cerulean blue tips, glowing blue eyes, mechanical left arm with amber energy lines, navy sailor uniform. Determined expression.",
+  Ren: "Young man, spiky dark hair with cyan streaks, sharp amber eyes, black tactical jacket with glowing cyan circuit patterns. Confident stance.",
+};
+
+export async function runP10(script: PilotScript): Promise<PipelineResult> {
+  const pipelineTimer = startTimer();
+  const clips: ClipResult[] = [];
+  const falKey = getProviderKey("fal_ai");
+
+  const silentSlices = script.slices.filter((s) => !s.audio);
+  const dialogueSlices = script.slices.filter((s) => s.audio);
+
+  console.log(`  [P10] Architecture: ${silentSlices.length} silent → Wan 2.7, ${dialogueSlices.length} dialogue → Veo 3.1 Lite (fallback: Wan 2.7 + audio_url)`);
+  console.log(`  [P10] Character lock: Mira, Ren. Voices: Mira=Sarah, Ren=Harry.`);
+
+  // ─── Step 1: ALL silent slices via Wan 2.7 ───────────────────────────────────
+  const wan27Pricing = pricingData.video.wan27_fal;
+  let silentCost = 0;
+
+  for (let si = 0; si < silentSlices.length; si++) {
+    const slice = silentSlices[si];
+    // Inject character lock into prompt if character is mentioned
+    const enhancedPrompt = injectCharacterLock(slice.prompt, slice.dialogue?.character);
+    const enhancedSlice = { ...slice, prompt: enhancedPrompt };
+
+    console.log(`  [P10] Silent ${si + 1}/${silentSlices.length} (id=${slice.sliceId}, type=${slice.type}) — generating via Wan 2.7 (720p)...`);
+    const timer = startTimer();
+    try {
+      const { result: output, retryCount } = await withRetry(async () => {
+        return await generateWan27(falKey, enhancedSlice);
+      });
+      const wallClockMs = timer();
+      const cost = calculateClipCost(slice.duration, wan27Pricing.perSecond, null, null);
+      silentCost += cost;
+      console.log(`  [P10] Silent ${si + 1}/${silentSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} — ${output.url.slice(0, 80)}...`);
+
+      const clip: ClipResult = {
+        ticketId: "P10",
+        shotId: `slice_${slice.sliceId}`,
+        provider: "fal_ai",
+        model: wan27Pricing.model,
+        mode: "standard",
+        resolution: "720p",
+        durationSec: slice.duration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: output.queueTimeMs ?? 0,
+        generationTimeMs: output.generationTimeMs ?? wallClockMs,
+        outputUrl: output.url,
+        status: "success",
+        error: null,
+        retryCount,
+        timestamp: new Date().toISOString(),
+        metadata: { pipelineVariant: "P10", component: "silent_video", router: "wan27", sliceType: slice.type },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } catch (err: any) {
+      const wallClockMs = timer();
+      console.log(`  [P10] Silent ${si + 1}/${silentSlices.length} ✗ FAILED in ${(wallClockMs / 1000).toFixed(1)}s — ${err.message?.slice(0, 100)}`);
+      clips.push(makeFailedPipelineClip("P10", slice, "fal_ai", wan27Pricing.model, wallClockMs, err));
+    }
+  }
+
+  // ─── Step 2: TTS with ElevenLabs — character-specific voices ──────────────────
+  const ttsPricing = pricingData.tts.elevenlabs;
+  let ttsCost = 0;
+  const ttsOutputs: Map<number, GenerationOutput> = new Map();
+
+  for (const slice of dialogueSlices) {
+    const dialogueText = slice.dialogue?.text ?? "";
+    if (!dialogueText) continue;
+    const character = slice.dialogue?.character ?? "";
+    const voiceId = VOICE_MAP[character] ?? DEFAULT_VOICE;
+    const voiceName = character === "Mira" ? "Sarah" : character === "Ren" ? "Harry" : "Rachel";
+    console.log(`  [P10] TTS for slice ${slice.sliceId} (${character}) — voice: ${voiceName}`);
+    try {
+      const { result: ttsOutput } = await withRetry(async () => {
+        return await elevenLabsTTS({ text: dialogueText, voiceId });
+      });
+      const cost = calculateTTSCost(dialogueText.length, ttsPricing.perKChars);
+      ttsCost += cost;
+      ttsOutputs.set(slice.sliceId, ttsOutput);
+      console.log(`  [P10] TTS for slice ${slice.sliceId}: $${cost.toFixed(4)}`);
+    } catch (err) {
+      console.error(`  [P10] TTS failed for slice ${slice.sliceId}:`, err);
+    }
+  }
+
+  // ─── Step 3: Dialogue clips — Veo 3.1 Lite primary, Wan 2.7+audio_url fallback ─
+  const veo31Pricing = pricingData.video.veo31_lite_fal;
+  const wan27AudioPricing = pricingData.video.wan27_audio_fal;
+  let dialogueCost = 0;
+  let veoSuccessCount = 0;
+  let wan27FallbackCount = 0;
+  let consecutiveVeoFailures = 0;
+  let veoDisabled = false;
+
+  for (let di = 0; di < dialogueSlices.length; di++) {
+    const slice = dialogueSlices[di];
+    const character = slice.dialogue?.character ?? "";
+    const enhancedPrompt = injectCharacterLock(slice.prompt, character);
+    const enhancedSlice = { ...slice, prompt: enhancedPrompt };
+    const ttsOutput = ttsOutputs.get(slice.sliceId);
+
+    console.log(`  [P10] Dialogue ${di + 1}/${dialogueSlices.length} (id=${slice.sliceId}, char=${character}) — ${veoDisabled ? "Veo DISABLED, using Wan 2.7+audio_url" : "trying Veo 3.1 Lite..."}`);
+    const timer = startTimer();
+
+    let dialogueSuccess = false;
+    let dialogueOutput: GenerationOutput | null = null;
+    let usedProvider = "";
+    let usedModel = "";
+    let usedCostPerSec = 0;
+
+    // Primary: Veo 3.1 Lite (unless circuit breaker tripped)
+    if (!veoDisabled) {
+      try {
+        const { result: output } = await withRetry(async () => {
+          return await generateVeo31Lite(falKey, enhancedSlice);
+        }, { maxRetries: 1 }); // Only 1 retry for Veo to fail fast
+        dialogueOutput = output;
+        dialogueSuccess = true;
+        usedProvider = "fal_ai";
+        usedModel = veo31Pricing.model;
+        usedCostPerSec = veo31Pricing.perSecond;
+        veoSuccessCount++;
+        consecutiveVeoFailures = 0;
+        console.log(`  [P10] Dialogue ${di + 1}: Veo 3.1 Lite ✓`);
+      } catch (err: any) {
+        consecutiveVeoFailures++;
+        console.warn(`  [P10] Dialogue ${di + 1}: Veo 3.1 Lite failed (${consecutiveVeoFailures} consecutive) — ${err.message?.slice(0, 80)}`);
+        if (consecutiveVeoFailures >= 2) {
+          veoDisabled = true;
+          console.warn(`  [P10] ⚠ Circuit breaker: Veo 3.1 Lite disabled after ${consecutiveVeoFailures} consecutive failures. Falling back to Wan 2.7+audio_url for remaining slices.`);
+        }
+      }
+    }
+
+    // Fallback: Wan 2.7 with audio_url
+    if (!dialogueSuccess && ttsOutput) {
+      try {
+        console.log(`  [P10] Dialogue ${di + 1}: falling back to Wan 2.7 + audio_url...`);
+        const { result: output } = await withRetry(async () => {
+          return await generateWan27(falKey, enhancedSlice, ttsOutput.url);
+        });
+        dialogueOutput = output;
+        dialogueSuccess = true;
+        usedProvider = "fal_ai";
+        usedModel = wan27AudioPricing.model;
+        usedCostPerSec = wan27AudioPricing.perSecond;
+        wan27FallbackCount++;
+        console.log(`  [P10] Dialogue ${di + 1}: Wan 2.7+audio_url ✓`);
+      } catch (err: any) {
+        console.warn(`  [P10] Dialogue ${di + 1}: Wan 2.7+audio_url also failed — ${err.message?.slice(0, 80)}`);
+      }
+    }
+
+    // Record result
+    const wallClockMs = timer();
+    if (dialogueSuccess && dialogueOutput) {
+      // Veo 3.1 Lite outputs 8s clips for 10s slices — use actual Veo duration for cost
+      const actualDuration = usedModel.includes("veo3.1") ? 8 : slice.duration;
+      const cost = calculateClipCost(actualDuration, usedCostPerSec, null, null);
+      dialogueCost += cost;
+      console.log(`  [P10] Dialogue ${di + 1}/${dialogueSlices.length} ✓ done in ${(wallClockMs / 1000).toFixed(1)}s — $${cost.toFixed(4)} via ${usedModel.includes("veo3.1") ? "Veo 3.1 Lite" : "Wan 2.7+audio"}`);
+
+      const clip: ClipResult = {
+        ticketId: "P10",
+        shotId: `slice_${slice.sliceId}`,
+        provider: usedProvider,
+        model: usedModel,
+        mode: "dialogue",
+        resolution: "720p",
+        durationSec: actualDuration,
+        costUsd: cost,
+        wallClockMs,
+        queueTimeMs: dialogueOutput.queueTimeMs ?? 0,
+        generationTimeMs: dialogueOutput.generationTimeMs ?? wallClockMs,
+        outputUrl: dialogueOutput.url,
+        status: "success",
+        error: null,
+        retryCount: 0,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          pipelineVariant: "P10",
+          component: "dialogue_video",
+          router: usedModel.includes("veo3.1") ? "veo31_lite" : "wan27_audio",
+          character,
+          sliceType: slice.type,
+        },
+      };
+      clips.push(clip);
+      appendClipResult(clip);
+    } else {
+      console.log(`  [P10] Dialogue ${di + 1}/${dialogueSlices.length} ✗ FAILED — both Veo and Wan 2.7 failed`);
+      clips.push(makeFailedPipelineClip("P10", slice, "fal_ai", "veo31_lite+wan27", wallClockMs, new Error("Both Veo 3.1 Lite and Wan 2.7+audio_url failed")));
+    }
+  }
+
+  // ─── Step 4: Optional Kling Lip Sync for Wan 2.7 fallback clips ─────────────
+  const klingLsPricing = pricingData.video.kling_lipsync_fal;
+  let lipsyncCost = 0;
+  let klingLsSuccessCount = 0;
+  let klingLsFailCount = 0;
+
+  // Only apply lip sync to Wan 2.7+audio_url clips (Veo 3.1 Lite has native lip sync)
+  const wan27DialogueClips = clips.filter(
+    (c) => c.metadata?.router === "wan27_audio" && c.status === "success"
+  );
+
+  if (wan27DialogueClips.length > 0) {
+    console.log(`  [P10] Kling Lip Sync: processing ${wan27DialogueClips.length} Wan 2.7 dialogue clips (Veo clips skip — native lip sync)...`);
+
+    const BATCH_SIZE = 3;
+    for (let batchStart = 0; batchStart < wan27DialogueClips.length; batchStart += BATCH_SIZE) {
+      const batch = wan27DialogueClips.slice(batchStart, batchStart + BATCH_SIZE);
+      console.log(`  [P10] Kling batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(wan27DialogueClips.length / BATCH_SIZE)}: slices ${batch.map(c => c.shotId.replace("slice_", "")).join(", ")}`);
+
+      const batchPromises = batch.map(async (clip) => {
+        const sliceId = parseInt(clip.shotId.replace("slice_", ""));
+        const ttsOutput = ttsOutputs.get(sliceId);
+        if (!clip.outputUrl || !ttsOutput) {
+          return { sliceId, success: false, cost: 0 };
+        }
+
+        try {
+          console.log(`  [P10] LipSync slice ${sliceId}: starting Kling Lip Sync...`);
+          const { result: klingOutput } = await withRetry(async () => {
+            return await applyKlingLipSync(clip.outputUrl!, ttsOutput.url);
+          });
+          const cost = klingLsPricing.per10sClip ?? 1.68;
+          console.log(`  [P10] LipSync slice ${sliceId} ✓ Kling success — $${cost.toFixed(2)}`);
+
+          // Write lip sync result to CSV
+          const lsClip: ClipResult = {
+            ticketId: "P10",
+            shotId: `slice_${sliceId}_lipsync`,
+            provider: "fal_ai",
+            model: klingLsPricing.model,
+            mode: "lipsync",
+            resolution: "720p",
+            durationSec: clip.durationSec,
+            costUsd: cost,
+            wallClockMs: 0,
+            queueTimeMs: 0,
+            generationTimeMs: 0,
+            outputUrl: klingOutput.url,
+            status: "success",
+            error: null,
+            retryCount: 0,
+            timestamp: new Date().toISOString(),
+            metadata: { pipelineVariant: "P10", component: "lipsync", router: "kling_lipsync", originalSlice: sliceId },
+          };
+          appendClipResult(lsClip);
+          clip.outputUrl = klingOutput.url;
+
+          return { sliceId, success: true, url: klingOutput.url, cost };
+        } catch (err: any) {
+          console.warn(`  [P10] LipSync slice ${sliceId}: Kling failed — ${err.message?.slice(0, 100)}`);
+          const failClip: ClipResult = {
+            ticketId: "P10",
+            shotId: `slice_${sliceId}_lipsync`,
+            provider: "fal_ai",
+            model: klingLsPricing.model,
+            mode: "lipsync",
+            resolution: "720p",
+            durationSec: clip.durationSec,
+            costUsd: 0,
+            wallClockMs: 0,
+            queueTimeMs: 0,
+            generationTimeMs: 0,
+            outputUrl: null,
+            status: "failed",
+            error: err.message?.slice(0, 200) ?? "Unknown error",
+            retryCount: 2,
+            timestamp: new Date().toISOString(),
+            metadata: { pipelineVariant: "P10", component: "lipsync", router: "kling_lipsync", originalSlice: sliceId },
+          };
+          appendClipResult(failClip);
+          return { sliceId, success: false, cost: 0 };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      for (const r of batchResults) {
+        if (r.success) {
+          klingLsSuccessCount++;
+          lipsyncCost += r.cost;
+        } else {
+          klingLsFailCount++;
+        }
+      }
+    }
+  } else {
+    console.log(`  [P10] Kling Lip Sync: skipped — all dialogue clips via Veo 3.1 Lite (native lip sync)`);
+  }
+
+  // ─── Assembly ──────────────────────────────────────────────────────────────────
+  const allDialogueText = dialogueSlices.map((s) => s.dialogue?.text ?? "").join(" ");
+  const totalCost = silentCost + ttsCost + dialogueCost + lipsyncCost;
+  const totalWallClockMs = pipelineTimer();
+
+  const silentDurationSec = silentSlices.reduce((sum, s) => sum + s.duration, 0);
+  const dialogueDurationSec = dialogueSlices.reduce((sum, s) => sum + s.duration, 0);
+
+  console.log(`\n  [P10] ═══ SUMMARY ═══`);
+  console.log(`  [P10] Silent: ${silentSlices.length} slices via Wan 2.7 — $${silentCost.toFixed(2)}`);
+  console.log(`  [P10] TTS: ${ttsOutputs.size} clips via ElevenLabs — $${ttsCost.toFixed(4)}`);
+  console.log(`  [P10] Dialogue: ${veoSuccessCount} via Veo 3.1 Lite, ${wan27FallbackCount} via Wan 2.7+audio — $${dialogueCost.toFixed(2)}`);
+  if (wan27DialogueClips.length > 0) {
+    console.log(`  [P10] Lip Sync: ${klingLsSuccessCount}/${wan27DialogueClips.length} Wan 2.7 clips refined via Kling — $${lipsyncCost.toFixed(2)}`);
+  }
+  console.log(`  [P10] Total: $${totalCost.toFixed(2)} in ${(totalWallClockMs / 1000 / 60).toFixed(1)} min`);
+
+  const components = buildComponentBreakdown([
+    { component: "video", provider: "fal_ai", model: `Wan 2.7 (${silentSlices.length} silent, 720p)`, units: silentDurationSec, unitType: "seconds", costUsd: silentCost },
+    { component: "tts", provider: "elevenlabs", model: "turbo-v2.5 (char voices: Mira=Sarah, Ren=Harry)", units: allDialogueText.length, unitType: "characters", costUsd: ttsCost },
+    { component: "video", provider: "fal_ai", model: `Veo 3.1 Lite (${veoSuccessCount} dialogue) + Wan 2.7 audio (${wan27FallbackCount} fallback)`, units: dialogueDurationSec, unitType: "seconds", costUsd: dialogueCost },
+    ...(wan27DialogueClips.length > 0 ? [{ component: "lipsync" as const, provider: "fal_ai", model: `Kling Lip Sync (${klingLsSuccessCount}/${wan27DialogueClips.length} Wan 2.7 clips)`, units: klingLsSuccessCount, unitType: "clips" as const, costUsd: lipsyncCost }] : []),
+  ]);
+
+  const result: PipelineResult = {
+    pipelineId: `P10_${Date.now()}`,
+    variant: "P10_wan27_veo31lite_unified",
+    totalSlices: script._meta.totalSlices,
+    totalDurationSec: script._meta.totalDuration,
+    components,
+    totalCostUsd: totalCost,
+    totalWallClockMs,
+    costPerSecond: totalCost / script._meta.totalDuration,
+    costPerMinute: (totalCost / script._meta.totalDuration) * 60,
+    costPer5Min: extrapolateCost(totalCost, 3, 5),
+    status: clips.every((c) => c.status === "success") ? "success" : clips.some((c) => c.status === "success") ? "partial" : "failed",
+    failedSlices: clips.filter((c) => c.status === "failed").length,
+    timestamp: new Date().toISOString(),
+  };
+
+  appendPipelineResult(result);
+  writeComponentBreakdownCsv(result.pipelineId, components);
+  return result;
+}
+
+// ─── Character Lock Injection Helper ─────────────────────────────────────────
+
+function injectCharacterLock(prompt: string, character?: string | null): string {
+  if (!character) return prompt;
+  const lock = CHARACTER_LOCK[character];
+  if (!lock) return prompt;
+  // Prepend character description to ensure visual consistency
+  return `${lock} ${prompt}`;
+}
+
+/// ─── Provider Implementations (Real API Calls) ───────────────────────────────────────
 // Wired to shared api-clients module for all providers.
 
 import {
   klingOmniViaFal,
   wan22ViaFal,
   wan25ViaFal,
+  wan27ViaFal,
+  veo31LiteViaFal,
   hunyuanViaFal,
   hedraCharacter3,
   elevenLabsTTS,
@@ -2404,6 +2778,31 @@ import {
   museTalkViaFal,
   klingLipSyncViaFal,
 } from "../providers/api-clients.js";
+
+async function generateWan27(_apiKey: string, slice: Slice, audioUrl?: string): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
+  return wan27ViaFal({
+    imageUrl: imageUrl ?? undefined,
+    prompt: slice.prompt,
+    duration: slice.duration,
+    resolution: "720p",
+    audioUrl,
+  });
+}
+
+async function generateVeo31Lite(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
+  const imageUrl = await ensurePublicUrl(slice.referenceImage);
+  if (!imageUrl) throw new Error("Veo 3.1 Lite requires an image_url");
+  // Map slice duration (10s) to nearest Veo duration enum
+  const veoDuration: "4s" | "6s" | "8s" = slice.duration <= 5 ? "4s" : slice.duration <= 7 ? "6s" : "8s";
+  return veo31LiteViaFal({
+    imageUrl,
+    prompt: slice.prompt,
+    duration: veoDuration,
+    resolution: "720p",
+    generateAudio: true,
+  });
+}
 
 async function generateKlingOmni(_apiKey: string, slice: Slice): Promise<GenerationOutput> {
   const imageUrl = await ensurePublicUrl(slice.referenceImage);
