@@ -1,0 +1,22 @@
+[
+  {
+    "episodeId": "P13_assembly_1777225390856",
+    "sliceId": 2,
+    "failureCategory": "d5_style_violation_slice_2",
+    "source": "tier2_llm",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: The first two frames are highly photorealistic, violating the 'semi-realistic anime' tolerance and forbidden 'photorealistic' style. The final frame is a different anime style.",
+    "timestamp": "2026-04-26T17:45:03.154Z",
+    "status": "pending"
+  },
+  {
+    "episodeId": "P13_assembly_1777225390856",
+    "sliceId": 2,
+    "failureCategory": "face_count_check",
+    "source": "tier1_rules",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: Slice 2 has 0 face(s) — regenerate video",
+    "timestamp": "2026-04-26T17:48:51.155Z",
+    "status": "pending"
+  }
+]

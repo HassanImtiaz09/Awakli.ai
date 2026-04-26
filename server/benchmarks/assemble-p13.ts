@@ -22,6 +22,7 @@ import { generateMusicBed, mixMusicBed } from "./assembly/music-bed.js";
 import { masterAudio } from "./assembly/audio-mastering.js";
 import { wrapWithCards } from "./assembly/title-cards.js";
 import { extractMoodVector } from "./assembly/mood-vector.js";
+import { padClipToTarget, measureDuration } from "./assembly/clip-padder.js";
 import { runRulesHarness } from "./harness/rules-harness.js";
 import { runD5Harness } from "./llm/visual-reviewer.js";
 import { routeFeedback, deduplicateActions, SliceRetryTracker } from "./harness/feedback-router.js";
@@ -177,6 +178,45 @@ async function main() {
       }
     }
   }
+
+  // ─── Clip Padding: Extend short clips to target duration ──────────────
+  const TARGET_SLICE_DURATION = 10; // seconds per slice (fixture target)
+  const paddedDir = path.join(OUTPUT_DIR, "padded");
+  fs.mkdirSync(paddedDir, { recursive: true });
+
+  console.log(`\n─── Clip Padding: Extending short clips to ${TARGET_SLICE_DURATION}s ───`);
+  let paddedCount = 0;
+  let speedRampCount = 0;
+  let alreadyOkCount = 0;
+
+  for (const [sliceId, normalizedPath] of Array.from(normalizedPathMap.entries())) {
+    try {
+      const padResult = await padClipToTarget({
+        clipPath: normalizedPath,
+        targetDurationSec: TARGET_SLICE_DURATION,
+        toleranceSec: 1.5, // Allow clips ≥8.5s to pass without padding
+        workDir: paddedDir,
+        crossfadeSec: 0.3,
+      });
+
+      if (padResult.padded) {
+        // Replace the normalized path with the padded version
+        normalizedPathMap.set(sliceId, padResult.outputPath);
+        const idx = normalizedPaths.indexOf(normalizedPath);
+        if (idx >= 0) normalizedPaths[idx] = padResult.outputPath;
+        paddedCount++;
+        if (padResult.method === "speed_ramp") speedRampCount++;
+        console.log(`  Slice ${sliceId}: ${padResult.originalDurationSec.toFixed(1)}s → ${padResult.finalDurationSec.toFixed(1)}s (${padResult.method})`);
+      } else {
+        alreadyOkCount++;
+        console.log(`  Slice ${sliceId}: ${padResult.originalDurationSec.toFixed(1)}s — OK (within tolerance)`);
+      }
+    } catch (err: any) {
+      console.warn(`  Slice ${sliceId}: padding failed — ${err.message?.slice(0, 100)}`);
+    }
+  }
+
+  console.log(`  Summary: ${paddedCount} padded (${speedRampCount} speed-ramp), ${alreadyOkCount} already OK`);
 
   // ─── W1: Classified Transitions ────────────────────────────────────────
   console.log(`\n─── W1: Generating transition plan ───`);

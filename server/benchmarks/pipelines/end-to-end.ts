@@ -3948,6 +3948,7 @@ import { runD5Harness } from "../llm/visual-reviewer.js";
 import { routeFeedback, deduplicateActions, SliceRetryTracker } from "../harness/feedback-router.js";
 import { addToEscalationQueue } from "../../admin/quality-escalation-queue.js";
 import { extractMoodVector } from "../assembly/mood-vector.js";
+import { padClipToTarget } from "../assembly/clip-padder.js";
 
 export async function runP13(script: PilotScript): Promise<PipelineResult> {
   const pipelineTimer = startTimer();

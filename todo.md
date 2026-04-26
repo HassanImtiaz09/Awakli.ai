@@ -5439,3 +5439,18 @@
 - [x] Widen LRA tolerance from [6, 10] to [6, 14] in loudness-check.ts
 - [x] Verify -16 LUFS falls within the LUFS range [-17, -15] — yes, -16 is within [-17, -15]
 - [x] Save checkpoint and report
+
+## P13 Clip Padding + Assembly Re-run (Round 3)
+
+### Clip Padding Logic
+- [x] Review current Vidu Q3 video generation code — Vidu Q3 max 8s, Veo 3.1 Lite max 8s, fixture expects 10s
+- [x] Implement clip padding — created clip-padder.ts with speed-ramp (0.8x) as default, extension clip callback as optional
+- [x] Add padClipToTarget() helper — measures via ffprobe, speed-ramp fallback, extension clip + crossfade, ensureAudioTrack
+- [x] Wire padding into assemble-p13.ts after normalization, before transitions (better location than pipeline)
+
+### Assembly Re-run Validation
+- [x] Re-run P13 assembly — full chain validated: padding 18/18, transitions 17/17, music bed via Replicate, mastering -16 LUFS
+- [x] Verify music bed regen — executor re-generated music bed, re-mixed, re-wrapped cards, re-mastered. Loudness now PASS.
+- [x] Verify duration check passes with actual clip durations — PASS (177.6s within tolerance)
+- [x] Verify clip padding — 18/18 clips padded from 8.0s → 10.0s via speed-ramp. Final duration 177.6s (was 149.9s)
+- [x] Save checkpoint and report
