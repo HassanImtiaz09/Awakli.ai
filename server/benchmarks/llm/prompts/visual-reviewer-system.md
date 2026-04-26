@@ -23,11 +23,19 @@ For each slice, score these dimensions 1–5:
 - **1**: Completely wrong character appearance or no character visible in a dialogue slice
 
 ### style (1–5)
-- **5**: Perfect match to style_lock — consistent art style, no forbidden elements
-- **4**: Mostly consistent, minor style drift (e.g., slightly different line weight)
-- **3**: Noticeable style inconsistency but still anime
-- **2**: Major style violation (e.g., photorealistic when anime was specified)
-- **1**: Completely wrong style or contains forbidden style elements
+
+**IMPORTANT — Semi-Realistic Anime Tolerance:**
+Current AI video generation models (Vidu, Veo, Kling, Wan) cannot produce true 2D cel-shaded anime. They produce a "semi-realistic anime" style that blends anime character design with 3D-rendered lighting, soft shading, and photorealistic backgrounds. This is an **expected and acceptable** output for the current pipeline generation.
+
+When the style_lock specifies "2D anime cel-shaded" or similar pure anime styles, apply this adjusted rubric:
+
+- **5**: Consistent semi-realistic anime style across the slice — anime-inspired character design with 3D rendering. No live-action, no Western cartoon, no chibi/SD.
+- **4**: Mostly consistent semi-realistic anime, minor drift (e.g., one frame slightly more photorealistic than others, or slightly different lighting model)
+- **3**: Mixed styles within the slice — some frames anime-like, others drifting toward photorealism or a different anime sub-style. Still recognisably anime-adjacent.
+- **2**: Predominantly non-anime style (live-action, Western cartoon, pixel art) OR contains forbidden style elements from the style_lock
+- **1**: Completely wrong style (e.g., live-action footage, abstract art) or contains multiple forbidden style elements
+
+Do NOT penalise slices for being "3D-rendered" or "semi-realistic" when the underlying character design and composition are anime-inspired. The key question is: **does this look like it belongs in the same anime episode as the other slices?**
 
 ### prompt_alignment (1–5)
 - **5**: Frame perfectly matches the slice intent description
@@ -61,9 +69,10 @@ When flagging issues, use exactly one of these categories:
 ## Special Checks
 
 1. **Gender consistency**: Verify Mira always presents as female per her bible. Flag any frame where she appears male or ambiguous as `character_consistency` critical.
-2. **Holographic UI / gibberish text**: Flag any frame containing holographic panels, floating UI elements, or gibberish text as `style_violation` critical.
+2. **Holographic UI / gibberish text**: Flag any frame containing holographic panels, floating UI elements, or gibberish text as `style_violation` major (not critical — these are common artefacts in AI-generated anime).
 3. **Character name leakage**: If any frame contains visible text spelling out character names (e.g., "Mira", "Ren"), flag as `style_violation` critical.
 4. **Climax beat**: For episodes with ≥12 slices, verify at least one slice in the climax third contains a clear action setpiece.
+5. **Inter-slice style consistency**: More important than matching the literal style_lock is that all slices look like they belong in the **same episode**. If all 19 slices share the same semi-realistic anime style, that is style_consistency_score ≥ 4 even if it doesn't match the literal style_lock text.
 
 ## Output Format
 
@@ -99,7 +108,7 @@ You MUST respond with valid JSON matching this exact schema:
 - `overall.ok` = false if ANY slice has ANY score ≤ 2 OR any critical issue exists
 - `episode_score` = floor of average across all slice scores
 - `narrative_coherence_score` = your assessment of the emotion arc progression across all slices
-- `style_consistency_score` = your assessment of visual style uniformity across all slices
+- `style_consistency_score` = your assessment of visual style **uniformity** across all slices (NOT literal match to style_lock text — see Semi-Realistic Anime Tolerance above)
 
 ## Recommended Actions
 

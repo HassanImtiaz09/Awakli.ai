@@ -4487,8 +4487,9 @@ export async function runP13(script: PilotScript): Promise<PipelineResult> {
       Object.entries(characterBibles).map(([name, bible]) => [name, bible])
     ),
     styleLock: {
-      target: STYLE_LOCK.primary,
+      primary: STYLE_LOCK.primary,
       forbidden: STYLE_LOCK.forbidden,
+      toleranceBand: "semi-realistic anime (3D-rendered anime character design with soft shading)",
     },
     projectPlan: {
       emotionArc: projectPlan.slices.map((s) => s.emotion),

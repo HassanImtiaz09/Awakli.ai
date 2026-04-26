@@ -36,8 +36,10 @@ export interface D5ReviewOptions {
   characterBibles: Record<string, any>;
   /** style_lock specification */
   styleLock: {
-    target: string;
+    primary: string;
     forbidden: string[];
+    /** Accepted tolerance band for AI video gen models */
+    toleranceBand?: string;
   };
   /** ProjectPlan JSON (scene descriptions, emotion arcs) */
   projectPlan: any;

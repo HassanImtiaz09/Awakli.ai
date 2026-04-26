@@ -1,0 +1,32 @@
+[
+  {
+    "episodeId": "P13_assembly_1777173822383",
+    "sliceId": 2,
+    "failureCategory": "d5_prompt_alignment_slice_2",
+    "source": "tier2_llm",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: The intent is a medium shot of Mira speaking at a window. The keyframes show characters from behind, then a side profile of Mira but with a male character present, and then the last keyframe shows a different character with different hair color and style.",
+    "timestamp": "2026-04-26T03:26:21.226Z",
+    "status": "pending"
+  },
+  {
+    "episodeId": "P13_assembly_1777173822383",
+    "sliceId": 2,
+    "failureCategory": "d5_character_consistency_slice_2",
+    "source": "tier2_llm",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: Mira's appearance is inconsistent across keyframes within the slice and does not match the description (e.g., hair color, mechanical arm presence/absence, uniform). The last keyframe shows a character with blue-tipped hair, but the overall character design seems inconsistent.",
+    "timestamp": "2026-04-26T03:26:21.226Z",
+    "status": "pending"
+  },
+  {
+    "episodeId": "P13_assembly_1777173822383",
+    "sliceId": 2,
+    "failureCategory": "d5_audio_visual_sync_slice_2",
+    "source": "tier2_llm",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: The audio profile indicates silence (-91 meanVolume, hasSilence: true) for a dialogue slice, which is a critical mismatch.",
+    "timestamp": "2026-04-26T03:26:21.226Z",
+    "status": "pending"
+  }
+]

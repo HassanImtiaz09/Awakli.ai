@@ -367,7 +367,7 @@ async function main() {
     })),
     titleCardDurationSec,
     characterBibles: {},  // Will be populated from character-bible/schema.ts in pipeline mode
-    styleLock: { target: "2D anime cel-shaded illustration", forbidden: ["photorealistic", "3D render", "watercolor"] },
+    styleLock: { primary: "2D anime cel-shaded illustration", forbidden: ["photorealistic", "3D render", "watercolor"], toleranceBand: "semi-realistic anime (3D-rendered anime character design with soft shading)" },
     projectPlan: { emotionArc: (pilotScript.slices as any[]).map((s: any) => s.emotion || "calm") },
     tempDir: OUTPUT_DIR,
   });

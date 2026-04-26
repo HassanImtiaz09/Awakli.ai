@@ -5404,3 +5404,8 @@
 - [x] Create mood-vector.ts for A1 music bed prompt extraction from Director's ProjectPlan
 - [x] Validate TypeScript compilation (0 errors)
 - [x] Save checkpoint and report to user
+
+## P13 Assembly Fixes (post-benchmark)
+- [x] Fix MiniMax API key — updated endpoint (api.minimax.io), model (music-2.6), params (is_instrumental, output_format), endpoint fallback chain, free-tier fallback. Key itself still invalid — user needs to regenerate.
+- [x] Fix FFmpeg transition filters — root cause: video-only clips (Vidu Q3) have no audio track, acrossfade requires both inputs to have audio. Fix: ensureAudio() adds silent stereo AAC track to video-only clips before transition. Also fixed JSON.stringify quoting in audio-mastering.ts.
+- [x] Tune D5 style thresholds — added Semi-Realistic Anime Tolerance to visual-reviewer-system.md, updated style rubric (5=consistent semi-realistic anime, 2=non-anime), added toleranceBand to styleLock interface, downgraded holographic UI from critical to major, added inter-slice consistency check (#5)

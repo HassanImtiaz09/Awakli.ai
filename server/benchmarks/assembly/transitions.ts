@@ -9,6 +9,10 @@
  *
  * An LLM call classifies each slice boundary into one of the four types
  * based on the adjacent slice types and narrative context.
+ *
+ * IMPORTANT: Silent video clips (e.g. from Vidu Q3) may lack an audio track.
+ * All transition functions normalise inputs by adding a silent audio track
+ * when one is missing, so acrossfade/xfade filters always have valid [N:a] refs.
  */
 
 import { exec } from "child_process";
@@ -26,6 +30,48 @@ export interface TransitionSpec {
   type: TransitionType;
   durationMs: number;
   reason: string;
+}
+
+// ─── Audio Normalisation Helper ──────────────────────────────────────────
+
+/**
+ * Check whether a file contains an audio stream.
+ */
+async function hasAudioStream(filePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execAsync(
+      `ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 "${filePath}"`
+    );
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ensure a clip has an audio track. If it's video-only, mux in a silent
+ * stereo AAC track matching the video duration. Returns the path to a
+ * clip that is guaranteed to have both video and audio.
+ */
+async function ensureAudio(clipPath: string, workDir: string): Promise<string> {
+  if (await hasAudioStream(clipPath)) return clipPath;
+
+  const base = path.basename(clipPath, ".mp4");
+  const outPath = path.join(workDir, `${base}_audio.mp4`);
+
+  // Already normalised in a previous call
+  if (fs.existsSync(outPath)) return outPath;
+
+  await execAsync(
+    `ffmpeg -hide_banner -y ` +
+    `-i "${clipPath}" ` +
+    `-f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 ` +
+    `-c:v copy -c:a aac -b:a 192k -shortest ` +
+    `"${outPath}"`,
+    { maxBuffer: 50 * 1024 * 1024 }
+  );
+
+  return outPath;
 }
 
 // ─── Rule-Based Transition Classification ─────────────────────────────────
@@ -111,33 +157,46 @@ export function generateTransitionPlan(
 // ─── FFmpeg Transition Implementations ────────────────────────────────────
 
 /**
+ * Get the duration of a media file in seconds.
+ */
+async function getClipDuration(filePath: string): Promise<number> {
+  const { stdout } = await execAsync(
+    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
+  );
+  return parseFloat(stdout.trim());
+}
+
+/**
  * Apply a crossfade transition between two video clips.
- * Uses FFmpeg's xfade filter.
+ * Uses FFmpeg's xfade + acrossfade filters.
  */
 export async function applyCrossfade(
   clip1Path: string,
   clip2Path: string,
   outputPath: string,
-  durationSec: number = 0.5
+  durationSec: number = 0.5,
+  workDir?: string
 ): Promise<string> {
-  // Get duration of clip1 to calculate offset
-  const { stdout: durationStr } = await execAsync(
-    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${JSON.stringify(clip1Path)}`
-  );
-  const clip1Duration = parseFloat(durationStr.trim());
+  const wd = workDir ?? path.dirname(outputPath);
+  const c1 = await ensureAudio(clip1Path, wd);
+  const c2 = await ensureAudio(clip2Path, wd);
+
+  const clip1Duration = await getClipDuration(c1);
   const offset = Math.max(0, clip1Duration - durationSec);
 
-  const cmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(clip1Path),
-    "-i", JSON.stringify(clip2Path),
-    "-filter_complex",
-    `"[0:v][1:v]xfade=transition=fade:duration=${durationSec}:offset=${offset}[v];[0:a][1:a]acrossfade=d=${durationSec}[a]"`,
-    "-map", '"[v]"', "-map", '"[a]"',
-    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-    "-c:a", "aac", "-b:a", "192k",
-    JSON.stringify(outputPath),
-  ].join(" ");
+  const filterComplex =
+    `[0:v][1:v]xfade=transition=fade:duration=${durationSec}:offset=${offset}[v];` +
+    `[0:a][1:a]acrossfade=d=${durationSec}[a]`;
+
+  const cmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${c1}" ` +
+    `-i "${c2}" ` +
+    `-filter_complex "${filterComplex}" ` +
+    `-map "[v]" -map "[a]" ` +
+    `-c:v libx264 -preset fast -crf 18 ` +
+    `-c:a aac -b:a 192k ` +
+    `"${outputPath}"`;
 
   await execAsync(cmd, { maxBuffer: 50 * 1024 * 1024 });
   return outputPath;
@@ -150,25 +209,29 @@ export async function applyDipToBlack(
   clip1Path: string,
   clip2Path: string,
   outputPath: string,
-  durationSec: number = 0.8
+  durationSec: number = 0.8,
+  workDir?: string
 ): Promise<string> {
-  const { stdout: durationStr } = await execAsync(
-    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${JSON.stringify(clip1Path)}`
-  );
-  const clip1Duration = parseFloat(durationStr.trim());
+  const wd = workDir ?? path.dirname(outputPath);
+  const c1 = await ensureAudio(clip1Path, wd);
+  const c2 = await ensureAudio(clip2Path, wd);
+
+  const clip1Duration = await getClipDuration(c1);
   const offset = Math.max(0, clip1Duration - durationSec);
 
-  const cmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(clip1Path),
-    "-i", JSON.stringify(clip2Path),
-    "-filter_complex",
-    `"[0:v][1:v]xfade=transition=fadeblack:duration=${durationSec}:offset=${offset}[v];[0:a][1:a]acrossfade=d=${durationSec}[a]"`,
-    "-map", '"[v]"', "-map", '"[a]"',
-    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-    "-c:a", "aac", "-b:a", "192k",
-    JSON.stringify(outputPath),
-  ].join(" ");
+  const filterComplex =
+    `[0:v][1:v]xfade=transition=fadeblack:duration=${durationSec}:offset=${offset}[v];` +
+    `[0:a][1:a]acrossfade=d=${durationSec}[a]`;
+
+  const cmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${c1}" ` +
+    `-i "${c2}" ` +
+    `-filter_complex "${filterComplex}" ` +
+    `-map "[v]" -map "[a]" ` +
+    `-c:v libx264 -preset fast -crf 18 ` +
+    `-c:a aac -b:a 192k ` +
+    `"${outputPath}"`;
 
   await execAsync(cmd, { maxBuffer: 50 * 1024 * 1024 });
   return outputPath;
@@ -181,25 +244,29 @@ export async function applySoftFade(
   clip1Path: string,
   clip2Path: string,
   outputPath: string,
-  durationSec: number = 0.7
+  durationSec: number = 0.7,
+  workDir?: string
 ): Promise<string> {
-  const { stdout: durationStr } = await execAsync(
-    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${JSON.stringify(clip1Path)}`
-  );
-  const clip1Duration = parseFloat(durationStr.trim());
+  const wd = workDir ?? path.dirname(outputPath);
+  const c1 = await ensureAudio(clip1Path, wd);
+  const c2 = await ensureAudio(clip2Path, wd);
+
+  const clip1Duration = await getClipDuration(c1);
   const offset = Math.max(0, clip1Duration - durationSec);
 
-  const cmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(clip1Path),
-    "-i", JSON.stringify(clip2Path),
-    "-filter_complex",
-    `"[0:v][1:v]xfade=transition=smoothleft:duration=${durationSec}:offset=${offset}[v];[0:a][1:a]acrossfade=d=${durationSec}[a]"`,
-    "-map", '"[v]"', "-map", '"[a]"',
-    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-    "-c:a", "aac", "-b:a", "192k",
-    JSON.stringify(outputPath),
-  ].join(" ");
+  const filterComplex =
+    `[0:v][1:v]xfade=transition=smoothleft:duration=${durationSec}:offset=${offset}[v];` +
+    `[0:a][1:a]acrossfade=d=${durationSec}[a]`;
+
+  const cmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${c1}" ` +
+    `-i "${c2}" ` +
+    `-filter_complex "${filterComplex}" ` +
+    `-map "[v]" -map "[a]" ` +
+    `-c:v libx264 -preset fast -crf 18 ` +
+    `-c:a aac -b:a 192k ` +
+    `"${outputPath}"`;
 
   await execAsync(cmd, { maxBuffer: 50 * 1024 * 1024 });
   return outputPath;
@@ -212,20 +279,27 @@ export async function applyAudioCross(
   clip1Path: string,
   clip2Path: string,
   outputPath: string,
-  durationSec: number = 0.3
+  durationSec: number = 0.3,
+  workDir?: string
 ): Promise<string> {
+  const wd = workDir ?? path.dirname(outputPath);
+  const c1 = await ensureAudio(clip1Path, wd);
+  const c2 = await ensureAudio(clip2Path, wd);
+
   // Hard video cut at the boundary, audio crossfade
-  const cmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(clip1Path),
-    "-i", JSON.stringify(clip2Path),
-    "-filter_complex",
-    `"[0:v][1:v]concat=n=2:v=1:a=0[v];[0:a][1:a]acrossfade=d=${durationSec}[a]"`,
-    "-map", '"[v]"', "-map", '"[a]"',
-    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-    "-c:a", "aac", "-b:a", "192k",
-    JSON.stringify(outputPath),
-  ].join(" ");
+  const filterComplex =
+    `[0:v][1:v]concat=n=2:v=1:a=0[v];` +
+    `[0:a][1:a]acrossfade=d=${durationSec}[a]`;
+
+  const cmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${c1}" ` +
+    `-i "${c2}" ` +
+    `-filter_complex "${filterComplex}" ` +
+    `-map "[v]" -map "[a]" ` +
+    `-c:v libx264 -preset fast -crf 18 ` +
+    `-c:a aac -b:a 192k ` +
+    `"${outputPath}"`;
 
   await execAsync(cmd, { maxBuffer: 50 * 1024 * 1024 });
   return outputPath;
@@ -238,21 +312,22 @@ export async function applyTransition(
   clip1Path: string,
   clip2Path: string,
   outputPath: string,
-  spec: TransitionSpec
+  spec: TransitionSpec,
+  workDir?: string
 ): Promise<string> {
   const durationSec = spec.durationMs / 1000;
 
   switch (spec.type) {
     case "crossfade":
-      return applyCrossfade(clip1Path, clip2Path, outputPath, durationSec);
+      return applyCrossfade(clip1Path, clip2Path, outputPath, durationSec, workDir);
     case "dip_to_black":
-      return applyDipToBlack(clip1Path, clip2Path, outputPath, durationSec);
+      return applyDipToBlack(clip1Path, clip2Path, outputPath, durationSec, workDir);
     case "soft_fade":
-      return applySoftFade(clip1Path, clip2Path, outputPath, durationSec);
+      return applySoftFade(clip1Path, clip2Path, outputPath, durationSec, workDir);
     case "audio_cross":
-      return applyAudioCross(clip1Path, clip2Path, outputPath, durationSec);
+      return applyAudioCross(clip1Path, clip2Path, outputPath, durationSec, workDir);
     default:
-      return applyCrossfade(clip1Path, clip2Path, outputPath, durationSec);
+      return applyCrossfade(clip1Path, clip2Path, outputPath, durationSec, workDir);
   }
 }
 
@@ -298,13 +373,13 @@ export async function assembleWithTransitions(
 
     console.log(`  [A1] Transition ${i + 1}/${transitions.length}: ${spec.type} (${spec.durationMs}ms) — ${spec.reason}`);
     try {
-      currentPath = await applyTransition(currentPath, nextPath, outPath, spec);
+      currentPath = await applyTransition(currentPath, nextPath, outPath, spec, workDir);
     } catch (err: any) {
-      console.warn(`  [A1] Transition ${i + 1} failed: ${err.message?.slice(0, 80)} — falling back to concat`);
+      console.warn(`  [A1] Transition ${i + 1} failed: ${err.message?.slice(0, 120)} — falling back to concat`);
       // Fallback: simple concatenation
       const concatList = path.join(workDir, `concat_${i}.txt`);
       fs.writeFileSync(concatList, `file '${currentPath}'\nfile '${nextPath}'\n`);
-      await execAsync(`ffmpeg -hide_banner -y -f concat -safe 0 -i ${JSON.stringify(concatList)} -c copy ${JSON.stringify(outPath)}`);
+      await execAsync(`ffmpeg -hide_banner -y -f concat -safe 0 -i "${concatList}" -c copy "${outPath}"`);
       currentPath = outPath;
     }
   }

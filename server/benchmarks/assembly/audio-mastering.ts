@@ -67,12 +67,11 @@ export async function masterAudio(
   }
 
   // ─── Pass 1: Measure ─────────────────────────────────────────────────────
-  const measureCmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(inputPath),
-    "-af", `loudnorm=I=${opts.integratedLoudness}:LRA=${opts.loudnessRange}:TP=${opts.truePeak}:print_format=json`,
-    "-f", "null", "/dev/null",
-  ].join(" ");
+  const measureCmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${inputPath}" ` +
+    `-af loudnorm=I=${opts.integratedLoudness}:LRA=${opts.loudnessRange}:TP=${opts.truePeak}:print_format=json ` +
+    `-f null /dev/null`;
 
   console.log(`  [Q3] Pass 1: Measuring loudness...`);
   const { stderr: measureOutput } = await execAsync(measureCmd, { maxBuffer: 10 * 1024 * 1024 });
@@ -99,17 +98,14 @@ export async function masterAudio(
     `linear=true`,
   ].join(":");
 
-  const applyCmd = [
-    "ffmpeg", "-hide_banner", "-y",
-    "-i", JSON.stringify(inputPath),
-    "-c:v", "copy",                          // Copy video stream unchanged
-    "-af", JSON.stringify(loudnormFilter),
-    "-ar", String(opts.sampleRate),
-    "-c:a", "aac",
-    "-b:a", opts.bitrate,
-    "-ac", "2",                               // Stereo
-    JSON.stringify(outputPath),
-  ].join(" ");
+  const applyCmd =
+    `ffmpeg -hide_banner -y ` +
+    `-i "${inputPath}" ` +
+    `-c:v copy ` +
+    `-af "${loudnormFilter}" ` +
+    `-ar ${opts.sampleRate} ` +
+    `-c:a aac -b:a ${opts.bitrate} -ac 2 ` +
+    `"${outputPath}"`;
 
   console.log(`  [Q3] Pass 2: Applying loudnorm (target: ${opts.integratedLoudness} LUFS, ${opts.truePeak} dBTP)...`);
   await execAsync(applyCmd, { maxBuffer: 10 * 1024 * 1024 });
@@ -163,12 +159,11 @@ export async function measureLoudness(filePath: string): Promise<{
   truePeak: number;
   loudnessRange: number;
 }> {
-  const cmd = [
-    "ffmpeg", "-hide_banner",
-    "-i", JSON.stringify(filePath),
-    "-af", "loudnorm=I=-16:LRA=8:TP=-1.5:print_format=json",
-    "-f", "null", "/dev/null",
-  ].join(" ");
+  const cmd =
+    `ffmpeg -hide_banner ` +
+    `-i "${filePath}" ` +
+    `-af loudnorm=I=-16:LRA=8:TP=-1.5:print_format=json ` +
+    `-f null /dev/null`;
 
   const { stderr } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
   const jsonMatch = stderr.match(/\{[\s\S]*"input_i"[\s\S]*\}/);

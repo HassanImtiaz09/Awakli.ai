@@ -50,3 +50,7 @@ P12_1777146787867,video,fal_ai,Vidu Q3 (8) + Wan 2.7 fallback (0) — silent,80,
 P12_1777146787867,tts,elevenlabs,"turbo-v2.5 (D4 emotion-directed: Mira=Sarah, Ren=Harry)",702,characters,0.0693,0.5
 P12_1777146787867,video,fal_ai,Veo 3.1 Lite (10) + Wan 2.7 audio (0) — dialogue,100,seconds,3.9999999999999996,27.8
 P12_1777146787867,llm,multi,D1 Director + D2 Prompt Engineer + D3 Critic + D4 Voice Director,18,slices,0.46516540000000006,3.2
+P13_1777171863645,video,fal_ai,Vidu Q3 (9) + Wan 2.7 fallback (0) — silent,90,seconds,11.088,70.9
+P13_1777171863645,tts,elevenlabs,"turbo-v2.5 (D4 batch emotion-directed: Mira=Sarah, Ren=Harry)",702,characters,0.0693,0.4
+P13_1777171863645,video,fal_ai,Veo 3.1 Lite (10) + Wan 2.7 audio (0) — dialogue,100,seconds,3.9999999999999996,25.6
+P13_1777171863645,llm,multi,D1+D2(batch)+D3(cap2)+D4(batch) — structured bible + style_lock,19,slices,0.4910222000000001,3.1
