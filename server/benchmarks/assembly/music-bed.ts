@@ -1,11 +1,14 @@
 /**
- * A2: Background Music Bed — MiniMax Music generation + side-chain ducking
+ * A2: Background Music Bed — MiniMax Music 2.6 via Replicate + side-chain ducking
  *
- * Generates an instrumental track via MiniMax Music API (music-2.6),
+ * Generates an instrumental track via Replicate (minimax/music-2.6),
  * then mixes it with the dialogue track at -22 LUFS with side-chain
  * ducking during dialogue sections.
  *
- * MiniMax API docs: https://platform.minimax.io/docs/api-reference/music-generation
+ * Provider chain:
+ *   1. Replicate (minimax/music-2.6) — works from all regions
+ *   2. MiniMax direct (api.minimax.io) — fallback if Replicate fails
+ *   3. MiniMax legacy (api.minimax.chat) — last resort
  */
 
 import { exec } from "child_process";
@@ -34,39 +37,106 @@ const DEFAULT_MUSIC_OPTIONS: Required<MusicBedOptions> = {
   duckReleaseMs: 500,
 };
 
-// ─── MiniMax Music Endpoints ─────────────────────────────────────────────
-// MiniMax migrated from api.minimax.chat to api.minimax.io (2025+).
-// We try the new endpoint first, fall back to the legacy one.
+// ─── Replicate Provider ─────────────────────────────────────────────────
+
+const REPLICATE_API = "https://api.replicate.com/v1";
+const REPLICATE_MODEL = "minimax/music-2.6";
+const REPLICATE_POLL_INTERVAL_MS = 10_000;
+const REPLICATE_MAX_WAIT_MS = 600_000; // 10 min max
+
+async function generateViaReplicate(
+  prompt: string,
+): Promise<string> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not set");
+
+  console.log(`  [A2] Creating Replicate prediction (${REPLICATE_MODEL})...`);
+
+  // Create prediction
+  const createResp = await fetch(`${REPLICATE_API}/predictions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      version: REPLICATE_MODEL,
+      input: {
+        prompt,
+        is_instrumental: true,
+        sample_rate: 44100,
+        bitrate: 256000,
+        audio_format: "mp3",
+      },
+    }),
+  });
+
+  if (!createResp.ok) {
+    const errText = await createResp.text().catch(() => "");
+    throw new Error(`Replicate create failed: ${createResp.status} — ${errText}`);
+  }
+
+  const prediction = (await createResp.json()) as any;
+  const predictionId = prediction.id;
+  const getUrl = prediction.urls?.get ?? `${REPLICATE_API}/predictions/${predictionId}`;
+
+  console.log(`  [A2] Replicate prediction ${predictionId} — polling...`);
+
+  // Poll until complete
+  const deadline = Date.now() + REPLICATE_MAX_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, REPLICATE_POLL_INTERVAL_MS));
+
+    const pollResp = await fetch(getUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!pollResp.ok) {
+      console.log(`  [A2] Poll failed: ${pollResp.status}, retrying...`);
+      continue;
+    }
+
+    const status = (await pollResp.json()) as any;
+
+    if (status.status === "succeeded") {
+      const output = status.output;
+      const predictTime = status.metrics?.predict_time ?? 0;
+      console.log(`  [A2] Replicate succeeded in ${predictTime.toFixed(1)}s`);
+
+      // Output can be a string URL or an array
+      if (typeof output === "string") return output;
+      if (Array.isArray(output) && output.length > 0) return output[0];
+      throw new Error(`Replicate: unexpected output format: ${JSON.stringify(output).slice(0, 200)}`);
+    }
+
+    if (status.status === "failed" || status.status === "canceled") {
+      throw new Error(`Replicate prediction ${status.status}: ${status.error ?? "unknown"}`);
+    }
+
+    // Still processing
+    const elapsed = Math.round((Date.now() - (new Date(prediction.created_at).getTime())) / 1000);
+    console.log(`  [A2] Replicate status: ${status.status} (${elapsed}s elapsed)...`);
+  }
+
+  throw new Error(`Replicate: prediction timed out after ${REPLICATE_MAX_WAIT_MS / 1000}s`);
+}
+
+// ─── MiniMax Direct Provider ─────────────────────────────────────────────
+
 const MINIMAX_ENDPOINTS = [
   "https://api.minimax.io/v1/music_generation",
   "https://api.minimax.chat/v1/music_generation",
 ];
 
-// ─── MiniMax Music Generation ─────────────────────────────────────────────
-
-/**
- * Generate a music track via MiniMax Music API.
- * Uses the MINIMAX_API_KEY environment variable.
- *
- * MiniMax Music API (v2):
- *   POST https://api.minimax.io/v1/music_generation
- *   Model: music-2.6 (paid) or music-2.6-free (free tier)
- *   Body: { model, prompt, is_instrumental, output_format, audio_setting }
- *   Returns: { data: { audio }, extra_info: { music_duration }, base_resp }
- */
-export async function generateMusicBed(
-  options: MusicBedOptions = {}
-): Promise<{ url: string; durationSec: number; generationTimeMs: number }> {
-  const opts = { ...DEFAULT_MUSIC_OPTIONS, ...options };
+async function generateViaMiniMaxDirect(
+  prompt: string,
+): Promise<string> {
   const apiKey = process.env.MINIMAX_API_KEY;
   if (!apiKey) throw new Error("MINIMAX_API_KEY not set");
 
-  const start = Date.now();
-  console.log(`  [A2] Generating ${opts.durationSec}s music bed via MiniMax Music...`);
-
   const requestBody = {
     model: "music-2.6",
-    prompt: opts.prompt,
+    prompt,
     is_instrumental: true,
     output_format: "url",
     audio_setting: {
@@ -80,9 +150,9 @@ export async function generateMusicBed(
 
   for (const endpoint of MINIMAX_ENDPOINTS) {
     try {
-      console.log(`  [A2] Trying endpoint: ${endpoint}`);
+      console.log(`  [A2] Trying MiniMax direct: ${endpoint}`);
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 120_000); // 2 min timeout
+      const timeout = setTimeout(() => controller.abort(), 180_000); // 3 min
 
       const resp = await fetch(endpoint, {
         method: "POST",
@@ -103,87 +173,74 @@ export async function generateMusicBed(
 
       const data = (await resp.json()) as any;
 
-      // Check for API-level errors
       if (data.base_resp?.status_code !== 0 && data.base_resp?.status_code !== undefined) {
-        // If "invalid api key" on this endpoint, try the next one
-        if (data.base_resp.status_code === 2049) {
-          throw new Error(`MiniMax: invalid API key on ${endpoint}`);
-        }
-        throw new Error(`MiniMax Music error ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
+        throw new Error(`MiniMax error ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
       }
 
-      // Extract audio URL from response
-      let audioUrl: string;
+      // Extract audio URL
       if (data.data?.audio && typeof data.data.audio === "string" && data.data.audio.startsWith("http")) {
-        // output_format: "url" → data.audio is a URL
-        audioUrl = data.data.audio;
+        return data.data.audio;
       } else if (data.data?.audio_url) {
-        audioUrl = data.data.audio_url;
+        return data.data.audio_url;
       } else if (data.audio_url) {
-        audioUrl = data.audio_url;
+        return data.audio_url;
       } else if (data.data?.audio && typeof data.data.audio === "string") {
-        // output_format: "hex" → data.audio is hex-encoded audio
         const audioBuffer = Buffer.from(data.data.audio, "hex");
         const key = `benchmarks/p13/music_bed_${Date.now()}.mp3`;
         const { url } = await storagePut(key, audioBuffer, "audio/mpeg");
-        audioUrl = url;
-      } else {
-        throw new Error(`MiniMax Music: unexpected response format: ${JSON.stringify(data).slice(0, 200)}`);
+        return url;
       }
 
-      const generationTimeMs = Date.now() - start;
-      const musicDurationMs = data.extra_info?.music_duration;
-      const actualDuration = musicDurationMs ? musicDurationMs / 1000 : opts.durationSec;
-      console.log(`  [A2] Music bed generated in ${(generationTimeMs / 1000).toFixed(1)}s (${actualDuration.toFixed(1)}s track): ${audioUrl.slice(0, 80)}...`);
-
-      return {
-        url: audioUrl,
-        durationSec: actualDuration,
-        generationTimeMs,
-      };
+      throw new Error(`MiniMax: unexpected response: ${JSON.stringify(data).slice(0, 200)}`);
     } catch (err: any) {
       lastError = err;
-      console.log(`  [A2] Endpoint ${endpoint} failed: ${err.message}`);
-      // Try next endpoint
+      console.log(`  [A2] MiniMax ${endpoint} failed: ${err.message}`);
     }
   }
 
-  // Also try the free-tier model as last resort
-  try {
-    console.log(`  [A2] Trying free-tier model (music-2.6-free) on legacy endpoint...`);
-    const freeBody = { ...requestBody, model: "music-2.6-free" };
-    const resp = await fetch(MINIMAX_ENDPOINTS[1], {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(freeBody),
-    });
+  throw lastError ?? new Error("MiniMax direct: all endpoints failed");
+}
 
-    const data = (await resp.json()) as any;
-    if (data.base_resp?.status_code === 0 && data.data?.audio) {
-      let audioUrl: string;
-      if (typeof data.data.audio === "string" && data.data.audio.startsWith("http")) {
-        audioUrl = data.data.audio;
-      } else {
-        const audioBuffer = Buffer.from(data.data.audio, "hex");
-        const key = `benchmarks/p13/music_bed_${Date.now()}.mp3`;
-        const { url } = await storagePut(key, audioBuffer, "audio/mpeg");
-        audioUrl = url;
-      }
+// ─── Top-Level Music Generation ─────────────────────────────────────────
 
+/**
+ * Generate a music track using the provider chain:
+ *   1. Replicate (minimax/music-2.6)
+ *   2. MiniMax direct (api.minimax.io)
+ *   3. MiniMax legacy (api.minimax.chat)
+ */
+export async function generateMusicBed(
+  options: MusicBedOptions = {}
+): Promise<{ url: string; durationSec: number; generationTimeMs: number; provider: string }> {
+  const opts = { ...DEFAULT_MUSIC_OPTIONS, ...options };
+  const start = Date.now();
+  console.log(`  [A2] Generating ${opts.durationSec}s music bed...`);
+
+  // Provider 1: Replicate
+  if (process.env.REPLICATE_API_TOKEN) {
+    try {
+      const url = await generateViaReplicate(opts.prompt);
       const generationTimeMs = Date.now() - start;
-      const musicDurationMs = data.extra_info?.music_duration;
-      const actualDuration = musicDurationMs ? musicDurationMs / 1000 : opts.durationSec;
-      console.log(`  [A2] Music bed (free tier) generated in ${(generationTimeMs / 1000).toFixed(1)}s: ${audioUrl.slice(0, 80)}...`);
-      return { url: audioUrl, durationSec: actualDuration, generationTimeMs };
+      console.log(`  [A2] Music bed via Replicate in ${(generationTimeMs / 1000).toFixed(1)}s: ${url.slice(0, 80)}...`);
+      return { url, durationSec: opts.durationSec, generationTimeMs, provider: "replicate" };
+    } catch (err: any) {
+      console.log(`  [A2] Replicate failed: ${err.message}, trying MiniMax direct...`);
     }
-  } catch (_) {
-    // Fall through to final error
   }
 
-  throw lastError ?? new Error("MiniMax Music: all endpoints failed");
+  // Provider 2+3: MiniMax direct (api.minimax.io → api.minimax.chat)
+  if (process.env.MINIMAX_API_KEY) {
+    try {
+      const url = await generateViaMiniMaxDirect(opts.prompt);
+      const generationTimeMs = Date.now() - start;
+      console.log(`  [A2] Music bed via MiniMax direct in ${(generationTimeMs / 1000).toFixed(1)}s: ${url.slice(0, 80)}...`);
+      return { url, durationSec: opts.durationSec, generationTimeMs, provider: "minimax-direct" };
+    } catch (err: any) {
+      console.log(`  [A2] MiniMax direct failed: ${err.message}`);
+    }
+  }
+
+  throw new Error("A2: All music providers failed. Need REPLICATE_API_TOKEN or MINIMAX_API_KEY.");
 }
 
 // ─── Music Mixing with Side-Chain Ducking ─────────────────────────────────

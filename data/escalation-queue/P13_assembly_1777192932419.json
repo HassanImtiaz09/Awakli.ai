@@ -1,0 +1,12 @@
+[
+  {
+    "episodeId": "P13_assembly_1777192932419",
+    "sliceId": 2,
+    "failureCategory": "d5_character_consistency_slice_2",
+    "source": "tier2_llm",
+    "attempts": 2,
+    "reason": "Slice 2 failed after max retries: The prompt specifies Mira's mechanical left arm. In the second frame, her left arm is normal. In the third frame, she has a mechanical right arm, not left.",
+    "timestamp": "2026-04-26T08:43:58.192Z",
+    "status": "pending"
+  }
+]

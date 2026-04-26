@@ -5409,3 +5409,11 @@
 - [x] Fix MiniMax API key — updated endpoint (api.minimax.io), model (music-2.6), params (is_instrumental, output_format), endpoint fallback chain, free-tier fallback. Key itself still invalid — user needs to regenerate.
 - [x] Fix FFmpeg transition filters — root cause: video-only clips (Vidu Q3) have no audio track, acrossfade requires both inputs to have audio. Fix: ensureAudio() adds silent stereo AAC track to video-only clips before transition. Also fixed JSON.stringify quoting in audio-mastering.ts.
 - [x] Tune D5 style thresholds — added Semi-Realistic Anime Tolerance to visual-reviewer-system.md, updated style rubric (5=consistent semi-realistic anime, 2=non-anime), added toleranceBand to styleLock interface, downgraded holographic UI from critical to major, added inter-slice consistency check (#5)
+
+## P13 Assembly Re-run (post-fixes validation)
+- [x] Regenerate MiniMax API key — key works on api.minimax.io but music endpoint times out; switched to Replicate as primary provider
+- [x] Re-run P13 assembly — full chain validated end-to-end
+- [x] Verify transitions — 18/18 applied, 0 fallbacks (ensureAudio fix works)
+- [x] Verify music bed — generated via Replicate in 204s, mixed at -12dB duck
+- [x] Verify mastering — -16 LUFS (was NaN/inf before fix)
+- [x] Save checkpoint and report
