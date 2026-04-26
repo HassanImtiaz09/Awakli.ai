@@ -5417,3 +5417,25 @@
 - [x] Verify music bed — generated via Replicate in 204s, mixed at -12dB duck
 - [x] Verify mastering — -16 LUFS (was NaN/inf before fix)
 - [x] Save checkpoint and report
+
+## P13 Assembly Fixes — Round 2
+
+### Duration Gap Investigation
+- [x] Investigate why assembled video is 149.9s vs expected 199s — Vidu Q3 outputs 8s clips (not 10s), 19×8s=152s minus 12s overlap + 9s cards = 149s
+- [x] Measure actual duration of each of the 19 downloaded clips — all are ~8.0s
+- [x] Identify which clips are shorter than 10s — all 19 clips are 8.0-8.042s (Vidu Q3 max is 8s)
+- [x] Fix expected duration calculation — duration-check.ts now accepts actualClipDurations[] and transitionOverlapSec
+- [x] Fix assemble-p13.ts — measures actual clip durations via ffprobe, calculates transition overlap, passes both to H1 harness
+
+### H2 Regeneration Executor
+- [x] Build regeneration executor in assemble-p13.ts — executeAction() switch handles all 8 RegenerationTarget types
+- [x] Implement slice_video_regen action — logs for pipeline context (can't re-trigger video gen in standalone assembler)
+- [x] Implement a1_music_bed action — re-generates via Replicate, re-mixes, re-wraps cards, re-masters
+- [x] Implement q3_audio_mastering action — re-runs masterAudio() on current assembled video
+- [x] Implement slice_identify_missing action — checks normalizedPathMap for missing slices, reports Vidu Q3 8s max
+- [x] Add retry loop — collects H1+D5 actions, executes, re-runs H1 if assembly-level action succeeded (max 1 cycle), writes regen_execution_report.json
+
+### H1 Loudness Range Tuning
+- [x] Widen LRA tolerance from [6, 10] to [6, 14] in loudness-check.ts
+- [x] Verify -16 LUFS falls within the LUFS range [-17, -15] — yes, -16 is within [-17, -15]
+- [x] Save checkpoint and report

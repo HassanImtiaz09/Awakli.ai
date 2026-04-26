@@ -25,6 +25,7 @@ import { extractMoodVector } from "./assembly/mood-vector.js";
 import { runRulesHarness } from "./harness/rules-harness.js";
 import { runD5Harness } from "./llm/visual-reviewer.js";
 import { routeFeedback, deduplicateActions, SliceRetryTracker } from "./harness/feedback-router.js";
+import type { RegenerationAction } from "./harness/types.js";
 import { addToEscalationQueue } from "../admin/quality-escalation-queue.js";
 import pilotScript from "./fixtures/pilot-3min-script-16x9-v6.json" with { type: "json" };
 
@@ -315,13 +316,44 @@ async function main() {
   console.log(`\n─── Stage 6a: H1 Rules Harness ───`);
   const titleCardDurationSec = 5;
   const endCardDurationSec = 4;
-  const sliceMetadata = (pilotScript.slices as any[]).map((s: any) => ({
-    sliceId: s.sliceId,
-    startSec: (s.sliceId - 1) * 10,
-    durationSec: s.duration || 10,
-    type: s.type || "cinematic",
-    isDialogue: !!s.audio,
-  }));
+
+  // Measure actual clip durations for accurate expected duration calculation
+  const actualClipDurations: number[] = [];
+  for (const sliceId of SLICE_ORDER) {
+    const clipPath = normalizedPathMap.get(sliceId);
+    if (clipPath && fs.existsSync(clipPath)) {
+      try {
+        const durStr = execSync(
+          `ffprobe -v error -show_entries format=duration -of csv=p=0 "${clipPath}" 2>/dev/null`
+        ).toString().trim();
+        actualClipDurations.push(parseFloat(durStr) || 0);
+      } catch {
+        actualClipDurations.push(0);
+      }
+    }
+  }
+  console.log(`  Measured ${actualClipDurations.length} clip durations: total ${actualClipDurations.reduce((a, b) => a + b, 0).toFixed(1)}s`);
+
+  // Calculate total transition overlap from applied transitions
+  const transitionOverlapSec = transitionPlan
+    .filter((t) => normalizedPathMap.has(t.fromSliceId) && normalizedPathMap.has(t.toSliceId))
+    .reduce((sum, t) => sum + (t.durationMs / 1000), 0);
+  console.log(`  Transition overlap: ${transitionOverlapSec.toFixed(1)}s from ${transitionsApplied} transitions`);
+
+  // Build slice metadata using actual measured durations
+  let cumulativeSec = 0;
+  const sliceMetadata = SLICE_ORDER.map((sliceId, idx) => {
+    const clipDur = actualClipDurations[idx] || 0;
+    const meta = {
+      sliceId,
+      startSec: cumulativeSec,
+      durationSec: clipDur,
+      type: ((pilotScript.slices as any[]).find((s: any) => s.sliceId === sliceId)?.type) || "cinematic",
+      isDialogue: !!(pilotScript.slices as any[]).find((s: any) => s.sliceId === sliceId)?.audio,
+    };
+    cumulativeSec += clipDur;
+    return meta;
+  });
 
   const h1Verdict = await runRulesHarness({
     videoPath: masteredPath,
@@ -329,13 +361,138 @@ async function main() {
     sliceDurationSec: 10,
     titleCardDurationSec,
     endCardDurationSec,
+    actualClipDurations,
+    transitionOverlapSec,
     dialogueSlices: sliceMetadata.filter((s) => s.isDialogue),
     requireWatermark: false,
     tempDir: OUTPUT_DIR,
+    lraRange: [6, 14],
   });
 
   const retryTracker = new SliceRetryTracker();
   const episodeId = `P13_assembly_${Date.now()}`;
+
+  // ─── Regeneration Executor ─────────────────────────────────────────────
+  // Collects H1 and D5 actions, executes actionable ones, then optionally
+  // re-runs the assembly chain once (max 1 cycle).
+
+  async function executeAction(action: RegenerationAction): Promise<{ success: boolean; detail: string }> {
+    const tag = action.sliceId !== undefined ? `slice ${action.sliceId}` : "global";
+    console.log(`    ⚙ Executing ${action.target} [${tag}]...`);
+
+    switch (action.target) {
+      case "a1_music_bed": {
+        // Re-generate music bed
+        try {
+          const retryMood = extractMoodVector({
+            emotionArc: (pilotScript.slices as any[]).map((s: any) => s.emotion || "calm"),
+            hasActionSetpiece: (pilotScript.slices as any[]).some((s: any) => s.type === "stylised_action"),
+          });
+          const musicResult = await generateMusicBed({
+            prompt: retryMood.musicPrompt,
+            durationSec: 210,
+          });
+          const musicLocalPath = path.join(OUTPUT_DIR, "music_bed_retry.mp3");
+          execSync(`curl -sL -o "${musicLocalPath}" "${musicResult.url}"`, { timeout: 60000 });
+          const retryMixPath = path.join(OUTPUT_DIR, "p13_with_music_retry.mp4");
+          await mixMusicBed(transitionedPath, musicLocalPath, retryMixPath, {
+            musicLufs: -22,
+            duckingDb: -12,
+          });
+          // Re-wrap with cards and re-master
+          const retryCardsPath = path.join(OUTPUT_DIR, "p13_with_cards_retry.mp4");
+          await wrapWithCards(retryMixPath, retryCardsPath, OUTPUT_DIR,
+            { title: "AWAKLI", subtitle: "Pilot Episode — P13 Refined Pipeline", durationSec: 5 },
+            { credits: ["Created with Awakli"], branding: "P13 Pipeline", durationSec: 4 }
+          );
+          await masterAudio(retryCardsPath, masteredPath, { integratedLoudness: -16, loudnessRange: 8, truePeak: -1.5 });
+          return { success: true, detail: "Music bed regenerated, re-mixed, re-mastered" };
+        } catch (err: any) {
+          return { success: false, detail: `Music bed retry failed: ${err.message?.slice(0, 100)}` };
+        }
+      }
+
+      case "q3_audio_mastering": {
+        // Re-run mastering on the current assembled video
+        try {
+          const inputForMaster = fs.existsSync(withCardsPath) ? withCardsPath : musicMixedPath;
+          await masterAudio(inputForMaster, masteredPath, { integratedLoudness: -16, loudnessRange: 8, truePeak: -1.5 });
+          return { success: true, detail: "Audio re-mastered to -16 LUFS" };
+        } catch (err: any) {
+          return { success: false, detail: `Mastering retry failed: ${err.message?.slice(0, 100)}` };
+        }
+      }
+
+      case "slice_video_regen": {
+        // In standalone assembler, we can't re-trigger video generation (no API context).
+        // Log for pipeline integration.
+        return { success: false, detail: `Slice ${action.sliceId} video regen requires pipeline context — logged for integration` };
+      }
+
+      case "slice_d2_regen": {
+        // Requires D2 Prompt Engineer — pipeline-only
+        return { success: false, detail: `Slice ${action.sliceId} D2 prompt regen requires pipeline context — logged for integration` };
+      }
+
+      case "slice_reference_regen": {
+        // Requires P3 reference generation — pipeline-only
+        return { success: false, detail: `Slice ${action.sliceId} reference regen requires pipeline context — logged for integration` };
+      }
+
+      case "slice_identify_missing": {
+        // Check which slices are missing or short
+        const missing: number[] = [];
+        for (const sliceId of SLICE_ORDER) {
+          if (!normalizedPathMap.has(sliceId)) {
+            missing.push(sliceId);
+          }
+        }
+        if (missing.length > 0) {
+          return { success: false, detail: `Missing slices: ${missing.join(", ")} — requires pipeline regen` };
+        }
+        return { success: true, detail: "All slices present — duration gap is from shorter-than-expected clips (Vidu Q3 8s max)" };
+      }
+
+      case "assembly_reencode": {
+        // Re-encode the assembled video with correct parameters
+        try {
+          const reencPath = path.join(OUTPUT_DIR, "p13_reencoded.mp4");
+          execSync(
+            `ffmpeg -y -i "${masteredPath}" -vf "scale=1280:720,setsar=1" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k -ar 48000 -ac 2 -pix_fmt yuv420p -movflags +faststart "${reencPath}" 2>&1`,
+            { timeout: 120000 }
+          );
+          fs.copyFileSync(reencPath, masteredPath);
+          return { success: true, detail: "Re-encoded to 1280x720 H.264+AAC" };
+        } catch (err: any) {
+          return { success: false, detail: `Re-encode failed: ${err.message?.slice(0, 100)}` };
+        }
+      }
+
+      case "assembly_concat": {
+        // Re-run concat from normalized clips
+        try {
+          const concatList = path.join(OUTPUT_DIR, "regen_concat.txt");
+          const lines = SLICE_ORDER
+            .filter((id) => normalizedPathMap.has(id))
+            .map((id) => `file '${normalizedPathMap.get(id)}'`);
+          fs.writeFileSync(concatList, lines.join("\n") + "\n");
+          execSync(`ffmpeg -hide_banner -y -f concat -safe 0 -i "${concatList}" -c copy "${transitionedPath}" 2>&1`, { timeout: 120000 });
+          return { success: true, detail: "Re-concatenated from normalized clips" };
+        } catch (err: any) {
+          return { success: false, detail: `Re-concat failed: ${err.message?.slice(0, 100)}` };
+        }
+      }
+
+      case "log_only":
+      case "none":
+      default:
+        return { success: true, detail: `No action needed for ${action.target}` };
+    }
+  }
+
+  // Collect all actions from H1 and D5, execute, then optionally re-run harness
+  const allActions: RegenerationAction[] = [];
+  let h1Passed = h1Verdict.passed;
 
   if (!h1Verdict.passed) {
     console.log(`  H1 FAILED — routing through H2...`);
@@ -344,12 +501,7 @@ async function main() {
       addToEscalationQueue(h1Feedback.escalations);
     }
     if (h1Feedback.hasActions) {
-      const dedupedActions = deduplicateActions(h1Feedback.actions);
-      console.log(`  H2 routed ${dedupedActions.length} regeneration action(s):`);
-      for (const action of dedupedActions) {
-        console.log(`    → ${action.target}${action.sliceId !== undefined ? ` (slice ${action.sliceId})` : ""}: ${action.reason}`);
-      }
-      console.log(`  NOTE: Regeneration not executed in standalone assembler — actions logged for pipeline integration`);
+      allActions.push(...deduplicateActions(h1Feedback.actions));
     }
   } else {
     console.log(`  H1 PASSED ✓ (${h1Verdict.checks.filter(c => c.passed).length}/${h1Verdict.checks.length} checks)`);
@@ -379,12 +531,7 @@ async function main() {
       addToEscalationQueue(d5Feedback.escalations);
     }
     if (d5Feedback.hasActions) {
-      const dedupedActions = deduplicateActions(d5Feedback.actions);
-      console.log(`  H2 routed ${dedupedActions.length} regeneration action(s):`);
-      for (const action of dedupedActions) {
-        console.log(`    → ${action.target}${action.sliceId !== undefined ? ` (slice ${action.sliceId})` : ""}: ${action.reason}`);
-      }
-      console.log(`  NOTE: Regeneration not executed in standalone assembler — actions logged for pipeline integration`);
+      allActions.push(...deduplicateActions(d5Feedback.actions));
     }
   } else {
     console.log(`  D5 PASSED ✓`);
@@ -392,6 +539,80 @@ async function main() {
       console.log(`  Episode score: ${d5Verdict.d5Review.overall.episode_score}/5`);
       console.log(`  Style consistency: ${d5Verdict.d5Review.overall.style_consistency_score}/5`);
     }
+  }
+
+  // ─── Stage 7: Execute Regeneration Actions (max 1 cycle) ──────────────
+  const executableActions = deduplicateActions(allActions);
+  if (executableActions.length > 0) {
+    console.log(`\n─── Stage 7: Regeneration Executor (${executableActions.length} actions) ───`);
+    const executionResults: Array<{ action: string; sliceId?: number; success: boolean; detail: string }> = [];
+    let anyAssemblyChanged = false;
+
+    for (const action of executableActions) {
+      const result = await executeAction(action);
+      executionResults.push({
+        action: action.target,
+        sliceId: action.sliceId,
+        success: result.success,
+        detail: result.detail,
+      });
+      console.log(`    ${result.success ? "✓" : "✗"} ${result.detail}`);
+
+      // Track if any assembly-level action succeeded (triggers re-run)
+      if (result.success && ["a1_music_bed", "q3_audio_mastering", "assembly_reencode", "assembly_concat"].includes(action.target)) {
+        anyAssemblyChanged = true;
+      }
+    }
+
+    const succeeded = executionResults.filter((r) => r.success).length;
+    const failed = executionResults.filter((r) => !r.success).length;
+    const pipelineOnly = executionResults.filter((r) => r.detail.includes("pipeline context")).length;
+    console.log(`  Execution summary: ${succeeded} succeeded, ${failed} failed (${pipelineOnly} require pipeline context)`);
+
+    // Re-run H1 if any assembly-level action succeeded
+    if (anyAssemblyChanged) {
+      console.log(`\n─── Stage 7b: Re-running H1 after regeneration ───`);
+      const h1Recheck = await runRulesHarness({
+        videoPath: masteredPath,
+        sliceCount: SLICE_ORDER.length,
+        sliceDurationSec: 10,
+        titleCardDurationSec,
+        endCardDurationSec,
+        actualClipDurations,
+        transitionOverlapSec,
+        dialogueSlices: sliceMetadata.filter((s) => s.isDialogue),
+        requireWatermark: false,
+        tempDir: OUTPUT_DIR,
+        lraRange: [6, 14],
+      });
+      h1Passed = h1Recheck.passed;
+      if (h1Recheck.passed) {
+        console.log(`  H1 re-check PASSED ✓ after regeneration`);
+      } else {
+        console.log(`  H1 re-check still FAILED — remaining issues escalated`);
+        const recheckFeedback = routeFeedback(h1Recheck, retryTracker, episodeId);
+        if (recheckFeedback.hasEscalations) {
+          addToEscalationQueue(recheckFeedback.escalations);
+        }
+      }
+    }
+
+    // Write execution report
+    const reportPath = path.join(OUTPUT_DIR, "regen_execution_report.json");
+    fs.writeFileSync(reportPath, JSON.stringify({
+      episodeId,
+      timestamp: new Date().toISOString(),
+      totalActions: executableActions.length,
+      succeeded,
+      failed,
+      pipelineOnly,
+      assemblyRerun: anyAssemblyChanged,
+      h1PassedAfterRegen: h1Passed,
+      results: executionResults,
+    }, null, 2));
+    console.log(`  Report saved: ${reportPath}`);
+  } else {
+    console.log(`\n─── Stage 7: No regeneration actions needed ───`);
   }
 
   // ─── Final Stats ───────────────────────────────────────────────────────

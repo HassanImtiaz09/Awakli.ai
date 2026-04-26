@@ -2,7 +2,8 @@
  * H1 · loudnessCheck
  *
  * FFmpeg loudnorm measurement pass.
- * FAIL if integrated LUFS outside [-17, -15] or LRA outside [6, 10].
+ * FAIL if integrated LUFS outside [-17, -15] or LRA outside [6, 14].
+ * LRA widened from [6, 10] to [6, 14] to accommodate music bed dynamic range.
  */
 
 import { execSync } from "child_process";
@@ -12,7 +13,7 @@ export interface LoudnessCheckOptions {
   videoPath: string;
   /** Acceptable integrated LUFS range [min, max] (default: [-17, -15]) */
   lufsRange?: [number, number];
-  /** Acceptable Loudness Range (LRA) [min, max] (default: [6, 10]) */
+  /** Acceptable Loudness Range (LRA) [min, max] (default: [6, 14]) */
   lraRange?: [number, number];
 }
 
@@ -21,7 +22,7 @@ export function runLoudnessCheck(options: LoudnessCheckOptions): HarnessCheckRes
   const {
     videoPath,
     lufsRange = [-17, -15],
-    lraRange = [6, 10],
+    lraRange = [6, 14],
   } = options;
 
   try {

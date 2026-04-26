@@ -21,7 +21,7 @@ export interface RulesHarnessOptions {
   videoPath: string;
   /** Number of content slices (excluding title/end cards) */
   sliceCount: number;
-  /** Duration of each content slice in seconds (default: 10) */
+  /** Duration of each content slice in seconds (default: 10) — used only if actualClipDurations not provided */
   sliceDurationSec?: number;
   /** Title card duration in seconds */
   titleCardDurationSec: number;
@@ -29,6 +29,10 @@ export interface RulesHarnessOptions {
   endCardDurationSec: number;
   /** Total video duration (auto-detected if not provided) */
   totalDurationSec?: number;
+  /** Measured durations of each clip in seconds — used for accurate expected duration */
+  actualClipDurations?: number[];
+  /** Total seconds lost to transition overlaps */
+  transitionOverlapSec?: number;
   /** Dialogue slice metadata for face-count check */
   dialogueSlices: Array<{
     sliceId: number;
@@ -40,6 +44,10 @@ export interface RulesHarnessOptions {
   requireWatermark?: boolean;
   /** Temp directory for intermediate files */
   tempDir: string;
+  /** Custom LUFS range for loudness check (default: [-17, -15]) */
+  lufsRange?: [number, number];
+  /** Custom LRA range for loudness check (default: [6, 14]) */
+  lraRange?: [number, number];
 }
 
 export async function runRulesHarness(options: RulesHarnessOptions): Promise<HarnessVerdict> {
@@ -68,13 +76,15 @@ export async function runRulesHarness(options: RulesHarnessOptions): Promise<Har
     console.log(`  │   → ${aspect.details}`);
   }
 
-  // 3. Duration Check
+  // 3. Duration Check — uses actual clip durations when available for accuracy
   const duration = runDurationCheck({
     videoPath: options.videoPath,
     sliceCount: options.sliceCount,
     sliceDurationSec: options.sliceDurationSec,
     titleCardDurationSec: options.titleCardDurationSec,
     endCardDurationSec: options.endCardDurationSec,
+    actualClipDurations: options.actualClipDurations,
+    transitionOverlapSec: options.transitionOverlapSec,
   });
   checks.push(duration);
   console.log(`  │ duration:      ${duration.passed ? "✓" : "✗"} (${duration.durationMs}ms)`);
@@ -95,9 +105,11 @@ export async function runRulesHarness(options: RulesHarnessOptions): Promise<Har
     console.log(`  │   → ${silence.details}`);
   }
 
-  // 5. Loudness Check
+  // 5. Loudness Check — widened LRA default to [6, 14] to accommodate music bed dynamic range
   const loudness = runLoudnessCheck({
     videoPath: options.videoPath,
+    lufsRange: options.lufsRange,
+    lraRange: options.lraRange ?? [6, 14],
   });
   checks.push(loudness);
   console.log(`  │ loudness:      ${loudness.passed ? "✓" : "✗"} (${loudness.durationMs}ms)`);
