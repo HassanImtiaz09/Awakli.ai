@@ -21,6 +21,11 @@ import { generateTransitionPlan, applyTransition, type TransitionSpec } from "./
 import { generateMusicBed, mixMusicBed } from "./assembly/music-bed.js";
 import { masterAudio } from "./assembly/audio-mastering.js";
 import { wrapWithCards } from "./assembly/title-cards.js";
+import { extractMoodVector } from "./assembly/mood-vector.js";
+import { runRulesHarness } from "./harness/rules-harness.js";
+import { runD5Harness } from "./llm/visual-reviewer.js";
+import { routeFeedback, deduplicateActions, SliceRetryTracker } from "./harness/feedback-router.js";
+import { addToEscalationQueue } from "../admin/quality-escalation-queue.js";
 import pilotScript from "./fixtures/pilot-3min-script-16x9-v6.json" with { type: "json" };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -236,12 +241,19 @@ async function main() {
   const transStats = fs.statSync(transitionedPath);
   console.log(`  Transitioned video: ${(transStats.size / 1024 / 1024).toFixed(1)} MB`);
 
-  // ─── A1/W2: Music Bed ─────────────────────────────────────────────────
-  console.log(`\n─── A1/W2: Generating music bed ───`);
+  // ─── A1/W2: Music Bed (mood-vector driven) ────────────────────────────
+  console.log(`\n─── A1/W2: Generating music bed (mood-vector) ───`);
+  const moodVector = extractMoodVector({
+    emotionArc: (pilotScript.slices as any[]).map((s: any) => s.emotion || "calm"),
+    hasActionSetpiece: (pilotScript.slices as any[]).some((s: any) => s.type === "stylised_action"),
+  });
+  console.log(`  Mood: ${moodVector.primaryMood} / ${moodVector.secondaryMood}, energy ${moodVector.energyLevel}/10, tempo ${moodVector.tempo}`);
+  console.log(`  Prompt: ${moodVector.musicPrompt.slice(0, 120)}...`);
+
   let musicMixedPath = transitionedPath;
   try {
     const musicResult = await generateMusicBed({
-      prompt: "Cinematic anime orchestral background music, emotional, atmospheric, no vocals, instrumental only. Neo-futuristic Japanese city ambiance with subtle electronic elements and gentle piano. Building tension with climactic energy burst.",
+      prompt: moodVector.musicPrompt,
       durationSec: 210, // slightly longer than 190s video to allow trimming
     });
 
@@ -297,6 +309,89 @@ async function main() {
   } catch (err: any) {
     console.warn(`  ✗ Mastering failed: ${err.message?.slice(0, 100)} — using unmastered`);
     fs.copyFileSync(withCardsPath, masteredPath);
+  }
+
+  // ─── Stage 6a: H1 Tier 1 Rules-Based Harness (~30s, $0) ──────────────
+  console.log(`\n─── Stage 6a: H1 Rules Harness ───`);
+  const titleCardDurationSec = 5;
+  const endCardDurationSec = 4;
+  const sliceMetadata = (pilotScript.slices as any[]).map((s: any) => ({
+    sliceId: s.sliceId,
+    startSec: (s.sliceId - 1) * 10,
+    durationSec: s.duration || 10,
+    type: s.type || "cinematic",
+    isDialogue: !!s.audio,
+  }));
+
+  const h1Verdict = await runRulesHarness({
+    videoPath: masteredPath,
+    sliceCount: SLICE_ORDER.length,
+    sliceDurationSec: 10,
+    titleCardDurationSec,
+    endCardDurationSec,
+    dialogueSlices: sliceMetadata.filter((s) => s.isDialogue),
+    requireWatermark: false,
+    tempDir: OUTPUT_DIR,
+  });
+
+  const retryTracker = new SliceRetryTracker();
+  const episodeId = `P13_assembly_${Date.now()}`;
+
+  if (!h1Verdict.passed) {
+    console.log(`  H1 FAILED — routing through H2...`);
+    const h1Feedback = routeFeedback(h1Verdict, retryTracker, episodeId);
+    if (h1Feedback.hasEscalations) {
+      addToEscalationQueue(h1Feedback.escalations);
+    }
+    if (h1Feedback.hasActions) {
+      const dedupedActions = deduplicateActions(h1Feedback.actions);
+      console.log(`  H2 routed ${dedupedActions.length} regeneration action(s):`);
+      for (const action of dedupedActions) {
+        console.log(`    → ${action.target}${action.sliceId !== undefined ? ` (slice ${action.sliceId})` : ""}: ${action.reason}`);
+      }
+      console.log(`  NOTE: Regeneration not executed in standalone assembler — actions logged for pipeline integration`);
+    }
+  } else {
+    console.log(`  H1 PASSED ✓ (${h1Verdict.checks.filter(c => c.passed).length}/${h1Verdict.checks.length} checks)`);
+  }
+
+  // ─── Stage 6b: D5 Tier 2 LLM Visual Reviewer (~90s, ~$0.30) ──────────
+  console.log(`\n─── Stage 6b: D5 Visual Reviewer ───`);
+  const d5Verdict = await runD5Harness({
+    videoPath: masteredPath,
+    slices: sliceMetadata.map((s) => ({
+      ...s,
+      intent: (pilotScript.slices as any[]).find((ps: any) => ps.sliceId === s.sliceId)?.prompt || "Scene",
+      emotion: (pilotScript.slices as any[]).find((ps: any) => ps.sliceId === s.sliceId)?.emotion || "calm",
+      isDialogue: s.isDialogue,
+    })),
+    titleCardDurationSec,
+    characterBibles: {},  // Will be populated from character-bible/schema.ts in pipeline mode
+    styleLock: { target: "2D anime cel-shaded illustration", forbidden: ["photorealistic", "3D render", "watercolor"] },
+    projectPlan: { emotionArc: (pilotScript.slices as any[]).map((s: any) => s.emotion || "calm") },
+    tempDir: OUTPUT_DIR,
+  });
+
+  if (!d5Verdict.passed) {
+    console.log(`  D5 FAILED — routing through H2...`);
+    const d5Feedback = routeFeedback(d5Verdict, retryTracker, episodeId);
+    if (d5Feedback.hasEscalations) {
+      addToEscalationQueue(d5Feedback.escalations);
+    }
+    if (d5Feedback.hasActions) {
+      const dedupedActions = deduplicateActions(d5Feedback.actions);
+      console.log(`  H2 routed ${dedupedActions.length} regeneration action(s):`);
+      for (const action of dedupedActions) {
+        console.log(`    → ${action.target}${action.sliceId !== undefined ? ` (slice ${action.sliceId})` : ""}: ${action.reason}`);
+      }
+      console.log(`  NOTE: Regeneration not executed in standalone assembler — actions logged for pipeline integration`);
+    }
+  } else {
+    console.log(`  D5 PASSED ✓`);
+    if (d5Verdict.d5Review) {
+      console.log(`  Episode score: ${d5Verdict.d5Review.overall.episode_score}/5`);
+      console.log(`  Style consistency: ${d5Verdict.d5Review.overall.style_consistency_score}/5`);
+    }
   }
 
   // ─── Final Stats ───────────────────────────────────────────────────────

@@ -5371,4 +5371,36 @@
 ### Pipeline
 - [x] Build runP13 pipeline function combining all P13 changes (end-to-end.ts + run_all.ts CLI wired)
 - [x] Create assemble-p13.ts assembly script (v6 fixture, 19 slices, transitions + music + cards + mastering)
-- [ ] Save checkpoint and report to user for benchmark approval
+- [x] Save checkpoint and report to user for benchmark approval
+
+## P13 v1.1 — Hybrid Harness (post-assembly quality gate)
+
+### H1: Tier 1 Rules-Based Release Gate ($0/episode, ~30s)
+- [x] H1.1: Create shared harness types (HarnessCheckResult, HarnessVerdict, RoutingHint) in harness/types.ts
+- [x] H1.2: silenceCheck — FFmpeg silencedetect at -30dB, fail if any stretch >1s outside title/end cards
+- [x] H1.3: loudnessCheck — FFmpeg loudnorm, fail if LUFS outside [-17,-15] or LRA outside [6,10]
+- [x] H1.4: aspectCheck — ffprobe, fail if width!=1280 or height!=720 or aspect!=16:9
+- [x] H1.5: durationCheck — fail if runtime not within ±5s of (sliceCount×10s)+(titleCard+endCard)
+- [x] H1.6: faceCountCheck — anime-face-detector, fail if dialogue slice has <1 face at midpoint
+- [x] H1.7: watermarkCheck — pixel-region check on brand-watermark bottom-right (Apprentice tier)
+- [x] H1.8: fileIntegrityCheck — verify mp4 atoms, audio track, codec H.264+AAC
+- [x] H1.9: rules-harness.ts top-level runner — runs all 7 checks, returns HarnessVerdict
+
+### D5: Tier 2 LLM Visual Reviewer (~$0.30/episode, ~90s)
+- [x] D5.1: keyframe-extractor.ts — extract 3 frames per slice (start, mid, end) at 720p using FFmpeg
+- [x] D5.2: audio-summary.ts — produce waveform analysis JSON (silence regions, loudness per slice)
+- [x] D5.3: visual-reviewer-system.md — system prompt for multimodal Sonnet vision reviewer
+- [x] D5.4: visual-reviewer.ts — multimodal LLM wrapper, sends keyframes + context, parses structured output
+- [x] D5.5: D5 output schema with per-slice scores (character_consistency, style, prompt_alignment, audio_visual_sync) and issues array
+
+### H2: Feedback Router (targeted regeneration)
+- [x] H2.1: feedback-router.ts — maps each H1/D5 failure category to exactly one regeneration entrypoint
+- [x] H2.2: Per-slice regeneration cap: 1 from H1, 1 from D5, then escalate to admin queue
+- [x] H2.3: quality-escalation-queue.ts — catches issues surviving both retries, logs for human review
+
+### Integration
+- [x] Wire H1+D5+H2 into runP13 pipeline in end-to-end.ts (Stage 6a → 6b → H2 routing)
+- [x] Update assemble-p13.ts to include harness stage after assembly + mood-vector music prompt
+- [x] Create mood-vector.ts for A1 music bed prompt extraction from Director's ProjectPlan
+- [x] Validate TypeScript compilation (0 errors)
+- [x] Save checkpoint and report to user

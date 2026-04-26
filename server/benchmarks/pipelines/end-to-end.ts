@@ -3943,6 +3943,12 @@ import {
   type CharacterBible,
 } from "../character-bible/schema.js";
 
+import { runRulesHarness } from "../harness/rules-harness.js";
+import { runD5Harness } from "../llm/visual-reviewer.js";
+import { routeFeedback, deduplicateActions, SliceRetryTracker } from "../harness/feedback-router.js";
+import { addToEscalationQueue } from "../../admin/quality-escalation-queue.js";
+import { extractMoodVector } from "../assembly/mood-vector.js";
+
 export async function runP13(script: PilotScript): Promise<PipelineResult> {
   const pipelineTimer = startTimer();
   const clips: ClipResult[] = [];
@@ -4444,6 +4450,58 @@ export async function runP13(script: PilotScript): Promise<PipelineResult> {
     console.log(`\n  [P13] Kling Lip Sync: skipped — all dialogue clips via Veo 3.1 Lite`);
   }
 
+  // ─── Mood Vector (for A1 music bed) ────────────────────────────────────────
+  const moodVector = extractMoodVector({
+    emotionArc: projectPlan.slices.map((s) => s.emotion || "calm"),
+    hasActionSetpiece: script.slices.some((s) => s.type === "stylised_action"),
+  });
+  console.log(`\n  [P13] Mood Vector: ${moodVector.primaryMood}/${moodVector.secondaryMood}, energy ${moodVector.energyLevel}/10, tempo ${moodVector.tempo}`);
+  console.log(`  [P13] Music prompt: ${moodVector.musicPrompt.slice(0, 100)}...`);
+
+  // ─── Stage 6 Config: H1+D5+H2 Harness (runs post-assembly) ────────────────
+  const harnessConfig = {
+    sliceCount: script._meta.totalSlices,
+    sliceDurationSec: Math.round(script._meta.totalDuration / script._meta.totalSlices),
+    titleCardDurationSec: 5,
+    endCardDurationSec: 4,
+    dialogueSlices: dialogueSlices.map((s) => ({
+      sliceId: s.sliceId,
+      startSec: (s.sliceId - 1) * 10,
+      durationSec: s.duration,
+      isDialogue: true as const,
+    })),
+    requireWatermark: false,
+  };
+
+  const d5Config = {
+    slices: script.slices.map((s) => ({
+      sliceId: s.sliceId,
+      startSec: (s.sliceId - 1) * 10,
+      durationSec: s.duration,
+      intent: s.prompt,
+      emotion: getPlanSlice(s.sliceId).emotion || "calm",
+      isDialogue: !!s.audio,
+    })),
+    titleCardDurationSec: 5,
+    characterBibles: Object.fromEntries(
+      Object.entries(characterBibles).map(([name, bible]) => [name, bible])
+    ),
+    styleLock: {
+      target: STYLE_LOCK.primary,
+      forbidden: STYLE_LOCK.forbidden,
+    },
+    projectPlan: {
+      emotionArc: projectPlan.slices.map((s) => s.emotion),
+      episodeTitle: projectPlan.episodeTitle,
+    },
+  };
+
+  console.log(`\n  [P13] ═══ HARNESS CONFIG PREPARED ═══`);
+  console.log(`  [P13] H1: ${harnessConfig.dialogueSlices.length} dialogue slices for face-count check`);
+  console.log(`  [P13] D5: ${d5Config.slices.length} slices for visual review`);
+  console.log(`  [P13] Mood vector: ${moodVector.primaryMood} (energy ${moodVector.energyLevel}/10)`);
+  console.log(`  [P13] NOTE: H1+D5+H2 execute post-assembly via assemble-p13.ts`);
+
   // ─── LLM Observability Summary ────────────────────────────────────────────
   const llmTotalCost = directorCost + totalPromptEngineerCost + totalCriticCost + totalVoiceDirectorCost;
   console.log(`\n  [P13] ═══ LLM SUMMARY ═══`);
@@ -4482,7 +4540,7 @@ export async function runP13(script: PilotScript): Promise<PipelineResult> {
 
   const result: PipelineResult = {
     pipelineId: `P13_${Date.now()}`,
-    variant: "P13_refined_multiLLM_structuredBible_batchedD2D4",
+    variant: "P13v1.1_hybridHarness_structuredBible_batchedD2D4",
     totalSlices: script._meta.totalSlices,
     totalDurationSec: script._meta.totalDuration,
     components,
