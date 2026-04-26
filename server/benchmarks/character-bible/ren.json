@@ -1,0 +1,45 @@
+{
+  "character": "Ren",
+  "gender": "male",
+  "age": "late_teens",
+  "build": "wiry_compact",
+  "hair": {
+    "color": "dark_black",
+    "style": "spiky_short",
+    "accents": "cyan_teal_streaks",
+    "accent_color": "cyan_teal"
+  },
+  "eyes": {
+    "color": "warm_amber_gold",
+    "glow": false
+  },
+  "uniform": {
+    "type": "black_tactical_jacket",
+    "components": [
+      "black_tactical_jacket",
+      "glowing_cyan_circuit_patterns",
+      "dark_cargo_pants",
+      "combat_boots"
+    ]
+  },
+  "distinguishing_marks": [],
+  "prosthetic": {
+    "side": "RIGHT_FOREARM_ONLY",
+    "material": "carbon_fibre",
+    "glow_color": "orange",
+    "glow_pattern": "LED_seams"
+  },
+  "expression_default": "confident",
+  "descriptor": "a young man with spiky dark hair streaked cyan-teal, sharp amber eyes, black tactical jacket with glowing cyan circuit patterns, carbon-fibre prosthetic RIGHT forearm with orange LED seams",
+  "pronoun": "he",
+  "must_not": [
+    "gender_female",
+    "left_arm_prosthetic",
+    "both_arms_prosthetic",
+    "blue_eyes",
+    "green_eyes",
+    "long_hair",
+    "3d_render",
+    "photorealistic"
+  ]
+}

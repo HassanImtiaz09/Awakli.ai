@@ -5348,3 +5348,27 @@
 - [x] Full P12 benchmark run — 18/18 slices, $14.39 total, 43.3 min, 0 failures, 0 fallbacks
 - [x] LLM orchestration cost: $0.4652 (113 calls: D1 $0.05, D2 $0.38, D3 $0.03, D4 $0.002)
 - [x] P10 vs P12 comparison report delivered
+
+## P13 — Pipeline Refinement (post-P12 quality audit)
+
+### Character Lock (C1-C4)
+- [x] C1: Structured JSON character bible — mira.json, ren.json, schema.ts, critic.ts V3 with exhaustive issue enum + hallucination guard
+- [x] C2: style_lock — STYLE_LOCK constant in schema.ts, forbidden styles, D3 style_violation category added
+- [x] C3: Mira + Ren JSON populated — gender, must_not[], hair/eye/prosthetic/uniform, descriptors, pronouns
+- [x] C4: Descriptor substitution in D2 prompts — stripCharacterNames(), UI_NEGATIVE_PROMPT, style_lock forbidden, 375-word cap
+
+### Audio (A1)
+- [x] A1: Wire music-bed.ts into P13 assembler — MiniMax Music 210s track, -22 LUFS, -12dB side-chain duck, wired into assemble-p13.ts
+
+### Performance (P1-P2)
+- [x] P1: Parallelise D2+D4 across slices — batch size 4 in both runPromptEngineerBatch() and runVoiceDirectorBatch()
+- [x] P2: Reduce Critic retry cap to 2 — criticValidateWithRetry() with MAX_CRITIC_RETRIES=2, fail-soft on exhaustion
+
+### Polish (L1-L2)
+- [x] L1: v6 fixture created — 19 slices (2 stylised_action), climax at position 15 (crystal shatters), 190s total
+- [x] L2: Title + end cards — wrapWithCards() from assembly/title-cards.ts, will be wired into assemble-p13.ts
+
+### Pipeline
+- [x] Build runP13 pipeline function combining all P13 changes (end-to-end.ts + run_all.ts CLI wired)
+- [x] Create assemble-p13.ts assembly script (v6 fixture, 19 slices, transitions + music + cards + mastering)
+- [ ] Save checkpoint and report to user for benchmark approval

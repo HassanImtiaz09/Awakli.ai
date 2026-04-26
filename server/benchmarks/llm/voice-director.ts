@@ -201,30 +201,41 @@ Select the optimal emotion tags and TTS parameter overrides.`;
 }
 
 /**
- * Run the Voice Director for all dialogue lines in batch.
+ * Run the Voice Director for all dialogue lines in batch (P13 P1: parallel batches of 4).
  */
 export async function runVoiceDirectorBatch(
-  inputs: VoiceDirectorInput[]
+  inputs: VoiceDirectorInput[],
+  batchSize: number = 4
 ): Promise<{
   results: VoiceDirectorResult[];
   totalCost: number;
   totalLatencyMs: number;
 }> {
-  console.log(`  [D4] Running Voice Director on ${inputs.length} dialogue lines...`);
+  console.log(`  [D4] Running Voice Director on ${inputs.length} dialogue lines (batch size ${batchSize})...`);
   const results: VoiceDirectorResult[] = [];
+  let totalWallMs = 0;
 
-  for (const input of inputs) {
-    const result = await runVoiceDirector(input);
-    results.push(result);
-    const icon = result.success ? "✓" : "⚠";
-    console.log(
-      `  [D4] Slice ${result.sliceId} (${result.character}): ${icon} ${result.primaryEmotion}/${result.secondaryEmotion} @${result.emotionIntensity.toFixed(1)} ($${result.costEstimate.toFixed(4)}, ${result.latencyMs}ms) — ${result.directionNote.slice(0, 50)}`
-    );
+  // P1: Process in parallel batches
+  for (let i = 0; i < inputs.length; i += batchSize) {
+    const batch = inputs.slice(i, i + batchSize);
+    const batchStart = Date.now();
+    const batchResults = await Promise.all(batch.map((input) => runVoiceDirector(input)));
+    const batchMs = Date.now() - batchStart;
+    totalWallMs += batchMs;
+
+    for (const result of batchResults) {
+      results.push(result);
+      const icon = result.success ? "✓" : "⚠";
+      console.log(
+        `  [D4] Slice ${result.sliceId} (${result.character}): ${icon} ${result.primaryEmotion}/${result.secondaryEmotion} @${result.emotionIntensity.toFixed(1)} ($${result.costEstimate.toFixed(4)}, ${result.latencyMs}ms) — ${result.directionNote.slice(0, 50)}`
+      );
+    }
+    console.log(`  [D4] Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} lines in ${(batchMs / 1000).toFixed(1)}s`);
   }
 
   const totalCost = results.reduce((s, r) => s + r.costEstimate, 0);
   const totalLatencyMs = results.reduce((s, r) => s + r.latencyMs, 0);
-  console.log(`  [D4] Voice Director batch done: $${totalCost.toFixed(4)} total, ${(totalLatencyMs / 1000).toFixed(1)}s`);
+  console.log(`  [D4] Voice Director done: $${totalCost.toFixed(4)} total, ${(totalWallMs / 1000).toFixed(1)}s wall-clock (${(totalLatencyMs / 1000).toFixed(1)}s cumulative)`);
 
   return { results, totalCost, totalLatencyMs };
 }

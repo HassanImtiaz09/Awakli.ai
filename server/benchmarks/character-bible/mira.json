@@ -1,0 +1,46 @@
+{
+  "character": "Mira",
+  "gender": "female",
+  "age": "late_teens",
+  "build": "athletic_lean",
+  "hair": {
+    "color": "silver_white",
+    "style": "long_ponytail_with_clip",
+    "accents": "cerulean_blue_tips",
+    "accent_color": "cerulean_blue"
+  },
+  "eyes": {
+    "color": "bright_cerulean_blue",
+    "glow": true
+  },
+  "uniform": {
+    "type": "navy_sailor_uniform",
+    "components": [
+      "dark_navy_jacket",
+      "white_collar",
+      "pleated_skirt",
+      "knee_high_boots"
+    ]
+  },
+  "distinguishing_marks": [],
+  "prosthetic": {
+    "side": "LEFT_ARM_ONLY",
+    "material": "matte_black",
+    "glow_color": "amber",
+    "glow_pattern": "energy_lines"
+  },
+  "expression_default": "determined",
+  "descriptor": "a young woman with silver-white hair tipped cerulean-blue in a long ponytail, glowing blue eyes, navy sailor uniform, matte-black prosthetic LEFT arm with amber energy lines",
+  "pronoun": "she",
+  "must_not": [
+    "gender_male",
+    "right_arm_prosthetic",
+    "both_arms_prosthetic",
+    "diagonal_scar",
+    "short_hair_no_ponytail",
+    "3d_render",
+    "photorealistic",
+    "crop_top_midriff_visible",
+    "red_lipstick"
+  ]
+}

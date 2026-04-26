@@ -54,8 +54,14 @@ Return strict JSON:
 
 ## Rules
 - Temperature 0.4 — be creative but consistent
-- ALWAYS inject the full CHARACTER_LOCK text for any characters present
-- Never contradict the character bible (eye colour, hair, prosthetic arm side)
+- **NEVER use character names** (e.g., "Mira", "Ren") in the output prompt. Use the DESCRIPTOR provided instead.
+- First mention of a character: use the full descriptor. Subsequent mentions: use the pronoun ("she"/"he").
+- ALWAYS inject the character DESCRIPTOR (not name) for any characters present
+- Never contradict the character bible (eye colour, hair, prosthetic arm side, gender)
+- Respect the MUST NOT list for each character — never include forbidden elements
+- If a STYLE LOCK is provided, ensure the prompt uses the primary style and NEVER uses forbidden styles
+- Append the NEGATIVE PROMPT clause to prevent UI/text artefacts
 - Adapt prompt length and style to the target model's sweet spot
+- Maximum prompt length: 375 words (~500 tokens). Truncate gracefully at sentence boundaries.
 - Include camera movement hints from the Director's plan
 - For dialogue slices, emphasise facial expression and lip movement readiness

@@ -22,7 +22,7 @@ export { runPromptEngineer, runPromptEngineerBatch } from "./prompt-engineer.js"
 export type { PromptEngineerInput, PromptEngineerResult, TargetModel } from "./prompt-engineer.js";
 
 // D3: Critic
-export { criticValidateV2, criticValidateAllV2 } from "./critic.js";
+export { criticValidateV3, criticValidateWithRetry, MAX_CRITIC_RETRIES } from "./critic.js";
 export type { CriticInput, CriticResult, CriticIssue } from "./critic.js";
 
 // D4: Voice Director
